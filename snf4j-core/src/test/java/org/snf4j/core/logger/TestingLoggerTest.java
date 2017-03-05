@@ -1,0 +1,121 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2017 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
+package org.snf4j.core.logger;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.PrintStream;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.snf4j.core.logger.TestPrintStream;
+
+public class TestingLoggerTest {
+
+	PrintStream original;
+	
+	@Before
+	public void before() {
+		original = System.err;
+		System.setErr(TestPrintStream.getInstance().getStream());
+	}
+	
+	@After
+	public void after() {
+		System.setErr(original);
+	}
+	
+	private void assertLog(String expectedLevel, String expectedMsg, String msg) {
+		msg = msg.replace("\n", "").replace("\r", "");
+		String s1 = "] " + expectedLevel + " org.snf4j.core.logger.TestingLoggerTest - ";
+		
+		int i = msg.indexOf(s1);
+		assertTrue(i != -1);
+		assertEquals(expectedMsg, msg.substring(i+s1.length()));
+	}
+
+	@Test
+	public void testLog() {
+		ILogger l = new TestingLogger(this.getClass().getName());
+		
+		TestPrintStream s = TestPrintStream.getInstance();
+
+		assertTrue(l.isDebugEnabled());
+		assertTrue(l.isTraceEnabled());
+		
+		String level = "TRACE";
+		l.trace("Message");
+		assertLog(level, "Message", s.getString());
+		l.trace("Message {}", 1);
+		assertLog(level, "Message {} [1]", s.getString());
+		l.trace("Message {} {}", 1, 2);
+		assertLog(level, "Message {} {} [1] [2]", s.getString());
+		l.trace("Message {} {} {}", 1, null, 3);
+		assertLog(level, "Message {} {} {} [1] [null] [3]", s.getString());
+
+		level = "DEBUG";
+		l.debug("Message");
+		assertLog(level, "Message", s.getString());
+		l.debug("Message {}", 1);
+		assertLog(level, "Message {} [1]", s.getString());
+		l.debug("Message {} {}", 1, 2);
+		assertLog(level, "Message {} {} [1] [2]", s.getString());
+		l.debug("Message {} {} {}", 1, null, 3);
+		assertLog(level, "Message {} {} {} [1] [null] [3]", s.getString());
+
+		level = " INFO";
+		l.info("Message");
+		assertLog(level, "Message", s.getString());
+		l.info("Message {}", 1);
+		assertLog(level, "Message {} [1]", s.getString());
+		l.info("Message {} {}", 1, 2);
+		assertLog(level, "Message {} {} [1] [2]", s.getString());
+		l.info("Message {} {} {}", 1, null, 3);
+		assertLog(level, "Message {} {} {} [1] [null] [3]", s.getString());
+
+		level = " WARN";
+		l.warn("Message");
+		assertLog(level, "Message", s.getString());
+		l.warn("Message {}", 1);
+		assertLog(level, "Message {} [1]", s.getString());
+		l.warn("Message {} {}", 1, 2);
+		assertLog(level, "Message {} {} [1] [2]", s.getString());
+		l.warn("Message {} {} {}", 1, null, 3);
+		assertLog(level, "Message {} {} {} [1] [null] [3]", s.getString());
+
+		level = "ERROR";
+		l.error("Message");
+		assertLog(level, "Message", s.getString());
+		l.error("Message {}", 1);
+		assertLog(level, "Message {} [1]", s.getString());
+		l.error("Message {} {}", 1, 2);
+		assertLog(level, "Message {} {} [1] [2]", s.getString());
+		l.error("Message {} {} {}", 1, null, 3);
+		assertLog(level, "Message {} {} {} [1] [null] [3]", s.getString());
+	}
+}

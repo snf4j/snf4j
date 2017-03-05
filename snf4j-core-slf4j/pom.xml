@@ -1,0 +1,38 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  
+  <modelVersion>4.0.0</modelVersion>
+ 
+  <parent>
+    <groupId>org.snf4j</groupId>
+    <artifactId>snf4j-project</artifactId>
+    <version>1.0.0</version>
+  </parent>
+    
+  <artifactId>snf4j-core-slf4j</artifactId>
+  <packaging>jar</packaging>
+  <name>SNF4J Core SLF4J Module</name>
+  <description>The SNF4J core logger binder for SLF4J api</description>
+  <url>http://www.snf4j.org</url>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.snf4j</groupId> 
+      <artifactId>snf4j-core</artifactId> 
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${version.slf4j.api}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>${version.slf4j.simple}</version>
+    </dependency>
+    
+  </dependencies> 
+  
+</project>
