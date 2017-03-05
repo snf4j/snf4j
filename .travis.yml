@@ -11,4 +11,5 @@ branches:
   - travis_yml
 
 after_failure:
-  - cat target/surefire-reports/*.txt
+  - pwd
+  - cat snf4j-core/target/surefire-reports/*.txt
