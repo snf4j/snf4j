@@ -1,0 +1,172 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  
+  <modelVersion>4.0.0</modelVersion>
+ 
+  <groupId>org.snf4j</groupId>
+  <artifactId>snf4j-project</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+ 
+  <name>SNF4J</name>
+  <description>Top SLF4J project</description>
+  <url>http://www.snf4j.org</url>
+  <inceptionYear>2017</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>MIT License</name> 
+      <url>http://www.opensource.org/licenses/mit-license.php</url> 
+      <distribution>repo</distribution> 
+    </license>
+  </licenses>
+
+  <properties>
+    <arguments />
+    <version.java>1.5</version.java>
+    <version.compiler.source>${version.java}</version.compiler.source>
+    <version.compiler.target>${version.java}</version.compiler.target>
+    
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        
+    <!-- jar versions -->
+    <version.junit>4.10</version.junit>
+    <version.slf4j>1.7.21</version.slf4j>
+    <version.slf4j.api>${version.slf4j}</version.slf4j.api>
+    <version.slf4j.simple>${version.slf4j}</version.slf4j.simple>
+
+    <!-- plugin versions -->
+    <version.compiler.plugin>2.5.1</version.compiler.plugin>
+    <version.jar.plugin>2.3.1</version.jar.plugin>
+    <version.surefire.plugin>2.9</version.surefire.plugin>
+    <version.build.helper.plugin>1.7</version.build.helper.plugin>
+    <version.antrun.plugin>1.3</version.antrun.plugin>
+    <version.clean.plugin>2.5</version.clean.plugin>
+    <version.resources.plugin>2.6</version.resources.plugin>
+    <version.cobertura.plugin>2.7</version.cobertura.plugin>
+    <version.javadoc.plugin>2.10.4</version.javadoc.plugin>
+    
+  </properties>
+
+  <modules>
+    <module>snf4j-core</module>
+    <module>snf4j-core-slf4j</module>
+  </modules>
+  
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${version.junit}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>${project.basedir}/src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+
+    <plugins>
+    
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>${version.clean.plugin}</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${version.javadoc.plugin}</version>
+        <configuration>
+          <aggregate>false</aggregate>
+          <stylesheet>java</stylesheet>
+          <links>
+            <link>http://java.sun.com/j2se/1.5.0/docs/api</link>
+          </links>
+          <groups>
+            <group>
+              <title>SNF4J packages</title>
+              <packages>org.snf4j:org.snf4j.*</packages>
+            </group>
+          </groups>
+        </configuration>
+      </plugin>     
+      
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${version.resources.plugin}</version>
+      </plugin>
+      
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${version.surefire.plugin}</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${version.compiler.plugin}</version>
+        <configuration>
+          <source>${version.compiler.source}</source>
+          <target>${version.compiler.target}</target>
+        </configuration>
+      </plugin>
+      
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>${version.build.helper.plugin}</version>
+        <executions>
+          <execution>
+            <id>parse-version</id>
+            <goals>
+              <goal>parse-version</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>${version.jar.plugin}</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Bundle-Version>${parsedVersion.osgiVersion}</Bundle-Version>
+              <Bundle-Description>${project.description}</Bundle-Description>
+              <X-Compile-Source-JDK>${version.compiler.source}</X-Compile-Source-JDK>
+              <X-Compile-Target-JDK>${version.compiler.target}</X-Compile-Target-JDK>
+              <Implementation-Version>${project.version}</Implementation-Version>
+            </manifestEntries>
+            <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+          </archive>
+          <skipIfEmpty>true</skipIfEmpty>
+        </configuration>
+      </plugin>
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>cobertura-maven-plugin</artifactId>
+				<version>${version.cobertura.plugin}</version>
+				<configuration>
+					<formats>
+						<format>html</format>
+						<format>xml</format>
+					</formats>
+					<check />
+				</configuration>
+			</plugin>
+      
+    </plugins>    
+  </build>
+
+</project>
