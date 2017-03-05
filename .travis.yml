@@ -1,0 +1,10 @@
+sudo: true
+
+language: java
+
+jdk:
+  - oraclejdk8
+  
+branches:
+  only:
+  - master
