@@ -8,3 +8,7 @@ jdk:
 branches:
   only:
   - master
+  - travis_yml
+
+after_failure:
+  - cat target/surefire-reports/*.txt
