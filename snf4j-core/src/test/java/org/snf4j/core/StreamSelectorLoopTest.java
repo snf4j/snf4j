@@ -41,6 +41,7 @@ import java.util.Random;
 import java.util.concurrent.ThreadFactory;
 
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.factory.AbstractSessionFactory;
@@ -773,6 +774,9 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testConnectClientToClient() throws Exception {
+		//Does not work in the Travis CI environment
+		Assume.assumeTrue(!"true".equalsIgnoreCase(System.getenv("TRAVIS")));
+		
 		int size = PORT_MAX-PORT_MIN;
 		
 		Random r = new Random(System.currentTimeMillis());
