@@ -622,6 +622,7 @@ public class StreamSelectorLoopTest {
 		c2.start();
 		assertTrue(c2.getSelectLoop().getController() == DefaultSelectorLoopController.DEFAULT);
 		c2.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals("", s.getRecordedData(true));
 		assertEquals("SCR|SOP|SCL|SEN|", c2.getRecordedData(true));
 		c2.stop(TIMEOUT);
@@ -631,6 +632,7 @@ public class StreamSelectorLoopTest {
 		slc.accept = TestSelectorLoopController.EXCEPTION;
 		c3.start();
 		c3.stop(TIMEOUT);
+		waitFor(100);
 		assertEquals("", s.getRecordedData(true));
 		assertEquals("", c3.getRecordedData(true));
 		
@@ -641,6 +643,7 @@ public class StreamSelectorLoopTest {
 		c4.start();
 		c4.stop(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals("SCR|EXC|SEN|", s.getRecordedData(true));
 		assertEquals("", c4.getRecordedData(true));
 		
@@ -784,6 +787,7 @@ public class StreamSelectorLoopTest {
 		c2.localPort = port1;
 		c2.reuseAddress = true;
 		c2.start();
+		waitFor(200);
 		c1.start();
 		
 		c1.waitForSessionOpen(TIMEOUT);
