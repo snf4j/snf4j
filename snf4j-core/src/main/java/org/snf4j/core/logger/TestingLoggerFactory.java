@@ -36,19 +36,13 @@ class TestingLoggerFactory implements ILoggerFactory {
 	public ILogger getLogger(String name) {
 		ILogger logger = map.get(name);
 		
-		System.err.println("TEST1: " + logger);
 		if (logger == null) {
-			System.err.println("TEST2: " + logger);
 			logger = new TestingLogger(name);
-			System.err.println("TEST3: " + logger);
 			ILogger prevLogger = map.putIfAbsent(name, logger);
-			System.err.println("TEST4: " + prevLogger);
 			if (prevLogger != null) {
-				System.err.println("TEST5: " + prevLogger);
 				return prevLogger;
 			}
 		}
-		System.err.println("TEST6: " + logger);
 		return logger;
 	}
 

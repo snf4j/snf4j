@@ -40,6 +40,8 @@ import java.nio.channels.SocketChannel;
 import java.util.Random;
 import java.util.concurrent.ThreadFactory;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
@@ -55,13 +57,31 @@ public class StreamSelectorLoopTest {
 	int PORT_MIN = 8888;
 	int PORT_MAX = 9999;
 	
+	Server s;
+	Client c, c1, c2, c3, c4;
+	
+	@Before
+	public void before() {
+		s = c = c1 = c2 = c3 = c4 = null;
+	}
+
+	@After
+	public void after() throws InterruptedException {
+		if (c != null) c.stop(TIMEOUT);
+		if (c1 != null) c1.stop(TIMEOUT);
+		if (c2 != null) c2.stop(TIMEOUT);
+		if (c3 != null) c3.stop(TIMEOUT);
+		if (c4 != null) c4.stop(TIMEOUT);
+		if (s != null) s.stop(TIMEOUT);
+	}
+	
 	private void waitFor(long millis) throws InterruptedException {
 		Thread.sleep(millis);
 	}
 	
 	@Test
 	public void testStopOpenSessionByClient() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start();
 		waitFor(100);
 		
@@ -69,7 +89,7 @@ public class StreamSelectorLoopTest {
 		
 		//quick stopping 
 		//---------------------------------------------------------------------
-		Client c = new Client(PORT);	c.start(); 
+		c = new Client(PORT);	c.start(); 
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
@@ -78,6 +98,7 @@ public class StreamSelectorLoopTest {
 		assertEquals(1, c.getSelectLoop().getSize());
 
 		c.quickStop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -99,6 +120,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -116,12 +138,12 @@ public class StreamSelectorLoopTest {
 
 	@Test
 	public void testStopOpenSessionWithSuspendedWriteByClient() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start();
 		
 		//quick stopping with suspended write
 		//---------------------------------------------------------------------
-		Client c = new Client(PORT); c.start(); 
+		c = new Client(PORT); c.start(); 
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
@@ -131,6 +153,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 
 		c.quickStop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -146,6 +169,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -157,12 +181,12 @@ public class StreamSelectorLoopTest {
 
 	@Test
 	public void testStopOpenSessionWithSuspendedReadByClient() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start();
 		
 		//quick stopping with suspended read
 		//---------------------------------------------------------------------
-		Client c = new Client(PORT); c.start(); 
+		c = new Client(PORT); c.start(); 
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
@@ -170,6 +194,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 
 		c.quickStop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -183,6 +208,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -194,12 +220,12 @@ public class StreamSelectorLoopTest {
 
 	@Test
 	public void testStopOpenSessionWithSuspendedBothByClient() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start();
 		
 		//quick stopping with suspended read and write
 		//---------------------------------------------------------------------
-		Client c = new Client(PORT); c.start(); 
+		c = new Client(PORT); c.start(); 
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
@@ -214,7 +240,8 @@ public class StreamSelectorLoopTest {
 		
 		//gentle stopping with suspended read and write
 		//---------------------------------------------------------------------
-		c = new Client(PORT); c.start();	c.waitForSessionOpen(TIMEOUT);
+		c = new Client(PORT); c.start();	
+		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
 		c.getSession().suspendRead();
@@ -233,12 +260,12 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testStopOpenSessionByServer() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start();
 		
 		//quick stopping 
 		//---------------------------------------------------------------------
-		Client c = new Client(PORT);	c.start(); 
+		c = new Client(PORT);	c.start(); 
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
@@ -275,7 +302,7 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testOpenAndCloseSessionInOtherThread() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		DefaultSelectorLoopPool pool = new DefaultSelectorLoopPool(2);
 		
 		s.start();
@@ -284,7 +311,7 @@ public class StreamSelectorLoopTest {
 		s.getSelectLoop().setPool(pool);
 		assertTrue(pool == s.getSelectLoop().getPool());
 		
-		Client c = new Client(PORT);	c.start(); 
+		c = new Client(PORT);	c.start(); 
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
@@ -312,13 +339,13 @@ public class StreamSelectorLoopTest {
 
 	@Test
 	public void testQuickCloseSessionInOtherThread() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		DefaultSelectorLoopPool pool = new DefaultSelectorLoopPool(2);
 		
 		s.start();
 		s.getSelectLoop().setPool(pool);
 
-		Client c = new Client(PORT);	c.start(); 
+		c = new Client(PORT);	c.start(); 
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
@@ -507,10 +534,10 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testRegistrationBeforeStart() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start(true);
 
-		Client c = new Client(PORT);
+		c = new Client(PORT);
 		c.start(true);
 
 		c.waitForSessionOpen(TIMEOUT);
@@ -528,7 +555,7 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testRegistrationWhileStopping() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		
 		//register server socket
 		s.setThreadFactory(new DelayedThreadFactory(100));
@@ -539,7 +566,7 @@ public class StreamSelectorLoopTest {
 		s.start();
 
 		//register client socket (session not created)
-		Client c = new Client(PORT);
+		c = new Client(PORT);
 		c.setThreadFactory(new DelayedThreadFactory(100));
 		c.start();
 		c.stop(TIMEOUT);
@@ -558,8 +585,8 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testRegistrationOfRegistered() throws Exception {
-		Server s = new Server(PORT);
-		Client c = new Client(PORT);
+		s = new Server(PORT);
+		c = new Client(PORT);
 		
 		s.start();
 		c.start();
@@ -576,12 +603,12 @@ public class StreamSelectorLoopTest {
 	public void testHandleAccepting() throws Exception {
 		TestSelectorLoopController slc = new TestSelectorLoopController();
 		TestSelectorPool pool = new TestSelectorPool();
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.controller = slc;
 		s.start();
 		assertTrue(s.getSelectLoop().getController() == slc);
 		s.getSelectLoop().setPool(pool);
-		Client c1 = new Client(PORT);
+		c1 = new Client(PORT);
 		c1.start();
 		c1.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c1.getRecordedData(true));
@@ -589,16 +616,17 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 		
 		//disable accepting
-		Client c2 = new Client(PORT);
+		c2 = new Client(PORT);
 		slc.accept = TestSelectorLoopController.BLOCK;
 		c2.start();
 		assertTrue(c2.getSelectLoop().getController() == DefaultSelectorLoopController.DEFAULT);
 		c2.waitForSessionEnding(TIMEOUT);
 		assertEquals("", s.getRecordedData(true));
 		assertEquals("SCR|SOP|SCL|SEN|", c2.getRecordedData(true));
+		c2.stop(TIMEOUT);
 		
 		//exception while accepting
-		Client c3 = new Client(PORT);
+		c3 = new Client(PORT);
 		slc.accept = TestSelectorLoopController.EXCEPTION;
 		c3.start();
 		c3.stop(TIMEOUT);
@@ -606,14 +634,14 @@ public class StreamSelectorLoopTest {
 		assertEquals("", c3.getRecordedData(true));
 		
 		//exception while getting from the pool
-		Client c4 = new Client(PORT);
+		c4 = new Client(PORT);
 		slc.accept = TestSelectorLoopController.DEFAULT;
 		pool.getException = true;
 		c4.start();
 		c4.stop(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|EXC|SEN|", s.getRecordedData(true));
-		assertEquals("", c3.getRecordedData(true));
+		assertEquals("", c4.getRecordedData(true));
 		
 		//check if the loop is not broken
 		c1.write(new Packet(PacketType.ECHO));
@@ -633,9 +661,9 @@ public class StreamSelectorLoopTest {
 	@Test
 	public void testHandleConnecting() throws Exception {
 		TestSelectorLoopController slc = new TestSelectorLoopController();
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start();
-		Client c1 = new Client(PORT);
+		c1 = new Client(PORT);
 		c1.start();
 		c1.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c1.getRecordedData(true));
@@ -644,7 +672,7 @@ public class StreamSelectorLoopTest {
 
 		//disable connecting
 		slc.connect = TestSelectorLoopController.BLOCK;
-		Client c2 = new Client(PORT);
+		c2 = new Client(PORT);
 		c2.controller = slc;
 		c2.start();
 		s.waitForSessionEnding(TIMEOUT);
@@ -655,7 +683,7 @@ public class StreamSelectorLoopTest {
 		
 		//exception while connecting
 		slc.connect = TestSelectorLoopController.EXCEPTION;
-		Client c3 = new Client(PORT);
+		c3 = new Client(PORT);
 		c3.controller = slc;
 		c3.start();
 		s.waitForSessionEnding(TIMEOUT);
@@ -685,7 +713,7 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testTrackSizeChanges() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		TestSelectorPool pool = new TestSelectorPool();
 
 		SelectorLoop loop = new SelectorLoop(null, pool);
@@ -694,7 +722,7 @@ public class StreamSelectorLoopTest {
 		s.pool = pool;
 		s.start();
 
-		Client c1 = new Client(PORT);
+		c1 = new Client(PORT);
 		c1.start();
 		c1.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionOpen(TIMEOUT);
@@ -707,7 +735,7 @@ public class StreamSelectorLoopTest {
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("", pool.getUpdate());
 
-		Client c2 = new Client(PORT);
+		c2 = new Client(PORT);
 		c2.start();
 		c2.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionOpen(TIMEOUT);
@@ -731,7 +759,7 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testConnectionFailure() throws Exception {
-		Client c = new Client(PORT);
+		c = new Client(PORT);
 		c.start();
 		
 		c.waitForSessionEnding(TIMEOUT);
@@ -748,10 +776,10 @@ public class StreamSelectorLoopTest {
 		int port1 = PORT_MIN + r.nextInt(size);
 		int port2 = port1+1;
 		
-		Client c1 = new Client(port1);
+		c1 = new Client(port1);
 		c1.localPort = port2;
 		c1.reuseAddress = true;
-		Client c2 = new Client(port2);
+		c2 = new Client(port2);
 		c2.localPort = port1;
 		c2.reuseAddress = true;
 		c2.start();
@@ -782,9 +810,9 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testExceptionHandling() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start();
-		Client c = new Client(PORT);
+		c = new Client(PORT);
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
@@ -828,18 +856,19 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testClosingAction() throws Exception {
-		Server s = new Server(PORT);
+		s = new Server(PORT);
 		s.start();
-		Client c = new Client(PORT);
+		c = new Client(PORT);
 		c.start();
+
+		//default action
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
 
 		assertEquals("R|", s.getServerSocketLogs());
 		assertTrue(s.ssc == s.registeredSsc);
 		assertNull(s.closedSsc);
 		
-		//default action
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);

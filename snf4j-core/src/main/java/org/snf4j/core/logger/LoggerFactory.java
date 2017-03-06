@@ -69,9 +69,6 @@ public class LoggerFactory {
 			synchronized (LoggerFactory.class) {
 				if (factory == null) {
 					factory = load();
-					report("Factory: " + factory.getClass().getName() + " ", new Exception(""));
-					report("Factory: " + factory.getLogger("XXX") + " ", new Exception(""));
-					report("Factory: " + System.getProperty(Constants.LOGGER_FACTORY_SYSTEM_PROERTY) + " ", new Exception(""));
 				}
 			}
 		}

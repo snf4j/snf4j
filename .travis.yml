@@ -13,3 +13,4 @@ branches:
 after_failure:
   - pwd
   - cat snf4j-core/target/surefire-reports/*.txt
+  - cat snf4j-core-slf4j/target/surefire-reports/*.txt
