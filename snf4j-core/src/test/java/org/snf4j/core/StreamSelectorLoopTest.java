@@ -787,7 +787,6 @@ public class StreamSelectorLoopTest {
 		c2.localPort = port1;
 		c2.reuseAddress = true;
 		c2.start();
-		waitFor(200);
 		c1.start();
 		
 		c1.waitForSessionOpen(TIMEOUT);
