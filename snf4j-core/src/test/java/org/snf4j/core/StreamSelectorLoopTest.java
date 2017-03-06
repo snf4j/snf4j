@@ -364,6 +364,7 @@ public class StreamSelectorLoopTest {
 		pool.quickStop();
 		c.waitForSessionEnding(TIMEOUT);
 		c.quickStop(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
 	}
