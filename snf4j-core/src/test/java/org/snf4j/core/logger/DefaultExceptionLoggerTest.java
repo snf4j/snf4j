@@ -39,6 +39,8 @@ public class DefaultExceptionLoggerTest {
 	
 	@Test
 	public void testLoad() {
+		LoggerFactory.getLogger(DefaultExceptionLoggerTest.class);
+
 		String property = "org.snf4j.ExceptionLogger";
 		IExceptionLogger l = ExceptionLogger.load();
 		

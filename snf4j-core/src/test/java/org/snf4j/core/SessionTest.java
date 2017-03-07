@@ -442,6 +442,7 @@ public class SessionTest {
 		s.start();
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
 		
 		StreamSession session = c.getSession();
 		SelectionKey key = session.key;
@@ -481,6 +482,7 @@ public class SessionTest {
 		s.start();
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		c.write(new Packet(PacketType.ECHO, "1"));
 		c.waitForDataRead(TIMEOUT);
@@ -734,6 +736,7 @@ public class SessionTest {
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
 		c.getSession().close();
+		waitFor(500);
 		assertEquals("", c.getRecordedData(true));
 		s.stop(TIMEOUT); c.stop(TIMEOUT);
 

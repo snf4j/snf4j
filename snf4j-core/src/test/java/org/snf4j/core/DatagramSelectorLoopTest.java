@@ -115,11 +115,12 @@ public class DatagramSelectorLoopTest {
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DR|$WRITE_AND_WAIT(1000)|", s.getRecordedData(true));
+		assertEquals("DR|$WRITE_AND_WAIT(1000)|DS|", s.getRecordedData(true));
 		s.stop(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
 	}
 	
 	@Test

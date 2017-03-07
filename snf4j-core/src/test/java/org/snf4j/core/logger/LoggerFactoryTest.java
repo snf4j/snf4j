@@ -33,6 +33,8 @@ public class LoggerFactoryTest {
 	
 	@Test
 	public void testLoad() {
+		LoggerFactory.getLogger(LoggerFactoryTest.class);
+		
 		String property = "org.snf4j.LoggerFactory";
 		ILoggerFactory l = LoggerFactory.load();
 		
