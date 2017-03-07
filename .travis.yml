@@ -8,7 +8,6 @@ jdk:
 branches:
   only:
   - master
-  - travis_yml
 
 after_failure:
   - pwd
