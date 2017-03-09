@@ -991,4 +991,22 @@ public class StreamSelectorLoopTest {
 		
 	}
 	
+	@Test
+	public void testInLoop() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		c.start();
+
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		assertFalse(c.loop.inLoop());
+		
+		c.write(new Packet(PacketType.IN_LOOP));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|IN_LOOP_RESPONSE(true)|", c.getRecordedData(true));
+	}	
 }

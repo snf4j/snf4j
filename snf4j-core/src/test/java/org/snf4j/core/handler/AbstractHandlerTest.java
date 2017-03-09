@@ -30,6 +30,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.ByteBuffer;
+
 import org.junit.Test;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
@@ -57,5 +59,24 @@ public class AbstractHandlerTest {
 		
 		h.setSession(s2);
 		assertTrue(s2 == h.getSession());
+	}
+	
+	@Test
+	public void testToRead() {
+		TestHandler h = new TestHandler();
+
+		ByteBuffer b = ByteBuffer.allocate(100);
+		assertEquals(0, h.toRead(b, false));
+		b.put((byte) 44);
+		assertEquals(1, h.toRead(b, false));
+		b.put((byte) 55);
+		assertEquals(2, h.toRead(b, false));
+		b.flip();
+		assertEquals(2, h.toRead(b, true));
+		
+		byte[] a = new byte[100];
+		assertEquals(0, h.toRead(a, 0, 0));
+		assertEquals(6, h.toRead(a, 1, 6));
+		
 	}
 }

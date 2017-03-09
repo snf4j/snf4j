@@ -25,8 +25,6 @@
  */
 package org.snf4j.core.handler;
 
-import java.nio.ByteBuffer;
-
 public class TestHandler extends AbstractStreamHandler {
 
 	public TestHandler() {
@@ -36,16 +34,6 @@ public class TestHandler extends AbstractStreamHandler {
 		super(name);
 	}
 	
-	@Override
-	public int toRead(ByteBuffer buffer, boolean flipped) {
-		return 0;
-	}
-
-	@Override
-	public int toRead(byte[] buffer, int off, int len) {
-		return 0;
-	}
-
 	@Override
 	public void read(byte[] data) {
 	}

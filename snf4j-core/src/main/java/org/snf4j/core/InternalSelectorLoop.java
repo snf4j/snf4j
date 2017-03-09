@@ -191,6 +191,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		selector.wakeup();
 	}
 	
+	final boolean inLoop() {
+		return thread == Thread.currentThread();
+	}
+	
 	void loop() {
 
 		if (logger.isDebugEnabled()) {
