@@ -988,10 +988,35 @@ public class StreamSelectorLoopTest {
 		assertEquals("C|", s.getServerSocketLogs());
 		assertTrue(s.ssc == s.closedSsc);
 		assertNull(s.registeredSsc);
-		
-	}
+
+		//stop when empty with more sessions in the loop (with pool)
+		s = new Server(PORT);
+		s.pool = new DefaultSelectorLoopPool(1);
+		s.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		s.start();
+		c = new Client(PORT);
+		c.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		session1 = c.getSession();
+		c.start(false, c.loop);
+		c.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		waitFor(500);
+		session1.close();
+		waitFor(500);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.loop.isOpen());
+		c.getSession().close();
+		waitFor(500);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.loop.join(TIMEOUT));
+		assertTrue(((DefaultSelectorLoopPool)s.pool).getPool()[0].join(TIMEOUT));
 	
-	@Test
+	}
+
+    @Test
 	public void testInLoop() throws Exception {
 		s = new Server(PORT);
 		s.start();

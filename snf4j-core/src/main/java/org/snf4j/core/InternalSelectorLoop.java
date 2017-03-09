@@ -95,9 +95,20 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	InternalSelectorLoop(String name, ILogger logger) throws IOException {
 		super("SelectorLoop-", nextId.incrementAndGet(), name);
 		this.logger = logger;
-		selector = Selector.open();
+		selector = openSelector();
 	}
 
+	final Selector openSelector() throws IOException {
+		return Selector.open();
+	}
+	
+	final void rebuildSelector() {
+	}
+	
+	final int select() throws IOException {
+		return selector.select();
+	}
+	
 	final void elogWarnOrError(ILogger log, String msg, Object... args) {
 		int last = args.length - 1;
 		
@@ -214,7 +225,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 					logger.trace("Selecting");
 				}
 				
-				int numOfKeys = selector.select();
+				int numOfKeys = select();
 				
 				if (trackSizeChanges()) {
 					int keysSize = selector.keys().size();
