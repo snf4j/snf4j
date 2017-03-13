@@ -47,6 +47,7 @@ public class DefaultSelectorLoopPoolTest {
 	final long TIMEOUT = 2000;
 	final int PORT = 7780;
 	final static long DELAY = 1500;
+	final long GET_SIZE_DELAY = 200;
 
 	Server s;
 	Client c, c1, c2, c3, c4;
@@ -209,6 +210,7 @@ public class DefaultSelectorLoopPoolTest {
 		c3.start();
 		c3.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionOpen(TIMEOUT);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, pool.getSize());
 		assertEquals(2, pool.getPool().length);
 		assertEquals(2, pool.getPool()[0].getSize());
@@ -216,7 +218,7 @@ public class DefaultSelectorLoopPoolTest {
 		
 		c2.stop(TIMEOUT);
 		c2.waitForSessionEnding(TIMEOUT);
-		waitFor(500);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, pool.getPool().length);
 		assertEquals(2, pool.getPool()[0].getSize());
 		assertEquals(0, pool.getPool()[1].getSize());
@@ -224,6 +226,7 @@ public class DefaultSelectorLoopPoolTest {
 		c4.start();
 		c4.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionOpen(TIMEOUT);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, pool.getSize());
 		assertEquals(2, pool.getPool().length);
 		assertEquals(2, pool.getPool()[0].getSize());
@@ -233,7 +236,7 @@ public class DefaultSelectorLoopPoolTest {
 		c3.stop(TIMEOUT);
 		c1.stop(TIMEOUT);
 		s.stop(TIMEOUT);
-		waitFor(500);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, pool.getSize());
 		assertEquals(2, pool.getPool().length);
 		assertEquals(0, pool.getPool()[0].getSize());

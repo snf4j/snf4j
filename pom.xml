@@ -52,6 +52,7 @@
   <modules>
     <module>snf4j-core</module>
     <module>snf4j-core-slf4j</module>
+    <module>snf4j-example</module>
   </modules>
   
   <dependencies>

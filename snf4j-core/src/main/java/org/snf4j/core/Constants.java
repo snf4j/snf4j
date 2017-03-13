@@ -50,6 +50,14 @@ public class Constants {
 	public final static String EXCEPTION_LOGGER_SYSTEM_PROERTY = PROPERTY_PREFIX + "ExceptionLogger";
 
 	/**
+	 * System property specifying the threshold for the automatic selector rebuild. 
+	 * It is provided as a way to work around the 100% CPU bug in JDK (JDK-6403933).
+	 * <p>
+	 * The default value for this property is 512. 
+	 */
+	public final static String SELECTOR_REBUILD_THRESHOLD_SYSTEM_PROPERY = PROPERTY_PREFIX + "SelectorRebuildThreshold";
+	
+	/**
 	 * Short name for the API.
 	 */
 	public final static String SHORT_NAME = "SNF4J";

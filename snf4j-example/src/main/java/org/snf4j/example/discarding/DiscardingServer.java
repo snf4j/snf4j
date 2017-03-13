@@ -23,35 +23,41 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.session;
+package org.snf4j.example.discarding;
 
+import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+
+import org.snf4j.core.SelectorLoop;
+import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.handler.IStreamHandler;
 
-/**
- * Extends the {@link ISession} interface to cover stream-oriented functionalities.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public interface IStreamSession extends ISession {
+public class DiscardingServer {
+	static final String PREFIX = "org.snf4j.";
+	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 
-	/**
-	 * Gets the stream-oriented handler associated with this session
-	 * 
-	 * @return the stream-oriented handler
-	 */
-	@Override
-	IStreamHandler getHandler();
+	public static void main(String[] args) {
+		try {
+			SelectorLoop loop = new SelectorLoop();
+			loop.start();
+			
+			ServerSocketChannel channel = ServerSocketChannel.open();
+			channel.configureBlocking(false);
+			channel.bind(new InetSocketAddress(PORT));
+			
+			loop.register(channel, SelectionKey.OP_ACCEPT, new AbstractSessionFactory() {
 
-	/**
-	 * Writes bytes.
-	 * <p>
-	 * After returning from this method the passed byte array can be safely
-	 * modified by the caller. The content of <code>data</code> is not 
-	 * changed by this method.
-	 * 
-	 * @param data
-	 *            bytes to be written
-	 */
-	void write(byte[] data);
-
+				@Override
+				protected IStreamHandler createHandler(SocketChannel channel) {
+					return new DiscardingServerHandler();
+				}
+			});
+			loop.join();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }

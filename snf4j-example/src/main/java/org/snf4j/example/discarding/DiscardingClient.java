@@ -23,35 +23,37 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.session;
+package org.snf4j.example.discarding;
 
-import org.snf4j.core.handler.IStreamHandler;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
 
-/**
- * Extends the {@link ISession} interface to cover stream-oriented functionalities.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public interface IStreamSession extends ISession {
+import org.snf4j.core.SelectorLoop;
 
-	/**
-	 * Gets the stream-oriented handler associated with this session
-	 * 
-	 * @return the stream-oriented handler
-	 */
-	@Override
-	IStreamHandler getHandler();
-
-	/**
-	 * Writes bytes.
-	 * <p>
-	 * After returning from this method the passed byte array can be safely
-	 * modified by the caller. The content of <code>data</code> is not 
-	 * changed by this method.
-	 * 
-	 * @param data
-	 *            bytes to be written
-	 */
-	void write(byte[] data);
-
+public class DiscardingClient {
+	static final String PREFIX = "org.snf4j.";
+	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
+	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
+	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
+	static final long GIGA = 1024*1024*1024;
+	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1*GIGA);
+	
+	public static void main(String[] args) {
+		try {
+			SelectorLoop loop = new SelectorLoop();
+			loop.start();
+			
+			SocketChannel channel = SocketChannel.open();
+			channel.configureBlocking(false);
+			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
+			
+			loop.register(channel, SelectionKey.OP_CONNECT, new DiscardingClientHandler());
+			loop.join();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }

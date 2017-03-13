@@ -112,6 +112,32 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
 	}
 	
+	
+	/**
+	 * Detects if the key was replaced. It can happen after rebuilding of the selector.
+	 * 
+	 * @throws CancelledKeyException
+	 *             if replacement occurred and new key is invalid
+	 */
+	final SelectionKey detectRebuild(SelectionKey key) {
+		if (key != this.key) {
+			key = this.key;
+			if (!key.isValid()) {
+				throw new CancelledKeyException();
+			}
+		}
+		return key;
+	}
+	
+	final void lazyWakeup() {
+		if (loop != null) {
+			loop.lazyWakeup();
+		}
+		else if (key != null) {
+			key.selector().wakeup();
+		}
+	}
+	
 	@Override
 	public ISessionConfig getConfig() {
 		return config;
@@ -163,8 +189,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	}
 
 	/**
-	 * Clears key's write interest if write is not suspended. It should be executed inside block 
-	 * synchronized on a write lock.
+	 * Clears key's write interest if write is not suspended. It should be
+	 * executed inside block synchronized on a write lock.
 	 */
 	void clearWriteInterestOps(SelectionKey key) {
 		if (!writeSuspended) {
@@ -177,8 +203,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	}
 
 	/**
-	 * Sets key's write interest if write is not suspended. It should be executed inside block 
-	 * synchronized on a write lock.
+	 * Sets key's write interest if write is not suspended. It should be
+	 * executed inside block synchronized on a write lock.
 	 */
 	void setWriteInterestOps(SelectionKey key) {
 		if (!writeSuspended) {
@@ -191,11 +217,14 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	}
 
 	/**
-	 * Suspends read, write or both if session is not in closing state. It should
-	 * be executed inside block synchronized on a write lock.
-   	 * @param ops SelectionKey.OP_RAED, SelectionKey.OP_WRITE or both
-   	 * @throws CancelledKeyException if the selection key associated with this session
-   	 * has been cancelled
+	 * Suspends read, write or both if session is not in closing state. It
+	 * should be executed inside block synchronized on a write lock.
+	 * 
+	 * @param ops
+	 *            SelectionKey.OP_RAED, SelectionKey.OP_WRITE or both
+	 * @throws CancelledKeyException
+	 *             if the selection key associated with this session has been
+	 *             cancelled
 	 */
 	boolean suspend(int ops) {
 		if (closing == ClosingState.NONE) {
@@ -225,9 +254,12 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	/**
 	 * Resumes read, write or both if session is not in closing state. It should
 	 * be executed inside block synchronized on a write lock.
-   	 * @param ops SelectionKey.OP_RAED, SelectionKey.OP_WRITE or both
-   	 * @throws CancelledKeyException if the selection key associated with this session
-   	 * has been cancelled
+	 * 
+	 * @param ops
+	 *            SelectionKey.OP_RAED, SelectionKey.OP_WRITE or both
+	 * @throws CancelledKeyException
+	 *             if the selection key associated with this session has been
+	 *             cancelled
 	 */
 	boolean resume(int ops) {
 		if (closing == ClosingState.NONE) {
@@ -263,7 +295,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			synchronized (writeLock) {
 				wakeup = suspend(SelectionKey.OP_READ);
 			}
-			if (wakeup) key.selector().wakeup();
+			if (wakeup) {
+				lazyWakeup();
+			}
 		}
 	}
 
@@ -276,7 +310,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			synchronized (writeLock) {
 				wakeup = suspend(SelectionKey.OP_WRITE);
 			}
-			if (wakeup) key.selector().wakeup();
+			if (wakeup) {
+				lazyWakeup();
+			}
 		}
 	}
 
@@ -289,7 +325,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			synchronized (writeLock) {
 				wakeup = resume(SelectionKey.OP_READ);
 			}
-			if (wakeup) key.selector().wakeup();
+			if (wakeup) {
+				lazyWakeup();
+			}
 		}
 	}
 
@@ -302,7 +340,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			synchronized (writeLock) {
 				wakeup = resume(SelectionKey.OP_WRITE);
 			}
-			if (wakeup) key.selector().wakeup();
+			if (wakeup) {
+				lazyWakeup();
+			}
 		}
 	}
 	
