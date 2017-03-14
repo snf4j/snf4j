@@ -31,6 +31,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ThreadFactory;
 
@@ -42,6 +44,9 @@ import org.snf4j.core.Packet;
 import org.snf4j.core.PacketType;
 import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.Server;
+import org.snf4j.core.factory.DefaultSelectorFactory;
+import org.snf4j.core.factory.DefaultThreadFactory;
+import org.snf4j.core.factory.ISelectorFactory;
 
 public class DefaultSelectorLoopPoolTest {
 	final long TIMEOUT = 2000;
@@ -70,11 +75,20 @@ public class DefaultSelectorLoopPoolTest {
 	private void waitFor(long millis) throws InterruptedException {
 		Thread.sleep(millis);
 	}	
+	
 	public static ThreadFactory THREAD_FACTORY = new ThreadFactory() {
 
 		@Override
 		public Thread newThread(Runnable r) {
 			return new Thread(r, "ThreadName");
+		}
+	};
+
+	public static ISelectorFactory SELECTOR_FACTORY = new ISelectorFactory() {
+
+		@Override
+		public Selector openSelector() throws IOException {
+			return Selector.open();
 		}
 	};
 	
@@ -153,6 +167,7 @@ public class DefaultSelectorLoopPoolTest {
 		s = new Server(PORT);
 		c = new Client(PORT);
 		pool = new DefaultSelectorLoopPool("Pool", 1);
+		assertTrue(DefaultThreadFactory.DEFAULT == pool.threadFactory);
 		s.pool = pool;
 		s.start();
 		c.start();
@@ -169,7 +184,9 @@ public class DefaultSelectorLoopPoolTest {
 
 		s = new Server(PORT);
 		c = new Client(PORT);
-		pool = new DefaultSelectorLoopPool("Pool", 1, THREAD_FACTORY);
+		pool = new DefaultSelectorLoopPool("Pool", 1, THREAD_FACTORY, null);
+		assertTrue(THREAD_FACTORY == pool.threadFactory);
+		assertTrue(DefaultSelectorFactory.DEFAULT == pool.selectorFactory);
 		s.pool = pool;
 		s.start();
 		c.start();
@@ -183,6 +200,9 @@ public class DefaultSelectorLoopPoolTest {
 		assertEquals("DS|DR|GET_THREAD_RESPONSE(ThreadName)|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+		
+		pool = new DefaultSelectorLoopPool("Pool", 1, null, SELECTOR_FACTORY);
+		assertTrue(SELECTOR_FACTORY == pool.selectorFactory);
 	}
 	
 	@Test
@@ -296,7 +316,7 @@ public class DefaultSelectorLoopPoolTest {
 		c2 = new Client(PORT);
 		c3 = new Client(PORT);
 		
-		DefaultSelectorLoopPool pool = new DefaultSelectorLoopPool("Pool", 1, DELAYED_THREAD_FACTORY);
+		DefaultSelectorLoopPool pool = new DefaultSelectorLoopPool("Pool", 1, DELAYED_THREAD_FACTORY, null);
 		s.pool = pool;
 
 		s.start();

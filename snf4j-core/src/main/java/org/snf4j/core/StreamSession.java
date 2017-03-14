@@ -202,9 +202,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		}
 		else if (channel != null) {
 			try {
-				if (channel.isOpen()) {
-					channel.close();
-				}
+				close(channel);
 			} catch (IOException e) {
 			}
 		}

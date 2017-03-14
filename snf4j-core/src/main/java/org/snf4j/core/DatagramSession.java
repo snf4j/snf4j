@@ -147,7 +147,8 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		loop.finishInvalidatedKey(key);
 	}
 
-	private final void close(SelectableChannel channel) throws IOException {
+	@Override
+	void close(SelectableChannel channel) throws IOException {
 		if (channel instanceof DatagramChannel) {
 			((DatagramChannel)channel).disconnect();
 		}

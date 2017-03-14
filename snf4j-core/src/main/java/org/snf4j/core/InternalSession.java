@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import java.io.IOException;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -445,4 +446,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 	
+	void close(SelectableChannel channel) throws IOException {
+		channel.close();
+	}
+
 }

@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Random;
@@ -724,7 +725,7 @@ public class StreamSelectorLoopTest {
 		s = new Server(PORT);
 		TestSelectorPool pool = new TestSelectorPool();
 
-		SelectorLoop loop = new SelectorLoop(null, pool);
+		SelectorLoop loop = new SelectorLoop(null, pool, null);
 		loop.start();
 		pool.loop = loop;
 		s.pool = pool;
@@ -1094,6 +1095,18 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
 		
+		SelectorLoop loop = new SelectorLoop();
+		loop.selector.close();
+		loop.selector = null;
+		loop.rebuildSelector();
+		assertNull(loop.selector);
 		
+		TestSelectorFactory f = new TestSelectorFactory();
+		loop = new SelectorLoop("loop", null, f);
+		Selector selector = loop.selector;
+		f.throwException = true;
+		loop.rebuildSelector();
+		assertTrue(loop.selector == selector);
+		selector.close();
     }
 }
