@@ -51,7 +51,6 @@ import org.snf4j.core.logger.ExceptionLogger;
 import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.ISession;
-import org.snf4j.core.session.SessionState;
 
 abstract class InternalSelectorLoop extends IdentifiableObject {
 
@@ -86,6 +85,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	volatile boolean stopping;
 	
 	volatile boolean quickStopping;
+	
+	private Set<SelectionKey> stoppingKeys;
 	
 	private boolean closeWhenEmpty;
 
@@ -156,7 +157,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 							int ops = key.interestOps();
 							
 							key.cancel();
-							SelectionKey newKey = channel.register(newSelector, ops, attachment);
+							SelectionKey newKey = channel.register(getUnderlyingSelector(newSelector), ops, attachment);
 							session.setSelectionKey(newKey);
 						}
 					}
@@ -164,31 +165,19 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 						int ops = key.interestOps();
 						
 						key.cancel();
-						channel.register(newSelector, ops, attachment);
+						channel.register(getUnderlyingSelector(newSelector), ops, attachment);
 					}
 					
 				}
 				catch (Exception e) {
 					elogger.error(logger, "Failed to re-register channel {} to new selector during rebuilding process: {}" , toString(channel), e);
 					try {
-						if (attachment instanceof InternalSession) {
-							InternalSession session = (InternalSession)attachment;
-
-							session.close(channel);
-							if (session.isCreated()) {
-								try {
-									if (session.getState() != SessionState.OPENING) {
-										fireEvent(session, SessionEvent.CLOSED);
-									}
-								}
-								finally {
-									fireEndingEvent(session, true);
-								}
-							}
-						}
-						else if (attachment instanceof IStreamSessionFactory) {
+						if (attachment instanceof IStreamSessionFactory) {
 							channel.close();
 							((IStreamSessionFactory)attachment).closed((ServerSocketChannel) channel);
+						}
+						else {
+							handleInvalidKey(key, stoppingKeys, true);
 						}
 					}
 					catch (Exception e2) {
@@ -370,13 +359,17 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		return thread == Thread.currentThread();
 	}
 	
+	final Selector getUnderlyingSelector(Selector selector) {
+		return (selector instanceof IDelegatingSelector) ? ((IDelegatingSelector) selector).getDelegate() : selector;
+	}
+	
 	void loop() {
 
 		if (logger.isDebugEnabled()) {
 			logger.debug("Starting main loop");
 		}
 		
-		Set<SelectionKey> stoppingKeys = null;
+		stoppingKeys = null;
 		prevSize = 0;
 		
 		for (;;) {
@@ -525,7 +518,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 								}
 							}
 							else {
-								SelectionKey key = channel.register(selector, reg.ops, reg.attachement);
+								SelectionKey key = channel.register(getUnderlyingSelector(selector), reg.ops, reg.attachement);
 								
 								if (debugEnabled) {
 									logger.debug("Channel {} registered with options {}", toString(channel), reg.ops);
@@ -820,7 +813,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		}
 	}
 	
-	final void handleInvalidKey(SelectionKey key, Set<SelectionKey> stoppingKeys) throws IOException {
+	private final void handleInvalidKey(SelectionKey key, Set<SelectionKey> stoppingKeys, boolean skipCloseWhenEmpty) throws IOException {
 		if (stoppingKeys != null) {
 			stoppingKeys.remove(key);
 		}
@@ -835,11 +828,15 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 				fireEvent(session, SessionEvent.CLOSED);
 			}
 			finally {
-				fireEndingEvent(session, false);
+				fireEndingEvent(session, skipCloseWhenEmpty);
 			}
 		}
 	}
 
+	private final void handleInvalidKey(SelectionKey key, Set<SelectionKey> stoppingKeys) throws IOException {
+		handleInvalidKey(key, stoppingKeys, false);
+	}
+	
 	abstract void handleRegisteredKey(SelectionKey key, SelectableChannel channel, InternalSession session);
 	
 	abstract void handleSelectedKey(SelectionKey key);

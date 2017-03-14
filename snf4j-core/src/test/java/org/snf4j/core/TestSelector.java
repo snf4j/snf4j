@@ -26,33 +26,80 @@
 package org.snf4j.core;
 
 import java.io.IOException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.spi.SelectorProvider;
+import java.util.Set;
 
-import org.snf4j.core.factory.ISelectorFactory;
 
-public class TestSelectorFactory implements ISelectorFactory {
+public class TestSelector extends Selector implements IDelegatingSelector {
 
-	boolean throwException;
+	final Selector delegate;
 	
-	int testSelectorCounter;
+	volatile boolean nonBlocking;
+	
+	volatile boolean closeException;
 	
 	volatile boolean delegateException;
 	
+	TestSelector() throws IOException {
+		delegate = Selector.open();
+	}
+	
 	@Override
-	public Selector openSelector() throws IOException {
-		if (throwException) {
+	public void close() throws IOException {
+		delegate.close();
+		if (closeException) {
 			throw new IOException();
 		}
-		if (testSelectorCounter <= 0) {
-			return Selector.open();
+	}
+
+	@Override
+	public boolean isOpen() {
+		return delegate.isOpen();
+	}
+
+	@Override
+	public Set<SelectionKey> keys() {
+		return delegate.keys();
+	}
+
+	@Override
+	public SelectorProvider provider() {
+		return delegate.provider();
+	}
+
+	@Override
+	public int select() throws IOException {
+		return nonBlocking ? 0 :delegate.select();
+	}
+
+	@Override
+	public int select(long arg0) throws IOException {
+		return delegate.select(arg0);
+	}
+
+	@Override
+	public int selectNow() throws IOException {
+		return delegate.selectNow();
+	}
+
+	@Override
+	public Set<SelectionKey> selectedKeys() {
+		return delegate.selectedKeys();
+	}
+
+	@Override
+	public Selector wakeup() {
+		return delegate.wakeup();
+	}
+
+	@Override
+	public Selector getDelegate() {
+		if (delegateException) {
+			throw new IllegalStateException();
 		}
-		else {
-			--testSelectorCounter;
-			TestSelector s = new TestSelector();
-			
-			s.delegateException = delegateException;
-			return s; 
-		}
+		return delegate;
 	}
 
 }

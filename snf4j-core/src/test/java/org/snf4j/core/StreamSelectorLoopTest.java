@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1109,4 +1110,186 @@ public class StreamSelectorLoopTest {
 		assertTrue(loop.selector == selector);
 		selector.close();
     }
+
+    @Test
+    public void testRebuildWithException() throws Exception {
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 2;
+    	SelectorLoop loop = new SelectorLoop("loop", null, factory);
+		s = new Server(PORT);
+		s.start(false, loop);
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		assertEquals("R|",s.getServerSocketLogs());
+		
+    	factory.delegateException = true;
+		s.loop.rebuild();
+		waitFor(2000);
+		
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals("C|",s.getServerSocketLogs());
+		waitFor(this.GET_SIZE_DELAY);
+		assertEquals(0, s.loop.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		//with closing actions
+		ClosingAction[] actions = new ClosingAction[] {ClosingAction.STOP, ClosingAction.QUICK_STOP, ClosingAction.STOP_WHEN_EMPTY};
+		for (ClosingAction action: actions) {
+			factory = new TestSelectorFactory();
+			factory.testSelectorCounter = 2;
+			loop = new SelectorLoop("loop", null, factory);
+			s = new Server(PORT);
+			s.closingAction = action;
+			s.start(false, loop);
+			c = new Client(PORT);
+			c.start();
+			c.waitForSessionOpen(TIMEOUT);
+			s.waitForSessionOpen(TIMEOUT);
+			c.getRecordedData(true);
+			s.getRecordedData(true);
+			assertEquals("R|",s.getServerSocketLogs());
+
+			factory.delegateException = true;
+			s.loop.rebuild();
+			waitFor(2000);
+
+			c.waitForSessionEnding(TIMEOUT);
+			s.waitForSessionEnding(TIMEOUT);
+			assertEquals("SCL|SEN|", c.getRecordedData(true));
+			assertEquals("SCL|SEN|", s.getRecordedData(true));
+			assertEquals("C|",s.getServerSocketLogs());
+			assertTrue(s.loop.join(TIMEOUT));
+			c.stop(TIMEOUT);
+		}
+
+    
+    }    
+    
+    @Test
+    public void testAutoRebuild() throws Exception {
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	SelectorLoop loop = new SelectorLoop("loop", null, factory);
+
+		s = new Server(PORT);
+		s.start(false, loop);
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+    	
+		assertTrue(s.loop.selector instanceof TestSelector);
+		TestSelector selector = (TestSelector) s.loop.selector;
+		
+		selector.nonBlocking = true;
+		selector.closeException = true;
+		s.loop.wakeup();
+		
+		waitFor(2000);
+		assertNotNull(s.loop.selector);
+		assertFalse(s.loop.selector instanceof TestSelector);
+		
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+    	
+    }
+    
+    @Test
+    public void testAutoRebuildWithException() throws Exception {
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 2;
+    	SelectorLoop loop = new SelectorLoop("loop", null, factory);
+		s = new Server(PORT);
+		s.start(false, loop);
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		assertEquals("R|",s.getServerSocketLogs());
+		
+		assertTrue(s.loop.selector instanceof TestSelector);
+		TestSelector selector = (TestSelector) s.loop.selector;
+		
+    	factory.delegateException = true;
+		selector.nonBlocking = true;
+		s.loop.wakeup();
+
+		waitFor(2000);
+		
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals("C|",s.getServerSocketLogs());
+		waitFor(this.GET_SIZE_DELAY);
+		assertEquals(0, s.loop.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		//with closing actions
+		ClosingAction[] actions = new ClosingAction[] {ClosingAction.STOP, ClosingAction.QUICK_STOP, ClosingAction.STOP_WHEN_EMPTY};
+		for (ClosingAction action: actions) {
+	    	factory = new TestSelectorFactory();
+	    	factory.testSelectorCounter = 2;
+	    	loop = new SelectorLoop("loop", null, factory);
+			s = new Server(PORT);
+			s.closingAction = action;
+			s.start(false, loop);
+			c = new Client(PORT);
+			c.start();
+			c.waitForSessionOpen(TIMEOUT);
+			s.waitForSessionOpen(TIMEOUT);
+			c.getRecordedData(true);
+			s.getRecordedData(true);
+			assertEquals("R|",s.getServerSocketLogs());
+			
+			assertTrue(s.loop.selector instanceof TestSelector);
+			selector = (TestSelector) s.loop.selector;
+			
+	    	factory.delegateException = true;
+			selector.nonBlocking = true;
+			s.loop.wakeup();
+
+			waitFor(2000);
+			
+			c.waitForSessionEnding(TIMEOUT);
+			s.waitForSessionEnding(TIMEOUT);
+			assertEquals("SCL|SEN|", c.getRecordedData(true));
+			assertEquals("SCL|SEN|", s.getRecordedData(true));
+			assertEquals("C|",s.getServerSocketLogs());
+			assertTrue(s.loop.join(TIMEOUT));
+			c.stop(TIMEOUT);
+		}
+	}    
 }

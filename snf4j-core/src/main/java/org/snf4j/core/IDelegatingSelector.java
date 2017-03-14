@@ -25,34 +25,19 @@
  */
 package org.snf4j.core;
 
-import java.io.IOException;
 import java.nio.channels.Selector;
 
-import org.snf4j.core.factory.ISelectorFactory;
+/**
+ * A selector wrapping an original implementation of the abstract {@link java.nio.channels.Selector Selector} class.
+ * This interface allows selectors that wrap the original implementation to be properly handled by the selector loop. 
+ */
+public interface IDelegatingSelector {
 
-public class TestSelectorFactory implements ISelectorFactory {
-
-	boolean throwException;
-	
-	int testSelectorCounter;
-	
-	volatile boolean delegateException;
-	
-	@Override
-	public Selector openSelector() throws IOException {
-		if (throwException) {
-			throw new IOException();
-		}
-		if (testSelectorCounter <= 0) {
-			return Selector.open();
-		}
-		else {
-			--testSelectorCounter;
-			TestSelector s = new TestSelector();
-			
-			s.delegateException = delegateException;
-			return s; 
-		}
-	}
-
+	/**
+	 * Returns the underlying original selector that is wrapped by this implementation
+	 * of {@link java.nio.channels.Selector Selector}
+	 * 
+	 * @return the underlying selector
+	 */
+	Selector getDelegate();
 }

@@ -420,7 +420,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 					return;
 				}
 				else {
-					session.setSelectionKey(channel.register(selector, SelectionKey.OP_READ, session));
+					session.setSelectionKey(channel.register(getUnderlyingSelector(selector), SelectionKey.OP_READ, session));
 					session.setLoop(this);
 				}
 				opened = true;
