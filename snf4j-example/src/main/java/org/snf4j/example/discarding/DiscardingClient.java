@@ -37,8 +37,7 @@ public class DiscardingClient {
 	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long GIGA = 1024*1024*1024;
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1*GIGA);
+	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
 	
 	public static void main(String[] args) {
 		try {

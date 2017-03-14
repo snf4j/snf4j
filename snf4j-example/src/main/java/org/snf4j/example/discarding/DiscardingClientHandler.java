@@ -33,8 +33,11 @@ import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 
 public class DiscardingClientHandler extends AbstractStreamHandler {
-
 	private byte[] data = new byte[DiscardingClient.SIZE];
+	private long bytesSent;
+	private long totalBytesSent;
+	private double maxThroughput;
+	private long startTime;
 	
 	@Override
 	public void read(byte[] data) {
@@ -46,18 +49,18 @@ public class DiscardingClientHandler extends AbstractStreamHandler {
 	public void event(SessionEvent event) {
 		switch (event) {
 		case OPENED:
+			startTime = System.currentTimeMillis();
 			getSession().write(data);
 			break;
 			
 		case ENDING:
+			long endTime = System.currentTimeMillis(); 
+			long avgThroughput = 1000*totalBytesSent/(endTime - startTime);
 			System.out.println("Max throughput [bytes/secs]: " + (long)maxThroughput);
+			System.out.println("Avg throughput [bytes/secs]: " + avgThroughput);
 			break;
 		}
 	}
-	
-	long dataSent;
-	long totalDataSent;
-	double maxThroughput;
 	
 	@SuppressWarnings("incomplete-switch")
 	@Override
@@ -70,14 +73,14 @@ public class DiscardingClientHandler extends AbstractStreamHandler {
 				maxThroughput = throughput;
 			}
 			
-			totalDataSent += size;
-			if (totalDataSent >= DiscardingClient.TOTAL_SIZE) {
+			totalBytesSent += size;
+			if (totalBytesSent >= DiscardingClient.TOTAL_SIZE) {
 				getSession().close();
 			}
 			else {
-				dataSent += size;
-				if (size == data.length) {
-					dataSent = 0;
+				bytesSent += size;
+				if (bytesSent == data.length) {
+					bytesSent = 0;
 					getSession().write(data);
 				}
 			}
