@@ -375,6 +375,17 @@ public class DatagramSessionTest {
 		session.close();
 		session.quickClose();
 		
+		//internal close method
+		DatagramChannel channel = DatagramChannel.open();
+		channel.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT));
+		assertTrue(channel.isConnected());
+		assertTrue(channel.isOpen());
+		session.close(channel);
+		assertTrue(!channel.isConnected());
+		assertTrue(!channel.isOpen());
+		SocketChannel schannel = SocketChannel.open();
+		session.close(schannel);
+		
 		//close inside the loop
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();

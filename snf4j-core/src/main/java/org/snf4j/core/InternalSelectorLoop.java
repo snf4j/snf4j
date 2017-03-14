@@ -41,9 +41,9 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.snf4j.core.factory.DefaultSelectorFactory;
+import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
-import org.snf4j.core.factory.ISelectorFactory;
+import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
@@ -64,7 +64,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	
 	ThreadFactory threadFactory = DefaultThreadFactory.DEFAULT;
 	
-	final ISelectorFactory selectorFactory;
+	final ISelectorLoopStructureFactory factory;
 	
 	volatile Selector selector;
 	
@@ -110,11 +110,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	 *             if the {@link java.nio.channels.Selector Selector} associated with this 
 	 *             selector loop could not be opened
 	 */
-	InternalSelectorLoop(String name, ILogger logger, ISelectorFactory selectorFactory) throws IOException {
+	InternalSelectorLoop(String name, ILogger logger, ISelectorLoopStructureFactory factory) throws IOException {
 		super("SelectorLoop-", nextId.incrementAndGet(), name);
 		this.logger = logger;
-		this.selectorFactory = selectorFactory == null ? DefaultSelectorFactory.DEFAULT : selectorFactory;
-		selector = this.selectorFactory.openSelector();
+		this.factory = factory == null ? DefaultSelectorLoopStructureFactory.DEFAULT : factory;
+		selector = this.factory.openSelector();
 	}
 
 	/**
@@ -136,7 +136,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		}
 		
 		try {
-			newSelector = selectorFactory.openSelector();
+			newSelector = factory.openSelector();
 		}
 		catch (Exception e) {
 			elogger.error(logger, "Failed to create new selector during rebuilding process: {}", e);
@@ -555,7 +555,6 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			}
 			catch (Exception e) {
 				elogger.error(logger, "Unexpected exception thrown in main loop: {}", e);
-				e.printStackTrace();
 			}
 		}
 

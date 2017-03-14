@@ -140,10 +140,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	}
 	
 	private final void close(SelectionKey key) throws IOException {
-		if (key.channel() instanceof DatagramChannel) {
-			((DatagramChannel)key.channel()).disconnect();
-		}
-		key.channel().close();
+		close(key.channel());
 		loop.finishInvalidatedKey(key);
 	}
 

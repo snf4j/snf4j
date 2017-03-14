@@ -29,24 +29,26 @@ import java.io.IOException;
 import java.nio.channels.Selector;
 
 /**
- * Default factory that creates a selector by executing
- * {@link java.nio.channels.Selector#open()}.
+ * Default factory used to configure the internal structure of the selector loop.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  *
  */
-public class DefaultSelectorFactory implements ISelectorFactory {
+public class DefaultSelectorLoopStructureFactory implements ISelectorLoopStructureFactory {
 
 	/**
-	 * Default selector factory.
+	 * Default selector loop's structure factory.
 	 */
-	public final static DefaultSelectorFactory DEFAULT = new DefaultSelectorFactory();
+	public final static DefaultSelectorLoopStructureFactory DEFAULT = new DefaultSelectorLoopStructureFactory();
 
-	private DefaultSelectorFactory() {
+	private DefaultSelectorLoopStructureFactory() {
 	}
 	
 	/**
 	 * {@inheritDoc}
+	 * <p>
+	 * This implementation creates a selector by executing
+	 * {@link java.nio.channels.Selector#open()}.
 	 */
 	@Override
 	public Selector openSelector() throws IOException {

@@ -33,9 +33,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.core.IdentifiableObject;
 import org.snf4j.core.SelectorLoop;
-import org.snf4j.core.factory.DefaultSelectorFactory;
+import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
-import org.snf4j.core.factory.ISelectorFactory;
+import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.logger.ExceptionLogger;
 import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
@@ -63,7 +63,7 @@ public class DefaultSelectorLoopPool extends IdentifiableObject implements ISele
 	protected final ThreadFactory threadFactory;
 	
 	/** A factory used to create selectors for all selector loops in this pool */
-	protected final ISelectorFactory selectorFactory;
+	protected final ISelectorLoopStructureFactory selectorFactory;
 	
 	/** The current size of this pool */
 	protected int size;
@@ -88,10 +88,10 @@ public class DefaultSelectorLoopPool extends IdentifiableObject implements ISele
 	 *            that will be used by this selector loop to open its selector,
 	 *            or <code>null</code> if default factory should be used
 	 */
-	public DefaultSelectorLoopPool(String name, int capacity, ThreadFactory threadFactory, ISelectorFactory selectorFactory) {
+	public DefaultSelectorLoopPool(String name, int capacity, ThreadFactory threadFactory, ISelectorLoopStructureFactory selectorFactory) {
 		super("SelectorPool-", nextId.incrementAndGet(), name);
 		this.threadFactory = threadFactory != null ? threadFactory : DefaultThreadFactory.DEFAULT;
-		this.selectorFactory = selectorFactory != null ? selectorFactory: DefaultSelectorFactory.DEFAULT;
+		this.selectorFactory = selectorFactory != null ? selectorFactory: DefaultSelectorLoopStructureFactory.DEFAULT;
 		pool = new SelectorLoop[capacity];
 	}
 

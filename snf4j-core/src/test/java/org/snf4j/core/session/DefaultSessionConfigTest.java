@@ -23,36 +23,36 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.session;
 
-import java.io.IOException;
-import java.nio.channels.Selector;
+import static org.junit.Assert.assertEquals;
 
-import org.snf4j.core.factory.ISelectorLoopStructureFactory;
+import org.junit.Test;
+import org.snf4j.core.ClosingAction;
 
-public class TestSelectorFactory implements ISelectorLoopStructureFactory {
-
-	boolean throwException;
+public class DefaultSessionConfigTest {
 	
-	int testSelectorCounter;
-	
-	volatile boolean delegateException;
-	
-	@Override
-	public Selector openSelector() throws IOException {
-		if (throwException) {
-			throw new IOException();
-		}
-		if (testSelectorCounter <= 0) {
-			return Selector.open();
-		}
-		else {
-			--testSelectorCounter;
-			TestSelector s = new TestSelector();
-			
-			s.delegateException = delegateException;
-			return s; 
-		}
+	@Test
+	public void testAll() {
+		DefaultSessionConfig c = new DefaultSessionConfig();
+		
+		assertEquals(2048, c.getMinInBufferCapacity());
+		assertEquals(8192, c.getMaxInBufferCapacity());
+		assertEquals(2048, c.getMinOutBufferCapacity());
+		assertEquals(3000, c.getThroughputCalculationInterval());
+		assertEquals(true, c.ignorePossiblyIncompleteDatagrams());
+		assertEquals(ClosingAction.DEFAULT, c.getClosingAction());
+		
+		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
+			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
+			.setClosingAction(ClosingAction.STOP);
+
+		assertEquals(10, c.getMinInBufferCapacity());
+		assertEquals(100, c.getMaxInBufferCapacity());
+		assertEquals(1000, c.getMinOutBufferCapacity());
+		assertEquals(5000, c.getThroughputCalculationInterval());
+		assertEquals(false, c.ignorePossiblyIncompleteDatagrams());
+		assertEquals(ClosingAction.STOP, c.getClosingAction());
+
 	}
-
 }

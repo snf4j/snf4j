@@ -37,7 +37,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 
 import org.snf4j.core.DatagramSession.DatagramRecord;
-import org.snf4j.core.factory.ISelectorFactory;
+import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
@@ -72,16 +72,16 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @param parentPool
 	 *            the parent pool that owns this selector loop, or
 	 *            <code>null</code> if the selector loop has no parent.
-	 * @param selectorFactory
-	 *            a selector factory that will be used by this selector loop to
+	 * @param factory
+	 *            a factory that will be used by this selector loop to
 	 *            open its selector, or <code>null</code> if default factory
 	 *            should be used
 	 * @throws IOException
 	 *             if the {@link java.nio.channels.Selector Selector} associated
 	 *             with this selector loop could not be opened
 	 */
-	public SelectorLoop(String name, ISelectorLoopPool parentPool, ISelectorFactory selectorFactory) throws IOException {
-		super(name, LOGGER, selectorFactory);
+	public SelectorLoop(String name, ISelectorLoopPool parentPool, ISelectorLoopStructureFactory factory) throws IOException {
+		super(name, LOGGER, factory);
 		this.parentPool = parentPool;
 	}
 	
@@ -340,7 +340,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		if (attachment instanceof StreamSession) {
 			StreamSession session = (StreamSession)attachment;
 			
-			if (key.isValid() && key.isConnectable()) {
+			if (key.isConnectable()) {
 				handleConnecting(session, key);
 			}
 			if (key.isValid() && key.isReadable()) {
@@ -353,14 +353,14 @@ public class SelectorLoop extends InternalSelectorLoop {
 		else if (attachment instanceof DatagramSession) {
 			DatagramSession session = (DatagramSession)attachment;
 			
-			if (key.isValid() && key.isReadable()) {
+			if (key.isReadable()) {
 				handleReading(session, key);
 			}
 			if (key.isValid() && key.isWritable()) {
 				handleWriting(session, key);
 			}
 		}
-		else if (key.isValid() && key.isAcceptable()) {
+		else if (key.isAcceptable()) {
 			handleAccepting((IStreamSessionFactory)key.attachment(), key);
 		}
 	}

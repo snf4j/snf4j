@@ -23,25 +23,33 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.factory;
+package org.snf4j.core.handler;
 
-import java.io.IOException;
-import java.nio.channels.Selector;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-/**
- * Factory used to create/open a selector used by the selector loop.
- *  
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- *
- */
-public interface ISelectorFactory {
+import org.junit.Test;
+import org.snf4j.core.DatagramSession;
+import org.snf4j.core.StreamSession;
+import org.snf4j.core.session.ISession;
+
+public class AbstractStreamHandlerTest {
+
+	@Test
+	public void testAll() {
+		TestHandler h = new TestHandler();
+		ISession s = new StreamSession(new TestHandler());
+		
+		h.setSession(s);
+		assertTrue(h.getSession() == s);
+		
+		s = new DatagramSession(new TestDatagramHandler());
+		try {
+			h.setSession(s);
+			fail("exception should be thrown");
+		}
+		catch (IllegalArgumentException e) {
+		}
+	}
 	
-	/**
-	 * Opens a selector.
-	 * 
-	 * @return a new selector
-	 * @throws IOException
-	 *             if an I/O error occurs
-	 */
-	Selector openSelector() throws IOException;
 }

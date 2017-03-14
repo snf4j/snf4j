@@ -23,36 +23,24 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.factory;
 
 import java.io.IOException;
 import java.nio.channels.Selector;
 
-import org.snf4j.core.factory.ISelectorLoopStructureFactory;
-
-public class TestSelectorFactory implements ISelectorLoopStructureFactory {
-
-	boolean throwException;
+/**
+ * Factory used to configure the internal structure of the selector loop.
+ *  
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public interface ISelectorLoopStructureFactory {
 	
-	int testSelectorCounter;
-	
-	volatile boolean delegateException;
-	
-	@Override
-	public Selector openSelector() throws IOException {
-		if (throwException) {
-			throw new IOException();
-		}
-		if (testSelectorCounter <= 0) {
-			return Selector.open();
-		}
-		else {
-			--testSelectorCounter;
-			TestSelector s = new TestSelector();
-			
-			s.delegateException = delegateException;
-			return s; 
-		}
-	}
-
+	/**
+	 * Opens a selector.
+	 * 
+	 * @return a new selector
+	 * @throws IOException
+	 *             if an I/O error occurs
+	 */
+	Selector openSelector() throws IOException;
 }

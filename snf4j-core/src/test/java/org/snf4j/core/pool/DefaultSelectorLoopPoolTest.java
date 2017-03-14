@@ -44,9 +44,9 @@ import org.snf4j.core.Packet;
 import org.snf4j.core.PacketType;
 import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.Server;
-import org.snf4j.core.factory.DefaultSelectorFactory;
+import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
-import org.snf4j.core.factory.ISelectorFactory;
+import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 
 public class DefaultSelectorLoopPoolTest {
 	final long TIMEOUT = 2000;
@@ -84,7 +84,7 @@ public class DefaultSelectorLoopPoolTest {
 		}
 	};
 
-	public static ISelectorFactory SELECTOR_FACTORY = new ISelectorFactory() {
+	public static ISelectorLoopStructureFactory SELECTOR_FACTORY = new ISelectorLoopStructureFactory() {
 
 		@Override
 		public Selector openSelector() throws IOException {
@@ -186,7 +186,7 @@ public class DefaultSelectorLoopPoolTest {
 		c = new Client(PORT);
 		pool = new DefaultSelectorLoopPool("Pool", 1, THREAD_FACTORY, null);
 		assertTrue(THREAD_FACTORY == pool.threadFactory);
-		assertTrue(DefaultSelectorFactory.DEFAULT == pool.selectorFactory);
+		assertTrue(DefaultSelectorLoopStructureFactory.DEFAULT == pool.selectorFactory);
 		s.pool = pool;
 		s.start();
 		c.start();
