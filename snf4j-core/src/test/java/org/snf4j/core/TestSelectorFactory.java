@@ -23,35 +23,36 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.session;
+package org.snf4j.core;
 
-import org.snf4j.core.handler.IStreamHandler;
+import java.io.IOException;
+import java.nio.channels.Selector;
 
-/**
- * Extends the {@link ISession} interface to cover stream-oriented functionalities.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public interface IStreamSession extends ISession {
+import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 
-	/**
-	 * Gets the stream-oriented handler associated with this session
-	 * 
-	 * @return the stream-oriented handler
-	 */
+public class TestSelectorFactory implements ISelectorLoopStructureFactory {
+
+	boolean throwException;
+	
+	int testSelectorCounter;
+	
+	volatile boolean delegateException;
+	
 	@Override
-	IStreamHandler getHandler();
-
-	/**
-	 * Writes bytes.
-	 * <p>
-	 * After returning from this method the passed byte array can be safely
-	 * modified by the caller. The content of <code>data</code> is not 
-	 * changed by this method.
-	 * 
-	 * @param data
-	 *            bytes to be written
-	 */
-	void write(byte[] data);
+	public Selector openSelector() throws IOException {
+		if (throwException) {
+			throw new IOException();
+		}
+		if (testSelectorCounter <= 0) {
+			return Selector.open();
+		}
+		else {
+			--testSelectorCounter;
+			TestSelector s = new TestSelector();
+			
+			s.delegateException = delegateException;
+			return s; 
+		}
+	}
 
 }

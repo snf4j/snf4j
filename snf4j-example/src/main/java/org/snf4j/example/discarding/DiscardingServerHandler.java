@@ -23,35 +23,15 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.session;
+package org.snf4j.example.discarding;
 
-import org.snf4j.core.handler.IStreamHandler;
+import org.snf4j.core.handler.AbstractStreamHandler;
 
-/**
- * Extends the {@link ISession} interface to cover stream-oriented functionalities.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public interface IStreamSession extends ISession {
+public class DiscardingServerHandler extends AbstractStreamHandler {
 
-	/**
-	 * Gets the stream-oriented handler associated with this session
-	 * 
-	 * @return the stream-oriented handler
-	 */
 	@Override
-	IStreamHandler getHandler();
-
-	/**
-	 * Writes bytes.
-	 * <p>
-	 * After returning from this method the passed byte array can be safely
-	 * modified by the caller. The content of <code>data</code> is not 
-	 * changed by this method.
-	 * 
-	 * @param data
-	 *            bytes to be written
-	 */
-	void write(byte[] data);
+	public void read(byte[] data) {
+		//Discarding all read bytes
+	}
 
 }

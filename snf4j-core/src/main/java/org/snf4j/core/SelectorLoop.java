@@ -37,6 +37,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 
 import org.snf4j.core.DatagramSession.DatagramRecord;
+import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
@@ -47,8 +48,9 @@ import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.pool.ISelectorLoopPool;
 
 /**
- * A selector loop responsible for processing I/O operations of stream-oriented and datagram-oriented connections 
- *  
+ * A selector loop responsible for processing I/O operations of stream-oriented
+ * and datagram-oriented connections
+ * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public class SelectorLoop extends InternalSelectorLoop {
@@ -65,16 +67,21 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * Constructs a named selector loop with specified parent pool
 	 * 
 	 * @param name
-	 *            the name for this selector loop, or <code>null</code> if the name should 
-	 *            be auto generated
+	 *            the name for this selector loop, or <code>null</code> if the
+	 *            name should be auto generated
 	 * @param parentPool
-	 *            the parent pool that owns this selector loop
+	 *            the parent pool that owns this selector loop, or
+	 *            <code>null</code> if the selector loop has no parent.
+	 * @param factory
+	 *            a factory that will be used by this selector loop to
+	 *            open its selector, or <code>null</code> if default factory
+	 *            should be used
 	 * @throws IOException
-	 *             if the {@link java.nio.channels.Selector Selector} associated with this
-	 *             selector loop could not be opened
+	 *             if the {@link java.nio.channels.Selector Selector} associated
+	 *             with this selector loop could not be opened
 	 */
-	public SelectorLoop(String name, ISelectorLoopPool parentPool) throws IOException {
-		super(name, LOGGER);
+	public SelectorLoop(String name, ISelectorLoopPool parentPool, ISelectorLoopStructureFactory factory) throws IOException {
+		super(name, LOGGER, factory);
 		this.parentPool = parentPool;
 	}
 	
@@ -89,7 +96,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *             selector loop could not be opened
 	 */
 	public SelectorLoop(String name) throws IOException {
-		this(name, null);
+		this(name, null, null);
 	}
 
 	/**
@@ -100,7 +107,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *             selector loop could not be opened
 	 */
 	public SelectorLoop() throws IOException {
-		this(null, null);
+		this(null, null, null);
 	}
 
 	/**
@@ -333,7 +340,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		if (attachment instanceof StreamSession) {
 			StreamSession session = (StreamSession)attachment;
 			
-			if (key.isValid() && key.isConnectable()) {
+			if (key.isConnectable()) {
 				handleConnecting(session, key);
 			}
 			if (key.isValid() && key.isReadable()) {
@@ -346,20 +353,20 @@ public class SelectorLoop extends InternalSelectorLoop {
 		else if (attachment instanceof DatagramSession) {
 			DatagramSession session = (DatagramSession)attachment;
 			
-			if (key.isValid() && key.isReadable()) {
+			if (key.isReadable()) {
 				handleReading(session, key);
 			}
 			if (key.isValid() && key.isWritable()) {
 				handleWriting(session, key);
 			}
 		}
-		else if (key.isValid() && key.isAcceptable()) {
+		else if (key.isAcceptable()) {
 			handleAccepting((IStreamSessionFactory)key.attachment(), key);
 		}
 	}
 	
 	@Override
-	void sizeChanged(int newSize, int prevSize) {
+	void notifyAboutLoopSizeChange(int newSize, int prevSize) {
 		ISelectorLoopPool parentPool = this.parentPool;
 		
 		if (parentPool != null) {
@@ -368,7 +375,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	}
 	
 	@Override
-	boolean trackSizeChanges() {
+	boolean notifyAboutLoopChanges() {
 		return parentPool != null;
 	}
 	
@@ -413,7 +420,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 					return;
 				}
 				else {
-					session.setSelectionKey(channel.register(selector, SelectionKey.OP_READ, session));
+					session.setSelectionKey(channel.register(getUnderlyingSelector(selector), SelectionKey.OP_READ, session));
 					session.setLoop(this);
 				}
 				opened = true;
@@ -437,7 +444,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				}
 				
 				if (!channel.isRegistered()) {
-					fireEndingEvent(session);
+					fireEndingEvent(session, false);
 				}
 			}
 		}

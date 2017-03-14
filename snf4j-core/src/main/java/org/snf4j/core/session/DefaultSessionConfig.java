@@ -48,13 +48,17 @@ public class DefaultSessionConfig implements ISessionConfig {
 	private boolean ignorePossibleIncompleteDatagrams = true;
 	
 	private ClosingAction closingAction = ClosingAction.DEFAULT;
+	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
 	 * 
-	 * @param capacity the minimum capacity in bytes
+	 * @param capacity
+	 *            the minimum capacity in bytes
+	 * @return this session config object
 	 */
-	public void setMinInBufferCapacity(int capacity) {
+	public DefaultSessionConfig setMinInBufferCapacity(int capacity) {
 		minInBufferCapacity = capacity;
+		return this;
 	}
 	
 	/**
@@ -71,9 +75,11 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * Sets the maximum capacity for the session's input buffer.
 	 * 
 	 * @param capacity the maximum capacity in bytes
+	 * @return this session config object
 	 */
-	public void setMaxInBufferCapacity(int capacity) {
+	public DefaultSessionConfig setMaxInBufferCapacity(int capacity) {
 		maxInBufferCapacity = capacity;
+		return this;
 	}
 
 	/**
@@ -90,9 +96,11 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * Sets the minimum capacity for the session's output buffer.
 	 * 
 	 * @param capacity the minimum capacity in bytes
+	 * @return this session config object
 	 */
-	public void setMinOutBufferCapacity(int capacity) {
+	public DefaultSessionConfig setMinOutBufferCapacity(int capacity) {
 		minOutBufferCapacity = capacity;
+		return this;
 	}
 
 	/**
@@ -109,9 +117,11 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * Sets the interval in milliseconds between each throughput calculation.
 	 * 
 	 * @param interval the interval in milliseconds.
+	 * @return this session config object
 	 */
-	public void setThroughputCalculationInterval(long interval) {
+	public DefaultSessionConfig setThroughputCalculationInterval(long interval) {
 		throughputCalculationInterval = interval;
+		return this;
 	}
 
 	/**
@@ -129,9 +139,11 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 *  
 	 * @param ignore <code>true</code> if possibly incomplete datagrams should 
 	 * be ignored.
+	 * @return this session config object
 	 */
-	public void setIgnorePossiblyIncompleteDatagrams(boolean ignore) {
+	public DefaultSessionConfig setIgnorePossiblyIncompleteDatagrams(boolean ignore) {
 		ignorePossibleIncompleteDatagrams = ignore;
+		return this;
 	}
 
 	/**
@@ -149,9 +161,11 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * loop after closing of the associated session.
 	 * 
 	 * @param action the closing action
+	 * @return this session config object
 	 */
-	public void setClosingAction(ClosingAction action) {
+	public DefaultSessionConfig setClosingAction(ClosingAction action) {
 		closingAction = action;
+		return this;
 	}
 	
 	/**

@@ -41,8 +41,9 @@ import org.junit.Test;
 import org.snf4j.core.handler.IDatagramHandler;
 
 public class DatagramSelectorLoopTest {
-	long TIMEOUT = 2000;
-	int PORT = 7778;
+	final long TIMEOUT = 2000;
+	final int PORT = 7778;
+	final long GET_SIZE_DELAY = 200;
 	
 	DatagramHandler c;
 	DatagramHandler s;
@@ -77,12 +78,13 @@ public class DatagramSelectorLoopTest {
 		assertEquals("SCR|SOP|", c2.getRecordedData(true));
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, s.loop.getSize());
 		assertEquals(1, c.loop.getSize());
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
-		waitFor(100);
+		waitFor(GET_SIZE_DELAY);
 		try {
 			c.loop.getSize();
 			fail("the size should not be returned");
@@ -94,7 +96,7 @@ public class DatagramSelectorLoopTest {
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
 		c2.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c2.getRecordedData(true));
-		waitFor(100);
+		waitFor(GET_SIZE_DELAY);
 		try {
 			s.loop.getSize();
 			fail("the size should not be returned");
@@ -411,7 +413,7 @@ public class DatagramSelectorLoopTest {
 		s.startServer();
 		s.waitForSessionOpen(TIMEOUT);
 		s.loop.register(s.getSession().channel, SelectionKey.OP_READ, s.getSession());
-		waitFor(500);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, s.loop.getSize());
 		s.stop(TIMEOUT);
 	}	

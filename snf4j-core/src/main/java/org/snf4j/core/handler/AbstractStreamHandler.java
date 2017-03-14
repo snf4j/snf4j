@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.handler;
 
+import java.nio.ByteBuffer;
+
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IStreamSession;
 
@@ -81,4 +83,24 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 		return (IStreamSession) super.getSession();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * This implementation always returns total number of bytes in the buffer.
+	 */
+	@Override
+	public int toRead(ByteBuffer buffer, boolean flipped) {
+		return flipped ? buffer.remaining() : buffer.position();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * This implementation always returns total number of bytes in the array 
+	 * (i.e. the <code>len</code> value).
+	 */
+	@Override
+	public int toRead(byte[] buffer, int off, int len) {
+		return len;
+	}
 }

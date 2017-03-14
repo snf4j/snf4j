@@ -25,33 +25,34 @@
  */
 package org.snf4j.core.session;
 
-import org.snf4j.core.handler.IStreamHandler;
+import static org.junit.Assert.assertEquals;
 
-/**
- * Extends the {@link ISession} interface to cover stream-oriented functionalities.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public interface IStreamSession extends ISession {
+import org.junit.Test;
+import org.snf4j.core.ClosingAction;
 
-	/**
-	 * Gets the stream-oriented handler associated with this session
-	 * 
-	 * @return the stream-oriented handler
-	 */
-	@Override
-	IStreamHandler getHandler();
+public class DefaultSessionConfigTest {
+	
+	@Test
+	public void testAll() {
+		DefaultSessionConfig c = new DefaultSessionConfig();
+		
+		assertEquals(2048, c.getMinInBufferCapacity());
+		assertEquals(8192, c.getMaxInBufferCapacity());
+		assertEquals(2048, c.getMinOutBufferCapacity());
+		assertEquals(3000, c.getThroughputCalculationInterval());
+		assertEquals(true, c.ignorePossiblyIncompleteDatagrams());
+		assertEquals(ClosingAction.DEFAULT, c.getClosingAction());
+		
+		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
+			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
+			.setClosingAction(ClosingAction.STOP);
 
-	/**
-	 * Writes bytes.
-	 * <p>
-	 * After returning from this method the passed byte array can be safely
-	 * modified by the caller. The content of <code>data</code> is not 
-	 * changed by this method.
-	 * 
-	 * @param data
-	 *            bytes to be written
-	 */
-	void write(byte[] data);
+		assertEquals(10, c.getMinInBufferCapacity());
+		assertEquals(100, c.getMaxInBufferCapacity());
+		assertEquals(1000, c.getMinOutBufferCapacity());
+		assertEquals(5000, c.getThroughputCalculationInterval());
+		assertEquals(false, c.ignorePossiblyIncompleteDatagrams());
+		assertEquals(ClosingAction.STOP, c.getClosingAction());
 
+	}
 }

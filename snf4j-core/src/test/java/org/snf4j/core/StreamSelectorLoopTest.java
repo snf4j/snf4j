@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -35,6 +36,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Random;
@@ -53,10 +55,11 @@ import org.snf4j.core.logger.TestLogger;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
 
 public class StreamSelectorLoopTest {
-	long TIMEOUT = 2000;
-	int PORT = 7781;
-	int PORT_MIN = 8888;
-	int PORT_MAX = 9999;
+	final long TIMEOUT = 2000;
+	final long GET_SIZE_DELAY = 200;
+	final int PORT = 7781;
+	final int PORT_MIN = 8888;
+	final int PORT_MAX = 9999;
 	
 	Server s;
 	Client c, c1, c2, c3, c4;
@@ -84,7 +87,7 @@ public class StreamSelectorLoopTest {
 	public void testStopOpenSessionByClient() throws Exception {
 		s = new Server(PORT);
 		s.start();
-		waitFor(100);
+		waitFor(GET_SIZE_DELAY);
 		
 		assertEquals(1, s.getSelectLoop().getSize());
 		
@@ -95,6 +98,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		s.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, s.getSelectLoop().getSize());
 		assertEquals(1, c.getSelectLoop().getSize());
 
@@ -103,7 +107,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
-		waitFor(100);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, s.getSelectLoop().getSize());
 		try {
 			c.getSelectLoop().getSize();
@@ -129,6 +133,7 @@ public class StreamSelectorLoopTest {
 		s.quickStop(TIMEOUT);
 		assertEquals("", c.getRecordedData(true));
 		assertEquals("", s.getRecordedData(true));
+		waitFor(GET_SIZE_DELAY);
 		try {
 			s.getSelectLoop().getSize();
 			fail("size should not be returned");
@@ -595,7 +600,7 @@ public class StreamSelectorLoopTest {
 		s.waitForSessionOpen(TIMEOUT);
 		c.waitForSessionOpen(TIMEOUT);
 		c.loop.register(c.getSession().channel, SelectionKey.OP_CONNECT, c.getSession());
-		waitFor(500);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, c.loop.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -721,7 +726,7 @@ public class StreamSelectorLoopTest {
 		s = new Server(PORT);
 		TestSelectorPool pool = new TestSelectorPool();
 
-		SelectorLoop loop = new SelectorLoop(null, pool);
+		SelectorLoop loop = new SelectorLoop(null, pool, null);
 		loop.start();
 		pool.loop = loop;
 		s.pool = pool;
@@ -921,7 +926,7 @@ public class StreamSelectorLoopTest {
 		ssc.configureBlocking(false);
 		ssc.bind(new InetSocketAddress(PORT+1));
 		c.loop.register(ssc, SelectionKey.OP_ACCEPT, factory);
-		waitFor(100);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, c.loop.getSize());
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
@@ -970,12 +975,13 @@ public class StreamSelectorLoopTest {
 		ssc.configureBlocking(false);
 		ssc.bind(new InetSocketAddress(PORT+1));
 		c.loop.register(ssc, SelectionKey.OP_ACCEPT, factory);
-		waitFor(100);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, c.loop.getSize());
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		waitFor(500);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, c.loop.getSize());
 		assertTrue(c.loop.isOpen());
 		ssc.close();
@@ -988,7 +994,302 @@ public class StreamSelectorLoopTest {
 		assertEquals("C|", s.getServerSocketLogs());
 		assertTrue(s.ssc == s.closedSsc);
 		assertNull(s.registeredSsc);
-		
-	}
+
+		//stop when empty with more sessions in the loop (with pool)
+		s = new Server(PORT);
+		s.pool = new DefaultSelectorLoopPool(1);
+		s.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		s.start();
+		c = new Client(PORT);
+		c.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		session1 = c.getSession();
+		c.start(false, c.loop);
+		c.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		waitFor(500);
+		session1.close();
+		waitFor(500);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.loop.isOpen());
+		c.getSession().close();
+		waitFor(500);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.loop.join(TIMEOUT));
+		assertTrue(((DefaultSelectorLoopPool)s.pool).getPool()[0].join(TIMEOUT));
 	
+	}
+
+    @Test
+	public void testInLoop() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		c.start();
+
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		assertFalse(c.loop.inLoop());
+		
+		c.write(new Packet(PacketType.IN_LOOP));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|IN_LOOP_RESPONSE(true)|", c.getRecordedData(true));
+	}	
+    
+    @Test
+    public void testRebuild() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		SelectionKey key = c.getSession().key;
+		assertTrue(key.isValid());
+		c.loop.rebuild();
+		waitFor(2000);
+		assertTrue(!key.isValid());
+		assertTrue(c.getSession().key != key);
+
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+
+		waitFor(1000);
+		key = s.loop.selector.keys().iterator().next();
+		assertTrue(key.isValid());
+		s.loop.rebuild();
+		waitFor(2000);
+		assertTrue(!key.isValid());
+		assertTrue(s.loop.selector.keys().iterator().next() != key);
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|", s.getRecordedData(true));
+
+		key = s.getSession().key;
+		assertTrue(key.isValid());
+		s.loop.rebuild();
+		waitFor(2000);
+		assertTrue(!key.isValid());
+		assertTrue(s.getSession().key != key);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		
+		SelectorLoop loop = new SelectorLoop();
+		loop.selector.close();
+		loop.selector = null;
+		loop.rebuildSelector();
+		assertNull(loop.selector);
+		
+		TestSelectorFactory f = new TestSelectorFactory();
+		loop = new SelectorLoop("loop", null, f);
+		Selector selector = loop.selector;
+		f.throwException = true;
+		loop.rebuildSelector();
+		assertTrue(loop.selector == selector);
+		selector.close();
+    }
+
+    @Test
+    public void testRebuildWithException() throws Exception {
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 2;
+    	SelectorLoop loop = new SelectorLoop("loop", null, factory);
+		s = new Server(PORT);
+		s.start(false, loop);
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		assertEquals("R|",s.getServerSocketLogs());
+		
+    	factory.delegateException = true;
+		s.loop.rebuild();
+		waitFor(2000);
+		
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals("C|",s.getServerSocketLogs());
+		waitFor(this.GET_SIZE_DELAY);
+		assertEquals(0, s.loop.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		//with closing actions
+		ClosingAction[] actions = new ClosingAction[] {ClosingAction.STOP, ClosingAction.QUICK_STOP, ClosingAction.STOP_WHEN_EMPTY};
+		for (ClosingAction action: actions) {
+			factory = new TestSelectorFactory();
+			factory.testSelectorCounter = 2;
+			loop = new SelectorLoop("loop", null, factory);
+			s = new Server(PORT);
+			s.closingAction = action;
+			s.start(false, loop);
+			c = new Client(PORT);
+			c.start();
+			c.waitForSessionOpen(TIMEOUT);
+			s.waitForSessionOpen(TIMEOUT);
+			c.getRecordedData(true);
+			s.getRecordedData(true);
+			assertEquals("R|",s.getServerSocketLogs());
+
+			factory.delegateException = true;
+			s.loop.rebuild();
+			waitFor(2000);
+
+			c.waitForSessionEnding(TIMEOUT);
+			s.waitForSessionEnding(TIMEOUT);
+			assertEquals("SCL|SEN|", c.getRecordedData(true));
+			assertEquals("SCL|SEN|", s.getRecordedData(true));
+			assertEquals("C|",s.getServerSocketLogs());
+			assertTrue(s.loop.join(TIMEOUT));
+			c.stop(TIMEOUT);
+		}
+
+    
+    }    
+    
+    @Test
+    public void testAutoRebuild() throws Exception {
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	SelectorLoop loop = new SelectorLoop("loop", null, factory);
+
+		s = new Server(PORT);
+		s.start(false, loop);
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+    	
+		assertTrue(s.loop.selector instanceof TestSelector);
+		TestSelector selector = (TestSelector) s.loop.selector;
+		
+		selector.nonBlocking = true;
+		selector.closeException = true;
+		s.loop.wakeup();
+		
+		waitFor(2000);
+		assertNotNull(s.loop.selector);
+		assertFalse(s.loop.selector instanceof TestSelector);
+		
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+    	
+    }
+    
+    @Test
+    public void testAutoRebuildWithException() throws Exception {
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 2;
+    	SelectorLoop loop = new SelectorLoop("loop", null, factory);
+		s = new Server(PORT);
+		s.start(false, loop);
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		assertEquals("R|",s.getServerSocketLogs());
+		
+		assertTrue(s.loop.selector instanceof TestSelector);
+		TestSelector selector = (TestSelector) s.loop.selector;
+		
+    	factory.delegateException = true;
+		selector.nonBlocking = true;
+		s.loop.wakeup();
+
+		waitFor(2000);
+		
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals("C|",s.getServerSocketLogs());
+		waitFor(this.GET_SIZE_DELAY);
+		assertEquals(0, s.loop.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		//with closing actions
+		ClosingAction[] actions = new ClosingAction[] {ClosingAction.STOP, ClosingAction.QUICK_STOP, ClosingAction.STOP_WHEN_EMPTY};
+		for (ClosingAction action: actions) {
+	    	factory = new TestSelectorFactory();
+	    	factory.testSelectorCounter = 2;
+	    	loop = new SelectorLoop("loop", null, factory);
+			s = new Server(PORT);
+			s.closingAction = action;
+			s.start(false, loop);
+			c = new Client(PORT);
+			c.start();
+			c.waitForSessionOpen(TIMEOUT);
+			s.waitForSessionOpen(TIMEOUT);
+			c.getRecordedData(true);
+			s.getRecordedData(true);
+			assertEquals("R|",s.getServerSocketLogs());
+			
+			assertTrue(s.loop.selector instanceof TestSelector);
+			selector = (TestSelector) s.loop.selector;
+			
+	    	factory.delegateException = true;
+			selector.nonBlocking = true;
+			s.loop.wakeup();
+
+			waitFor(2000);
+			
+			c.waitForSessionEnding(TIMEOUT);
+			s.waitForSessionEnding(TIMEOUT);
+			assertEquals("SCL|SEN|", c.getRecordedData(true));
+			assertEquals("SCL|SEN|", s.getRecordedData(true));
+			assertEquals("C|",s.getServerSocketLogs());
+			assertTrue(s.loop.join(TIMEOUT));
+			c.stop(TIMEOUT);
+		}
+	}    
 }

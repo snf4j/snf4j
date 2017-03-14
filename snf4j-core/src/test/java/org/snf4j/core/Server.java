@@ -363,7 +363,11 @@ public class Server {
 					getSession().close();
 				}
 				break;
-				
+			
+			case IN_LOOP:
+				getSession().write(new Packet(PacketType.IN_LOOP_RESPONSE, Boolean.toString(loop.inLoop())).toBytes());
+				break;				
+			
 			default:
 				break;
 			}

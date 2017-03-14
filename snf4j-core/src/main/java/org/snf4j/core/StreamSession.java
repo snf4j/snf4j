@@ -122,12 +122,12 @@ public class StreamSession extends InternalSession implements IStreamSession {
 				}
 				
 				try {
-					setWriteInterestOps(key);
+					setWriteInterestOps(detectRebuild(key));
 				}
 				catch (Exception e) {
 				}
 			}
-			key.selector().wakeup();
+			lazyWakeup();
 		}
 	}
 
@@ -142,6 +142,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		if (key != null && key.isValid()) {
 			try {
 				synchronized (writeLock) {
+					key = detectRebuild(key);
 					if (closing == ClosingState.NONE) {
 						int ops = key.interestOps();
 						
@@ -150,7 +151,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 							//To enable gentle close OP_READ must be set 
 							if ((ops & SelectionKey.OP_READ) == 0) {
 								key.interestOps(ops | SelectionKey.OP_READ);
-								key.selector().wakeup();
+								lazyWakeup();
 							}
 							closing = ClosingState.SENDING;
 						}
@@ -164,7 +165,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 								//To enable gentle close OP_READ must be set 
 								if ((ops & SelectionKey.OP_READ) == 0) {
 									key.interestOps(ops | SelectionKey.OP_READ);
-									key.selector().wakeup();
+									lazyWakeup();
 								}
 								closing = ClosingState.FINISHING;
 								((SocketChannel)key.channel()).shutdownOutput();
@@ -191,6 +192,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		if (key != null && key.isValid()) {
 			try {
 				synchronized (writeLock) {
+					key = detectRebuild(key);
 					closing = ClosingState.FINISHED;
 					key.channel().close();
 				}
@@ -200,9 +202,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		}
 		else if (channel != null) {
 			try {
-				if (channel.isOpen()) {
-					channel.close();
-				}
+				close(channel);
 			} catch (IOException e) {
 			}
 		}

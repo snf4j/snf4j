@@ -41,7 +41,9 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
+import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
@@ -62,13 +64,29 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	
 	ThreadFactory threadFactory = DefaultThreadFactory.DEFAULT;
 	
+	final ISelectorLoopStructureFactory factory;
+	
 	volatile Selector selector;
+	
+	private AtomicBoolean wakenup = new AtomicBoolean(false);
+	
+	private int selectCounter;
+	
+	private volatile int size;
+	
+	private int prevSize;
 
-	AtomicBoolean stoppingRequested = new AtomicBoolean(false);
+	private final static int SELECTOR_REBUILD_THRESHOLD = Integer.getInteger(Constants.SELECTOR_REBUILD_THRESHOLD_SYSTEM_PROPERY, 512);
+	
+	private AtomicBoolean rebuildRequested = new AtomicBoolean(false);
+	
+	private AtomicBoolean stoppingRequested = new AtomicBoolean(false);
 	
 	volatile boolean stopping;
 	
 	volatile boolean quickStopping;
+	
+	private Set<SelectionKey> stoppingKeys;
 	
 	private boolean closeWhenEmpty;
 
@@ -92,12 +110,142 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	 *             if the {@link java.nio.channels.Selector Selector} associated with this 
 	 *             selector loop could not be opened
 	 */
-	InternalSelectorLoop(String name, ILogger logger) throws IOException {
+	InternalSelectorLoop(String name, ILogger logger, ISelectorLoopStructureFactory factory) throws IOException {
 		super("SelectorLoop-", nextId.incrementAndGet(), name);
 		this.logger = logger;
-		selector = Selector.open();
+		this.factory = factory == null ? DefaultSelectorLoopStructureFactory.DEFAULT : factory;
+		selector = this.factory.openSelector();
 	}
 
+	/**
+	 * Rebuilds the associated selector by replacing it with newly created one. All valid 
+	 * selection keys registered with the current selector will be re-registered to the 
+	 * new selector. 
+	 */
+	public void rebuild() {
+		rebuildRequested.compareAndSet(false, true);
+		wakeup();
+	}
+
+	final void rebuildSelector() {
+		Selector selector = this.selector;
+		Selector newSelector;
+		
+		if (selector == null) {
+			return;
+		}
+		
+		try {
+			newSelector = factory.openSelector();
+		}
+		catch (Exception e) {
+			elogger.error(logger, "Failed to create new selector during rebuilding process: {}", e);
+			return;
+		}
+		
+		for (SelectionKey key: selector.keys()) {
+			SelectableChannel channel = key.channel();
+			
+			if (key.isValid() && channel.keyFor(newSelector) == null) {
+				Object attachment = key.attachment();
+				
+				try {
+					if (attachment instanceof InternalSession) {
+						InternalSession session = (InternalSession)attachment;
+						
+						synchronized (session.writeLock) {
+							int ops = key.interestOps();
+							
+							key.cancel();
+							SelectionKey newKey = channel.register(getUnderlyingSelector(newSelector), ops, attachment);
+							session.setSelectionKey(newKey);
+						}
+					}
+					else {
+						int ops = key.interestOps();
+						
+						key.cancel();
+						channel.register(getUnderlyingSelector(newSelector), ops, attachment);
+					}
+					
+				}
+				catch (Exception e) {
+					elogger.error(logger, "Failed to re-register channel {} to new selector during rebuilding process: {}" , toString(channel), e);
+					try {
+						if (attachment instanceof IStreamSessionFactory) {
+							channel.close();
+							((IStreamSessionFactory)attachment).closed((ServerSocketChannel) channel);
+						}
+						else {
+							handleInvalidKey(key, stoppingKeys, true);
+						}
+					}
+					catch (Exception e2) {
+						elogger.error(logger, "Failed to close channel {} during rebuilding process: {}", toString(channel), e2);
+					}
+				}
+			}
+		}
+		
+		this.selector = newSelector;
+		
+		try {
+			selector.close();
+		}
+		catch (Exception e) {
+			elogger.error(logger, "Failed to close old selector during rebuilding process: {}" , e);
+		}
+		
+		logger.info("Rebuilding of new selector completed");
+	}
+	
+	final void notifySizeChange(final boolean notify) {
+		if (notify) {
+			if (size != prevSize) {
+				notifyAboutLoopSizeChange(size, prevSize);
+				prevSize = size;
+			}
+		}
+	}
+	
+	final void select() throws IOException {
+		final boolean notify = notifyAboutLoopChanges(); 
+		
+		if (rebuildRequested.compareAndSet(true, false)) {
+			rebuildSelector();
+			selectCounter = 0;
+		}
+
+		//populate selector's key set to properly set the loop size
+		int selectedKeys = selector.selectNow();
+		size = selector.keys().size();
+		notifySizeChange(notify);
+		
+		if (selectedKeys > 0) {
+			wakenup.set(false);
+		}
+		else if (!wakenup.compareAndSet(true, false)) {
+			selectedKeys = selector.select();
+			size = selector.keys().size();
+			notifySizeChange(notify);
+		}
+		
+		if (selectedKeys > 0) {
+			selectCounter = 1;
+		}
+		else {
+			++selectCounter;
+			if (selectCounter >= SELECTOR_REBUILD_THRESHOLD) {
+				logger.warn("Selector selected nothing {} times in a row and rebuilding will be initiated", selectCounter);
+				rebuildSelector();
+				selectedKeys = selector.selectNow();
+				size = selector.keys().size();
+				notifySizeChange(notify);
+				selectCounter = 1;
+			}
+		}
+	}
+	
 	final void elogWarnOrError(ILogger log, String msg, Object... args) {
 		int last = args.length - 1;
 		
@@ -136,7 +284,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	 *             if the associated selector is closed
 	 */
 	public int getSize() {
-		return selector.keys().size();
+		if (selector.isOpen()) {
+			return size;
+		}
+		throw new ClosedSelectorException();
 	}
 
 	/**
@@ -188,7 +339,28 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	 * @see java.nio.channels.Selector#wakeup() Selector.wakeup()
 	 */
 	public void wakeup() {
-		selector.wakeup();
+		wakenup.compareAndSet(false, true);
+		if (!inLoop()) {
+			selector.wakeup();
+		}
+	}
+	
+	/**
+	 * Wakes up the associated selector only if executed from outside this
+	 * loop's thread.
+	 */
+	final void lazyWakeup() {
+		if (!inLoop()) {
+			wakeup();
+		}
+	}
+	
+	final boolean inLoop() {
+		return thread == Thread.currentThread();
+	}
+	
+	final Selector getUnderlyingSelector(Selector selector) {
+		return (selector instanceof IDelegatingSelector) ? ((IDelegatingSelector) selector).getDelegate() : selector;
 	}
 	
 	void loop() {
@@ -197,8 +369,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			logger.debug("Starting main loop");
 		}
 		
-		Set<SelectionKey> stoppingKeys = null;
-		int prevKeysSize = 0;
+		stoppingKeys = null;
+		prevSize = 0;
 		
 		for (;;) {
 			debugEnabled = logger.isDebugEnabled();
@@ -210,20 +382,9 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 					logger.trace("Selecting");
 				}
 				
-				int numOfKeys = selector.select();
+				select();
 				
-				if (trackSizeChanges()) {
-					int keysSize = selector.keys().size();
-					
-					if (keysSize != prevKeysSize) {
-						sizeChanged(keysSize, prevKeysSize);
-						prevKeysSize = keysSize;
-					}
-					if (closeWhenEmpty && keysSize == 0) {
-						quickStop();
-					}
-				}
-				else if (closeWhenEmpty && selector.keys().isEmpty()) {
+				if (closeWhenEmpty && size == 0) {
 					quickStop();
 				}
 
@@ -271,10 +432,15 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 					}
 				}
 				
-				if (numOfKeys > 0) {
-					Set<SelectionKey> keys = selector.selectedKeys();
+				Set<SelectionKey> keys = selector.selectedKeys();
+				
+				if (!keys.isEmpty()) {
+					Iterator<SelectionKey> i = keys.iterator();
 					
-					for (SelectionKey key: keys) {
+					for (;;) {
+						final SelectionKey key = i.next();
+						i.remove();
+						
 						try {
 							handleSelectedKey(key);
 						}
@@ -293,11 +459,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 						catch (Exception e) {
 							elogger.error(logger, "Processing of invalidated key for {} failed: {}", key.attachment(), e);
 						}
+						
+						if (!i.hasNext()) {
+							break;
+						}
 					}
-					keys.clear();
-				}
-				else {
-					selector.selectedKeys().clear();
 				}
 				
 				//Handle keys invalidated during stopping of the selector loop
@@ -347,12 +513,12 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 									InternalSession session = (InternalSession) reg.attachement;
 									
 									if (session.isCreated()) {
-										fireEndingEvent(session);
+										fireEndingEvent(session, false);
 									}
 								}
 							}
 							else {
-								SelectionKey key = channel.register(selector, reg.ops, reg.attachement);
+								SelectionKey key = channel.register(getUnderlyingSelector(selector), reg.ops, reg.attachement);
 								
 								if (debugEnabled) {
 									logger.debug("Channel {} registered with options {}", toString(channel), reg.ops);
@@ -408,7 +574,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		if (selector.isOpen()) {
 			stoppingRequested.getAndSet(true);
 			stopping = true;
-			selector.wakeup();
+			wakeup();
 			if (isStopped()) {
 				try {
 					selector.close();
@@ -506,7 +672,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		reg.ops = ops;
 		reg.attachement = attachement;
 		registrations.add(reg);
-		selector.wakeup();
+		wakeup();
 	}
 	
 	/**
@@ -553,11 +719,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	 *            the key that was invalidated
 	 */
 	final void finishInvalidatedKey(SelectionKey key) {
-		if (Thread.currentThread() != thread) {
+		if (!inLoop()) {
 			synchronized (invalidatedKeys) {
 				invalidatedKeys.add(key);
 			}
-			selector.wakeup();
+			wakeup();
 		}
 	}
 	
@@ -582,17 +748,17 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		return null;
 	}
 	
-	final void fireEndingEvent(final InternalSession session) {
+	final void fireEndingEvent(final InternalSession session, boolean skipCloseWhenEmpty) {
 		fireEvent(session, SessionEvent.ENDING);
 
 		switch (session.getConfig().getClosingAction()) {
 		case STOP:
 			stop();
-			break;
+			return;
 
 		case QUICK_STOP:
 			quickStop();
-			break;
+			return;
 
 		case STOP_WHEN_EMPTY:
 			closeWhenEmpty = true;
@@ -601,7 +767,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		default:
 		}
 		
-		if (closeWhenEmpty) {
+		if (!skipCloseWhenEmpty && closeWhenEmpty) {
 			boolean empty = true;
 
 			for (SelectionKey key: selector.keys()) {
@@ -646,7 +812,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		}
 	}
 	
-	final void handleInvalidKey(SelectionKey key, Set<SelectionKey> stoppingKeys) throws IOException {
+	private final void handleInvalidKey(SelectionKey key, Set<SelectionKey> stoppingKeys, boolean skipCloseWhenEmpty) throws IOException {
 		if (stoppingKeys != null) {
 			stoppingKeys.remove(key);
 		}
@@ -661,18 +827,22 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 				fireEvent(session, SessionEvent.CLOSED);
 			}
 			finally {
-				fireEndingEvent(session);
+				fireEndingEvent(session, skipCloseWhenEmpty);
 			}
 		}
 	}
 
+	private final void handleInvalidKey(SelectionKey key, Set<SelectionKey> stoppingKeys) throws IOException {
+		handleInvalidKey(key, stoppingKeys, false);
+	}
+	
 	abstract void handleRegisteredKey(SelectionKey key, SelectableChannel channel, InternalSession session);
 	
 	abstract void handleSelectedKey(SelectionKey key);
 	
-	abstract void sizeChanged(int newSize, int prevSize);
+	abstract void notifyAboutLoopSizeChange(int newSize, int prevSize);
 	
-	abstract boolean trackSizeChanges();
+	abstract boolean notifyAboutLoopChanges();
 	
 	static final class PendingRegistration {
 		SelectableChannel channel;

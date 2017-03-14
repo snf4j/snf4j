@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -533,7 +534,7 @@ public class SessionTest {
 		session.resumeRead();
 		assertFalse(session.isReadSuspended());
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|ECHO_RESPONSE(4)|", c.getRecordedData(true)); //TODO: why sometime "" is returned
+		assertEquals("DR|ECHO_RESPONSE(4)|", c.getRecordedData(true));
 		assertFalse(session.resume(SelectionKey.OP_READ));
 		session.resumeRead();
 		assertFalse(session.isReadSuspended());
@@ -1377,5 +1378,30 @@ public class SessionTest {
 		assertEquals(SessionState.CLOSING, s.getSession().getState());
 		s.stop(TIMEOUT);
 		c.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testDetectRebuild() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		s.start();
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		
+		StreamSession session = c.getSession();
+		SelectionKey key = session.key;
+		
+		assertTrue(key == session.detectRebuild(key));
+		assertTrue(key == session.detectRebuild(s.getSession().key));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		try {
+			session.detectRebuild(s.getSession().key);
+			fail("detecting rebuild should fail");
+		}
+		catch (CancelledKeyException e) {
+		}
 	}
 }

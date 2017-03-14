@@ -125,6 +125,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		if (key != null && key.isValid()) {
 			try {
 				synchronized (writeLock) {
+					key = detectRebuild(key);
 					if (closing != ClosingState.NONE) {
 						return;
 					}
@@ -134,20 +135,17 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			}
 			catch (Exception e) {
 			}
-			
-			key.selector().wakeup();			
+			lazyWakeup();
 		}
 	}
 	
 	private final void close(SelectionKey key) throws IOException {
-		if (key.channel() instanceof DatagramChannel) {
-			((DatagramChannel)key.channel()).disconnect();
-		}
-		key.channel().close();
+		close(key.channel());
 		loop.finishInvalidatedKey(key);
 	}
 
-	private final void close(SelectableChannel channel) throws IOException {
+	@Override
+	void close(SelectableChannel channel) throws IOException {
 		if (channel instanceof DatagramChannel) {
 			((DatagramChannel)channel).disconnect();
 		}
@@ -161,6 +159,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		if (key != null && key.isValid()) {
 			try {
 				synchronized (writeLock) {
+					key = detectRebuild(key);
 					if (closing == ClosingState.NONE) {
 						if ((key.interestOps() & SelectionKey.OP_WRITE) != 0) {
 							closing = ClosingState.SENDING;
@@ -187,6 +186,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		if (key != null && key.isValid()) {
 			try {
 				synchronized (writeLock) {
+					key = detectRebuild(key);
 					closing = ClosingState.FINISHED;
 					close(key);
 				}

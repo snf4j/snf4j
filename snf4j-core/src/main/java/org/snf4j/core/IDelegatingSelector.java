@@ -23,35 +23,21 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.session;
+package org.snf4j.core;
 
-import org.snf4j.core.handler.IStreamHandler;
+import java.nio.channels.Selector;
 
 /**
- * Extends the {@link ISession} interface to cover stream-oriented functionalities.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ * A selector wrapping an original implementation of the abstract {@link java.nio.channels.Selector Selector} class.
+ * This interface allows selectors that wrap the original implementation to be properly handled by the selector loop. 
  */
-public interface IStreamSession extends ISession {
+public interface IDelegatingSelector {
 
 	/**
-	 * Gets the stream-oriented handler associated with this session
+	 * Returns the underlying original selector that is wrapped by this implementation
+	 * of {@link java.nio.channels.Selector Selector}
 	 * 
-	 * @return the stream-oriented handler
+	 * @return the underlying selector
 	 */
-	@Override
-	IStreamHandler getHandler();
-
-	/**
-	 * Writes bytes.
-	 * <p>
-	 * After returning from this method the passed byte array can be safely
-	 * modified by the caller. The content of <code>data</code> is not 
-	 * changed by this method.
-	 * 
-	 * @param data
-	 *            bytes to be written
-	 */
-	void write(byte[] data);
-
+	Selector getDelegate();
 }
