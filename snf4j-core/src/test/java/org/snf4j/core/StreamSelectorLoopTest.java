@@ -33,6 +33,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
@@ -1292,4 +1293,53 @@ public class StreamSelectorLoopTest {
 			c.stop(TIMEOUT);
 		}
 	}    
+    
+    private void assertConnection(Server s, Client c) throws InterruptedException {
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);    	
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+    }
+    
+    @Test
+    public void testRegisterChannelsInDifferentStates() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		
+		int[] opts = new int[] {SelectionKey.OP_CONNECT, 0, SelectionKey.OP_READ, SelectionKey.OP_WRITE};
+		
+		//register connected channel
+		for (int opt: opts) {
+			c = new Client(PORT);
+			c.channel = SocketChannel.open(new InetSocketAddress(InetAddress.getByName(c.ip), PORT));
+			c.intrestOps = opt;
+			assertTrue(c.channel.isConnected());
+			c.start();
+			assertConnection(s,c);
+		}   
+
+		//register channel with pending connection
+		for (int opt: opts) {
+			c = new Client(PORT);
+			c.channel = SocketChannel.open();
+			c.channel.configureBlocking(false);
+			c.channel.connect(new InetSocketAddress(InetAddress.getByName(c.ip), PORT));
+			c.intrestOps = opt;
+			assertTrue(c.channel.isConnectionPending());
+			c.start();
+			assertConnection(s,c);
+		}   
+    }
 }

@@ -46,6 +46,10 @@ public class Client extends Server {
 	
 	boolean reuseAddress;
 	
+	SocketChannel channel;
+	
+	int intrestOps = SelectionKey.OP_CONNECT;
+	
 	public Client(int port) {
 		super(port);
 	}
@@ -69,24 +73,26 @@ public class Client extends Server {
 			loop.start();
 		}
 
-		SocketChannel sc = SocketChannel.open();
-		if (reuseAddress) {
-			sc.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+		SocketChannel sc = channel == null ? SocketChannel.open() : channel;
+		if (channel == null) {
+			if (reuseAddress) {
+				sc.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+			}
+			if (localPort != null) {
+				sc.bind(new InetSocketAddress(InetAddress.getByName(ip), localPort));
+			}
+			sc.configureBlocking(false);
+			sc.connect(new InetSocketAddress(InetAddress.getByName(ip), port));
 		}
-		if (localPort != null) {
-			sc.bind(new InetSocketAddress(InetAddress.getByName(ip), localPort));
-		}
-		sc.configureBlocking(false);
-		sc.connect(new InetSocketAddress(InetAddress.getByName(ip), port));
-	
+		
 		if (registerConnectedSession) {
 			session = new StreamSession(new Handler());
 			session.setChannel(sc);
 			session.event(SessionEvent.CREATED);
-			loop.register(sc, SelectionKey.OP_CONNECT, session);
+			loop.register(sc, intrestOps, session);
 		}
 		else {
-			loop.register(sc, SelectionKey.OP_CONNECT, new Handler());
+			loop.register(sc, intrestOps, new Handler());
 		}
 
 		if (firstRegistrate) {

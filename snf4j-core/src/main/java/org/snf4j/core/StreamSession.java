@@ -54,8 +54,6 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	private volatile boolean isEOS;
 	
-	private volatile boolean moving;
-	
 	private final int minInBufferCapacity;
 	
 	private final int maxInBufferCapacity;
@@ -349,18 +347,6 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return fullyCompacted;
 	}
 
-	/**
-	 * Tells if session is moving between selector loops.
-	 * @return true if session is moving
-	 */
-	final boolean isMoving() {
-		return moving;
-	}
-	
-	final void setMoving(boolean moving) {
-		this.moving = moving;
-	}
-	
 	private final Socket getSocket() {
 		SelectableChannel channel = this.channel;
 		

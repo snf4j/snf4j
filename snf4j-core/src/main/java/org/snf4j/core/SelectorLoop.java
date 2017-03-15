@@ -311,24 +311,32 @@ public class SelectorLoop extends InternalSelectorLoop {
 	
 	@Override
 	void handleRegisteredKey(SelectionKey key, SelectableChannel channel, InternalSession session) {
-		if (session instanceof StreamSession) {
-			StreamSession ssession = (StreamSession)session; 
+		
+		if (channel instanceof SocketChannel) {
+			SocketChannel sc = (SocketChannel) channel;
 
-			if (ssession.isMoving()) {
-				ssession.setMoving(false);
-				session.setSelectionKey(key);
-				session.setLoop(this);
-				if (debugEnabled) {
-					logger.debug("Channel {} associated with {}", toString(channel), session);
-				}
-				fireEvent(session, SessionEvent.OPENED);
+			if (sc.isConnected()) {
+				key.interestOps(SelectionKey.OP_READ);
+			}
+			else if (sc.isConnectionPending()) {
+				key.interestOps(SelectionKey.OP_CONNECT);
+				return;
+			}
+			else {
+				return;
 			}
 		}
-		else {
+		
+		try {
 			session.setChannel(channel);
 			fireEvent(session, SessionEvent.CREATED);
+		}
+		finally {
 			session.setSelectionKey(key);
 			session.setLoop(this);
+			if (debugEnabled) {
+				logger.debug("Channel {} associated with {}", toString(channel), session);
+			}
 			fireEvent(session, SessionEvent.OPENED);
 		}
 	}
@@ -389,6 +397,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		
 		try {
 			channel = ((ServerSocketChannel)key.channel()).accept();
+			channel.configureBlocking(false);
 			if (!controller.processAccepted(channel)) {
 				channel.close();
 				channel = null;
@@ -404,18 +413,14 @@ public class SelectorLoop extends InternalSelectorLoop {
 		
 		if (channel != null) {
 			StreamSession session = factory.create(channel);
-			session.setChannel(channel);
-			fireEvent(session, SessionEvent.CREATED);
+			
 			try {
 				ISelectorLoopPool pool = this.pool;
 				SelectorLoop loop = pool != null ? pool.getLoop(channel) : null;
-				
-				channel.configureBlocking(false);
 				if (loop != null) {
 					if (debugEnabled) {
 						logger.debug("Moving registration of channel {} to other selector loop {}", toString(channel), loop);
 					}
-					session.setMoving(true);
 					loop.register(channel, SelectionKey.OP_READ, session);
 					return;
 				}
@@ -426,15 +431,27 @@ public class SelectorLoop extends InternalSelectorLoop {
 				opened = true;
 			}
 			catch (Exception e) {
-				elogger.error(logger, "Unable to reqister channel {} with selector: {}", toString(channel), e);
-				fireException(session, e);
+				try {
+					session.setChannel(channel);
+					fireEvent(session, SessionEvent.CREATED);
+				}
+				finally {
+					elogger.error(logger, "Unable to reqister channel {} with selector: {}", toString(channel), e);
+					fireException(session, e);
+				}
 			}
 			
 			if (opened) {
-				if (debugEnabled) {
-					logger.debug("Channel {} is associated with {}", toString(channel), session);
+				try {
+					session.setChannel(channel);
+					fireEvent(session, SessionEvent.CREATED);
 				}
-				fireEvent(session, SessionEvent.OPENED);
+				finally {
+					if (debugEnabled) {
+						logger.debug("Channel {} is associated with {}", toString(channel), session);
+					}
+					fireEvent(session, SessionEvent.OPENED);
+				}
 			}
 			else {
 				try {
