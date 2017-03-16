@@ -294,6 +294,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		if (key != null && key.isValid()) {
 			boolean wakeup;
 			synchronized (writeLock) {
+				//TODO: add detectRebuild, determine if exception should thrown
 				wakeup = suspend(SelectionKey.OP_READ);
 			}
 			if (wakeup) {

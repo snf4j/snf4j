@@ -25,7 +25,7 @@
  */
 package org.snf4j.core.session;
 
-import org.snf4j.core.ClosingAction;
+import org.snf4j.core.EndingAction;
 
 /**
  * A configuration for associated session.
@@ -107,10 +107,10 @@ public interface ISessionConfig {
 	boolean ignorePossiblyIncompleteDatagrams();
 	
 	/**
-	 * Gets the closing action that should be performed by the selector
-	 * loop after closing of the associated session.
+	 * Gets the action that should be performed by the selector
+	 * loop after ending of the associated session.
 	 * 
-	 * @return the closing action
+	 * @return the ending action
 	 */
-	ClosingAction getClosingAction();
+	EndingAction getEndingAction();
 }

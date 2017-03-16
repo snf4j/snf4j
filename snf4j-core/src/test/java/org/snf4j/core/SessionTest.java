@@ -82,7 +82,7 @@ public class SessionTest {
 		ServerSocketChannel ssc = ServerSocketChannel.open();
 		
 		ssc.configureBlocking(false);
-		ssc.bind(new InetSocketAddress(port));
+		ssc.socket().bind(new InetSocketAddress(port));
 		return ssc.register(selector, SelectionKey.OP_ACCEPT);
 	}
 	
@@ -1153,8 +1153,8 @@ public class SessionTest {
 		
 		assertNull(c.getSession().getRemoteAddress());
 		assertNull(s.getSession().getRemoteAddress());
-		assertNotNull(c.getSession().getLocalAddress());
-		assertNotNull(s.getSession().getLocalAddress());
+		assertNull(c.getSession().getLocalAddress());
+		assertNull(s.getSession().getLocalAddress());
 	}
 	
 	@Test

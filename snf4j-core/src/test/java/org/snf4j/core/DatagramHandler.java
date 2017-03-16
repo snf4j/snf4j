@@ -30,7 +30,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.DatagramChannel;
-import java.nio.channels.SelectionKey;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
@@ -50,7 +49,7 @@ public class DatagramHandler {
 	boolean registerConnectedSession;
 	long throughputCalcInterval = 1000;
 	boolean ignorePossiblyIncomplete = true;
-	volatile ClosingAction closingAction = ClosingAction.DEFAULT;
+	volatile EndingAction endingAction = EndingAction.DEFAULT;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionEndingLock = new AtomicBoolean(false);
@@ -145,22 +144,22 @@ public class DatagramHandler {
 				session = new DatagramSession(new Handler());
 				session.setChannel(dc);
 				session.event(SessionEvent.CREATED);
-				loop.register(dc, SelectionKey.OP_READ, session);
+				loop.register(dc, session);
 			}
 			else {
-				loop.register(dc, SelectionKey.OP_READ, new Handler());
+				loop.register(dc, new Handler());
 			}
 		}
 		else {
-			dc.bind(new InetSocketAddress(port));
+			dc.socket().bind(new InetSocketAddress(port));
 			if (registerConnectedSession) {
 				session = new DatagramSession(new Handler());
 				session.setChannel(dc);
 				session.event(SessionEvent.CREATED);
-				loop.register(dc, SelectionKey.OP_READ, session);
+				loop.register(dc, session);
 			}
 			else {
-				loop.register(dc, SelectionKey.OP_READ, new DatagramSession(new Handler()));
+				loop.register(dc, new DatagramSession(new Handler()));
 			}
 		}
 
@@ -237,7 +236,7 @@ public class DatagramHandler {
 			config.setMinOutBufferCapacity(1024);
 			config.setThroughputCalculationInterval(throughputCalcInterval);
 			config.setIgnorePossiblyIncompleteDatagrams(ignorePossiblyIncomplete);
-			config.setClosingAction(closingAction);
+			config.setEndingAction(endingAction);
 			return config;
 		}
 		

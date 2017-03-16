@@ -166,7 +166,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 									lazyWakeup();
 								}
 								closing = ClosingState.FINISHING;
-								((SocketChannel)key.channel()).shutdownOutput();
+								((SocketChannel)key.channel()).socket().shutdownOutput();
 							}
 						}
 					}
@@ -301,7 +301,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 				}
 				else {
 					closing = ClosingState.FINISHING;
-					((SocketChannel)key.channel()).shutdownOutput();
+					((SocketChannel)key.channel()).socket().shutdownOutput();
 				}
 			} catch (Exception e) {
 			}
@@ -350,7 +350,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	private final Socket getSocket() {
 		SelectableChannel channel = this.channel;
 		
-		if (channel instanceof SocketChannel) {
+		if (channel instanceof SocketChannel && channel.isOpen()) {
 			return ((SocketChannel)channel).socket();
 		}
 		return null;

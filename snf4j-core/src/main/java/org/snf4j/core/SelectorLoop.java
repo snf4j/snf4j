@@ -28,6 +28,7 @@ package org.snf4j.core;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectableChannel;
@@ -171,12 +172,11 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @param channel
 	 *            the stream-oriented channel to register with this selector
 	 *            loop
-	 * @param ops
-	 *            the interest set that will be passed to the
-	 *            {@link java.nio.channels.SocketChannel SocketChannel#register}
-	 *            method when the registration will occur
 	 * @param handler
 	 *            the handler that will be associated with the channel
+	 * @return the stream-oriented session that will associated with the channel
+	 * @throws ClosedChannelException
+	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
 	 *             if selector loop is in the process of stopping
 	 * @throws ClosedSelectorException
@@ -185,8 +185,11 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by the channel
 	 */
-	public void register(SocketChannel channel, int ops, IStreamHandler handler) {
-		super.register(channel, ops, new StreamSession(handler));
+	public StreamSession register(SocketChannel channel, IStreamHandler handler) throws ClosedChannelException {
+		StreamSession session = new StreamSession(handler);
+		
+		super.register(channel, 0, session);
+		return session;
 	}
 	
 	/**
@@ -198,12 +201,10 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @param channel
 	 *            the stream-oriented channel to register with this selector
 	 *            loop
-	 * @param ops
-	 *            the interest set that will be passed to the
-	 *            {@link java.nio.channels.SocketChannel SocketChannel#register}
-	 *            method when the registration will occur
 	 * @param session
 	 *            the session that will be associated with the channel
+	 * @throws ClosedChannelException 
+	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
 	 *             if selector loop is in the process of stopping
 	 * @throws ClosedSelectorException
@@ -214,9 +215,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @throws IllegalArgumentException
 	 *             if the session argument is <code>null</code>
 	 */
-	public void register(SocketChannel channel, int ops, StreamSession session) {
+	public void register(SocketChannel channel, StreamSession session) throws ClosedChannelException {
 		if (session == null) throw new IllegalArgumentException("session is null");
-		super.register(channel, ops, session);
+		super.register(channel, 0, session);
 	}
 
 	/**
@@ -228,12 +229,11 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @param channel
 	 *            the datagram-oriented channel to register with this selector
 	 *            loop
-	 * @param ops
-	 *            the interest set that will be passed to the
-	 *            {@link java.nio.channels.DatagramChannel DatagramChannel#register}
-	 *            method when the registration will occur
 	 * @param handler
 	 *            the handler that will be associated with the channel
+	 * @return the datagram-oriented session that will associated with the channel
+	 * @throws ClosedChannelException 
+	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
 	 *             if selector loop is in the process of stopping
 	 * @throws ClosedSelectorException
@@ -242,8 +242,11 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by the channel
 	 */
-	public void register(DatagramChannel channel, int ops, IDatagramHandler handler) {
-		super.register(channel, ops, new DatagramSession(handler));
+	public DatagramSession register(DatagramChannel channel, IDatagramHandler handler) throws ClosedChannelException {
+		DatagramSession session = new DatagramSession(handler);
+		
+		super.register(channel, SelectionKey.OP_READ, session);
+		return session;
 	}
 
 	/**
@@ -255,12 +258,10 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @param channel
 	 *            the datagram-oriented channel to register with this selector
 	 *            loop
-	 * @param ops
-	 *            the interest set that will be passed to the
-	 *            {@link java.nio.channels.DatagramChannel DatagramChannel#register}
-	 *            method when the registration will occur
 	 * @param session
 	 *            the session that will be associated with the channel
+	 * @throws ClosedChannelException 
+	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
 	 *             if selector loop is in the process of stopping
 	 * @throws ClosedSelectorException
@@ -271,9 +272,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @throws IllegalArgumentException
 	 *             if the session argument is <code>null</code>
 	 */
-	public void register(DatagramChannel channel, int ops, DatagramSession session) {
+	public void register(DatagramChannel channel, DatagramSession session) throws ClosedChannelException {
 		if (session == null) throw new IllegalArgumentException("session is null");
-		super.register(channel, ops, session);
+		super.register(channel, SelectionKey.OP_READ, session);
 	}
 	
 	/**
@@ -286,14 +287,11 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @param channel
 	 *            the listening stream-oriented channel to register with this
 	 *            selector loop
-	 * @param ops
-	 *            the interest set that will be passed to the
-	 *            {@link java.nio.channels.ServerSocketChannel
-	 *            ServerSocketChannel#register} method when the registration
-	 *            will occur
 	 * @param factory
 	 *            the factory that will be associated with the channel. It will
 	 *            be used to create sessions for newly accepted channels
+	 * @throws ClosedChannelException 
+	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
 	 *             if selector loop is in the process of stopping
 	 * @throws ClosedSelectorException
@@ -304,9 +302,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @throws IllegalArgumentException
 	 *             if the factory argument is <code>null</code>
 	 */
-	public void register(ServerSocketChannel channel, int ops, IStreamSessionFactory factory) {
+	public void register(ServerSocketChannel channel, IStreamSessionFactory factory) throws ClosedChannelException {
 		if (factory == null) throw new IllegalArgumentException("factory is null");
-		super.register(channel, ops, factory);
+		super.register(channel, SelectionKey.OP_ACCEPT, factory);
 	}
 	
 	@Override
@@ -318,11 +316,19 @@ public class SelectorLoop extends InternalSelectorLoop {
 			if (sc.isConnected()) {
 				key.interestOps(SelectionKey.OP_READ);
 			}
-			else if (sc.isConnectionPending()) {
+			else if (sc.isConnectionPending() || sc.isOpen()) {
 				key.interestOps(SelectionKey.OP_CONNECT);
 				return;
 			}
 			else {
+				//If the channel is closed notify session
+				try {
+					session.setChannel(channel);
+					fireEvent(session, SessionEvent.CREATED);
+				}
+				finally {
+					fireEndingEvent(session, false);
+				}
 				return;
 			}
 		}

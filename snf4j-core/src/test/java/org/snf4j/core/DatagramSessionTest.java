@@ -166,8 +166,8 @@ public class DatagramSessionTest {
 		session.suspendWrite();
 		session.resumeWrite();
 		assertFalse(session.isWriteSuspended());
+		waitFor(500);
 		c.waitForDataSent(TIMEOUT);
-		c.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(2)|DR|ECHO_RESPONSE(3)|", c.getRecordedData(true));
 		assertFalse(session.resume(SelectionKey.OP_WRITE));
@@ -848,7 +848,7 @@ public class DatagramSessionTest {
 		assertEquals(sc.toString(), loop.toString(sc));
 		DatagramChannel dc = DatagramChannel.open();
 		assertEquals("sun.nio.ch.DatagramChannelImpl[local=unknown]", loop.toString(dc));
-		dc.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 7788));
+		dc.socket().bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 7788));
 		assertEquals("sun.nio.ch.DatagramChannelImpl[local=/127.0.0.1:7788]", loop.toString(dc));
 		dc.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.2"), 7789));
 		assertEquals("sun.nio.ch.DatagramChannelImpl[local=/127.0.0.1:7788,remote=/127.0.0.2:7789]", loop.toString(dc));

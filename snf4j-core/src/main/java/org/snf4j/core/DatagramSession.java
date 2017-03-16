@@ -90,7 +90,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	private final DatagramSocket getSocket() {
 		SelectableChannel channel = this.channel;
 		
-		if (channel instanceof DatagramChannel) {
+		if (channel instanceof DatagramChannel && channel.isOpen()) {
 			return ((DatagramChannel)channel).socket();
 		}
 		return null;

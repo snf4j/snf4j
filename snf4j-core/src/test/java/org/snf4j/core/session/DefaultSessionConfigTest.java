@@ -28,7 +28,7 @@ package org.snf4j.core.session;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
-import org.snf4j.core.ClosingAction;
+import org.snf4j.core.EndingAction;
 
 public class DefaultSessionConfigTest {
 	
@@ -41,18 +41,18 @@ public class DefaultSessionConfigTest {
 		assertEquals(2048, c.getMinOutBufferCapacity());
 		assertEquals(3000, c.getThroughputCalculationInterval());
 		assertEquals(true, c.ignorePossiblyIncompleteDatagrams());
-		assertEquals(ClosingAction.DEFAULT, c.getClosingAction());
+		assertEquals(EndingAction.DEFAULT, c.getEndingAction());
 		
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
-			.setClosingAction(ClosingAction.STOP);
+			.setEndingAction(EndingAction.STOP);
 
 		assertEquals(10, c.getMinInBufferCapacity());
 		assertEquals(100, c.getMaxInBufferCapacity());
 		assertEquals(1000, c.getMinOutBufferCapacity());
 		assertEquals(5000, c.getThroughputCalculationInterval());
 		assertEquals(false, c.ignorePossiblyIncompleteDatagrams());
-		assertEquals(ClosingAction.STOP, c.getClosingAction());
+		assertEquals(EndingAction.STOP, c.getEndingAction());
 
 	}
 }

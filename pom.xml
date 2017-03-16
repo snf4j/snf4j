@@ -4,7 +4,7 @@
  
   <groupId>org.snf4j</groupId>
   <artifactId>snf4j-project</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
  
   <name>SNF4J</name>
@@ -22,7 +22,7 @@
 
   <properties>
     <arguments />
-    <version.java>1.5</version.java>
+    <version.java>1.6</version.java>
     <version.compiler.source>${version.java}</version.compiler.source>
     <version.compiler.target>${version.java}</version.compiler.target>
     
@@ -118,6 +118,9 @@
         <configuration>
           <source>${version.compiler.source}</source>
           <target>${version.compiler.target}</target>
+          <excludes>
+            <exclude>**/package-info.java</exclude>
+          </excludes>
         </configuration>
       </plugin>
       

@@ -27,7 +27,6 @@ package org.snf4j.example.discarding;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import org.snf4j.core.SelectorLoop;
@@ -48,7 +47,7 @@ public class DiscardingClient {
 			channel.configureBlocking(false);
 			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
 			
-			loop.register(channel, SelectionKey.OP_CONNECT, new DiscardingClientHandler());
+			loop.register(channel, new DiscardingClientHandler());
 			loop.join();
 		}
 		catch (Exception e) {

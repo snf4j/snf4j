@@ -28,8 +28,6 @@ package org.snf4j.core;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.StandardSocketOptions;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import org.snf4j.core.handler.SessionEvent;
@@ -47,8 +45,6 @@ public class Client extends Server {
 	boolean reuseAddress;
 	
 	SocketChannel channel;
-	
-	int intrestOps = SelectionKey.OP_CONNECT;
 	
 	public Client(int port) {
 		super(port);
@@ -76,10 +72,10 @@ public class Client extends Server {
 		SocketChannel sc = channel == null ? SocketChannel.open() : channel;
 		if (channel == null) {
 			if (reuseAddress) {
-				sc.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+				sc.socket().setReuseAddress(true);
 			}
 			if (localPort != null) {
-				sc.bind(new InetSocketAddress(InetAddress.getByName(ip), localPort));
+				sc.socket().bind(new InetSocketAddress(InetAddress.getByName(ip), localPort));
 			}
 			sc.configureBlocking(false);
 			sc.connect(new InetSocketAddress(InetAddress.getByName(ip), port));
@@ -89,10 +85,10 @@ public class Client extends Server {
 			session = new StreamSession(new Handler());
 			session.setChannel(sc);
 			session.event(SessionEvent.CREATED);
-			loop.register(sc, intrestOps, session);
+			loop.register(sc, session);
 		}
 		else {
-			loop.register(sc, intrestOps, new Handler());
+			loop.register(sc, new Handler());
 		}
 
 		if (firstRegistrate) {
