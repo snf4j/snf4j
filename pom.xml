@@ -166,7 +166,9 @@
             <format>html</format>
             <format>xml</format>
           </formats>
-          <check />
+          <check>
+            <haltOnFailure>true</haltOnFailure>
+          </check>
         </configuration>
       </plugin>
 
