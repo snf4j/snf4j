@@ -1354,7 +1354,7 @@ public class StreamSelectorLoopTest {
 		String recordedData = c.getRecordedData(true);
 		//It appears that this scenario works differently based on the NIO implementation
 		//For example on Windows select will be blocked till the connect 
-		if ("".equals("")) {
+		if ("".equals(recordedData)) {
 			assertEquals("", c.getRecordedData(true));
 			c.channel.connect(new InetSocketAddress(InetAddress.getByName(c.ip), PORT));
 			assertConnection(s,c);
