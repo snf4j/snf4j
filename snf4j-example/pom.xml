@@ -37,9 +37,9 @@
           </formats>
           <check />
           <instrumentation>
-            <ignores>
-              <ignore>org.snf4j.example.*</ignore>
-            </ignores>
+            <excludes>
+              <exclude>org/snf4j/example/**/*.class</exclude>
+            </excludes>
           </instrumentation>
         </configuration>
       </plugin>

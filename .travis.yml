@@ -2,9 +2,6 @@ sudo: true
 
 language: java
 
-script:
-  - mvn cobertura:cobertura -B
-  
 jdk:
   - oraclejdk8
   
@@ -13,7 +10,8 @@ branches:
   - master
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
+  - mvn cobertura:cobertura
+  - bash <(curl -s https://codecov.io/bash)
   
 after_failure:
   - pwd
