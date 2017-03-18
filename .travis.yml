@@ -3,12 +3,16 @@ sudo: true
 language: java
 
 jdk:
-  - oraclejdk8
+  - oraclejdk7
   
 branches:
   only:
   - master
 
+after_success:
+  - mvn cobertura:cobertura
+  - bash <(curl -s https://codecov.io/bash)
+  
 after_failure:
   - pwd
   - cat snf4j-core/target/surefire-reports/*.txt

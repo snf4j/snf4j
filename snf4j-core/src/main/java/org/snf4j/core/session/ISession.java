@@ -127,21 +127,33 @@ public interface ISession {
 	
 	/**
 	 * Suspends read operations for this session.
+	 * 
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
 	 */
 	void suspendRead();
 
 	/**
 	 * Suspends write operations for this session. 
+
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
 	 */
 	void suspendWrite();
 
 	/**
 	 * Resumes read operations for this session.
+
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
 	 */
 	void resumeRead();
 
 	/**
 	 * Resumes write operations for this session.
+
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
 	 */
 	void resumeWrite();
 	

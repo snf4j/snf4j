@@ -30,6 +30,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -42,6 +43,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.handler.IDatagramHandler;
+import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
 
 public class DatagramSessionTest {
@@ -105,8 +107,14 @@ public class DatagramSessionTest {
 	@Test
 	public void testWrite() throws Exception {
 		DatagramSession session = new DatagramSession(handler);
+
+		try {
+			session.write(new byte[10]);
+			fail("exception not thrown");
+		} catch (IllegalSessionStateException e) {
+			assertEquals(SessionState.OPENING, e.getIllegalState());
+		}
 		
-		session.write(new byte[10]);
 		assertTrue(session.outQueue.isEmpty());
 		
 		s = new DatagramHandler(PORT);
@@ -135,8 +143,14 @@ public class DatagramSessionTest {
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
+
+		try {
+			c.write(new Packet(PacketType.ECHO, "2"));
+			fail("exception not thrown");
+		} catch (IllegalSessionStateException e) {
+			assertEquals(SessionState.CLOSING, e.getIllegalState());
+		}
 		
-		c.write(new Packet(PacketType.ECHO, "2"));
 		assertTrue(c.getSession().outQueue.isEmpty());
 		waitFor(2000);
 		assertEquals("", c.getRecordedData(true));
@@ -166,8 +180,8 @@ public class DatagramSessionTest {
 		session.suspendWrite();
 		session.resumeWrite();
 		assertFalse(session.isWriteSuspended());
+		waitFor(500);
 		c.waitForDataSent(TIMEOUT);
-		c.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(2)|DR|ECHO_RESPONSE(3)|", c.getRecordedData(true));
 		assertFalse(session.resume(SelectionKey.OP_WRITE));
@@ -201,23 +215,23 @@ public class DatagramSessionTest {
 		//when key is invalid
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		session.suspendWrite();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.SUSPEND_WRITE, SessionState.CLOSING);
 		assertFalse(session.isWriteSuspended());
-		session.resumeWrite();
-		session.suspendRead();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.RESUME_WRITE, SessionState.CLOSING);
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.SUSPEND_READ, SessionState.CLOSING);
 		assertFalse(session.isReadSuspended());
-		session.resumeRead();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.RESUME_READ, SessionState.CLOSING);
 		assertFalse(session.suspend(SelectionKey.OP_READ));
 		assertFalse(session.resume(SelectionKey.OP_READ));
 		
 		//when key is null
 		session = new DatagramSession(handler);
-		session.suspendWrite();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.SUSPEND_WRITE, SessionState.OPENING);
 		assertFalse(session.isWriteSuspended());
-		session.resumeWrite();
-		session.suspendRead();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.RESUME_WRITE, SessionState.OPENING);
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.SUSPEND_READ, SessionState.OPENING);
 		assertFalse(session.isReadSuspended());
-		session.resumeRead();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.RESUME_READ, SessionState.OPENING);
 
 		c = null;
 		
@@ -848,7 +862,7 @@ public class DatagramSessionTest {
 		assertEquals(sc.toString(), loop.toString(sc));
 		DatagramChannel dc = DatagramChannel.open();
 		assertEquals("sun.nio.ch.DatagramChannelImpl[local=unknown]", loop.toString(dc));
-		dc.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 7788));
+		dc.socket().bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 7788));
 		assertEquals("sun.nio.ch.DatagramChannelImpl[local=/127.0.0.1:7788]", loop.toString(dc));
 		dc.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.2"), 7789));
 		assertEquals("sun.nio.ch.DatagramChannelImpl[local=/127.0.0.1:7788,remote=/127.0.0.2:7789]", loop.toString(dc));

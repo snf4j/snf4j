@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.snf4j</groupId>
     <artifactId>snf4j-project</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
   </parent>
     
   <artifactId>snf4j-example</artifactId>
@@ -22,5 +22,29 @@
     </dependency>
 
   </dependencies> 
+  
+  <build>
+    <plugins>
+    
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>cobertura-maven-plugin</artifactId>
+        <version>${version.cobertura.plugin}</version>
+        <configuration>
+          <formats>
+            <format>html</format>
+            <format>xml</format>
+          </formats>
+          <check />
+          <instrumentation>
+            <excludes>
+              <exclude>org/snf4j/example/**/*.class</exclude>
+            </excludes>
+          </instrumentation>
+        </configuration>
+      </plugin>
+
+    </plugins>    
+  </build>
   
 </project>

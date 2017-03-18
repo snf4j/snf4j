@@ -300,7 +300,7 @@ public class DatagramSelectorLoopTest {
 		IDatagramHandler h = new TestDatagramHandler();
 		
 		try {
-			loop1.register(null, 0, (IDatagramHandler)null);
+			loop1.register(null, (IDatagramHandler)null);
 			fail ("handler cannot be null");
 		}
 		catch (IllegalArgumentException e) {
@@ -308,7 +308,7 @@ public class DatagramSelectorLoopTest {
 		}
 		
 		try {
-			loop1.register(null, 0, (DatagramSession)null);
+			loop1.register(null, (DatagramSession)null);
 			fail ("session cannot be null");
 		}
 		catch (IllegalArgumentException e) {
@@ -316,7 +316,7 @@ public class DatagramSelectorLoopTest {
 		}
 		
 		try {
-			loop1.register(null, 0, h);
+			loop1.register(null, h);
 			fail ("channel cannot be null");
 		}
 		catch (IllegalArgumentException e) {
@@ -334,7 +334,7 @@ public class DatagramSelectorLoopTest {
 		
 		loop1.stopping = true;
 		try {
-			loop1.register(dc, 0, h);
+			loop1.register(dc, h);
 			fail("loop cannot be is stopping state");
 		}
 		catch (SelectorLoopStoppingException e) {}
@@ -342,7 +342,7 @@ public class DatagramSelectorLoopTest {
 		
 		loop1.stop();
 		try {
-			loop1.register(dc, 0, h);
+			loop1.register(dc, h);
 			fail("loop have to be open");
 		}
 		catch (ClosedSelectorException e) {}
@@ -412,7 +412,7 @@ public class DatagramSelectorLoopTest {
 		
 		s.startServer();
 		s.waitForSessionOpen(TIMEOUT);
-		s.loop.register(s.getSession().channel, SelectionKey.OP_READ, s.getSession());
+		s.loop.register((DatagramChannel)s.getSession().channel, s.getSession());
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, s.loop.getSize());
 		s.stop(TIMEOUT);
@@ -432,7 +432,7 @@ public class DatagramSelectorLoopTest {
 		
 		//stop with one session in the loop
 		s = new DatagramHandler(PORT);
-		s.closingAction = ClosingAction.STOP;
+		s.endingAction = EndingAction.STOP;
 		s.startClient();
 		s.waitForSessionOpen(TIMEOUT);
 		s.getSession().close();
@@ -442,7 +442,7 @@ public class DatagramSelectorLoopTest {
 		
 		//quick stop with one session in the loop
 		s = new DatagramHandler(PORT);
-		s.closingAction = ClosingAction.QUICK_STOP;
+		s.endingAction = EndingAction.QUICK_STOP;
 		s.startClient();
 		s.waitForSessionOpen(TIMEOUT);
 		s.getSession().close();
@@ -452,12 +452,12 @@ public class DatagramSelectorLoopTest {
 
 		//stop with more sessions in the loop
 		s = new DatagramHandler(PORT);
-		s.closingAction = ClosingAction.STOP;
+		s.endingAction = EndingAction.STOP;
 		s.startClient();
 		s.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 		DatagramSession session1 = s.getSession();
-		s.closingAction = ClosingAction.DEFAULT;
+		s.endingAction = EndingAction.DEFAULT;
 		s.port = PORT+1;
 		s.start(true, s.loop);
 		s.waitForSessionOpen(TIMEOUT);
@@ -470,12 +470,12 @@ public class DatagramSelectorLoopTest {
 		
 		//quick stop with more sessions in the loop
 		s = new DatagramHandler(PORT);
-		s.closingAction = ClosingAction.QUICK_STOP;
+		s.endingAction = EndingAction.QUICK_STOP;
 		s.startClient();
 		s.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 		session1 = s.getSession();
-		s.closingAction = ClosingAction.DEFAULT;
+		s.endingAction = EndingAction.DEFAULT;
 		s.port = PORT+1;
 		s.start(true, s.loop);
 		s.waitForSessionOpen(TIMEOUT);
@@ -488,7 +488,7 @@ public class DatagramSelectorLoopTest {
 
 		//stop when empty with one session in the loop
 		s = new DatagramHandler(PORT);
-		s.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		s.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		s.startClient();
 		s.waitForSessionOpen(TIMEOUT);
 		s.getSession().close();
@@ -498,12 +498,12 @@ public class DatagramSelectorLoopTest {
 
 		//stop when empty with more sessions in the loop
 		s = new DatagramHandler(PORT);
-		s.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		s.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		s.startClient();
 		s.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 		session1 = s.getSession();
-		s.closingAction = ClosingAction.DEFAULT;
+		s.endingAction = EndingAction.DEFAULT;
 		s.port = PORT+1;
 		s.start(true, s.loop);
 		s.waitForSessionOpen(TIMEOUT);

@@ -27,11 +27,11 @@ package org.snf4j.core;
 
 /**
  * An <code>enum</code> that defines actions that are performed by the selector
- * loop after closing an session.
+ * loop after ending a session.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public enum ClosingAction {
+public enum EndingAction {
 	
 	/**
 	 * No action is performed.

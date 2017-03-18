@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import java.io.IOException;
 import java.nio.channels.CancelledKeyException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectableChannel;
@@ -646,8 +647,9 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	}
 
 	/**
-	 * Adds the channel to the pending registration queue.
-	 * 
+	 * Adds a channel to the pending registration queue.
+	 * @throws ClosedChannelException 
+	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
 	 *             if selector loop is in the process of stopping
 	 * @throws ClosedSelectorException
@@ -656,11 +658,22 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by this channel
 	 */
-	void register(SelectableChannel channel, int ops, Object attachement) {
-		if (channel == null) throw new IllegalArgumentException("channel is null");
-		if ((ops & ~channel.validOps()) != 0 ) throw new IllegalArgumentException("invalid options " + ops); 
-		if (!selector.isOpen()) throw new ClosedSelectorException();
-		if (stopping) throw new SelectorLoopStoppingException();
+	void register(SelectableChannel channel, int ops, Object attachement) throws ClosedChannelException {
+		if (channel == null) {
+			throw new IllegalArgumentException("channel is null");
+		}
+		if (!channel.isOpen()) {
+			throw new ClosedChannelException();
+		}
+		if ((ops & ~channel.validOps()) != 0 ) {
+			throw new IllegalArgumentException("invalid options " + ops); 
+		}
+		if (!selector.isOpen()) {
+			throw new ClosedSelectorException();
+		}
+		if (stopping) {
+			throw new SelectorLoopStoppingException();
+		}
 		
 		PendingRegistration reg = new PendingRegistration();
 
@@ -691,7 +704,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			sb.append(channel.getClass().getName());
 			sb.append("[local=");
 			try {
-				sb.append(((DatagramChannel)channel).getLocalAddress().toString());
+				sb.append(((DatagramChannel)channel).socket().getLocalSocketAddress().toString());
 			}
 			catch (Exception e) {
 				sb.append("unknown");
@@ -699,7 +712,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			if (((DatagramChannel)channel).isConnected()) {
 				sb.append(",remote=");
 				try {
-					sb.append(((DatagramChannel)channel).getRemoteAddress().toString());
+					sb.append(((DatagramChannel)channel).socket().getRemoteSocketAddress().toString());
 				}
 				catch (Exception e) {
 					sb.append("unknown");
@@ -751,7 +764,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	final void fireEndingEvent(final InternalSession session, boolean skipCloseWhenEmpty) {
 		fireEvent(session, SessionEvent.ENDING);
 
-		switch (session.getConfig().getClosingAction()) {
+		switch (session.getConfig().getEndingAction()) {
 		case STOP:
 			stop();
 			return;

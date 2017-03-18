@@ -25,7 +25,7 @@
  */
 package org.snf4j.example.discarding;
 
-import org.snf4j.core.ClosingAction;
+import org.snf4j.core.EndingAction;
 import org.snf4j.core.handler.AbstractStreamHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
@@ -91,6 +91,6 @@ public class DiscardingClientHandler extends AbstractStreamHandler {
 	@Override
 	public ISessionConfig getConfig() {
 		return new DefaultSessionConfig()
-				.setClosingAction(ClosingAction.STOP);
+				.setEndingAction(EndingAction.STOP);
 	}
 }

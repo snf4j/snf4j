@@ -35,6 +35,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -50,10 +51,11 @@ import org.junit.Test;
 import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
-import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.TestLogger;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
+import org.snf4j.core.session.IllegalSessionStateException;
+import org.snf4j.core.session.SessionState;
 
 public class StreamSelectorLoopTest {
 	final long TIMEOUT = 2000;
@@ -300,7 +302,13 @@ public class StreamSelectorLoopTest {
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		
-		c.getSession().write(null);
+		try {
+			c.getSession().write(null);
+			fail("exception not thrown");
+		}
+		catch (IllegalSessionStateException e) {
+			assertEquals(SessionState.CLOSING, e.getIllegalState());
+		}
 		
 		c.quickStop(TIMEOUT);
 		assertEquals("", c.getRecordedData(true));
@@ -453,10 +461,10 @@ public class StreamSelectorLoopTest {
 	public void testRegister() throws IOException {
 		SelectorLoop loop1 = new SelectorLoop();
 	
-		IHandler h = new TestHandler("");
+		TestHandler h = new TestHandler("");
 		
 		try {
-			loop1.register(null, 0, (IStreamHandler)null);
+			loop1.register(null, (IStreamHandler)null);
 			fail ("handler cannot be null");
 		}
 		catch (IllegalArgumentException e) {
@@ -464,7 +472,7 @@ public class StreamSelectorLoopTest {
 		}
 
 		try {
-			loop1.register(null, 0, (StreamSession)null);
+			loop1.register(null, (StreamSession)null);
 			fail ("session cannot be null");
 		}
 		catch (IllegalArgumentException e) {
@@ -472,7 +480,7 @@ public class StreamSelectorLoopTest {
 		}
 
 		try {
-			loop1.register(null, 0, (IStreamSessionFactory)null);
+			loop1.register(null, (IStreamSessionFactory)null);
 			fail ("factory cannot be null");
 		}
 		catch (IllegalArgumentException e) {
@@ -480,7 +488,7 @@ public class StreamSelectorLoopTest {
 		}
 
 		try {
-			loop1.register(null, 0, h);
+			loop1.register(null, h);
 			fail ("channel cannot be null");
 		}
 		catch (IllegalArgumentException e) {
@@ -498,7 +506,7 @@ public class StreamSelectorLoopTest {
 		
 		loop1.stopping = true;
 		try {
-			loop1.register(sc, 0, h);
+			loop1.register(sc, h);
 			fail("loop cannot be is stopping state");
 		}
 		catch (SelectorLoopStoppingException e) {}
@@ -506,7 +514,7 @@ public class StreamSelectorLoopTest {
 		
 		loop1.stop();
 		try {
-			loop1.register(sc, 0, h);
+			loop1.register(sc, h);
 			fail("loop have to be open");
 		}
 		catch (ClosedSelectorException e) {}
@@ -717,9 +725,9 @@ public class StreamSelectorLoopTest {
 		TestLogger logger = new TestLogger();
 		
 		loop.elogWarnOrError(logger, "Message {}: {}", "X", new Exception("E"));
-		assertEquals("W|Message {}: {}|[X, E]|", logger.getLog());
+		assertEquals("W|Message {}: {}|[X, java.lang.Exception: E]|", logger.getLog());
 		loop.elogWarnOrError(logger, "Message {}: {}", "X", new IllegalArgumentException("I"));
-		assertEquals("E|Message {}: {}|[X, I]|", logger.getLog());
+		assertEquals("E|Message {}: {}|[X, java.lang.IllegalArgumentException: I]|", logger.getLog());
 	}
 	
 	@Test
@@ -892,7 +900,7 @@ public class StreamSelectorLoopTest {
 
 		//stop with one session in the loop
 		c = new Client(PORT);
-		c.closingAction = ClosingAction.STOP;
+		c.endingAction = EndingAction.STOP;
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionOpen(TIMEOUT);
@@ -903,12 +911,12 @@ public class StreamSelectorLoopTest {
 
 		//stop with more sessions in the loop
 		c = new Client(PORT);
-		c.closingAction = ClosingAction.STOP;
+		c.endingAction = EndingAction.STOP;
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		StreamSession session1 = c.getSession();
-		c.closingAction = ClosingAction.DEFAULT;
+		c.endingAction = EndingAction.DEFAULT;
 		c.start(false, c.loop);
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
@@ -919,14 +927,14 @@ public class StreamSelectorLoopTest {
 		
 		//stop with more sessions in the loop (one listening)
 		c = new Client(PORT);
-		c.closingAction = ClosingAction.STOP;
+		c.endingAction = EndingAction.STOP;
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		ServerSocketChannel ssc = ServerSocketChannel.open();
 		ssc.configureBlocking(false);
-		ssc.bind(new InetSocketAddress(PORT+1));
-		c.loop.register(ssc, SelectionKey.OP_ACCEPT, factory);
+		ssc.socket().bind(new InetSocketAddress(PORT+1));
+		c.loop.register(ssc, factory);
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, c.loop.getSize());
 		c.getSession().close();
@@ -937,7 +945,7 @@ public class StreamSelectorLoopTest {
 
 		//stop when empty with one session in the loop
 		c = new Client(PORT);
-		c.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		c.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionOpen(TIMEOUT);
@@ -948,12 +956,12 @@ public class StreamSelectorLoopTest {
 
 		//stop when empty with more sessions in the loop
 		c = new Client(PORT);
-		c.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		c.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		session1 = c.getSession();
-		c.closingAction = ClosingAction.DEFAULT;
+		c.endingAction = EndingAction.DEFAULT;
 		c.start(false, c.loop);
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
@@ -968,14 +976,14 @@ public class StreamSelectorLoopTest {
 
 		//stop when empty with more sessions in the loop (one listening)
 		c = new Client(PORT);
-		c.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		c.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
 		ssc = ServerSocketChannel.open();
 		ssc.configureBlocking(false);
-		ssc.bind(new InetSocketAddress(PORT+1));
-		c.loop.register(ssc, SelectionKey.OP_ACCEPT, factory);
+		ssc.socket().bind(new InetSocketAddress(PORT+1));
+		c.loop.register(ssc, factory);
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, c.loop.getSize());
 		c.getSession().close();
@@ -999,10 +1007,10 @@ public class StreamSelectorLoopTest {
 		//stop when empty with more sessions in the loop (with pool)
 		s = new Server(PORT);
 		s.pool = new DefaultSelectorLoopPool(1);
-		s.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		s.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		s.start();
 		c = new Client(PORT);
-		c.closingAction = ClosingAction.STOP_WHEN_EMPTY;
+		c.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		c.start();
 		c.waitForSessionOpen(TIMEOUT);
 		assertEquals("SCR|SOP|", c.getRecordedData(true));
@@ -1142,13 +1150,13 @@ public class StreamSelectorLoopTest {
 		s.stop(TIMEOUT);
 		
 		//with closing actions
-		ClosingAction[] actions = new ClosingAction[] {ClosingAction.STOP, ClosingAction.QUICK_STOP, ClosingAction.STOP_WHEN_EMPTY};
-		for (ClosingAction action: actions) {
+		EndingAction[] actions = new EndingAction[] {EndingAction.STOP, EndingAction.QUICK_STOP, EndingAction.STOP_WHEN_EMPTY};
+		for (EndingAction action: actions) {
 			factory = new TestSelectorFactory();
 			factory.testSelectorCounter = 2;
 			loop = new SelectorLoop("loop", null, factory);
 			s = new Server(PORT);
-			s.closingAction = action;
+			s.endingAction = action;
 			s.start(false, loop);
 			c = new Client(PORT);
 			c.start();
@@ -1259,13 +1267,13 @@ public class StreamSelectorLoopTest {
 		s.stop(TIMEOUT);
 		
 		//with closing actions
-		ClosingAction[] actions = new ClosingAction[] {ClosingAction.STOP, ClosingAction.QUICK_STOP, ClosingAction.STOP_WHEN_EMPTY};
-		for (ClosingAction action: actions) {
+		EndingAction[] actions = new EndingAction[] {EndingAction.STOP, EndingAction.QUICK_STOP, EndingAction.STOP_WHEN_EMPTY};
+		for (EndingAction action: actions) {
 	    	factory = new TestSelectorFactory();
 	    	factory.testSelectorCounter = 2;
 	    	loop = new SelectorLoop("loop", null, factory);
 			s = new Server(PORT);
-			s.closingAction = action;
+			s.endingAction = action;
 			s.start(false, loop);
 			c = new Client(PORT);
 			c.start();
@@ -1318,28 +1326,59 @@ public class StreamSelectorLoopTest {
 		s.start();
 		c = new Client(PORT);
 		
-		int[] opts = new int[] {SelectionKey.OP_CONNECT, 0, SelectionKey.OP_READ, SelectionKey.OP_WRITE};
-		
 		//register connected channel
-		for (int opt: opts) {
-			c = new Client(PORT);
-			c.channel = SocketChannel.open(new InetSocketAddress(InetAddress.getByName(c.ip), PORT));
-			c.intrestOps = opt;
-			assertTrue(c.channel.isConnected());
-			c.start();
-			assertConnection(s,c);
-		}   
+		c = new Client(PORT);
+		c.channel = SocketChannel.open(new InetSocketAddress(InetAddress.getByName(c.ip), PORT));
+		assertTrue(c.channel.isConnected());
+		c.start();
+		assertConnection(s,c);
 
 		//register channel with pending connection
-		for (int opt: opts) {
-			c = new Client(PORT);
-			c.channel = SocketChannel.open();
-			c.channel.configureBlocking(false);
+		c = new Client(PORT);
+		c.channel = SocketChannel.open();
+		c.channel.configureBlocking(false);
+		c.channel.connect(new InetSocketAddress(InetAddress.getByName(c.ip), PORT));
+		assertTrue(c.channel.isConnectionPending());
+		c.start();
+		assertConnection(s,c);
+		
+		//register only open channel
+		c = new Client(PORT);
+		c.channel = SocketChannel.open();
+   	    assertTrue(!c.channel.isConnected());
+		assertTrue(!c.channel.isConnectionPending());
+		assertTrue(c.channel.isOpen());
+		c.start();	
+		waitFor(1000);
+		assertEquals("", s.getRecordedData(true));
+		String recordedData = c.getRecordedData(true);
+		//It appears that this scenario works differently based on the NIO implementation
+		//For example on Windows select will be blocked till the connect 
+		if ("".equals(recordedData)) {
+			assertEquals("", c.getRecordedData(true));
 			c.channel.connect(new InetSocketAddress(InetAddress.getByName(c.ip), PORT));
-			c.intrestOps = opt;
-			assertTrue(c.channel.isConnectionPending());
-			c.start();
 			assertConnection(s,c);
-		}   
+		}
+		else {
+			assertEquals("SCR|EXC|SEN|", recordedData);
+		}
+		
+		//register closed channel
+		SocketChannel channel = SocketChannel.open();
+		channel.close();
+		TestHandler handler = new TestHandler("handler");
+		handler.events = new StringBuilder();
+		StreamSession session = new StreamSession(handler);
+		try {
+			s.loop.register(channel, session);
+			fail("exception not thrown");
+		}
+		catch (ClosedChannelException e) {
+		}
+		assertEquals("", handler.getEvents());
+		
+		s.loop.handleRegisteredKey(null, channel, session);
+		assertEquals("SESSION_CREATED|SESSION_ENDING|", handler.getEvents());
+		
     }
 }
