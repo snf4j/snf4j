@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -39,6 +40,8 @@ import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.IDatagramSession;
+import org.snf4j.core.session.IllegalSessionStateException;
+import org.snf4j.core.session.SessionState;
 
 /**
  * The core implementation of the {@link org.snf4j.core.session.IDatagramSession
@@ -90,7 +93,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	private final DatagramSocket getSocket() {
 		SelectableChannel channel = this.channel;
 		
-		if (channel instanceof DatagramChannel) {
+		if (channel instanceof DatagramChannel && channel.isOpen()) {
 			return ((DatagramChannel)channel).socket();
 		}
 		return null;
@@ -120,23 +123,22 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 
 	@Override
 	public void write(SocketAddress remoteAddress, byte[] datagram) {
-		SelectionKey key = this.key;
+		SelectionKey key = checkKey(this.key);
 		
-		if (key != null && key.isValid()) {
-			try {
-				synchronized (writeLock) {
-					key = detectRebuild(key);
-					if (closing != ClosingState.NONE) {
-						return;
-					}
-					outQueue.add(new DatagramRecord(remoteAddress, datagram));
-					setWriteInterestOps(key);
+		try {
+			synchronized (writeLock) {
+				key = detectRebuild(key);
+				if (closing != ClosingState.NONE) {
+					return;
 				}
+				outQueue.add(new DatagramRecord(remoteAddress, datagram));
+				setWriteInterestOps(key);
 			}
-			catch (Exception e) {
-			}
-			lazyWakeup();
 		}
+		catch (CancelledKeyException e) {
+			throw new IllegalSessionStateException(SessionState.CLOSING);
+		}
+		lazyWakeup();
 	}
 	
 	private final void close(SelectionKey key) throws IOException {

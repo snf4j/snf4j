@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-SymbolicName: snf4j.core.slf4j
 Bundle-Name: snf4j-core-slf4j
 Bundle-Vendor: SNF4J.ORG
-Bundle-RequiredExecutionEnvironment: J2SE-1.5
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: org.snf4j.core.logger.impl;version=${parsedVersion.osgiVersion}
 Import-Package: org.snf4j.core.logger;version=${parsedVersion.osgiVersion},
   org.slf4j;version=${version.slf4j}

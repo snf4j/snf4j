@@ -73,11 +73,11 @@ public class DefaultExceptionLoggerTest {
 		args = new Object[] {new Exception("E1")};
 		Object[] args2 = l.prepareArguments(args);
 		assertTrue(args != args2);
-		assertEquals(Arrays.toString(new Object[] {"E1"}), Arrays.toString(args2));
+		assertEquals(Arrays.toString(new Object[] {"java.lang.Exception: E1"}), Arrays.toString(args2));
 		args = new Object[] {new Integer(1), new Exception("E2")};
 		args2 = l.prepareArguments(args);
 		assertTrue(args != args2);
-		assertEquals(Arrays.toString(new Object[] {new Integer(1), "E2"}), Arrays.toString(args2));
+		assertEquals(Arrays.toString(new Object[] {new Integer(1), "java.lang.Exception: E2"}), Arrays.toString(args2));
 	}
 	
 	@Test
@@ -85,7 +85,7 @@ public class DefaultExceptionLoggerTest {
 		TestLogger log = new TestLogger();
 		IExceptionLogger elog = new DefaultExceptionLogger();
 		Object[] args = new Object[] {1, new Exception("E1")};
-		Object[] expa = new Object[] {1, "E1"};
+		Object[] expa = new Object[] {1, "java.lang.Exception: E1"};
 		String exps = Arrays.toString(expa);
 		
 		elog.trace(log, "Message", args);

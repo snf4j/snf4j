@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -52,7 +51,9 @@ import org.junit.Test;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
 
 public class SessionTest {
@@ -82,7 +83,7 @@ public class SessionTest {
 		ServerSocketChannel ssc = ServerSocketChannel.open();
 		
 		ssc.configureBlocking(false);
-		ssc.bind(new InetSocketAddress(port));
+		ssc.socket().bind(new InetSocketAddress(port));
 		return ssc.register(selector, SelectionKey.OP_ACCEPT);
 	}
 	
@@ -246,7 +247,13 @@ public class SessionTest {
 		SelectionKey key2 = registerSocketChannel(key1.selector(), PORT);
 		StreamSession s = new StreamSession(handler);
 		
-		s.write(getBytes(10,0));
+		try {
+			s.write(getBytes(10,0));
+			fail("exception should be thrown");
+		}
+		catch (IllegalSessionStateException e) {
+			assertEquals(SessionState.OPENING, e.getIllegalState());
+		}
 		assertOutBuffers(s, "1024:0=0");
 		
 		s.setChannel((SocketChannel) key2.channel());
@@ -316,8 +323,14 @@ public class SessionTest {
 		key1.channel().close();
 		key2.channel().close();
 		key1.selector().close();
-		
-		s.write(getBytes(20, 0));
+
+		try {
+			s.write(getBytes(20, 0));
+			fail("exception should be thrown");
+		}
+		catch (IllegalSessionStateException e) {
+			assertEquals(SessionState.CLOSING, e.getIllegalState());
+		}
 		assertOutBuffers(s, "1024:1023=3;1024:1=4,1023=5;1024:1000=6,24=7;1025:1025=7;1024:1=8");
 		
 	}
@@ -542,25 +555,51 @@ public class SessionTest {
 		//when key is invalid
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		session.suspendWrite();
+		assertResumeSuspendException(session, RSType.SUSPEND_WRITE, SessionState.CLOSING);
 		assertFalse(session.isWriteSuspended());
-		session.resumeWrite();
-		session.suspendRead();
+		assertResumeSuspendException(session, RSType.RESUME_WRITE, SessionState.CLOSING);
+		assertResumeSuspendException(session, RSType.SUSPEND_READ, SessionState.CLOSING);
 		assertFalse(session.isReadSuspended());
-		session.resumeRead();
+		assertResumeSuspendException(session, RSType.RESUME_READ, SessionState.CLOSING);
 		assertFalse(session.suspend(SelectionKey.OP_READ));
 		assertFalse(session.resume(SelectionKey.OP_READ));
 
 		//when key is null
 		session = new StreamSession(handler);
-		session.suspendWrite();
+		assertResumeSuspendException(session, RSType.SUSPEND_WRITE, SessionState.OPENING);
 		assertFalse(session.isWriteSuspended());
-		session.resumeWrite();
-		session.suspendRead();
+		assertResumeSuspendException(session, RSType.RESUME_WRITE, SessionState.OPENING);
+		assertResumeSuspendException(session, RSType.SUSPEND_READ, SessionState.OPENING);
 		assertFalse(session.isReadSuspended());
-		session.resumeRead();
+		assertResumeSuspendException(session, RSType.RESUME_READ, SessionState.OPENING);
 
 		c = null;
+	}
+
+	public static enum RSType {SUSPEND_READ, SUSPEND_WRITE, RESUME_READ, RESUME_WRITE};
+	public static void assertResumeSuspendException(ISession session, RSType type, SessionState illState) {
+		try {
+			switch (type) {
+			case SUSPEND_READ:
+				session.suspendRead();
+				break;
+
+			case SUSPEND_WRITE:
+				session.suspendWrite();
+				break;
+
+			case RESUME_READ:
+				session.resumeRead();
+				break;
+
+			case RESUME_WRITE:
+				session.resumeWrite();
+				break;
+			}
+			fail("no exception");
+		} catch (IllegalSessionStateException e) {
+			assertEquals(illState, e.getIllegalState());
+		}
 	}
 	
 	@Test
@@ -1153,8 +1192,8 @@ public class SessionTest {
 		
 		assertNull(c.getSession().getRemoteAddress());
 		assertNull(s.getSession().getRemoteAddress());
-		assertNotNull(c.getSession().getLocalAddress());
-		assertNotNull(s.getSession().getLocalAddress());
+		assertNull(c.getSession().getLocalAddress());
+		assertNull(s.getSession().getLocalAddress());
 	}
 	
 	@Test
@@ -1401,7 +1440,7 @@ public class SessionTest {
 			session.detectRebuild(s.getSession().key);
 			fail("detecting rebuild should fail");
 		}
-		catch (CancelledKeyException e) {
+		catch (IllegalSessionStateException e) {
 		}
 	}
 }

@@ -218,12 +218,14 @@ public class DefaultSelectorLoopPoolTest {
 		c1.start();
 		c1.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionOpen(TIMEOUT);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, pool.getSize());
 		assertEquals(1, pool.getPool().length);
 		
 		c2.start();
 		c2.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionOpen(TIMEOUT);
+		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, pool.getSize());
 		assertEquals(2, pool.getPool().length);
 

@@ -23,35 +23,32 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.core.session;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 
-import org.snf4j.core.SelectorLoop;
+/**
+ * Unchecked exception thrown when an attempt is made to perform an operation
+ * when a session is in an illegal state. 
+ */
+public class IllegalSessionStateException extends IllegalStateException {
 
-public class DiscardingClient {
-	static final String PREFIX = "org.snf4j.";
-	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
+	private static final long serialVersionUID = -1536585977966419427L;
 	
-	public static void main(String[] args) {
-		try {
-			SelectorLoop loop = new SelectorLoop();
-			loop.start();
-			
-			SocketChannel channel = SocketChannel.open();
-			channel.configureBlocking(false);
-			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
-			
-			loop.register(channel, new DiscardingClientHandler());
-			loop.join();
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
+	private final SessionState illegalState;
+	
+	/**
+	 * Constructs an instance of this exception.
+	 */
+	public IllegalSessionStateException(SessionState illegalState) {
+		this.illegalState = illegalState;
+	}
+	
+	/*
+	 * Returns the illegal state of a session that caused this exception.
+	 * 
+	 * @return the illegal state
+	 */
+	public SessionState getIllegalState() {
+		return illegalState;
 	}
 }

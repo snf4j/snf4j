@@ -25,7 +25,7 @@
  */
 package org.snf4j.core.session;
 
-import org.snf4j.core.ClosingAction;
+import org.snf4j.core.EndingAction;
 
 /**
  * Default configuration for the session.
@@ -47,7 +47,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/** Determines if possibly incomplete datagrams should be ignored */
 	private boolean ignorePossibleIncompleteDatagrams = true;
 	
-	private ClosingAction closingAction = ClosingAction.DEFAULT;
+	private EndingAction endingAction = EndingAction.DEFAULT;
 	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
@@ -157,25 +157,25 @@ public class DefaultSessionConfig implements ISessionConfig {
 	}
 
 	/**
-	 * Sets the closing action that should be performed by the selector
-	 * loop after closing of the associated session.
+	 * Sets an action that should be performed by the selector
+	 * loop after ending of the associated session.
 	 * 
-	 * @param action the closing action
+	 * @param action en ending action
 	 * @return this session config object
 	 */
-	public DefaultSessionConfig setClosingAction(ClosingAction action) {
-		closingAction = action;
+	public DefaultSessionConfig setEndingAction(EndingAction action) {
+		endingAction = action;
 		return this;
 	}
 	
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The default value is {@link org.snf4j.core.ClosingAction#DEFAULT DEFAUL}
+	 * The default value is {@link org.snf4j.core.EndingAction#DEFAULT DEFAUL}
 	 */
 	@Override
-	public ClosingAction getClosingAction() {
-		return closingAction;
+	public EndingAction getEndingAction() {
+		return endingAction;
 	}
 
 }

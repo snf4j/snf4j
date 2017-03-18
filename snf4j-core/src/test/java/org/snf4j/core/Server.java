@@ -28,7 +28,6 @@ package org.snf4j.core;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
@@ -60,7 +59,7 @@ public class Server {
 	public boolean directAllocator;
 	public ISelectorLoopPool pool;
 	public volatile boolean exceptionResult;
-	public volatile ClosingAction closingAction = ClosingAction.DEFAULT;
+	public volatile EndingAction endingAction = EndingAction.DEFAULT;
 	public volatile StringBuilder serverSocketLogs = new StringBuilder();
 	public volatile ServerSocketChannel ssc;
 	public volatile ServerSocketChannel registeredSsc;
@@ -160,8 +159,8 @@ public class Server {
 		ssc = ServerSocketChannel.open();
 		
 		ssc.configureBlocking(false);
-		ssc.bind(new InetSocketAddress(port));
-		loop.register(ssc, SelectionKey.OP_ACCEPT, new SessionFactory());
+		ssc.socket().bind(new InetSocketAddress(port));
+		loop.register(ssc, new SessionFactory());
 		
 		if (firstRegistrate) {
 			loop.start();
@@ -274,7 +273,7 @@ public class Server {
 			config.setMinInBufferCapacity(1024);
 			config.setMinOutBufferCapacity(1024);
 			config.setThroughputCalculationInterval(throughputCalcInterval);
-			config.setClosingAction(closingAction);
+			config.setEndingAction(endingAction);
 			return config;
 		}
 

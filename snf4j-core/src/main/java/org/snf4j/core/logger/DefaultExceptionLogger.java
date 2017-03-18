@@ -56,7 +56,7 @@ public class DefaultExceptionLogger implements IExceptionLogger {
 			
 			if (lastArg instanceof Throwable) {
 				args = args.clone();
-				args[last] = ((Throwable)lastArg).getMessage();
+				args[last] = ((Throwable)lastArg).toString();
 			}
 		}
 		return args;

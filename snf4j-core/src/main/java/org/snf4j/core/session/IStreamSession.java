@@ -51,6 +51,8 @@ public interface IStreamSession extends ISession {
 	 * 
 	 * @param data
 	 *            bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
 	 */
 	void write(byte[] data);
 

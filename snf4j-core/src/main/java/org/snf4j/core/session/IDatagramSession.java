@@ -53,6 +53,8 @@ public interface IDatagramSession extends ISession {
 	 * 
 	 * @param datagram
 	 *            the datagram to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
 	 */
 	void write(byte[] datagram);
 	
@@ -67,6 +69,8 @@ public interface IDatagramSession extends ISession {
 	 *            the address of the remote end where the datagram should be sent
 	 * @param datagram
 	 *            the datagram to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
 	 */
 	void write(SocketAddress remoteAddress, byte[] datagram);
 }

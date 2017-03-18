@@ -26,7 +26,6 @@
 package org.snf4j.example.discarding;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
@@ -45,9 +44,11 @@ public class DiscardingServer {
 			
 			ServerSocketChannel channel = ServerSocketChannel.open();
 			channel.configureBlocking(false);
-			channel.bind(new InetSocketAddress(PORT));
+			channel.socket().bind(new InetSocketAddress(PORT));
 			
-			loop.register(channel, SelectionKey.OP_ACCEPT, new AbstractSessionFactory() {
+			//channel.bind(new InetSocketAddress(PORT));
+			
+			loop.register(channel, new AbstractSessionFactory() {
 
 				@Override
 				protected IStreamHandler createHandler(SocketChannel channel) {
