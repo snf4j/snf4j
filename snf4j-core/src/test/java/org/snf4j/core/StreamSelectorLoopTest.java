@@ -725,9 +725,9 @@ public class StreamSelectorLoopTest {
 		TestLogger logger = new TestLogger();
 		
 		loop.elogWarnOrError(logger, "Message {}: {}", "X", new Exception("E"));
-		assertEquals("W|Message {}: {}|[X, E]|", logger.getLog());
+		assertEquals("W|Message {}: {}|[X, java.lang.Exception: E]|", logger.getLog());
 		loop.elogWarnOrError(logger, "Message {}: {}", "X", new IllegalArgumentException("I"));
-		assertEquals("E|Message {}: {}|[X, I]|", logger.getLog());
+		assertEquals("E|Message {}: {}|[X, java.lang.IllegalArgumentException: I]|", logger.getLog());
 	}
 	
 	@Test
