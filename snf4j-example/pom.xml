@@ -23,4 +23,28 @@
 
   </dependencies> 
   
+  <build>
+    <plugins>
+    
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>cobertura-maven-plugin</artifactId>
+        <version>${version.cobertura.plugin}</version>
+        <configuration>
+          <formats>
+            <format>html</format>
+            <format>xml</format>
+          </formats>
+          <check />
+          <instrumentation>
+            <ignores>
+              <ignore>org.snf4j.example.*</ignore>
+            </ignores>
+          </instrumentation>
+        </configuration>
+      </plugin>
+
+    </plugins>    
+  </build>
+  
 </project>

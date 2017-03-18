@@ -2,6 +2,9 @@ sudo: true
 
 language: java
 
+script:
+  - mvn cobertura:cobertura -B
+  
 jdk:
   - oraclejdk8
   
@@ -9,6 +12,9 @@ branches:
   only:
   - master
 
+after_success:
+  - bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
+  
 after_failure:
   - pwd
   - cat snf4j-core/target/surefire-reports/*.txt
