@@ -30,6 +30,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -42,6 +43,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.handler.IDatagramHandler;
+import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
 
 public class DatagramSessionTest {
@@ -105,8 +107,14 @@ public class DatagramSessionTest {
 	@Test
 	public void testWrite() throws Exception {
 		DatagramSession session = new DatagramSession(handler);
+
+		try {
+			session.write(new byte[10]);
+			fail("exception not thrown");
+		} catch (IllegalSessionStateException e) {
+			assertEquals(SessionState.OPENING, e.getIllegalState());
+		}
 		
-		session.write(new byte[10]);
 		assertTrue(session.outQueue.isEmpty());
 		
 		s = new DatagramHandler(PORT);
@@ -135,8 +143,14 @@ public class DatagramSessionTest {
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
+
+		try {
+			c.write(new Packet(PacketType.ECHO, "2"));
+			fail("exception not thrown");
+		} catch (IllegalSessionStateException e) {
+			assertEquals(SessionState.CLOSING, e.getIllegalState());
+		}
 		
-		c.write(new Packet(PacketType.ECHO, "2"));
 		assertTrue(c.getSession().outQueue.isEmpty());
 		waitFor(2000);
 		assertEquals("", c.getRecordedData(true));
@@ -201,23 +215,23 @@ public class DatagramSessionTest {
 		//when key is invalid
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		session.suspendWrite();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.SUSPEND_WRITE, SessionState.CLOSING);
 		assertFalse(session.isWriteSuspended());
-		session.resumeWrite();
-		session.suspendRead();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.RESUME_WRITE, SessionState.CLOSING);
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.SUSPEND_READ, SessionState.CLOSING);
 		assertFalse(session.isReadSuspended());
-		session.resumeRead();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.RESUME_READ, SessionState.CLOSING);
 		assertFalse(session.suspend(SelectionKey.OP_READ));
 		assertFalse(session.resume(SelectionKey.OP_READ));
 		
 		//when key is null
 		session = new DatagramSession(handler);
-		session.suspendWrite();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.SUSPEND_WRITE, SessionState.OPENING);
 		assertFalse(session.isWriteSuspended());
-		session.resumeWrite();
-		session.suspendRead();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.RESUME_WRITE, SessionState.OPENING);
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.SUSPEND_READ, SessionState.OPENING);
 		assertFalse(session.isReadSuspended());
-		session.resumeRead();
+		SessionTest.assertResumeSuspendException(session, SessionTest.RSType.RESUME_READ, SessionState.OPENING);
 
 		c = null;
 		

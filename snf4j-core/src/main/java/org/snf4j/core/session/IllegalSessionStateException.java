@@ -25,52 +25,30 @@
  */
 package org.snf4j.core.session;
 
-import java.net.SocketAddress;
-
-import org.snf4j.core.handler.IDatagramHandler;
 
 /**
- * Extends the {@link ISession} interface to cover datagram-oriented functionalities.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ * Unchecked exception thrown when an attempt is made to perform an operation
+ * when a session is in an illegal state. 
  */
-public interface IDatagramSession extends ISession {
-	
-	/**
-	 * Gets the datagram-oriented handler associated with this session
-	 * 
-	 * @return the datagram-oriented handler
-	 */
-	@Override
-	IDatagramHandler getHandler();
+public class IllegalSessionStateException extends IllegalStateException {
 
-	/**
-	 * Writes a datagram to the associated datagram-oriented channel that needs
-	 * to be connected.
-	 * <p>
-	 * After returning from this method the passed byte array should not be
-	 * modified by the caller.
-	 * 
-	 * @param datagram
-	 *            the datagram to be sent
-	 * @throws IllegalSessionStateException
-	 *             if this session is not open
-	 */
-	void write(byte[] datagram);
+	private static final long serialVersionUID = -1536585977966419427L;
+	
+	private final SessionState illegalState;
 	
 	/**
-	 * Writes a datagram to the associated datagram-oriented channel that is not
-	 * connected.
-	 * <p>
-	 * After returning from this method the passed byte array should not be
-	 * modified by the caller.
-	 * 
-	 * @param remoteAddress
-	 *            the address of the remote end where the datagram should be sent
-	 * @param datagram
-	 *            the datagram to be sent
-	 * @throws IllegalSessionStateException
-	 *             if this session is not open
+	 * Constructs an instance of this exception.
 	 */
-	void write(SocketAddress remoteAddress, byte[] datagram);
+	public IllegalSessionStateException(SessionState illegalState) {
+		this.illegalState = illegalState;
+	}
+	
+	/*
+	 * Returns the illegal state of a session that caused this exception.
+	 * 
+	 * @return the illegal state
+	 */
+	public SessionState getIllegalState() {
+		return illegalState;
+	}
 }

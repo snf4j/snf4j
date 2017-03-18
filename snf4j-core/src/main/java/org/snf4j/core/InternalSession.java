@@ -39,6 +39,7 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.AbstractSession;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
 
 abstract class InternalSession extends AbstractSession implements ISession {
@@ -117,15 +118,31 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	/**
 	 * Detects if the key was replaced. It can happen after rebuilding of the selector.
 	 * 
-	 * @throws CancelledKeyException
+	 * @throws IllegalSessionStateException
 	 *             if replacement occurred and new key is invalid
 	 */
 	final SelectionKey detectRebuild(SelectionKey key) {
 		if (key != this.key) {
 			key = this.key;
 			if (!key.isValid()) {
-				throw new CancelledKeyException();
+				throw new IllegalSessionStateException(SessionState.CLOSING);
 			}
+		}
+		return key;
+	}
+
+	/**
+	 * Throws unchecked exception if the key is not valid
+	 *  
+	 * @throws IllegalSessionStateException
+	 *             if key is not valid
+	 */
+	static SelectionKey checkKey(SelectionKey key) {
+		if (key == null) {
+			throw new IllegalSessionStateException(SessionState.OPENING);
+		}
+		if (!key.isValid()) {
+			throw new IllegalSessionStateException(SessionState.CLOSING);
 		}
 		return key;
 	}
@@ -206,6 +223,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	/**
 	 * Sets key's write interest if write is not suspended. It should be
 	 * executed inside block synchronized on a write lock.
+	 *
+	 * @throw CancelledKeyException if the key has been canceled
 	 */
 	void setWriteInterestOps(SelectionKey key) {
 		if (!writeSuspended) {
@@ -289,62 +308,57 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	@Override
 	public void suspendRead() {
-		SelectionKey key = this.key;
-		
-		if (key != null && key.isValid()) {
-			boolean wakeup;
-			synchronized (writeLock) {
-				//TODO: add detectRebuild, determine if exception should thrown
-				wakeup = suspend(SelectionKey.OP_READ);
-			}
-			if (wakeup) {
-				lazyWakeup();
-			}
+		SelectionKey key = checkKey(this.key);
+		boolean wakeup;
+
+		synchronized (writeLock) {
+			detectRebuild(key);
+			wakeup = suspend(SelectionKey.OP_READ);
+		}
+		if (wakeup) {
+			lazyWakeup();
 		}
 	}
 
 	@Override
 	public void suspendWrite() {
-		SelectionKey key = this.key;
-		
-		if (key != null && key.isValid()) {
-			boolean wakeup;
-			synchronized (writeLock) {
-				wakeup = suspend(SelectionKey.OP_WRITE);
-			}
-			if (wakeup) {
-				lazyWakeup();
-			}
+		SelectionKey key = checkKey(this.key);
+		boolean wakeup;
+
+		synchronized (writeLock) {
+			detectRebuild(key);
+			wakeup = suspend(SelectionKey.OP_WRITE);
+		}
+		if (wakeup) {
+			lazyWakeup();
 		}
 	}
 
 	@Override
 	public void resumeRead() {
-		SelectionKey key = this.key;
-		
-		if (key != null && key.isValid()) {
-			boolean wakeup;
-			synchronized (writeLock) {
-				wakeup = resume(SelectionKey.OP_READ);
-			}
-			if (wakeup) {
-				lazyWakeup();
-			}
+		SelectionKey key = checkKey(this.key);
+		boolean wakeup;
+
+		synchronized (writeLock) {
+			detectRebuild(key);
+			wakeup = resume(SelectionKey.OP_READ);
+		}
+		if (wakeup) {
+			lazyWakeup();
 		}
 	}
 
 	@Override
 	public void resumeWrite() {
-		SelectionKey key = this.key;
-		
-		if (key != null && key.isValid()) {
-			boolean wakeup;
-			synchronized (writeLock) {
-				wakeup = resume(SelectionKey.OP_WRITE);
-			}
-			if (wakeup) {
-				lazyWakeup();
-			}
+		SelectionKey key = checkKey(this.key);
+		boolean wakeup;
+
+		synchronized (writeLock) {
+			detectRebuild(key);
+			wakeup = resume(SelectionKey.OP_WRITE);
+		}
+		if (wakeup) {
+			lazyWakeup();
 		}
 	}
 	

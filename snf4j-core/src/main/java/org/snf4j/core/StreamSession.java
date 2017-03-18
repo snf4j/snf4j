@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -37,6 +38,8 @@ import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.IStreamSession;
+import org.snf4j.core.session.IllegalSessionStateException;
+import org.snf4j.core.session.SessionState;
 
 /**
  * The core implementation of the {@link org.snf4j.core.session.IStreamSession
@@ -95,38 +98,37 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	@Override
 	public void write(byte[] data) {
-		SelectionKey key = this.key;
+		SelectionKey key = checkKey(this.key);
 		
-		if (key != null && key.isValid()) {
-			synchronized (writeLock) {
-				if (closing != ClosingState.NONE) {
-					return;
-				}
-				int lastIndex = outBuffers.length - 1;
-				ByteBuffer lastBuffer = outBuffers[lastIndex];
-				int lastRemaining = lastBuffer.remaining();
-
-				if (lastRemaining >= data.length) {
-					lastBuffer.put(data);
-				}
-				else {
-					lastBuffer.put(data, 0, lastRemaining).flip();
-					ByteBuffer[] newBuffers = new ByteBuffer[lastIndex+2];
-					System.arraycopy(outBuffers, 0, newBuffers, 0, outBuffers.length);
-					ByteBuffer newBuffer = allocator.allocate(Math.max(minOutBufferCapacity, data.length - lastRemaining));
-					newBuffer.put(data, lastRemaining, data.length - lastRemaining);
-					newBuffers[lastIndex+1] = newBuffer;
-					outBuffers = newBuffers;
-				}
-				
-				try {
-					setWriteInterestOps(detectRebuild(key));
-				}
-				catch (Exception e) {
-				}
+		synchronized (writeLock) {
+			if (closing != ClosingState.NONE) {
+				return;
 			}
-			lazyWakeup();
+			int lastIndex = outBuffers.length - 1;
+			ByteBuffer lastBuffer = outBuffers[lastIndex];
+			int lastRemaining = lastBuffer.remaining();
+
+			if (lastRemaining >= data.length) {
+				lastBuffer.put(data);
+			}
+			else {
+				lastBuffer.put(data, 0, lastRemaining).flip();
+				ByteBuffer[] newBuffers = new ByteBuffer[lastIndex+2];
+				System.arraycopy(outBuffers, 0, newBuffers, 0, outBuffers.length);
+				ByteBuffer newBuffer = allocator.allocate(Math.max(minOutBufferCapacity, data.length - lastRemaining));
+				newBuffer.put(data, lastRemaining, data.length - lastRemaining);
+				newBuffers[lastIndex+1] = newBuffer;
+				outBuffers = newBuffers;
+			}
+
+			try {
+				setWriteInterestOps(detectRebuild(key));
+			}
+			catch (CancelledKeyException e) {
+				throw new IllegalSessionStateException(SessionState.CLOSING);
+			}
 		}
+		lazyWakeup();
 	}
 
 	@Override
