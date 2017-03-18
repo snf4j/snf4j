@@ -1348,8 +1348,10 @@ public class StreamSelectorLoopTest {
    	    assertTrue(!c.channel.isConnected());
 		assertTrue(!c.channel.isConnectionPending());
 		assertTrue(c.channel.isOpen());
-		c.start();
+		System.err.println("*********** " + c.channel);
+		c.start();	
 		waitFor(1000);
+		System.err.println("****2****** " + c.channel);
 		assertEquals("", c.getRecordedData(true));
 		assertEquals("", s.getRecordedData(true));
 		c.channel.connect(new InetSocketAddress(InetAddress.getByName(c.ip), PORT));
