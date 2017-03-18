@@ -31,7 +31,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.DatagramChannel;
-import java.nio.channels.NoConnectionPendingException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
@@ -491,10 +490,6 @@ public class SelectorLoop extends InternalSelectorLoop {
 				key.channel().close();
 				finished = false;
 			}
-		}
-		catch (NoConnectionPendingException e) {
-			logger.info("******PENDING***");
-			finished = false;
 		}
 		catch (Exception e) {
 			elogWarnOrError(logger, "Finishing connection of channel {} failed: {}", toString(key.channel()), e);
