@@ -69,6 +69,16 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	
 	volatile Selector selector;
 	
+	private final long selectTimeout;
+	
+	private long selectBeginTime;
+	
+	private long selectEndTime;
+	
+	private volatile long totalWorkTime;
+	
+	private volatile long totalWaitTime;
+	
 	private AtomicBoolean wakenup = new AtomicBoolean(false);
 	
 	private int selectCounter;
@@ -116,8 +126,29 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		this.logger = logger;
 		this.factory = factory == null ? DefaultSelectorLoopStructureFactory.DEFAULT : factory;
 		selector = this.factory.openSelector();
+		selectTimeout = Math.max(0, Long.getLong(Constants.SELECTOR_SELECT_TIMEOUT, 1000));
 	}
 
+	/**
+	 * Returns the total time in nanoseconds this selector loop spent waiting
+	 * for I/O operations
+	 * 
+	 * @return the total time in nanoseconds
+	 */
+	public long getTotalWaitTime() {
+		return totalWaitTime;
+	}
+	
+	/**
+	 * Returns the total time in nanoseconds this selector loop spent processing
+	 * I/O operations
+	 * 
+	 * @return the total time in nanoseconds
+	 */
+	public long getTotalWorkTime() {
+		return totalWorkTime;
+	}
+	
 	/**
 	 * Rebuilds the associated selector by replacing it with newly created one. All valid 
 	 * selection keys registered with the current selector will be re-registered to the 
@@ -217,6 +248,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			selectCounter = 0;
 		}
 
+		if (traceEnabled && selectTimeout == 0) {
+			logger.trace("Selecting");
+		}
+
 		//populate selector's key set to properly set the loop size
 		int selectedKeys = selector.selectNow();
 		size = selector.keys().size();
@@ -225,10 +260,31 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		if (selectedKeys > 0) {
 			wakenup.set(false);
 		}
-		else if (!wakenup.compareAndSet(true, false)) {
-			selectedKeys = selector.select();
-			size = selector.keys().size();
-			notifySizeChange(notify);
+		else {
+			long selectBlocked;
+			
+			selectBeginTime = System.nanoTime();
+			if (selectEndTime != 0) {
+				totalWorkTime += selectBeginTime - selectEndTime;
+			}
+			if (!wakenup.compareAndSet(true, false)) {
+				selectedKeys = selector.select(selectTimeout);
+				selectEndTime = System.nanoTime();
+				selectBlocked = selectEndTime - selectBeginTime;
+				totalWaitTime += selectBlocked;
+				if (selectedKeys == 0) {
+					//if the blocking time is greater than 90% of the select timeout
+					//then the select returned normally
+					if (selectBlocked >= selectTimeout * 900000L) {
+						selectCounter = 0;
+					}
+				}
+				size = selector.keys().size();
+				notifySizeChange(notify);
+			}
+			else {
+				selectEndTime = selectBeginTime; 
+			}
 		}
 		
 		if (selectedKeys > 0) {
@@ -378,10 +434,6 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			traceEnabled = debugEnabled ? logger.isTraceEnabled() : false;
 			
 			try {
-				
-				if (traceEnabled) {
-					logger.trace("Selecting");
-				}
 				
 				select();
 				

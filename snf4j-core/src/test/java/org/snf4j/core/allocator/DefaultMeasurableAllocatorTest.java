@@ -44,6 +44,18 @@ public class DefaultMeasurableAllocatorTest {
 	}
 	
 	@Test
+	public void testMaxCapacity() {
+		DefaultMeasurableAllocator a = new DefaultMeasurableAllocator(false);
+		assertEquals(0, a.getMaxCapacity());
+		a.allocate(40);
+		assertEquals(40, a.getMaxCapacity());
+		a.allocate(39);
+		assertEquals(40, a.getMaxCapacity());
+		a.allocate(41);
+		assertEquals(41, a.getMaxCapacity());
+	}
+	
+	@Test
 	public void testCounters() {
 		ByteBuffer b;
 		
