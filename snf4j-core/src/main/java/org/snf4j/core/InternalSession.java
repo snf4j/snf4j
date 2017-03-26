@@ -32,6 +32,8 @@ import java.nio.channels.SelectionKey;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.concurrent.IFuture;
+import org.snf4j.core.concurrent.SessionFutures;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
@@ -96,6 +98,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	/** Used to track already fired events. */
 	int eventBits;
 	
+	final SessionFutures futures = new SessionFutures();
+	
 	protected InternalSession(String name, IHandler handler, ILogger logger) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
@@ -114,6 +118,21 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
 	}
 	
+	public IFuture<Void> getCreateFuture() {
+		return futures.getCreateFuture();
+	}
+
+	public IFuture<Void> getOpenFuture() {
+		return futures.getOpenFuture();
+	}
+
+	public IFuture<Void> getCloseFuture() {
+		return futures.getCloseFuture();
+	}
+
+	public IFuture<Void> getEndFuture() {
+		return futures.getEndFuture();
+	}
 	
 	/**
 	 * Detects if the key was replaced. It can happen after rebuilding of the selector.
@@ -190,6 +209,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	void setLoop(InternalSelectorLoop loop) {
 		this.loop = loop;
+		futures.setExecutor(loop);
 	}
 	
 	final Object getWriteLock() {
@@ -443,12 +463,14 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	final void event(DataEvent event, long length) {
 		if (isValid(event.type())) {
+			futures.event(event, length);
 			handler.event(event, length);
 		}
 	}
 	
 	final void event(SessionEvent event) {
 		if (isValid(event.type())) {
+			futures.event(event);
 			handler.event(event);
 		}
 	}
@@ -456,6 +478,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	final void exception(Throwable t) {
 		if (isValid(EventType.EXCEPTION_CAUGHT)) {
 			if (!handler.exception(t)) {
+				futures.exception(t);
 				quickClose();
 			}
 		}

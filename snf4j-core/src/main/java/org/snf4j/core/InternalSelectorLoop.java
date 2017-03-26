@@ -42,6 +42,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.snf4j.core.concurrent.IFutureExecutor;
 import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.ISelectorLoopStructureFactory;
@@ -53,7 +54,7 @@ import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.ISession;
 
-abstract class InternalSelectorLoop extends IdentifiableObject {
+abstract class InternalSelectorLoop extends IdentifiableObject implements IFutureExecutor {
 
 	final ILogger logger;
 	
@@ -412,8 +413,18 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		}
 	}
 	
+	/**
+	 * Tells if the current {@link Thread} is executed in this selector loop.
+	 * 
+	 * @return <code>true</code> the current {@link Thread} is executed in this selector loop.
+	 */
 	final boolean inLoop() {
 		return thread == Thread.currentThread();
+	}
+	
+	@Override
+	public final boolean inExecutor() {
+		return inLoop();
 	}
 	
 	final Selector getUnderlyingSelector(Selector selector) {
@@ -811,6 +822,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			}
 		}
 		return null;
+	}
+	final void fireCreatedEvent(final InternalSession session, SelectableChannel channel) {
+		session.setChannel(channel);
+		session.setLoop(this);
+		fireEvent(session, SessionEvent.CREATED);
 	}
 	
 	final void fireEndingEvent(final InternalSession session, boolean skipCloseWhenEmpty) {

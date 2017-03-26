@@ -53,6 +53,7 @@ public class Server {
 	public SelectorLoop loop;
 	public int port;
 	public StreamSession session;
+	public StreamSession initSession;
 	public ThreadFactory threadFactory;
 	public ISelectorLoopController controller;
 	public long throughputCalcInterval = 1000;
