@@ -55,7 +55,7 @@ public class Packet {
 		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
 	}
 	
-	byte[] toBytes() {
+	public byte[] toBytes() {
 		byte[] payload = this.payload.getBytes();
 		byte[] data = new byte[3 + payload.length];
 		int len = 3 + payload.length;

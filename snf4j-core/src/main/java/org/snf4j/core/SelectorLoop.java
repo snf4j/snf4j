@@ -522,7 +522,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				
 				if (areEmpty) {
 					bytes = 0;
-					if (session.compactOutBuffers()) {
+					if (session.compactOutBuffers(bytes)) {
 						session.clearWriteInterestOps(key);
 						session.handleClosingInProgress();
 					}
@@ -537,7 +537,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 						}
 						session.calculateThroughput(currentTime, false);
 						session.incWrittenBytes(bytes, currentTime);
-						if (session.compactOutBuffers()) {
+						if (session.compactOutBuffers(bytes)) {
 							session.clearWriteInterestOps(key);
 							session.handleClosingInProgress();
 						}
@@ -667,13 +667,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 				}
 				
 				if (bytes == record.datagram.length) {
-					long currentTime = System.currentTimeMillis();
-
 					if (traceEnabled) {
 						logger.trace("{} byte(s) written to channel in {}", bytes, session);
 					}
-					session.calculateThroughput(currentTime, false);
-					session.incWrittenBytes(bytes, currentTime);
 					outQueue.poll();
 					totalBytes += bytes;
 				}
@@ -683,6 +679,13 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 			
 			synchronized (session.getWriteLock()) {
+				if (totalBytes > 0) {
+					long currentTime = System.currentTimeMillis();
+
+					session.calculateThroughput(currentTime, false);
+					session.incWrittenBytes(totalBytes, currentTime);
+					session.consumedBytes(totalBytes);
+				}
 				if (outQueue.isEmpty()) {
 					session.clearWriteInterestOps(key);
 					session.handleClosingInProgress();

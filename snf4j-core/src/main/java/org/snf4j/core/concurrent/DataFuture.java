@@ -8,14 +8,14 @@ public class DataFuture<V> extends AbstractFuture<V> {
 	
 	@Override
 	public boolean cancel(boolean arg0) {
-		if (setState(FutureState.CANCELED)) {
+		if (setState(FutureState.CANCELLED)) {
 			notifyWaiters();
 			return true;
 		}		
 		return false;
 	}
 	
-	void failure(Throwable t) {
+	void failure(Throwable cause) {
 		if (setState(FutureState.FAILED)) {
 			this.cause = cause;
 			notifyWaiters();

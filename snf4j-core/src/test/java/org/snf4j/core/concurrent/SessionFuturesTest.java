@@ -1,5 +1,6 @@
 package org.snf4j.core.concurrent;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -9,6 +10,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.Client;
 import org.snf4j.core.DelayedThreadFactory;
+import org.snf4j.core.Packet;
+import org.snf4j.core.PacketType;
 import org.snf4j.core.Server;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.handler.DataEvent;
@@ -99,6 +102,21 @@ public class SessionFuturesTest {
 				} catch (InterruptedException e) {
 				}
 				session.close();
+			}
+		};
+		new Thread(r).start();
+	}
+
+	void delayedResume(final StreamSession session, final long delay) {
+		Runnable r = new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					Thread.sleep(delay);
+				} catch (InterruptedException e) {
+				}
+				session.resumeWrite();
 			}
 		};
 		new Thread(r).start();
@@ -200,6 +218,54 @@ public class SessionFuturesTest {
 	}
 	
 	@Test
+	public void testStreamSessionWriteFuture() throws Exception {
+		s = new Server(PORT);
+		s.start();
+
+		//write without suspend
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		IFuture<Void> f = c.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		assertTrue(f.await(TIMEOUT).isDone());
+		assertTrue(f.await(TIMEOUT).isDone());
+		assertTrue(f.isSuccessful());
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		
+		//write with suspend
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().suspendWrite();
+		f = c.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		delayedResume(c.getSession(), 1000);
+		long t = System.currentTimeMillis();
+		assertTrue(f.await(2000).isDone());
+		t = System.currentTimeMillis() - t;
+		assertTrue(t > 950 && t <1050);
+		assertTrue(f.isSuccessful());
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+	}
+	
+	@Test
 	public void testStreamSessionEventFutures() throws Exception {
 		s = new Server(PORT);
 		s.start();
@@ -258,6 +324,14 @@ public class SessionFuturesTest {
 		assertFalse(future.isCancelled());
 		assertTrue(future.isFailed());
 		assertTrue(future.cause() == t);
+	}
+
+	void assertCanceled(IFuture<?> future) {
+		assertTrue(future.isDone());
+		assertFalse(future.isSuccessful());
+		assertTrue(future.isCancelled());
+		assertFalse(future.isFailed());
+		assertNull(future.cause());
 	}
 	
 	void assertNotDone(IFuture<?> future) {
@@ -339,14 +413,64 @@ public class SessionFuturesTest {
 	
 	@Test
 	public void testSessionDataFutureAndItsProxy() {
+		Exception cause1 = new Exception();
+		Exception cause2 = new Exception();
+		
+		//exception after opened
 		sf = new SessionFutures();
-
-		IFuture<Void> f = sf.getWriteFuture(100);
-		assertNotDone(f);
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		IFuture<Void> f0 = sf.getWriteFuture(100);
+		IFuture<Void> f1 = sf.getWriteFuture(101);
+		assertNotDone(f0);
+		assertNotDone(f1);
 		sf.event(DataEvent.RECEIVED, 101);
-		assertNotDone(f);
+		assertNotDone(f0);
+		assertNotDone(f1);
 		sf.event(DataEvent.SENT, 100);
-		assertSuccessful(f);
+		assertSuccessful(f0);
+		assertNotDone(f1);
+		sf.exception(cause1);
+		sf.exception(cause2);
+		assertSuccessful(f0);
+		assertFailed(f1, cause1);
+		sf.event(SessionEvent.CLOSED);
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(sf.getCreateFuture());
+		assertSuccessful(sf.getOpenFuture());
+		assertFailed(sf.getCloseFuture(), cause1);
+		assertFailed(sf.getEndFuture(), cause1);
+		
+		//exception before opened
+		sf = new SessionFutures();
+		sf.event(SessionEvent.CREATED);
+		f0 = sf.getWriteFuture(100);
+		f1 = sf.getWriteFuture(101);
+		sf.exception(cause1);
+		sf.exception(cause2);
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(sf.getCreateFuture());
+		assertFailed(sf.getOpenFuture(), cause1);
+		assertFailed(sf.getCloseFuture(), cause1);
+		assertFailed(sf.getEndFuture(), cause1);
+		assertFailed(f0, cause1);
+		assertFailed(f1, cause1);
+		
+		//cancel
+		sf = new SessionFutures();
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		f0 = sf.getWriteFuture(100);
+		f1 = sf.getWriteFuture(101);
+		sf.event(DataEvent.SENT, 100);
+		sf.event(SessionEvent.CLOSED);
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(sf.getCreateFuture());
+		assertSuccessful(sf.getOpenFuture());
+		assertSuccessful(f0);
+		assertCanceled(f1);
+		assertSuccessful(sf.getCloseFuture());
+		assertSuccessful(sf.getEndFuture());
 		
 		
 	}

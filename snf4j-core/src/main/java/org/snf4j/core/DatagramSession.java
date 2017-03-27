@@ -36,6 +36,8 @@ import java.nio.channels.SelectionKey;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.snf4j.core.concurrent.CancelledFuture;
+import org.snf4j.core.concurrent.IFuture;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
@@ -57,6 +59,9 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	ConcurrentLinkedQueue<DatagramRecord> outQueue = new ConcurrentLinkedQueue<DatagramRecord>();
 
+	/** Number of bytes in the queue */
+	private long outQueueSize;
+	
 	private final int minInBufferCapacity;
 	
 	private final int maxInBufferCapacity;
@@ -117,28 +122,32 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	}
 
 	@Override
-	public void write(byte[] datagram) {
-		write(null, datagram);
+	public IFuture<Void> write(byte[] datagram) {
+		return write(null, datagram);
 	}
 
 	@Override
-	public void write(SocketAddress remoteAddress, byte[] datagram) {
+	public IFuture<Void> write(SocketAddress remoteAddress, byte[] datagram) {
 		SelectionKey key = checkKey(this.key);
+		long futureExpectedLen;
 		
 		try {
 			synchronized (writeLock) {
 				key = detectRebuild(key);
 				if (closing != ClosingState.NONE) {
-					return;
+					return CancelledFuture.VOID;
 				}
 				outQueue.add(new DatagramRecord(remoteAddress, datagram));
 				setWriteInterestOps(key);
+				outQueueSize += datagram.length;
+				futureExpectedLen = outQueueSize + getWrittenBytes();  
 			}
 		}
 		catch (CancelledKeyException e) {
 			throw new IllegalSessionStateException(SessionState.CLOSING);
 		}
 		lazyWakeup();
+		return futures.getWriteFuture(futureExpectedLen);
 	}
 	
 	private final void close(SelectionKey key) throws IOException {
@@ -203,7 +212,15 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			}
 		}
 	}	
+
+	/**
+	 * This method must be protected by the write lock. 
+	 */
+	final void consumedBytes(long number) {
+		outQueueSize -= number;
+	}
 	
+
 	/**
 	 * Handles closing operation being in progress. It should be executed only
 	 * when the output queue have no more data after writing.

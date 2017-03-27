@@ -26,12 +26,33 @@
 package org.snf4j.core.concurrent;
 
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public interface IFuture<V> extends Future<V> {
 	
 	IFuture<V> await() throws InterruptedException;
 	
-	IFuture<V> await(long timeout) throws InterruptedException;
+	IFuture<V> await(long timeoutMillis) throws InterruptedException;
+
+	IFuture<V> await(long timeout, TimeUnit unit) throws InterruptedException;
+
+	IFuture<V> awaitUninterruptibly();
+	
+	IFuture<V> awaitUninterruptibly(long timeoutMillis);
+
+	IFuture<V> awaitUninterruptibly(long timeout, TimeUnit unit);
+
+	IFuture<V> sync() throws InterruptedException, FutureFailureException;
+	
+	IFuture<V> sync(long timeoutMillis) throws InterruptedException, FutureFailureException;
+
+	IFuture<V> sync(long timeout, TimeUnit unit) throws InterruptedException, FutureFailureException;
+
+	IFuture<V> syncUninterruptibly() throws FutureFailureException;
+	
+	IFuture<V> syncUninterruptibly(long timeoutMillis) throws FutureFailureException;
+
+	IFuture<V> syncUninterruptibly(long timeout, TimeUnit unit) throws FutureFailureException;
 	
 	/**
 	 * Returns the result without blocking, or <code>null</code> if this future is not done

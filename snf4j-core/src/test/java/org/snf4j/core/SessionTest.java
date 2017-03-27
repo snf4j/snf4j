@@ -233,7 +233,7 @@ public class SessionTest {
 			assertEquals("content for "+expectedContent, Arrays.toString(data2), Arrays.toString(Arrays.copyOfRange(b.array(), b.position(), b.position()+b.remaining())));
 		}
 		if (compact) {
-			session.compactOutBuffers();
+			session.compactOutBuffers(0);
 		}
 	}
 
@@ -301,7 +301,7 @@ public class SessionTest {
 		
 		ByteBuffer[] buffers = s.getOutBuffers();
 		buffers[0].get();
-		s.compactOutBuffers();
+		s.compactOutBuffers(0);
 		assertOutBuffers(s, "1024:1023=3;1024:1=4,1023=5;1024:1000=6,24=7;1025:1025=7");
 		
 		key2.interestOps(SelectionKey.OP_READ);
@@ -354,80 +354,80 @@ public class SessionTest {
 		
 		//empty buffer
 		ByteBuffer[] bufs = s.getOutBuffers();
-		assertTrue(s.compactOutBuffers());
+		assertTrue(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:0=0");
 		
 		//get 1 from 1
 		s.write(getBytes(1,1));
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=1");
-		assertTrue(s.compactOutBuffers());
+		assertTrue(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:0=0");
 		
 		//get 1 from 2
 		s.write(getBytes("1=2,1=3"));
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=2");
-		assertFalse(s.compactOutBuffers());
+		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=3");
 
 		//get 1023 from 1024
 		s.write(getBytes(1023,4));
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=3,1022=4");
-		assertFalse(s.compactOutBuffers());
+		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=4");
 
 		//get 1024 from 1024
 		s.write(getBytes(1023,5));
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=4,1023=5");
-		assertTrue(s.compactOutBuffers());
+		assertTrue(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:0=0");
 		
 		//get 1 from 1024;1
 		s.write(getBytes("1=6,1=7,1023=8"));
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=6");
-		assertFalse(s.compactOutBuffers());
+		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=7,1022=8;1024:1=8");
 		
 		//get 1023 from 1023;1
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=7,1022=8");
-		assertFalse(s.compactOutBuffers());
+		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=8");
 		
 		//get 1024 from 1024;1025
 		s.write(getBytes("2048=9"));
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=8,1023=9");
-		assertFalse(s.compactOutBuffers());
+		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1025:1025=9");
 		
 		//get 1025 from 1025
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1025=9");
-		assertTrue(s.compactOutBuffers());
+		assertTrue(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:0=0");
 		
 		//get 1024 from 1025;1
 		s.write(getBytes("2049=1"));
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1024=1");
-		assertFalse(s.compactOutBuffers());
+		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1025:1025=1");
 		s.write(getBytes("1=2"));
 		assertOutBuffers(s, "1025:1025=1;1024:1=2");
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1024=1");
-		assertFalse(s.compactOutBuffers());
+		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1025:1=1;1024:1=2");
 		
 		//get 1 from 1/1025;1
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=1");
-		s.compactOutBuffers();
+		s.compactOutBuffers(0);
 		assertOutBuffers(s, "1024:1=2");
 		
 		//get 1025;1026;1 from 1025;1026;2
@@ -440,7 +440,7 @@ public class SessionTest {
 		assertBufferGet(bufs[1], "1025=3");
 		assertBufferGet(bufs[2], "1026=4");
 		assertBufferGet(bufs[3], "1=5");
-		assertFalse(s.compactOutBuffers());
+		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=5");
 		
 		key1.channel().close();

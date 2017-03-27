@@ -28,6 +28,8 @@ package org.snf4j.core;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentMap;
 
+import org.snf4j.core.concurrent.IFuture;
+import org.snf4j.core.concurrent.SuccessfulFuture;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.ISessionConfig;
@@ -65,7 +67,8 @@ public class TestDatagramSession implements IDatagramSession {
 	}
 
 	@Override
-	public void write(byte[] data) {
+	public IFuture<Void> write(byte[] data) {
+		return SuccessfulFuture.VOID;
 	}
 
 	@Override
@@ -158,7 +161,8 @@ public class TestDatagramSession implements IDatagramSession {
 	}
 
 	@Override
-	public void write(SocketAddress remoteAddress, byte[] datagram) {
+	public IFuture<Void> write(SocketAddress remoteAddress, byte[] datagram) {
+		return SuccessfulFuture.VOID;
 	}
 
 }

@@ -34,6 +34,8 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
+import org.snf4j.core.concurrent.CancelledFuture;
+import org.snf4j.core.concurrent.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
@@ -54,6 +56,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	private ByteBuffer inBuffer;
 	
 	private ByteBuffer[] outBuffers;
+	
+	/** Number of bytes in outBuffers */
+	private long outBuffersSize;
 	
 	private volatile boolean isEOS;
 	
@@ -97,12 +102,13 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	}
 	
 	@Override
-	public void write(byte[] data) {
+	public IFuture<Void> write(byte[] data) {
 		SelectionKey key = checkKey(this.key);
+		long futureExpectedLen;
 		
 		synchronized (writeLock) {
 			if (closing != ClosingState.NONE) {
-				return;
+				return CancelledFuture.VOID;
 			}
 			int lastIndex = outBuffers.length - 1;
 			ByteBuffer lastBuffer = outBuffers[lastIndex];
@@ -120,6 +126,8 @@ public class StreamSession extends InternalSession implements IStreamSession {
 				newBuffers[lastIndex+1] = newBuffer;
 				outBuffers = newBuffers;
 			}
+			outBuffersSize += data.length;
+			futureExpectedLen = outBuffersSize + getWrittenBytes();  
 
 			try {
 				setWriteInterestOps(detectRebuild(key));
@@ -129,6 +137,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			}
 		}
 		lazyWakeup();
+		return futures.getWriteFuture(futureExpectedLen);
 	}
 
 	@Override
@@ -314,13 +323,15 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	 * Informs that some data was removed from output buffers. 
 	 * It should be executed inside synchronized block on the object returned 
 	 * from the method getOutBuffersLock
+	 * @param consumedBytes number of bytes consumed from the buffers
 	 * @return true if there is no data left in the buffers
 	 * @see getOutBuffersLock 
 	 */
-	boolean compactOutBuffers() {
+	boolean compactOutBuffers(long consumedBytes) {
 		int lastIndex = outBuffers.length - 1;
 		boolean fullyCompacted = true;
 		
+		outBuffersSize -= consumedBytes;
 		if (lastIndex > 0) {
 			int count = 0;
 			for (; count<lastIndex; ++count) {

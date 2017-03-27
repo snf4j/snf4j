@@ -27,13 +27,77 @@ public abstract class AbstractFuture<V> implements IFuture<V> {
 	
 	@Override
 	public IFuture<V> await() throws InterruptedException {
-		return await(0);
+		return await0(0, true);
 	}
 	
 	@Override
-	public IFuture<V> await(long timeout) throws InterruptedException {
-		await0(timeout);
-		return this;
+	public IFuture<V> await(long timeoutMillis) throws InterruptedException {
+		return await0(TimeUnit.MILLISECONDS.toNanos(timeoutMillis), true);
+	}
+	
+	@Override
+	public IFuture<V> await(long timeout, TimeUnit unit) throws InterruptedException {
+		return await0(unit.toNanos(timeout), true);
+	}
+
+	@Override
+	public IFuture<V> awaitUninterruptibly() {
+		return awaitUninterruptibly0(0);
+	}
+	
+	@Override
+	public IFuture<V> awaitUninterruptibly(long timeoutMillis) {
+		return awaitUninterruptibly0(TimeUnit.MILLISECONDS.toNanos(timeoutMillis));
+	}
+	
+	@Override
+	public IFuture<V> awaitUninterruptibly(long timeout, TimeUnit unit) {
+		return awaitUninterruptibly0(unit.toNanos(timeout));
+	}
+
+	IFuture<V> rethrow() throws FutureFailureException {
+		Throwable cause = this.cause;
+		
+		if (cause == null) {
+			return this;
+		}
+		throw new FutureFailureException(cause);
+	}
+	
+	@Override
+	public IFuture<V> sync() throws InterruptedException, FutureFailureException {
+		await0(0, true);
+		return rethrow();
+	}
+	
+	@Override
+	public IFuture<V> sync(long timeoutMillis) throws InterruptedException, FutureFailureException {
+		await0(TimeUnit.MILLISECONDS.toNanos(timeoutMillis), true);
+		return rethrow();
+	}
+	
+	@Override
+	public IFuture<V> sync(long timeout, TimeUnit unit) throws InterruptedException, FutureFailureException {
+		await0(unit.toNanos(timeout), true);
+		return rethrow();
+	}
+
+	@Override
+	public IFuture<V> syncUninterruptibly() throws FutureFailureException {
+		awaitUninterruptibly0(0);
+		return rethrow();
+	}
+	
+	@Override
+	public IFuture<V> syncUninterruptibly(long timeoutMillis) throws FutureFailureException {
+		awaitUninterruptibly0(TimeUnit.MILLISECONDS.toNanos(timeoutMillis));
+		return rethrow();
+	}
+	
+	@Override
+	public IFuture<V> syncUninterruptibly(long timeout, TimeUnit unit) throws FutureFailureException {
+		awaitUninterruptibly0(unit.toNanos(timeout));
+		return rethrow();
 	}
 	
 	final void setExecutor(IFutureExecutor executor) {
@@ -68,7 +132,7 @@ public abstract class AbstractFuture<V> implements IFuture<V> {
 
 	@Override
 	public boolean isCancelled() {
-		return state.get() == FutureState.CANCELED;
+		return state.get() == FutureState.CANCELLED;
 	}	
 	
 	@Override
@@ -108,16 +172,30 @@ public abstract class AbstractFuture<V> implements IFuture<V> {
 		}
 	}
 	
-	void await0(long millis) throws InterruptedException {
+	final IFuture<V> awaitUninterruptibly0(long nanos) {
+		try {
+			await0(nanos, false);
+		} catch (InterruptedException e) {
+			//Ignore
+		}
+		return this;
+	}
+	
+	final IFuture<V> await0(long nanos, boolean interruptable) throws InterruptedException {
 		
 		if (isDone()) {
-			return;
+			return this;
 		}
 		
-		long base = System.currentTimeMillis();
+		if (interruptable && Thread.interrupted()) {
+			throw new InterruptedException(toString());
+		}
+		
+		long base = System.nanoTime();
 		long now = 0;
+		boolean interrupted = false;
 
-		if (millis < 0) {
+		if (nanos < 0) {
 			throw new IllegalArgumentException("timeout value is negative");
 		}
 
@@ -128,25 +206,52 @@ public abstract class AbstractFuture<V> implements IFuture<V> {
 		synchronized (lock) {
 			lock.incWaiters();
 			try {
-				if (millis == 0) {
+				if (nanos == 0) {
 					while (!isDone()) {
-						lock.wait(0);
+						try {
+							lock.wait();
+						}
+						catch (InterruptedException e) {
+							if (interruptable) {
+								throw e;
+							}
+							else {
+								interrupted = true;
+							}
+						}
 					}
 				} else {
 					while (!isDone()) {
-						long delay = millis - now;
+						long delay = nanos - now;
+						
 						if (delay <= 0) {
 							break;
 						}
-						lock.wait(delay);
-						now = System.currentTimeMillis() - base;
+						
+						try {
+							lock.wait(delay / 1000000, (int) (delay % 1000000));
+						}
+						catch (InterruptedException e) {
+							if (interruptable) {
+								throw e;
+							}
+							else {
+								interrupted = true;
+							}
+						}
+						
+						now = System.nanoTime() - base;
 					}
 				}
 			}
 			finally {
 				lock.decWaiters();
+				if (interrupted) {
+					Thread.currentThread().interrupt();
+				}
 			}
 		}
+		return this;
 	}
 
 }

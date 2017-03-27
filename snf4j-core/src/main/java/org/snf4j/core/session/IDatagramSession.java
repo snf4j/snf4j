@@ -27,6 +27,7 @@ package org.snf4j.core.session;
 
 import java.net.SocketAddress;
 
+import org.snf4j.core.concurrent.IFuture;
 import org.snf4j.core.handler.IDatagramHandler;
 
 /**
@@ -55,8 +56,9 @@ public interface IDatagramSession extends ISession {
 	 *            the datagram to be sent
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
+	 * @return the future associated with this write operation
 	 */
-	void write(byte[] datagram);
+	IFuture<Void> write(byte[] datagram);
 	
 	/**
 	 * Writes a datagram to the associated datagram-oriented channel that is not
@@ -71,6 +73,7 @@ public interface IDatagramSession extends ISession {
 	 *            the datagram to be sent
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
+	 * @return the future associated with this write operation
 	 */
-	void write(SocketAddress remoteAddress, byte[] datagram);
+	IFuture<Void> write(SocketAddress remoteAddress, byte[] datagram);
 }

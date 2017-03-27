@@ -50,6 +50,9 @@ public class SessionFutures {
 			eventFutures[event.ordinal()].failure(cause);
 		}
 		else {
+			if (event == SessionEvent.ENDING) {
+				sentFuture.cancel(false);
+			}
 			eventFutures[event.ordinal()].success();
 		}
 	}
@@ -61,7 +64,9 @@ public class SessionFutures {
 	}
 	
 	public void exception(Throwable t) {
-		cause.compareAndSet(null, t);
+		if (cause.compareAndSet(null, t)) {
+			sentFuture.failure(t);
+		}
 	}
 	
 	public final IFuture<Void> getCreateFuture() {
@@ -80,7 +85,7 @@ public class SessionFutures {
 		return eventFutures[ENDING_IDX];
 	}
 	
-	IFuture<Void> getWriteFuture(long expected) {
+	public IFuture<Void> getWriteFuture(long expected) {
 		return new ProxyDataFuture<Void>(sentFuture, expected);
 	}
 }
