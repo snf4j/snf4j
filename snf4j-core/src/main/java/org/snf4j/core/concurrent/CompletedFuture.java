@@ -4,19 +4,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class CompletedFuture<V> implements IFuture<V> {
+import org.snf4j.core.session.ISession;
 
-	private final FutureState state;
-	
-	CompletedFuture(FutureState state) {
-		this.state = state;
+class CompletedFuture<V> extends AbstractFuture<V> {
+
+	CompletedFuture(ISession session, FutureState state) {
+		super(session);
+		this.state.set(state);
 	}
 	
-	@Override
-	public V getNow() {
-		return null;
-	}
-
 	@Override
 	public boolean cancel(boolean arg0) {
 		return false;
@@ -30,11 +26,6 @@ public class CompletedFuture<V> implements IFuture<V> {
 	@Override
 	public V get(long arg0, TimeUnit arg1) throws InterruptedException, ExecutionException, TimeoutException {
 		return null;
-	}
-
-	@Override
-	public boolean isCancelled() {
-		return state == FutureState.CANCELLED;
 	}
 
 	@Override
@@ -105,16 +96,6 @@ public class CompletedFuture<V> implements IFuture<V> {
 	@Override
 	public Throwable cause() {
 		return null;
-	}
-
-	@Override
-	public boolean isSuccessful() {
-		return state == FutureState.SUCCESSFUL;
-	}
-
-	@Override
-	public boolean isFailed() {
-		return state == FutureState.FAILED;
 	}
 
 }

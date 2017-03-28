@@ -1,8 +1,22 @@
 package org.snf4j.core.concurrent;
 
+import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.ISession;
 
-public class EventFuture extends AbstractFuture<Void> {
+class EventFuture<V> extends AbstractBlockingFuture<V> {
 
+	private final SessionEvent event;
+	
+	EventFuture(ISession session, SessionEvent event) {
+		super(session);
+		this.event = event;
+	}
+	
+	@Override
+	protected String toStringDetails() {
+		return "event=" + event.name();
+	}
+	
 	void success() {
 		if (setState(FutureState.SUCCESSFUL)) {
 			notifyWaiters();
@@ -14,11 +28,6 @@ public class EventFuture extends AbstractFuture<Void> {
 			this.cause = cause;
 			notifyWaiters();
 		}
-	}
-
-	@Override
-	public Void getNow() {
-		return null;
 	}
 
 }

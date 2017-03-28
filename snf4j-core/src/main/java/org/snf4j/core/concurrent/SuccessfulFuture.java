@@ -1,12 +1,11 @@
 package org.snf4j.core.concurrent;
 
+import org.snf4j.core.session.ISession;
 
 public final class SuccessfulFuture<V> extends CompletedFuture<V> {
-
-	public static final IFuture<Void> VOID = new SuccessfulFuture<Void>();
 	
-	public SuccessfulFuture() {
-		super(FutureState.SUCCESSFUL);
+	public SuccessfulFuture(ISession session) {
+		super(session, FutureState.SUCCESSFUL);
 	}
 
 }

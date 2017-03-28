@@ -35,6 +35,20 @@ import org.snf4j.core.session.SessionState;
 
 public class TestSession implements ISession {
 
+	String name;
+	
+	public TestSession(String name) {
+		this.name = name;
+	}
+
+	public TestSession() {
+	}
+
+	@Override
+	public String toString() {
+		return name == null ? super.toString() : name;
+	}
+	
 	@Override
 	public long getId() {
 		return 0;

@@ -125,7 +125,7 @@ public class SessionFuturesTest {
 	@Test
 	public void testSessionEventFuture() throws Exception {
 		Exception cause = new Exception();
-		sf = new SessionFutures();
+		sf = new SessionFutures(null);
 
 		IFuture<Void> f = sf.getCreateFuture();
 		assertNotDone(f);
@@ -140,12 +140,12 @@ public class SessionFuturesTest {
 		assertSuccessful(f);
 		
 		//failure after success
-		((EventFuture)f).failure(cause);
+		((EventFuture<?>)f).failure(cause);
 		assertSuccessful(f);
 		
 		//failure
 		f = sf.getOpenFuture();
-		((EventFuture)f).failure(cause);
+		((EventFuture<?>)f).failure(cause);
 		assertFailed(f, cause);
 		
 		//success after failure
@@ -155,7 +155,7 @@ public class SessionFuturesTest {
 	
 	@Test
 	public void testSessionFuturesAwait() throws Exception {
-		sf = new SessionFutures();
+		sf = new SessionFutures(null);
 		
 		long t0 = System.currentTimeMillis();
 		fireEvent(SessionEvent.CREATED, 1000);
@@ -348,7 +348,7 @@ public class SessionFuturesTest {
 		Exception cause2 = new Exception("Ex2");
 		
 		//no exception
-		sf = new SessionFutures();
+		sf = new SessionFutures(null);
 		assertNotDone(sf.getCreateFuture());
 		assertNotDone(sf.getOpenFuture());
 		assertNotDone(sf.getCloseFuture());
@@ -375,7 +375,7 @@ public class SessionFuturesTest {
 		assertSuccessful(sf.getEndFuture());
 		
 		//exception before opened
-		sf = new SessionFutures();
+		sf = new SessionFutures(null);
 		sf.event(SessionEvent.CREATED);
 		sf.exception(cause1);
 		sf.exception(cause2);
@@ -390,7 +390,7 @@ public class SessionFuturesTest {
 		assertFailed(sf.getEndFuture(), cause1);
 
 		//exception after opened
-		sf = new SessionFutures();
+		sf = new SessionFutures(null);
 		sf.event(SessionEvent.CREATED);
 		sf.event(SessionEvent.OPENED);
 		sf.exception(cause1);
@@ -417,7 +417,7 @@ public class SessionFuturesTest {
 		Exception cause2 = new Exception();
 		
 		//exception after opened
-		sf = new SessionFutures();
+		sf = new SessionFutures(null);
 		sf.event(SessionEvent.CREATED);
 		sf.event(SessionEvent.OPENED);
 		IFuture<Void> f0 = sf.getWriteFuture(100);
@@ -442,7 +442,7 @@ public class SessionFuturesTest {
 		assertFailed(sf.getEndFuture(), cause1);
 		
 		//exception before opened
-		sf = new SessionFutures();
+		sf = new SessionFutures(null);
 		sf.event(SessionEvent.CREATED);
 		f0 = sf.getWriteFuture(100);
 		f1 = sf.getWriteFuture(101);
@@ -457,7 +457,7 @@ public class SessionFuturesTest {
 		assertFailed(f1, cause1);
 		
 		//cancel
-		sf = new SessionFutures();
+		sf = new SessionFutures(null);
 		sf.event(SessionEvent.CREATED);
 		sf.event(SessionEvent.OPENED);
 		f0 = sf.getWriteFuture(100);

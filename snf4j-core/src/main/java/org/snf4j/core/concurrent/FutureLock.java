@@ -1,6 +1,6 @@
 package org.snf4j.core.concurrent;
 
-public class FutureLock {
+class FutureLock {
 	private int waiters;
 	
 	public final void incWaiters() {

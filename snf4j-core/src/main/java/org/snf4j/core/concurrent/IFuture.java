@@ -28,6 +28,8 @@ package org.snf4j.core.concurrent;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.snf4j.core.session.ISession;
+
 public interface IFuture<V> extends Future<V> {
 	
 	IFuture<V> await() throws InterruptedException;
@@ -53,6 +55,13 @@ public interface IFuture<V> extends Future<V> {
 	IFuture<V> syncUninterruptibly(long timeoutMillis) throws FutureFailureException;
 
 	IFuture<V> syncUninterruptibly(long timeout, TimeUnit unit) throws FutureFailureException;
+	
+	/**
+	 * Returns the session this future is associated with.
+	 * 
+	 * @return the associated session
+	 */
+	ISession getSession();
 	
 	/**
 	 * Returns the result without blocking, or <code>null</code> if this future is not done

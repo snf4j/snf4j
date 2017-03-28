@@ -1,6 +1,6 @@
 package org.snf4j.core.concurrent;
 
-public enum FutureState {
+enum FutureState {
 	SUCCESSFUL,
 	FAILED,
 	CANCELLED

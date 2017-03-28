@@ -6,15 +6,27 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.TestSession;
 
 public class CompletedFutureTest {
 
+	TestSession session;
+	SessionFutures futures;
+	
+	@Before
+	public void before() {
+		session = new TestSession();
+		futures = new SessionFutures(session);
+	}
+	
 	void assertFuture(IFuture<?> future, FutureState state, Throwable cause) throws Exception {
 		boolean successful = state == FutureState.SUCCESSFUL;
 		boolean failed = state == FutureState.FAILED;
 		boolean cancelled = state == FutureState.CANCELLED;
-		
+
+		assertTrue(session == future.getSession());
 		assertFalse(future.cancel(false));
 		assertFalse(future.cancel(true));
 		assertTrue(future.isSuccessful() == successful);
@@ -44,21 +56,17 @@ public class CompletedFutureTest {
 	
 	@Test
 	public void testSuccessfulFuture() throws Exception {
-		assertFuture(SuccessfulFuture.VOID, FutureState.SUCCESSFUL, null);
-		assertFuture(new SuccessfulFuture<Void>(), FutureState.SUCCESSFUL, null);
+		assertFuture(futures.getSuccessfulFuture(), FutureState.SUCCESSFUL, null);
 	}
 
 	@Test
 	public void testCancelledFuture() throws Exception {
-		assertFuture(CancelledFuture.VOID, FutureState.CANCELLED, null);
-		assertFuture(new CancelledFuture<Void>(), FutureState.CANCELLED, null);
+		assertFuture(futures.getCancelledFuture(), FutureState.CANCELLED, null);
 	}
 
 	@Test
 	public void testFailedFuture() throws Exception {
 		Exception cause = new Exception();
-		IFuture<Void> f = new FailedFuture<Void>(cause);
-		
-		assertFuture(f, FutureState.FAILED, cause);
+		assertFuture(futures.getFailedFuture(cause), FutureState.FAILED, cause);
 	}
 }

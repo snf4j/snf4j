@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.ISession;
 
 public class SessionFutures {
 	
@@ -15,22 +16,27 @@ public class SessionFutures {
 	
 	private final static int ENDING_IDX = SessionEvent.ENDING.ordinal();
 	
-	private EventFuture[] eventFutures = new EventFuture[SessionEvent.values().length];
+	@SuppressWarnings("unchecked")
+	private EventFuture<Void>[] eventFutures = new EventFuture[SessionEvent.values().length];
 	
-	private DataFuture<Void> sentFuture = new DataFuture<Void>();
+	private DataFuture<Void> sentFuture;
 	
 	private AtomicReference<Throwable> cause = new AtomicReference<Throwable>();
 	
-	public SessionFutures() {
+	private ISession session;
+	
+	public SessionFutures(ISession session) {
 		int len = eventFutures.length;
 		
+		this.session = session;
 		for (int i=0; i<len; ++i) {
-			eventFutures[i] = new EventFuture();
+			eventFutures[i] = new EventFuture<Void>(session, SessionEvent.values()[i]);
 		}
+		sentFuture = new DataFuture<Void>(session);
 	}
 	
 	public void setExecutor(IFutureExecutor executor) {
-		for (EventFuture future: eventFutures) {
+		for (EventFuture<?> future: eventFutures) {
 			future.setExecutor(executor);
 		}
 	}
@@ -86,6 +92,18 @@ public class SessionFutures {
 	}
 	
 	public IFuture<Void> getWriteFuture(long expected) {
-		return new ProxyDataFuture<Void>(sentFuture, expected);
+		return new WriteFuture<Void>(sentFuture, expected);
+	}
+	
+	public IFuture<Void> getCancelledFuture() {
+		return new CancelledFuture<Void>(session);
+	}
+
+	public IFuture<Void> getSuccessfulFuture() {
+		return new SuccessfulFuture<Void>(session);
+	}
+
+	public IFuture<Void> getFailedFuture(Throwable cause) {
+		return new FailedFuture<Void>(session, cause);
 	}
 }

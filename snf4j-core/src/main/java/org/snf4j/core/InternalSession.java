@@ -98,7 +98,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	/** Used to track already fired events. */
 	int eventBits;
 	
-	final SessionFutures futures = new SessionFutures();
+	final SessionFutures futures = new SessionFutures(this);
 	
 	protected InternalSession(String name, IHandler handler, ILogger logger) {
 		super("Session-", 

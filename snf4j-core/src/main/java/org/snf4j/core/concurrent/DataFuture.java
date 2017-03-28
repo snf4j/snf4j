@@ -2,9 +2,15 @@ package org.snf4j.core.concurrent;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class DataFuture<V> extends AbstractFuture<V> {
+import org.snf4j.core.session.ISession;
+
+class DataFuture<V> extends AbstractBlockingFuture<V> {
 
 	AtomicLong dataLength = new AtomicLong(0);
+	
+	DataFuture(ISession session) {
+		super(session);
+	}
 	
 	@Override
 	public boolean cancel(boolean arg0) {
@@ -31,8 +37,4 @@ public class DataFuture<V> extends AbstractFuture<V> {
 		return dataLength.get();
 	}
 
-	@Override
-	public V getNow() {
-		return null;
-	}
 }

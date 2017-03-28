@@ -1,6 +1,6 @@
 package org.snf4j.core.concurrent;
 
-public class ProxyDataFuture<V> extends AbstractFuture<V> {
+class WriteFuture<V> extends AbstractBlockingFuture<V> {
 
 	private DataFuture<V> future;
 	
@@ -8,13 +8,19 @@ public class ProxyDataFuture<V> extends AbstractFuture<V> {
 	
 	private V data;
 	
-	ProxyDataFuture(DataFuture<V> future, long expected) {
+	WriteFuture(DataFuture<V> future, long expected) {
+		super(future.getSession());
 		this.future = future;
 		this.expected = expected;
 	}
 	
 	void set(V data) {
 		this.data = data;
+	}
+
+	@Override
+	protected String toStringDetails() {
+		return "bytes=" + expected;
 	}
 	
 	@Override
