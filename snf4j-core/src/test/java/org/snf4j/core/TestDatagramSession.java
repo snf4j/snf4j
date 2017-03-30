@@ -28,8 +28,8 @@ package org.snf4j.core;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentMap;
 
-import org.snf4j.core.concurrent.IFuture;
-import org.snf4j.core.concurrent.SessionFutures;
+import org.snf4j.core.future.IFuture;
+import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.ISessionConfig;
@@ -37,7 +37,7 @@ import org.snf4j.core.session.SessionState;
 
 public class TestDatagramSession implements IDatagramSession {
 	
-	SessionFutures futures = new SessionFutures(this);
+	SessionFuturesController futures = new SessionFuturesController(this);
 	
 	@Override
 	public long getId() {
@@ -165,6 +165,26 @@ public class TestDatagramSession implements IDatagramSession {
 
 	@Override
 	public IFuture<Void> write(SocketAddress remoteAddress, byte[] datagram) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public IFuture<Void> getCreateFuture() {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public IFuture<Void> getOpenFuture() {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public IFuture<Void> getCloseFuture() {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public IFuture<Void> getEndFuture() {
 		return futures.getCancelledFuture();
 	}
 

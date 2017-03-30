@@ -23,42 +23,52 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.core.future;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+class WriteFuture<V> extends AbstractBlockingFuture<V> {
 
-import org.snf4j.core.SelectorLoop;
-
-public class DiscardingClient {
-	static final String PREFIX = "org.snf4j.";
-	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
+	private final DataFuture<V> future;
 	
-	public static void main(String[] args) throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-
-		try {
-			loop.start();
-			
-			// Initialize the connection
-			SocketChannel channel = SocketChannel.open();
-			channel.configureBlocking(false);
-			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
-			
-			// Register the channel
-			loop.register(channel, new DiscardingClientHandler());
-			
-			// Wait till the loop ends
-			loop.join();
-		}
-		finally {
-
-			// Gently stop the loop
-			loop.stop();
-		}
+	private final long expectedSize;
+	
+	WriteFuture(DataFuture<V> future, long expectedSize) {
+		super(future.getSession());
+		this.future = future;
+		this.expectedSize = expectedSize;
 	}
+	
+	@Override
+	protected String toStringDetails() {
+		return "expectedSize=" + expectedSize;
+	}
+	
+	@Override
+	public boolean isDone() {
+		return isSuccessful() || future.isDone();
+	}
+	
+	@Override
+	public boolean isSuccessful() {
+		return future.size() >= expectedSize;
+	}
+	
+	@Override
+	public boolean isCancelled() {
+		return !isSuccessful() && future.isCancelled(); 
+	}
+	
+	@Override
+	public boolean isFailed() {
+		return !isSuccessful() && future.isFailed();
+	}
+	
+	public Throwable cause() {
+		return isSuccessful() ? null : future.cause();
+	}
+	
+	@Override
+	protected FutureLock getLock() {
+		return future.getLock();
+	}
+
 }

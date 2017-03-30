@@ -23,42 +23,27 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.core.future;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import static org.junit.Assert.assertEquals;
 
-import org.snf4j.core.SelectorLoop;
+import org.junit.Test;
+import org.snf4j.core.TestSession;
+import org.snf4j.core.future.SessionFuturesController;
 
-public class DiscardingClient {
-	static final String PREFIX = "org.snf4j.";
-	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
+public class AbstractFutureTest {
 	
-	public static void main(String[] args) throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-
-		try {
-			loop.start();
-			
-			// Initialize the connection
-			SocketChannel channel = SocketChannel.open();
-			channel.configureBlocking(false);
-			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
-			
-			// Register the channel
-			loop.register(channel, new DiscardingClientHandler());
-			
-			// Wait till the loop ends
-			loop.join();
-		}
-		finally {
-
-			// Gently stop the loop
-			loop.stop();
-		}
+	@Test
+	public void testToString() {
+		TestSession session = new TestSession("Session-1");
+		SessionFuturesController futures = new SessionFuturesController(session);
+		Exception cause = new Exception("Ex1");
+		
+		assertEquals("CancelledFuture[canceled]", new SessionFuturesController(null).getCancelledFuture().toString());
+		assertEquals("Session-1-CancelledFuture[canceled]", futures.getCancelledFuture().toString());
+		assertEquals("Session-1-SuccessfulFuture[successful]", futures.getSuccessfulFuture().toString());
+		assertEquals("Session-1-FailedFuture[failed:"+cause+"]", futures.getFailedFuture(cause).toString());
+		assertEquals("Session-1-EventFuture[incomplete,event=CREATED]", futures.getCreateFuture().toString());
+		assertEquals("Session-1-WriteFuture[incomplete,expectedSize=100]", futures.getWriteFuture(100).toString());
 	}
 }

@@ -23,42 +23,48 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.core.future;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import org.snf4j.core.SelectorLoop;
+import org.junit.Test;
+import org.snf4j.core.TestSession;
+import org.snf4j.core.future.DataFuture;
 
-public class DiscardingClient {
-	static final String PREFIX = "org.snf4j.";
-	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
+public class DataFutureTest {
 	
-	public static void main(String[] args) throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-
-		try {
-			loop.start();
-			
-			// Initialize the connection
-			SocketChannel channel = SocketChannel.open();
-			channel.configureBlocking(false);
-			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
-			
-			// Register the channel
-			loop.register(channel, new DiscardingClientHandler());
-			
-			// Wait till the loop ends
-			loop.join();
-		}
-		finally {
-
-			// Gently stop the loop
-			loop.stop();
-		}
+	@Test
+	public void testAll() {
+		DataFuture<Void> f = new DataFuture<Void>(new TestSession());
+		Exception cause = new Exception();
+		
+		assertEquals(0, f.size());
+		f.add(100);
+		assertEquals(100, f.size());
+		
+		assertFalse(f.isDone());
+		assertTrue(f.cancel(true));
+		assertTrue(f.isDone());
+		assertTrue(f.isCancelled());
+		assertFalse(f.cancel(true));
+		
+		f.add(50);
+		assertEquals(150, f.size());
+		f.add(1);
+		assertEquals(151, f.size());
+		f.add(0);
+		assertEquals(151, f.size());
+		
+		f = new DataFuture<Void>(new TestSession());
+		f.failure(cause);
+		assertTrue(f.isDone());
+		assertTrue(f.isFailed());
+		assertTrue(cause == f.cause());
+		f.failure(new Exception());
+		assertTrue(cause == f.cause());
+		
+		
 	}
 }

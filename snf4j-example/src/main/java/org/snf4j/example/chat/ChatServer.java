@@ -23,40 +23,45 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.example.chat;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
 import org.snf4j.core.SelectorLoop;
+import org.snf4j.core.factory.AbstractSessionFactory;
+import org.snf4j.core.handler.IStreamHandler;
 
-public class DiscardingClient {
+public class ChatServer {
 	static final String PREFIX = "org.snf4j.";
-	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
-	
+	static final int PORT = Integer.getInteger(PREFIX+"Port", 8002);
+
 	public static void main(String[] args) throws Exception {
 		SelectorLoop loop = new SelectorLoop();
 
 		try {
 			loop.start();
 			
-			// Initialize the connection
-			SocketChannel channel = SocketChannel.open();
+			// Initialize the listener
+			ServerSocketChannel channel = ServerSocketChannel.open();
 			channel.configureBlocking(false);
-			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
+			channel.socket().bind(new InetSocketAddress(PORT));
 			
-			// Register the channel
-			loop.register(channel, new DiscardingClientHandler());
+			// Register the listener
+			loop.register(channel, new AbstractSessionFactory() {
+
+				@Override
+				protected IStreamHandler createHandler(SocketChannel channel) {
+					return new ChatServerHandler();
+				}
+			});
 			
 			// Wait till the loop ends
 			loop.join();
 		}
 		finally {
-
+			
 			// Gently stop the loop
 			loop.stop();
 		}

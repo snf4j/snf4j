@@ -38,12 +38,15 @@ public class IllegalSessionStateException extends IllegalStateException {
 	
 	/**
 	 * Constructs an instance of this exception.
+	 * 
+	 * @param illegalState
+	 *            the illegal state of a session that caused this exception
 	 */
 	public IllegalSessionStateException(SessionState illegalState) {
 		this.illegalState = illegalState;
 	}
 	
-	/*
+	/**
 	 * Returns the illegal state of a session that caused this exception.
 	 * 
 	 * @return the illegal state

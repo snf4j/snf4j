@@ -28,6 +28,7 @@ package org.snf4j.core;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentMap;
 
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
@@ -166,6 +167,26 @@ public class TestSession implements ISession {
 	@Override
 	public long getLastWriteTime() {
 		return 0;
+	}
+
+	@Override
+	public IFuture<Void> getCreateFuture() {
+		return null;
+	}
+
+	@Override
+	public IFuture<Void> getOpenFuture() {
+		return null;
+	}
+
+	@Override
+	public IFuture<Void> getCloseFuture() {
+		return null;
+	}
+
+	@Override
+	public IFuture<Void> getEndFuture() {
+		return null;
 	}
 
 }

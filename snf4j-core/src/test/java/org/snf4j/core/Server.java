@@ -40,6 +40,7 @@ import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
+import org.snf4j.core.future.BlockingFutureOperationException;
 import org.snf4j.core.handler.AbstractStreamHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IStreamHandler;
@@ -368,6 +369,19 @@ public class Server {
 				getSession().write(new Packet(PacketType.IN_LOOP_RESPONSE, Boolean.toString(loop.inLoop())).toBytes());
 				break;				
 			
+			case DEADLOCK:
+				String result = "NO";
+				try {
+					getSession().getEndFuture().await(1000);
+				}
+				catch (BlockingFutureOperationException e) {
+					result = "YES";
+				}
+				catch (Exception e) {
+				}
+				getSession().write(new Packet(PacketType.DEADLOCK_RESPONSE, result).toBytes());
+				break;
+				
 			default:
 				break;
 			}

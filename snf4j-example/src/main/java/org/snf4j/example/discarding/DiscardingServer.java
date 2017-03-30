@@ -37,17 +37,18 @@ public class DiscardingServer {
 	static final String PREFIX = "org.snf4j.";
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
+		SelectorLoop loop = new SelectorLoop();
+
 		try {
-			SelectorLoop loop = new SelectorLoop();
 			loop.start();
-			
+		
+			// Initialize the listener
 			ServerSocketChannel channel = ServerSocketChannel.open();
 			channel.configureBlocking(false);
 			channel.socket().bind(new InetSocketAddress(PORT));
 			
-			//channel.bind(new InetSocketAddress(PORT));
-			
+			// Register the listener
 			loop.register(channel, new AbstractSessionFactory() {
 
 				@Override
@@ -55,10 +56,14 @@ public class DiscardingServer {
 					return new DiscardingServerHandler();
 				}
 			});
+			
+			// Wait till the loop ends
 			loop.join();
 		}
-		catch (Exception e) {
-			e.printStackTrace();
+		finally {
+			
+			// Gently stop the loop
+			loop.stop();
 		}
 	}
 }

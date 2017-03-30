@@ -36,7 +36,7 @@ import java.nio.channels.SelectionKey;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.snf4j.core.concurrent.IFuture;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
@@ -134,7 +134,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			synchronized (writeLock) {
 				key = detectRebuild(key);
 				if (closing != ClosingState.NONE) {
-					return futures.getCancelledFuture();
+					return futuresController.getCancelledFuture();
 				}
 				outQueue.add(new DatagramRecord(remoteAddress, datagram));
 				setWriteInterestOps(key);
@@ -146,7 +146,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			throw new IllegalSessionStateException(SessionState.CLOSING);
 		}
 		lazyWakeup();
-		return futures.getWriteFuture(futureExpectedLen);
+		return futuresController.getWriteFuture(futureExpectedLen);
 	}
 	
 	private final void close(SelectionKey key) throws IOException {

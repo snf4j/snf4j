@@ -34,7 +34,7 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
-import org.snf4j.core.concurrent.IFuture;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
@@ -107,7 +107,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		
 		synchronized (writeLock) {
 			if (closing != ClosingState.NONE) {
-				return futures.getCancelledFuture();
+				return futuresController.getCancelledFuture();
 			}
 			int lastIndex = outBuffers.length - 1;
 			ByteBuffer lastBuffer = outBuffers[lastIndex];
@@ -136,7 +136,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			}
 		}
 		lazyWakeup();
-		return futures.getWriteFuture(futureExpectedLen);
+		return futuresController.getWriteFuture(futureExpectedLen);
 	}
 
 	@Override

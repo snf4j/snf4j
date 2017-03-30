@@ -42,11 +42,11 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.snf4j.core.concurrent.IFutureExecutor;
 import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
+import org.snf4j.core.future.IFutureExecutor;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ExceptionLogger;

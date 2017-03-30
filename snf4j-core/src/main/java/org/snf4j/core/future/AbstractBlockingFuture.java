@@ -1,4 +1,29 @@
-package org.snf4j.core.concurrent;
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2017 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
+package org.snf4j.core.future;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -53,48 +78,56 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 		return awaitUninterruptibly0(unit.toNanos(timeout));
 	}
 
-	IFuture<V> rethrow() throws FutureFailureException {
+	IFuture<V> rethrow() throws ExecutionException {
 		Throwable cause = this.cause;
 		
 		if (cause == null) {
 			return this;
 		}
-		throw new FutureFailureException(cause);
+		throw new ExecutionException(cause);
 	}
 	
 	@Override
-	public IFuture<V> sync() throws InterruptedException, FutureFailureException {
+	public IFuture<V> sync() throws InterruptedException, ExecutionException {
 		await0(0, true);
 		return rethrow();
 	}
 	
 	@Override
-	public IFuture<V> sync(long timeoutMillis) throws InterruptedException, FutureFailureException {
-		await0(TimeUnit.MILLISECONDS.toNanos(timeoutMillis), true);
+	public IFuture<V> sync(long timeoutMillis) throws InterruptedException, ExecutionException, TimeoutException {
+		if (!await0(TimeUnit.MILLISECONDS.toNanos(timeoutMillis), true).isDone()) {
+			throw new TimeoutException();
+		}
 		return rethrow();
 	}
 	
 	@Override
-	public IFuture<V> sync(long timeout, TimeUnit unit) throws InterruptedException, FutureFailureException {
-		await0(unit.toNanos(timeout), true);
+	public IFuture<V> sync(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+		if (!await0(unit.toNanos(timeout), true).isDone()) {
+			throw new TimeoutException();
+		}
 		return rethrow();
 	}
 
 	@Override
-	public IFuture<V> syncUninterruptibly() throws FutureFailureException {
+	public IFuture<V> syncUninterruptibly() throws ExecutionException {
 		awaitUninterruptibly0(0);
 		return rethrow();
 	}
 	
 	@Override
-	public IFuture<V> syncUninterruptibly(long timeoutMillis) throws FutureFailureException {
-		awaitUninterruptibly0(TimeUnit.MILLISECONDS.toNanos(timeoutMillis));
+	public IFuture<V> syncUninterruptibly(long timeoutMillis) throws ExecutionException, TimeoutException {
+		if (!awaitUninterruptibly0(TimeUnit.MILLISECONDS.toNanos(timeoutMillis)).isDone()) {
+			throw new TimeoutException();
+		}
 		return rethrow();
 	}
 	
 	@Override
-	public IFuture<V> syncUninterruptibly(long timeout, TimeUnit unit) throws FutureFailureException {
-		awaitUninterruptibly0(unit.toNanos(timeout));
+	public IFuture<V> syncUninterruptibly(long timeout, TimeUnit unit) throws ExecutionException, TimeoutException {
+		if (!awaitUninterruptibly0(unit.toNanos(timeout)).isDone()) {
+			throw new TimeoutException();
+		}
 		return rethrow();
 	}
 	
@@ -105,7 +138,18 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 	@Override
 	public V get() throws InterruptedException, ExecutionException {
 		await();
+		return get0();
+	}
 
+	@Override
+	public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+		if (await(timeout, unit).isDone()) {
+			return get0();
+		}
+		throw new TimeoutException();
+	}
+	
+	final V get0() throws InterruptedException, ExecutionException {
 		Throwable cause = cause();
 		
 		if (cause == null) {
@@ -115,12 +159,6 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 			throw (CancellationException)cause;
 		}
 		throw new ExecutionException(cause);
-	}
-
-	@Override
-	public V get(long arg0, TimeUnit arg1) throws InterruptedException, ExecutionException, TimeoutException {
-		//TODO implement it
-		return null;
 	}
 	
 	@Override
@@ -147,7 +185,7 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 		IFutureExecutor executor = this.executor;
 		
 		if (executor != null && executor.inExecutor()) {
-			throw new BlockingOperationException(toString());
+			throw new BlockingFutureOperationException(toString());
 		}
 	}
 	

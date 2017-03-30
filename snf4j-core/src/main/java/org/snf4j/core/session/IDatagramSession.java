@@ -27,7 +27,7 @@ package org.snf4j.core.session;
 
 import java.net.SocketAddress;
 
-import org.snf4j.core.concurrent.IFuture;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IDatagramHandler;
 
 /**

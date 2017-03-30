@@ -23,42 +23,57 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.example.chat;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.snf4j.core.SelectorLoop;
+import org.snf4j.core.handler.AbstractStreamHandler;
+import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.IStreamSession;
 
-public class DiscardingClient {
-	static final String PREFIX = "org.snf4j.";
-	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
+public class ChatServerHandler extends AbstractStreamHandler {
+
+	private static Integer USERID = 0;
 	
-	public static void main(String[] args) throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-
-		try {
-			loop.start();
-			
-			// Initialize the connection
-			SocketChannel channel = SocketChannel.open();
-			channel.configureBlocking(false);
-			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
-			
-			// Register the channel
-			loop.register(channel, new DiscardingClientHandler());
-			
-			// Wait till the loop ends
-			loop.join();
-		}
-		finally {
-
-			// Gently stop the loop
-			loop.stop();
+	private static String YOUID = "[you]";
+	
+	static final Map<Long, IStreamSession> sessions = new HashMap<Long, IStreamSession>();
+	
+	@Override
+	public void read(byte[] data) {
+		String msg = new String(data);
+		
+		send(msg);
+		if ("bye".equalsIgnoreCase(msg)) {
+			getSession().close();
 		}
 	}
+
+	@SuppressWarnings("incomplete-switch")
+	@Override
+	public void event(SessionEvent event) {
+		switch (event) {
+		case OPENED:
+			sessions.put(getSession().getId(), getSession());
+			getSession().getAttributes().put(USERID, "["+getSession().getRemoteAddress()+"]");
+			send("{connected}");
+			break;
+			
+		case CLOSED:
+			sessions.remove(getSession().getId());
+			send("{disconnected}");
+			break;
+		}
+	}
+	
+	private void send(String message) {
+		long youId = getSession().getId();
+		String userId = (String) getSession().getAttributes().get(USERID);
+		
+		for (IStreamSession session: sessions.values()) {
+			session.write(((session.getId() == youId ? YOUID : userId) + ' ' + message).getBytes());
+		}
+	}
+	
 }

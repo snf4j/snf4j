@@ -23,42 +23,25 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.core.future;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import org.snf4j.core.session.ISession;
 
-import org.snf4j.core.SelectorLoop;
+/**
+ * A cancelled future
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class CancelledFuture<V> extends CompletedFuture<V> {
 
-public class DiscardingClient {
-	static final String PREFIX = "org.snf4j.";
-	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
-	
-	public static void main(String[] args) throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-
-		try {
-			loop.start();
-			
-			// Initialize the connection
-			SocketChannel channel = SocketChannel.open();
-			channel.configureBlocking(false);
-			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
-			
-			// Register the channel
-			loop.register(channel, new DiscardingClientHandler());
-			
-			// Wait till the loop ends
-			loop.join();
-		}
-		finally {
-
-			// Gently stop the loop
-			loop.stop();
-		}
+	/**
+	 * Constructs a cancelled future.
+	 * 
+	 * @param session
+	 *            the session this future is associated with
+	 */
+	public CancelledFuture(ISession session) {
+		super(session, FutureState.CANCELLED);
 	}
+	
 }

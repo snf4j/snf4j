@@ -1,4 +1,29 @@
-package org.snf4j.core.concurrent;
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2017 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
+package org.snf4j.core.future;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -14,16 +39,19 @@ import org.snf4j.core.Packet;
 import org.snf4j.core.PacketType;
 import org.snf4j.core.Server;
 import org.snf4j.core.StreamSession;
+import org.snf4j.core.future.EventFuture;
+import org.snf4j.core.future.IFuture;
+import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 
-public class SessionFuturesTest {
+public class SessionFuturesControllerTest {
 	
 	static final int PORT = 7777;
 	static final long TIMEOUT = 2000;
 	static final long AWAIT = 1000;
 	
-	SessionFutures sf;
+	SessionFuturesController sf;
 	
 	Server s;
 	Client c;
@@ -125,7 +153,7 @@ public class SessionFuturesTest {
 	@Test
 	public void testSessionEventFuture() throws Exception {
 		Exception cause = new Exception();
-		sf = new SessionFutures(null);
+		sf = new SessionFuturesController(null);
 
 		IFuture<Void> f = sf.getCreateFuture();
 		assertNotDone(f);
@@ -155,7 +183,7 @@ public class SessionFuturesTest {
 	
 	@Test
 	public void testSessionFuturesAwait() throws Exception {
-		sf = new SessionFutures(null);
+		sf = new SessionFuturesController(null);
 		
 		long t0 = System.currentTimeMillis();
 		fireEvent(SessionEvent.CREATED, 1000);
@@ -201,7 +229,7 @@ public class SessionFuturesTest {
 		f.await(timeout);
 		long t = System.currentTimeMillis()-t0;
 		if (expectedTimeout > 0) {
-			assertTrue(t <= (expectedTimeout * 100 / 95) && t >= (expectedTimeout * 95 / 100));
+			assertTrue("expected "+expectedTimeout+" but was "+t,t <= (expectedTimeout * 100 / 95) && t >= (expectedTimeout * 95 / 100));
 		}
 		else {
 			assertTrue(t < 50);
@@ -348,7 +376,7 @@ public class SessionFuturesTest {
 		Exception cause2 = new Exception("Ex2");
 		
 		//no exception
-		sf = new SessionFutures(null);
+		sf = new SessionFuturesController(null);
 		assertNotDone(sf.getCreateFuture());
 		assertNotDone(sf.getOpenFuture());
 		assertNotDone(sf.getCloseFuture());
@@ -375,7 +403,7 @@ public class SessionFuturesTest {
 		assertSuccessful(sf.getEndFuture());
 		
 		//exception before opened
-		sf = new SessionFutures(null);
+		sf = new SessionFuturesController(null);
 		sf.event(SessionEvent.CREATED);
 		sf.exception(cause1);
 		sf.exception(cause2);
@@ -390,7 +418,7 @@ public class SessionFuturesTest {
 		assertFailed(sf.getEndFuture(), cause1);
 
 		//exception after opened
-		sf = new SessionFutures(null);
+		sf = new SessionFuturesController(null);
 		sf.event(SessionEvent.CREATED);
 		sf.event(SessionEvent.OPENED);
 		sf.exception(cause1);
@@ -417,7 +445,7 @@ public class SessionFuturesTest {
 		Exception cause2 = new Exception();
 		
 		//exception after opened
-		sf = new SessionFutures(null);
+		sf = new SessionFuturesController(null);
 		sf.event(SessionEvent.CREATED);
 		sf.event(SessionEvent.OPENED);
 		IFuture<Void> f0 = sf.getWriteFuture(100);
@@ -442,7 +470,7 @@ public class SessionFuturesTest {
 		assertFailed(sf.getEndFuture(), cause1);
 		
 		//exception before opened
-		sf = new SessionFutures(null);
+		sf = new SessionFuturesController(null);
 		sf.event(SessionEvent.CREATED);
 		f0 = sf.getWriteFuture(100);
 		f1 = sf.getWriteFuture(101);
@@ -457,7 +485,7 @@ public class SessionFuturesTest {
 		assertFailed(f1, cause1);
 		
 		//cancel
-		sf = new SessionFutures(null);
+		sf = new SessionFuturesController(null);
 		sf.event(SessionEvent.CREATED);
 		sf.event(SessionEvent.OPENED);
 		f0 = sf.getWriteFuture(100);
@@ -471,7 +499,24 @@ public class SessionFuturesTest {
 		assertCanceled(f1);
 		assertSuccessful(sf.getCloseFuture());
 		assertSuccessful(sf.getEndFuture());
+	}
+	
+	@Test
+	public void testDeadLock() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		c.start();
 		
-		
+		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionOpen(TIMEOUT);
+		s.getRecordedData(false);
+		c.getRecordedData(false);
+		c.write(new Packet(PacketType.DEADLOCK));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("SCR|SOP|DS|DR|DEADLOCK_RESPONSE(YES)|",c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
 	}
 }

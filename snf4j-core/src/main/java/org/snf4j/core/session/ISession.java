@@ -28,6 +28,7 @@ package org.snf4j.core.session;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentMap;
 
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IHandler;
 
 /**
@@ -226,4 +227,37 @@ public interface ISession {
 	 * @return the time of the last write operation
 	 */
 	long getLastWriteTime();
+	
+	/**
+	 * Gets the future that can be use to wait for the completion of the
+	 * creation phase.
+	 * 
+	 * @return the future associated with the creation phase of this session
+	 */
+	IFuture<Void> getCreateFuture();
+
+	/**
+	 * Gets the future that can be use to wait for the completion of the opening
+	 * phase.
+	 * 
+	 * @return the future associated with the opening phase of this session
+	 */
+	IFuture<Void> getOpenFuture();
+
+	/**
+	 * Gets the future that can be use to wait for the completion of the closing
+	 * phase.
+	 * 
+	 * @return the future associated with the closing phase of this session
+	 */
+	IFuture<Void> getCloseFuture();
+
+	/**
+	 * Gets the future that can be use to wait for the completion of the ending
+	 * phase.
+	 * 
+	 * @return the future associated with the ending phase of this session
+	 */
+	IFuture<Void> getEndFuture();
+	
 }
