@@ -34,6 +34,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.Client;
+import org.snf4j.core.DatagramHandler;
+import org.snf4j.core.DatagramSession;
 import org.snf4j.core.DelayedThreadFactory;
 import org.snf4j.core.Packet;
 import org.snf4j.core.PacketType;
@@ -44,6 +46,7 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.ISession;
 
 public class SessionFuturesControllerTest {
 	
@@ -55,16 +58,21 @@ public class SessionFuturesControllerTest {
 	
 	Server s;
 	Client c;
+	DatagramHandler sdh;
+	DatagramHandler cdh;
 	
 	@Before
 	public void before() {
 		s = c = null;
+		sdh = cdh = null;
 	}
 
 	@After
 	public void after() throws InterruptedException {
 		if (c != null) c.stop(TIMEOUT);
 		if (s != null) s.stop(TIMEOUT);
+		if (sdh != null) sdh.stop(TIMEOUT);
+		if (cdh != null) cdh.stop(TIMEOUT);
 	}
 	
 	void fireEvent(final SessionEvent event, final long delay) {
@@ -120,7 +128,7 @@ public class SessionFuturesControllerTest {
 		new Thread(r).start();
 	}
 	
-	void delayedClose(final StreamSession session, final long delay) {
+	void delayedClose(final ISession session, final long delay) {
 		Runnable r = new Runnable() {
 
 			@Override
@@ -135,7 +143,7 @@ public class SessionFuturesControllerTest {
 		new Thread(r).start();
 	}
 
-	void delayedResume(final StreamSession session, final long delay) {
+	void delayedResume(final ISession session, final long delay) {
 		Runnable r = new Runnable() {
 
 			@Override
@@ -204,7 +212,7 @@ public class SessionFuturesControllerTest {
 		f.await();
 	}
 	
-	private IFuture<?> await(StreamSession session, SessionEvent type, long timeout, long expectedTimeout) throws InterruptedException {
+	private IFuture<?> await(ISession session, SessionEvent type, long timeout, long expectedTimeout) throws InterruptedException {
 		IFuture<Void> f = null;
 		
 		switch (type) {
@@ -237,12 +245,62 @@ public class SessionFuturesControllerTest {
 		return f;
 	}
 	
-	void assertNotDone(StreamSession session, SessionEvent type) throws InterruptedException {
+	void assertNotDone(ISession session, SessionEvent type) throws InterruptedException {
 		assertFalse(await(session, type, AWAIT, AWAIT).isDone());
 	}
 
-	void assertDone(StreamSession session, SessionEvent type) throws InterruptedException {
+	void assertDone(ISession session, SessionEvent type) throws InterruptedException {
 		assertTrue(await(session, type, AWAIT, 0).isDone());
+	}
+
+	@Test
+	public void testDatagramSessionWriteFuture() throws Exception {
+		sdh = new DatagramHandler(PORT);
+		sdh.startServer();
+
+		//write without suspend
+		cdh = new DatagramHandler(PORT);
+		cdh.startClient();
+		cdh.waitForSessionOpen(TIMEOUT);
+		sdh.waitForSessionOpen(TIMEOUT);
+		sdh.getRecordedData(true);
+		cdh.getRecordedData(true);
+		IFuture<Void> f = cdh.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		assertTrue(f.await(TIMEOUT).isDone());
+		assertTrue(f.await(TIMEOUT).isDone());
+		assertTrue(f.isSuccessful());
+		cdh.waitForDataRead(TIMEOUT);
+		sdh.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", cdh.getRecordedData(true));
+		assertEquals("DR|$ECHO()|DS|", sdh.getRecordedData(true));
+		cdh.stop(TIMEOUT);
+		cdh.waitForSessionEnding(TIMEOUT);
+		sdh.stop(TIMEOUT);
+
+		//write with suspend
+		sdh = new DatagramHandler(PORT);
+		sdh.startServer();
+		cdh = new DatagramHandler(PORT);
+		cdh.startClient();
+		cdh.waitForSessionOpen(TIMEOUT);
+		sdh.waitForSessionOpen(TIMEOUT);
+		sdh.getRecordedData(true);
+		cdh.getRecordedData(true);
+		cdh.getSession().suspendWrite();
+		f = cdh.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		delayedResume(cdh.getSession(), 1000);
+		long t = System.currentTimeMillis();
+		assertTrue(f.await(2000).isDone());
+		t = System.currentTimeMillis() - t;
+		assertTrue(t > 950 && t <1050);
+		assertTrue(f.isSuccessful());
+		cdh.waitForDataRead(TIMEOUT);
+		sdh.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", cdh.getRecordedData(true));
+		assertEquals("DR|$ECHO()|DS|", sdh.getRecordedData(true));
+		cdh.stop(TIMEOUT);
+		cdh.waitForSessionEnding(TIMEOUT);
+		sdh.stop(TIMEOUT);
 	}
 	
 	@Test
@@ -291,6 +349,52 @@ public class SessionFuturesControllerTest {
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+	}
+	
+	@Test
+	public void testDatagramSessionEventFutures() throws Exception {
+		sdh = new DatagramHandler(PORT);
+		sdh.startServer();
+
+		//futures already done or not done yet
+		cdh = new DatagramHandler(PORT);
+		DatagramSession session = cdh.createSession();
+		assertNotDone(session, SessionEvent.CREATED);
+		assertNotDone(session, SessionEvent.OPENED);
+		cdh.startClient();
+		assertDone(session, SessionEvent.CREATED);
+		assertDone(session, SessionEvent.OPENED);
+		assertNotDone(session, SessionEvent.CLOSED);
+		assertNotDone(session, SessionEvent.ENDING);
+		session.close();
+		assertDone(session, SessionEvent.CLOSED);
+		assertDone(session, SessionEvent.ENDING);
+		cdh.stop(TIMEOUT);
+
+		//futures done while waiting
+		cdh = new DatagramHandler(PORT);
+		cdh.setThreadFactory(new DelayedThreadFactory(500));
+		session = cdh.createSession();
+		cdh.startClient();
+		assertTrue(await(session, SessionEvent.CREATED, AWAIT, 500).isDone());
+		assertDone(session, SessionEvent.OPENED);
+		delayedClose(session, 500);
+		assertTrue(await(session, SessionEvent.CLOSED, AWAIT, 500).isDone());
+		assertDone(session, SessionEvent.ENDING);
+		cdh.stop(TIMEOUT);
+
+		//futures done while waiting
+		cdh = new DatagramHandler(PORT);
+		cdh.setThreadFactory(new DelayedThreadFactory(500));
+		session = cdh.createSession();
+		cdh.startClient();
+		assertTrue(await(session, SessionEvent.OPENED, AWAIT, 500).isDone());
+		assertDone(session, SessionEvent.CREATED);
+		delayedClose(session, 500);
+		assertTrue(await(session, SessionEvent.ENDING, AWAIT, 500).isDone());
+		assertDone(session, SessionEvent.CLOSED);
+		cdh.stop(TIMEOUT);
+		sdh.stop(TIMEOUT);
 	}
 	
 	@Test
