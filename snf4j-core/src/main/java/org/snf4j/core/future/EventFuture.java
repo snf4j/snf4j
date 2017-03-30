@@ -23,47 +23,36 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.future;
 
-public class Packet {
-	PacketType type;
-	String payload;
+import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.ISession;
 
-	public Packet(PacketType type, String payload) {
-		this.type = type;
-		this.payload = payload;
+class EventFuture<V> extends AbstractBlockingFuture<V> {
+
+	private final SessionEvent event;
+	
+	EventFuture(ISession session, SessionEvent event) {
+		super(session);
+		this.event = event;
 	}
 	
-	public Packet(PacketType type) {
-		this(type, "");
+	@Override
+	protected String toStringDetails() {
+		return "event=" + event.name();
 	}
 	
-	static int toRead(byte[] buffer, int off, int len) {
-		if (len >= 3) {
-			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
-			
-			if (expected <= len) {
-				return expected;
-			}
+	void success() {
+		if (setState(FutureState.SUCCESSFUL)) {
+			notifyWaiters();
 		}
-		return 0;
 	}
 	
-	static Packet fromBytes(byte[] data) {
-		byte t = data[2];
-		
-		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
+	void failure(Throwable cause) {
+		if (setState(FutureState.FAILED)) {
+			this.cause = cause;
+			notifyWaiters();
+		}
 	}
-	
-	public byte[] toBytes() {
-		byte[] payload = this.payload.getBytes();
-		byte[] data = new byte[3 + payload.length];
-		int len = 3 + payload.length;
-	
-		data[0] = (byte) (len >>> 8);
-		data[1] = (byte) len;
-		data[2] = (byte) type.ordinal();
-		System.arraycopy(payload, 0, data, 3, payload.length);
-		return data;
-	}
+
 }

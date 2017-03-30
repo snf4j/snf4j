@@ -50,6 +50,11 @@ public class Client extends Server {
 		super(port);
 	}
 
+	public StreamSession createSession() {
+		initSession = new StreamSession(new Handler());
+		return initSession;
+	}
+	
 	@Override
 	public void start(boolean firstRegistrate, SelectorLoop loop) throws IOException {
 		if (loop == null) {
@@ -88,7 +93,12 @@ public class Client extends Server {
 			loop.register(sc, session);
 		}
 		else {
-			loop.register(sc, new Handler());
+			if (initSession == null) {
+				loop.register(sc, new Handler());
+			}
+			else {
+				loop.register(sc, initSession);
+			}
 		}
 
 		if (firstRegistrate) {

@@ -32,6 +32,8 @@ import java.nio.channels.SelectionKey;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.future.IFuture;
+import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
@@ -96,6 +98,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	/** Used to track already fired events. */
 	int eventBits;
 	
+	final SessionFuturesController futuresController = new SessionFuturesController(this);
+	
 	protected InternalSession(String name, IHandler handler, ILogger logger) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
@@ -114,6 +118,25 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
 	}
 	
+	@Override
+	public IFuture<Void> getCreateFuture() {
+		return futuresController.getCreateFuture();
+	}
+
+	@Override
+	public IFuture<Void> getOpenFuture() {
+		return futuresController.getOpenFuture();
+	}
+
+	@Override
+	public IFuture<Void> getCloseFuture() {
+		return futuresController.getCloseFuture();
+	}
+
+	@Override
+	public IFuture<Void> getEndFuture() {
+		return futuresController.getEndFuture();
+	}
 	
 	/**
 	 * Detects if the key was replaced. It can happen after rebuilding of the selector.
@@ -190,6 +213,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	void setLoop(InternalSelectorLoop loop) {
 		this.loop = loop;
+		futuresController.setExecutor(loop);
 	}
 	
 	final Object getWriteLock() {
@@ -443,12 +467,14 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	final void event(DataEvent event, long length) {
 		if (isValid(event.type())) {
+			futuresController.event(event, length);
 			handler.event(event, length);
 		}
 	}
 	
 	final void event(SessionEvent event) {
 		if (isValid(event.type())) {
+			futuresController.event(event);
 			handler.event(event);
 		}
 	}
@@ -456,6 +482,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	final void exception(Throwable t) {
 		if (isValid(EventType.EXCEPTION_CAUGHT)) {
 			if (!handler.exception(t)) {
+				futuresController.exception(t);
 				quickClose();
 			}
 		}

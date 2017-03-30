@@ -71,12 +71,12 @@ public class TestSelector extends Selector implements IDelegatingSelector {
 
 	@Override
 	public int select() throws IOException {
-		return nonBlocking ? 0 :delegate.select();
+		return nonBlocking ? 0 : delegate.select();
 	}
 
 	@Override
 	public int select(long arg0) throws IOException {
-		return delegate.select(arg0);
+		return nonBlocking ? 0 : delegate.select(arg0);
 	}
 
 	@Override

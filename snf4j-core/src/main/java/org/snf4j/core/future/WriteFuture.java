@@ -23,47 +23,52 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.future;
 
-public class Packet {
-	PacketType type;
-	String payload;
+class WriteFuture<V> extends AbstractBlockingFuture<V> {
 
-	public Packet(PacketType type, String payload) {
-		this.type = type;
-		this.payload = payload;
+	private final DataFuture<V> future;
+	
+	private final long expectedSize;
+	
+	WriteFuture(DataFuture<V> future, long expectedSize) {
+		super(future.getSession());
+		this.future = future;
+		this.expectedSize = expectedSize;
 	}
 	
-	public Packet(PacketType type) {
-		this(type, "");
+	@Override
+	protected String toStringDetails() {
+		return "expectedSize=" + expectedSize;
 	}
 	
-	static int toRead(byte[] buffer, int off, int len) {
-		if (len >= 3) {
-			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
-			
-			if (expected <= len) {
-				return expected;
-			}
-		}
-		return 0;
+	@Override
+	public boolean isDone() {
+		return isSuccessful() || future.isDone();
 	}
 	
-	static Packet fromBytes(byte[] data) {
-		byte t = data[2];
-		
-		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
+	@Override
+	public boolean isSuccessful() {
+		return future.size() >= expectedSize;
 	}
 	
-	public byte[] toBytes() {
-		byte[] payload = this.payload.getBytes();
-		byte[] data = new byte[3 + payload.length];
-		int len = 3 + payload.length;
-	
-		data[0] = (byte) (len >>> 8);
-		data[1] = (byte) len;
-		data[2] = (byte) type.ordinal();
-		System.arraycopy(payload, 0, data, 3, payload.length);
-		return data;
+	@Override
+	public boolean isCancelled() {
+		return !isSuccessful() && future.isCancelled(); 
 	}
+	
+	@Override
+	public boolean isFailed() {
+		return !isSuccessful() && future.isFailed();
+	}
+	
+	public Throwable cause() {
+		return isSuccessful() ? null : future.cause();
+	}
+	
+	@Override
+	protected FutureLock getLock() {
+		return future.getLock();
+	}
+
 }

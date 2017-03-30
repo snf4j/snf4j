@@ -25,6 +25,7 @@
  */
 package org.snf4j.core.session;
 
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 
 /**
@@ -53,7 +54,8 @@ public interface IStreamSession extends ISession {
 	 *            bytes to be written
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
+	 * @return the future associated with this write operation
 	 */
-	void write(byte[] data);
+	IFuture<Void> write(byte[] data);
 
 }

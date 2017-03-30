@@ -23,47 +23,40 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.future;
 
-public class Packet {
-	PacketType type;
-	String payload;
+import org.snf4j.core.session.ISession;
 
-	public Packet(PacketType type, String payload) {
-		this.type = type;
-		this.payload = payload;
+/**
+ * A failed future
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class FailedFuture<V> extends CompletedFuture<V> {
+	
+	private final Throwable cause;
+	
+	/**
+	 * Constructs a failed future.
+	 * 
+	 * @param session
+	 *            the session this future is associated with
+	 * @param cause
+	 *            the cause of the failure
+	 */
+	FailedFuture(ISession session, Throwable cause) {
+		super(session, FutureState.FAILED);
+		this.cause = cause;
 	}
 	
-	public Packet(PacketType type) {
-		this(type, "");
+	/**
+	 * Returns the cause of the failure
+	 * 
+	 * @return the cause of the failure
+	 */
+	@Override
+	public Throwable cause() {
+		return cause;
 	}
-	
-	static int toRead(byte[] buffer, int off, int len) {
-		if (len >= 3) {
-			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
-			
-			if (expected <= len) {
-				return expected;
-			}
-		}
-		return 0;
-	}
-	
-	static Packet fromBytes(byte[] data) {
-		byte t = data[2];
-		
-		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
-	}
-	
-	public byte[] toBytes() {
-		byte[] payload = this.payload.getBytes();
-		byte[] data = new byte[3 + payload.length];
-		int len = 3 + payload.length;
-	
-		data[0] = (byte) (len >>> 8);
-		data[1] = (byte) len;
-		data[2] = (byte) type.ordinal();
-		System.arraycopy(payload, 0, data, 3, payload.length);
-		return data;
-	}
+
 }

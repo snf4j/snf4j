@@ -323,8 +323,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 			else {
 				//If the channel is closed notify session
 				try {
-					session.setChannel(channel);
-					fireEvent(session, SessionEvent.CREATED);
+					fireCreatedEvent(session, channel);
 				}
 				finally {
 					fireEndingEvent(session, false);
@@ -334,12 +333,10 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 		
 		try {
-			session.setChannel(channel);
-			fireEvent(session, SessionEvent.CREATED);
+			fireCreatedEvent(session, channel);
 		}
 		finally {
 			session.setSelectionKey(key);
-			session.setLoop(this);
 			if (debugEnabled) {
 				logger.debug("Channel {} associated with {}", toString(channel), session);
 			}
@@ -432,14 +429,12 @@ public class SelectorLoop extends InternalSelectorLoop {
 				}
 				else {
 					session.setSelectionKey(channel.register(getUnderlyingSelector(selector), SelectionKey.OP_READ, session));
-					session.setLoop(this);
 				}
 				opened = true;
 			}
 			catch (Exception e) {
 				try {
-					session.setChannel(channel);
-					fireEvent(session, SessionEvent.CREATED);
+					fireCreatedEvent(session, channel);
 				}
 				finally {
 					elogger.error(logger, "Unable to reqister channel {} with selector: {}", toString(channel), e);
@@ -449,8 +444,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 			
 			if (opened) {
 				try {
-					session.setChannel(channel);
-					fireEvent(session, SessionEvent.CREATED);
+					fireCreatedEvent(session, channel);
 				}
 				finally {
 					if (debugEnabled) {
@@ -478,8 +472,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 			logger.debug("Finishing connection of channel {}", toString(key.channel()));
 		}
 
-		session.setChannel((SocketChannel)key.channel());
-		fireEvent(session, SessionEvent.CREATED);
+		fireCreatedEvent(session, key.channel());
 		boolean finished;
 		
 		try {
@@ -503,7 +496,6 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 			key.interestOps(SelectionKey.OP_READ);
 			session.setSelectionKey(key);
-			session.setLoop(this);
 			fireEvent(session, SessionEvent.OPENED);
 		}
 	}
@@ -530,7 +522,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				
 				if (areEmpty) {
 					bytes = 0;
-					if (session.compactOutBuffers()) {
+					if (session.compactOutBuffers(bytes)) {
 						session.clearWriteInterestOps(key);
 						session.handleClosingInProgress();
 					}
@@ -545,7 +537,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 						}
 						session.calculateThroughput(currentTime, false);
 						session.incWrittenBytes(bytes, currentTime);
-						if (session.compactOutBuffers()) {
+						if (session.compactOutBuffers(bytes)) {
 							session.clearWriteInterestOps(key);
 							session.handleClosingInProgress();
 						}
@@ -675,13 +667,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 				}
 				
 				if (bytes == record.datagram.length) {
-					long currentTime = System.currentTimeMillis();
-
 					if (traceEnabled) {
 						logger.trace("{} byte(s) written to channel in {}", bytes, session);
 					}
-					session.calculateThroughput(currentTime, false);
-					session.incWrittenBytes(bytes, currentTime);
 					outQueue.poll();
 					totalBytes += bytes;
 				}
@@ -691,6 +679,13 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 			
 			synchronized (session.getWriteLock()) {
+				if (totalBytes > 0) {
+					long currentTime = System.currentTimeMillis();
+
+					session.calculateThroughput(currentTime, false);
+					session.incWrittenBytes(totalBytes, currentTime);
+					session.consumedBytes(totalBytes);
+				}
 				if (outQueue.isEmpty()) {
 					session.clearWriteInterestOps(key);
 					session.handleClosingInProgress();

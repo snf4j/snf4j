@@ -23,24 +23,26 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.example.chat;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
 import org.snf4j.core.SelectorLoop;
+import org.snf4j.core.session.IStreamSession;
 
-public class DiscardingClient {
+public class ChatClient {
 	static final String PREFIX = "org.snf4j.";
 	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
-	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
+	static final int PORT = Integer.getInteger(PREFIX+"Port", 8002);
+	static final Integer BYE_TYPED = 0;
 	
 	public static void main(String[] args) throws Exception {
 		SelectorLoop loop = new SelectorLoop();
-
+		
 		try {
 			loop.start();
 			
@@ -50,10 +52,23 @@ public class DiscardingClient {
 			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
 			
 			// Register the channel
-			loop.register(channel, new DiscardingClientHandler());
+			IStreamSession session = loop.register(channel, new ChatClientHandler());
 			
-			// Wait till the loop ends
-			loop.join();
+			// Confirm that the connection was successful
+			session.getOpenFuture().sync();
+			
+			// Read commands from the standard input
+			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+			String line;
+			while ((line = in.readLine()) != null) {
+				if (session.isOpen()) {
+					session.write((line).getBytes());
+				}
+				if ("bye".equalsIgnoreCase(line)) {
+					session.getAttributes().put(BYE_TYPED, BYE_TYPED);
+					break;
+				}
+			}
 		}
 		finally {
 

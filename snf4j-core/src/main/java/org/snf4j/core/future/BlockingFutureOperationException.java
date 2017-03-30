@@ -23,47 +23,26 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.future;
 
-public class Packet {
-	PacketType type;
-	String payload;
+/**
+ * An unchecked exception thrown when a user performed a blocking operation
+ * on a future in the thread an executor uses to complete operation associated
+ * with the future. The purpose for this exception is to protect against possible
+ * dead lock state in the executor thread. 
+ *  
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class BlockingFutureOperationException extends IllegalStateException {
 
-	public Packet(PacketType type, String payload) {
-		this.type = type;
-		this.payload = payload;
-	}
-	
-	public Packet(PacketType type) {
-		this(type, "");
-	}
-	
-	static int toRead(byte[] buffer, int off, int len) {
-		if (len >= 3) {
-			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
-			
-			if (expected <= len) {
-				return expected;
-			}
-		}
-		return 0;
-	}
-	
-	static Packet fromBytes(byte[] data) {
-		byte t = data[2];
-		
-		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
-	}
-	
-	public byte[] toBytes() {
-		byte[] payload = this.payload.getBytes();
-		byte[] data = new byte[3 + payload.length];
-		int len = 3 + payload.length;
-	
-		data[0] = (byte) (len >>> 8);
-		data[1] = (byte) len;
-		data[2] = (byte) type.ordinal();
-		System.arraycopy(payload, 0, data, 3, payload.length);
-		return data;
+	private static final long serialVersionUID = 3958884782580405828L;
+
+	/**
+	 * Constructs the exception with the specified detailed message.
+	 * 
+	 * @param message a detailed message
+	 */
+	public BlockingFutureOperationException(String message) {
+		super(message);
 	}
 }

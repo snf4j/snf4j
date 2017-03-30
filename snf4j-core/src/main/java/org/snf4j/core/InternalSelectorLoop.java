@@ -46,6 +46,7 @@ import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
+import org.snf4j.core.future.IFutureExecutor;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ExceptionLogger;
@@ -53,7 +54,7 @@ import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.ISession;
 
-abstract class InternalSelectorLoop extends IdentifiableObject {
+abstract class InternalSelectorLoop extends IdentifiableObject implements IFutureExecutor {
 
 	final ILogger logger;
 	
@@ -68,6 +69,16 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 	final ISelectorLoopStructureFactory factory;
 	
 	volatile Selector selector;
+	
+	private final long selectTimeout;
+	
+	private long selectBeginTime;
+	
+	private long selectEndTime;
+	
+	private volatile long totalWorkTime;
+	
+	private volatile long totalWaitTime;
 	
 	private AtomicBoolean wakenup = new AtomicBoolean(false);
 	
@@ -116,8 +127,29 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		this.logger = logger;
 		this.factory = factory == null ? DefaultSelectorLoopStructureFactory.DEFAULT : factory;
 		selector = this.factory.openSelector();
+		selectTimeout = Math.max(0, Long.getLong(Constants.SELECTOR_SELECT_TIMEOUT, 1000));
 	}
 
+	/**
+	 * Returns the total time in nanoseconds this selector loop spent waiting
+	 * for I/O operations
+	 * 
+	 * @return the total time in nanoseconds
+	 */
+	public long getTotalWaitTime() {
+		return totalWaitTime;
+	}
+	
+	/**
+	 * Returns the total time in nanoseconds this selector loop spent processing
+	 * I/O operations
+	 * 
+	 * @return the total time in nanoseconds
+	 */
+	public long getTotalWorkTime() {
+		return totalWorkTime;
+	}
+	
 	/**
 	 * Rebuilds the associated selector by replacing it with newly created one. All valid 
 	 * selection keys registered with the current selector will be re-registered to the 
@@ -217,6 +249,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			selectCounter = 0;
 		}
 
+		if (traceEnabled && selectTimeout == 0) {
+			logger.trace("Selecting");
+		}
+
 		//populate selector's key set to properly set the loop size
 		int selectedKeys = selector.selectNow();
 		size = selector.keys().size();
@@ -225,10 +261,31 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		if (selectedKeys > 0) {
 			wakenup.set(false);
 		}
-		else if (!wakenup.compareAndSet(true, false)) {
-			selectedKeys = selector.select();
-			size = selector.keys().size();
-			notifySizeChange(notify);
+		else {
+			long selectBlocked;
+			
+			selectBeginTime = System.nanoTime();
+			if (selectEndTime != 0) {
+				totalWorkTime += selectBeginTime - selectEndTime;
+			}
+			if (!wakenup.compareAndSet(true, false)) {
+				selectedKeys = selector.select(selectTimeout);
+				selectEndTime = System.nanoTime();
+				selectBlocked = selectEndTime - selectBeginTime;
+				totalWaitTime += selectBlocked;
+				if (selectedKeys == 0) {
+					//if the blocking time is greater than 90% of the select timeout
+					//then the select returned normally
+					if (selectBlocked >= selectTimeout * 900000L) {
+						selectCounter = 0;
+					}
+				}
+				size = selector.keys().size();
+				notifySizeChange(notify);
+			}
+			else {
+				selectEndTime = selectBeginTime; 
+			}
 		}
 		
 		if (selectedKeys > 0) {
@@ -356,8 +413,18 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 		}
 	}
 	
+	/**
+	 * Tells if the current {@link Thread} is executed in this selector loop.
+	 * 
+	 * @return <code>true</code> the current {@link Thread} is executed in this selector loop.
+	 */
 	final boolean inLoop() {
 		return thread == Thread.currentThread();
+	}
+	
+	@Override
+	public final boolean inExecutor() {
+		return inLoop();
 	}
 	
 	final Selector getUnderlyingSelector(Selector selector) {
@@ -378,10 +445,6 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			traceEnabled = debugEnabled ? logger.isTraceEnabled() : false;
 			
 			try {
-				
-				if (traceEnabled) {
-					logger.trace("Selecting");
-				}
 				
 				select();
 				
@@ -759,6 +822,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject {
 			}
 		}
 		return null;
+	}
+	final void fireCreatedEvent(final InternalSession session, SelectableChannel channel) {
+		session.setChannel(channel);
+		session.setLoop(this);
+		fireEvent(session, SessionEvent.CREATED);
 	}
 	
 	final void fireEndingEvent(final InternalSession session, boolean skipCloseWhenEmpty) {

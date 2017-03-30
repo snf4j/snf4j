@@ -23,47 +23,48 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.future;
 
-public class Packet {
-	PacketType type;
-	String payload;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-	public Packet(PacketType type, String payload) {
-		this.type = type;
-		this.payload = payload;
-	}
+import org.junit.Test;
+import org.snf4j.core.TestSession;
+import org.snf4j.core.future.DataFuture;
+
+public class DataFutureTest {
 	
-	public Packet(PacketType type) {
-		this(type, "");
-	}
-	
-	static int toRead(byte[] buffer, int off, int len) {
-		if (len >= 3) {
-			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
-			
-			if (expected <= len) {
-				return expected;
-			}
-		}
-		return 0;
-	}
-	
-	static Packet fromBytes(byte[] data) {
-		byte t = data[2];
+	@Test
+	public void testAll() {
+		DataFuture<Void> f = new DataFuture<Void>(new TestSession());
+		Exception cause = new Exception();
 		
-		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
-	}
-	
-	public byte[] toBytes() {
-		byte[] payload = this.payload.getBytes();
-		byte[] data = new byte[3 + payload.length];
-		int len = 3 + payload.length;
-	
-		data[0] = (byte) (len >>> 8);
-		data[1] = (byte) len;
-		data[2] = (byte) type.ordinal();
-		System.arraycopy(payload, 0, data, 3, payload.length);
-		return data;
+		assertEquals(0, f.size());
+		f.add(100);
+		assertEquals(100, f.size());
+		
+		assertFalse(f.isDone());
+		assertTrue(f.cancel(true));
+		assertTrue(f.isDone());
+		assertTrue(f.isCancelled());
+		assertFalse(f.cancel(true));
+		
+		f.add(50);
+		assertEquals(150, f.size());
+		f.add(1);
+		assertEquals(151, f.size());
+		f.add(0);
+		assertEquals(151, f.size());
+		
+		f = new DataFuture<Void>(new TestSession());
+		f.failure(cause);
+		assertTrue(f.isDone());
+		assertTrue(f.isFailed());
+		assertTrue(cause == f.cause());
+		f.failure(new Exception());
+		assertTrue(cause == f.cause());
+		
+		
 	}
 }

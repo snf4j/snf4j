@@ -23,47 +23,27 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.future;
 
-public class Packet {
-	PacketType type;
-	String payload;
+import static org.junit.Assert.assertEquals;
 
-	public Packet(PacketType type, String payload) {
-		this.type = type;
-		this.payload = payload;
-	}
+import org.junit.Test;
+import org.snf4j.core.TestSession;
+import org.snf4j.core.future.SessionFuturesController;
+
+public class AbstractFutureTest {
 	
-	public Packet(PacketType type) {
-		this(type, "");
-	}
-	
-	static int toRead(byte[] buffer, int off, int len) {
-		if (len >= 3) {
-			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
-			
-			if (expected <= len) {
-				return expected;
-			}
-		}
-		return 0;
-	}
-	
-	static Packet fromBytes(byte[] data) {
-		byte t = data[2];
+	@Test
+	public void testToString() {
+		TestSession session = new TestSession("Session-1");
+		SessionFuturesController futures = new SessionFuturesController(session);
+		Exception cause = new Exception("Ex1");
 		
-		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
-	}
-	
-	public byte[] toBytes() {
-		byte[] payload = this.payload.getBytes();
-		byte[] data = new byte[3 + payload.length];
-		int len = 3 + payload.length;
-	
-		data[0] = (byte) (len >>> 8);
-		data[1] = (byte) len;
-		data[2] = (byte) type.ordinal();
-		System.arraycopy(payload, 0, data, 3, payload.length);
-		return data;
+		assertEquals("CancelledFuture[canceled]", new SessionFuturesController(null).getCancelledFuture().toString());
+		assertEquals("Session-1-CancelledFuture[canceled]", futures.getCancelledFuture().toString());
+		assertEquals("Session-1-SuccessfulFuture[successful]", futures.getSuccessfulFuture().toString());
+		assertEquals("Session-1-FailedFuture[failed:"+cause+"]", futures.getFailedFuture(cause).toString());
+		assertEquals("Session-1-EventFuture[incomplete,event=CREATED]", futures.getCreateFuture().toString());
+		assertEquals("Session-1-WriteFuture[incomplete,expectedSize=100]", futures.getWriteFuture(100).toString());
 	}
 }

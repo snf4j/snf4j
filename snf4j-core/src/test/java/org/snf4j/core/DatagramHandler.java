@@ -58,6 +58,8 @@ public class DatagramHandler {
 	AtomicBoolean dataSentLock = new AtomicBoolean(false);
 
 	StringBuilder recorder = new StringBuilder();
+	
+	DatagramSession initSession;
 
 	static Map<EventType, String> eventMapping = new HashMap<EventType, String>();
 	
@@ -71,15 +73,20 @@ public class DatagramHandler {
 		eventMapping.put(EventType.EXCEPTION_CAUGHT, "EXC");
 	}
 
-	DatagramHandler(int port) {
+	public DatagramHandler(int port) {
 		this.port = port;
 	}
 
-	void setThreadFactory(ThreadFactory tf) {
+	public DatagramSession createSession() {
+		initSession = new DatagramSession(new Handler());
+		return initSession;
+	}
+
+	public void setThreadFactory(ThreadFactory tf) {
 		threadFactory = tf;
 	}
 
-	DatagramSession getSession() {
+	public DatagramSession getSession() {
 		return session;
 	}
 	
@@ -90,7 +97,7 @@ public class DatagramHandler {
 		}
 	}
 	
-	String getRecordedData(boolean clear) {
+	public String getRecordedData(boolean clear) {
 		String s;
 		
 		synchronized(recorder) {
@@ -102,11 +109,11 @@ public class DatagramHandler {
 		return s;
 	}
 
-	void startServer() throws IOException {
+	public void startServer() throws IOException {
 		start(false);
 	}
 	
-	void startClient() throws IOException {
+	public void startClient() throws IOException {
 		start(true);
 	}
 	
@@ -147,7 +154,12 @@ public class DatagramHandler {
 				loop.register(dc, session);
 			}
 			else {
-				loop.register(dc, new Handler());
+				if (initSession == null) {
+					loop.register(dc, new Handler());
+				}
+				else {
+					loop.register(dc, initSession);
+				}
 			}
 		}
 		else {
@@ -176,7 +188,7 @@ public class DatagramHandler {
 		}
 	}
 
-	void stop(long millis) throws InterruptedException {
+	public void stop(long millis) throws InterruptedException {
 		loop.stop();
 		loop.join(millis);
 		if (loop.thread != null) {
@@ -206,11 +218,11 @@ public class DatagramHandler {
 		}		
 	}
 	
-	void waitForSessionOpen(long millis) throws InterruptedException {
+	public void waitForSessionOpen(long millis) throws InterruptedException {
 		waitFor(sessionOpenLock, millis);
 	}
 
-	void waitForSessionEnding(long millis) throws InterruptedException {
+	public void waitForSessionEnding(long millis) throws InterruptedException {
 		waitFor(sessionEndingLock, millis);
 	}
 
@@ -218,11 +230,11 @@ public class DatagramHandler {
 		waitFor(dataReceivedLock, millis);
 	}
 
-	void waitForDataRead(long millis) throws InterruptedException {
+	public void waitForDataRead(long millis) throws InterruptedException {
 		waitFor(dataReadLock, millis);
 	}
 	
-	void waitForDataSent(long millis) throws InterruptedException {
+	public void waitForDataSent(long millis) throws InterruptedException {
 		waitFor(dataSentLock, millis);
 	}
 

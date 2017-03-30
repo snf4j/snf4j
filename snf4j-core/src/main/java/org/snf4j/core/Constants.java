@@ -58,6 +58,16 @@ public class Constants {
 	public final static String SELECTOR_REBUILD_THRESHOLD_SYSTEM_PROPERY = PROPERTY_PREFIX + "SelectorRebuildThreshold";
 	
 	/**
+	 * System property specifying the maximum time in milliseconds the selector will block
+	 * while waiting for a channel to become ready. If set to zero the selector will block 
+	 * Indefinitely.
+	 * <p>
+	 * The default value for this property is 1000
+	 * 
+	 */
+	public final static String SELECTOR_SELECT_TIMEOUT = PROPERTY_PREFIX + "SelectorSelectTimeout";
+	
+	/**
 	 * Short name for the API.
 	 */
 	public final static String SHORT_NAME = "SNF4J";

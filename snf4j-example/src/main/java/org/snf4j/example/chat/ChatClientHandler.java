@@ -23,47 +23,39 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.example.chat;
 
-public class Packet {
-	PacketType type;
-	String payload;
+import org.snf4j.core.EndingAction;
+import org.snf4j.core.handler.AbstractStreamHandler;
+import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.session.ISessionConfig;
 
-	public Packet(PacketType type, String payload) {
-		this.type = type;
-		this.payload = payload;
+public class ChatClientHandler extends AbstractStreamHandler {
+
+	@Override
+	public void read(byte[] data) {
+		System.err.println(new String(data));
 	}
-	
-	public Packet(PacketType type) {
-		this(type, "");
-	}
-	
-	static int toRead(byte[] buffer, int off, int len) {
-		if (len >= 3) {
-			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
-			
-			if (expected <= len) {
-				return expected;
+
+	@Override
+	public void event(SessionEvent event) {
+		if (event == SessionEvent.CLOSED) {
+
+			// Notify if the closing initiated by the server
+			if (!getSession().getAttributes().containsKey(ChatClient.BYE_TYPED)) {
+				System.err.println("Connection closed. Type \"bye\" to exit");
 			}
 		}
-		return 0;
 	}
 	
-	static Packet fromBytes(byte[] data) {
-		byte t = data[2];
+	@Override
+	public ISessionConfig getConfig() {
 		
-		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
+		// Gently stop the selector loop if session associated
+		// with this handler ends
+		return new DefaultSessionConfig()
+				.setEndingAction(EndingAction.STOP);
 	}
-	
-	public byte[] toBytes() {
-		byte[] payload = this.payload.getBytes();
-		byte[] data = new byte[3 + payload.length];
-		int len = 3 + payload.length;
-	
-		data[0] = (byte) (len >>> 8);
-		data[1] = (byte) len;
-		data[2] = (byte) type.ordinal();
-		System.arraycopy(payload, 0, data, 3, payload.length);
-		return data;
-	}
+
 }
