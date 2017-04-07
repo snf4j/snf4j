@@ -37,6 +37,8 @@ import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.logger.ExceptionLogger;
+import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.AbstractSession;
 import org.snf4j.core.session.ISession;
@@ -47,6 +49,8 @@ import org.snf4j.core.session.SessionState;
 abstract class InternalSession extends AbstractSession implements ISession {
 	
 	final ILogger logger;
+
+	final IExceptionLogger elogger = ExceptionLogger.getInstance();
 
 	private final static AtomicLong nextId = new AtomicLong(0);
 		
@@ -116,6 +120,10 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		
 		creationTime = System.currentTimeMillis();
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
+	}
+	
+	void abortFutures(Throwable cause) {
+		futuresController.abort(cause);
 	}
 	
 	@Override
@@ -468,20 +476,37 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	final void event(DataEvent event, long length) {
 		if (isValid(event.type())) {
 			futuresController.event(event, length);
-			handler.event(event, length);
+			try {
+				handler.event(event, length);
+			}
+			catch (Exception e) {
+				elogger.error(logger, "Failed event {} for {}: {}", event, this, e);
+			}
 		}
 	}
 	
 	final void event(SessionEvent event) {
 		if (isValid(event.type())) {
 			futuresController.event(event);
-			handler.event(event);
+			try {
+				handler.event(event);
+			}
+			catch (Exception e) {
+				elogger.error(logger, "Failed event {} for {}: {}", event, this, e);
+			}
 		}
 	}
 	
 	final void exception(Throwable t) {
 		if (isValid(EventType.EXCEPTION_CAUGHT)) {
-			if (!handler.exception(t)) {
+			try {
+				if (!handler.exception(t)) {
+					futuresController.exception(t);
+					quickClose();
+				}
+			}
+			catch (Exception e) {
+				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);
 				futuresController.exception(t);
 				quickClose();
 			}

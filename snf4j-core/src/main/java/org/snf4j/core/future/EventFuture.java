@@ -42,6 +42,12 @@ class EventFuture<V> extends AbstractBlockingFuture<V> {
 		return "event=" + event.name();
 	}
 	
+	void cancel() {
+		if (setState(FutureState.CANCELLED)) {
+			notifyWaiters();
+		}
+	}
+	
 	void success() {
 		if (setState(FutureState.SUCCESSFUL)) {
 			notifyWaiters();

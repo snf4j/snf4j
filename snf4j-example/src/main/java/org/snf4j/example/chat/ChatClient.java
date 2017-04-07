@@ -52,7 +52,7 @@ public class ChatClient {
 			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
 			
 			// Register the channel
-			IStreamSession session = loop.register(channel, new ChatClientHandler());
+			IStreamSession session = (IStreamSession) loop.register(channel, new ChatClientHandler()).sync().getSession();
 			
 			// Confirm that the connection was successful
 			session.getOpenFuture().sync();

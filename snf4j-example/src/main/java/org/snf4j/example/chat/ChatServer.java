@@ -55,7 +55,7 @@ public class ChatServer {
 				protected IStreamHandler createHandler(SocketChannel channel) {
 					return new ChatServerHandler();
 				}
-			});
+			}).sync();
 			
 			// Wait till the loop ends
 			loop.join();

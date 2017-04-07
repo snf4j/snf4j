@@ -46,7 +46,9 @@ import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.IFutureExecutor;
+import org.snf4j.core.future.RegisterFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ExceptionLogger;
@@ -103,6 +105,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	private boolean closeWhenEmpty;
 
 	ConcurrentLinkedQueue<PendingRegistration> registrations = new ConcurrentLinkedQueue<PendingRegistration>();
+	
+	private final Object registrationLock = new Object();
 	
 	private Set<SelectionKey> invalidatedKeys = new HashSet<SelectionKey>();
 	
@@ -552,7 +556,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 				while((reg = registrations.poll()) != null) {
 					SelectableChannel channel = reg.channel; 
 					
-					if (!channel.isRegistered()) {
+					if (channel.keyFor(selector) == null) {
 						try {
 							channel.configureBlocking(false);
 							
@@ -562,47 +566,28 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 								if (debugEnabled) {
 									logger.debug("Aborting pending registration for channel {}", toString(channel));
 								}
-								
-								try {
-									if (channel instanceof DatagramChannel) {
-										((DatagramChannel)channel).disconnect();
-									}
-									channel.close();
-								}
-								catch (IOException e) {
-									elogger.warn(logger, "Closing of channel {} during aborting registration failed: {}", toString(channel), e);
-								}
-								
-								if (reg.attachement instanceof InternalSession) {
-									InternalSession session = (InternalSession) reg.attachement;
-									
-									if (session.isCreated()) {
-										fireEndingEvent(session, false);
-									}
-								}
+								abortRegistration(reg, true, null);
 							}
 							else {
-								SelectionKey key = channel.register(getUnderlyingSelector(selector), reg.ops, reg.attachement);
+								SelectionKey key = channel.register(getUnderlyingSelector(selector), reg.ops, reg.attachment);
 								
 								if (debugEnabled) {
 									logger.debug("Channel {} registered with options {}", toString(channel), reg.ops);
 								}
-								if (reg.attachement instanceof InternalSession) {
-									handleRegisteredKey(key, channel, (InternalSession)reg.attachement);
-								}
-								else if (reg.attachement instanceof IStreamSessionFactory) {
-									if (channel instanceof ServerSocketChannel) {
-										((IStreamSessionFactory)reg.attachement).registered((ServerSocketChannel) channel);
-									}
-								}
+								handleRegistration(key, reg);
 							}
 						}
 						catch (ClosedSelectorException e) {
+							abortRegistration(reg, true, null);
 							throw e;
 						}
 						catch (Exception e) {
 							elogger.error(logger, "Registering of channel {} failed: {}", toString(channel), e);
+							abortRegistration(reg, true, e);
 						}
+					}
+					else {
+						abortRegistration(reg, false, null);
 					}
 				}
 				
@@ -622,12 +607,70 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			}
 		}
 
+		if (!stopping) {
+			//make sure we are not in the middle of adding registration
+			synchronized (registrationLock) {
+				stopping = true;
+			}
+		}
+		
+		PendingRegistration reg;
+		while((reg = registrations.poll()) != null) {
+			if (debugEnabled) {
+				logger.debug("Aborting pending registration for channel {}", toString(reg.channel));
+			}
+			abortRegistration(reg, true, null);
+		}		
+		
 		thread = null;
 		if (logger.isDebugEnabled()) {
 			logger.debug("Stopping main loop");
 		}
 	}
 	
+	private final void handleRegistration(SelectionKey key, PendingRegistration reg) {
+		if (reg.attachment instanceof InternalSession) {
+			handleRegisteredKey(key, reg.channel, (InternalSession)reg.attachment);
+		}
+		else if (reg.attachment instanceof IStreamSessionFactory) {
+			if (reg.channel instanceof ServerSocketChannel) {
+				((IStreamSessionFactory) reg.attachment).registered((ServerSocketChannel) reg.channel);
+			}
+		}	
+		reg.future.success();
+	}
+	
+	private final void abortRegistration(PendingRegistration reg, boolean closeChannel, Throwable cause) {
+		if (closeChannel) {
+			try {
+				if (reg.channel instanceof DatagramChannel) {
+					((DatagramChannel)reg.channel).disconnect();
+				}
+				reg.channel.close();
+			}
+			catch (IOException e) {
+				elogger.warn(logger, "Closing of channel {} during aborting registration failed: {}", toString(reg.channel), e);
+			}
+		}
+		
+		if (reg.attachment instanceof InternalSession) {
+			InternalSession session = (InternalSession) reg.attachment;
+			
+			if (session.isCreated()) {
+				fireEndingEvent(session, false);
+			}
+			else {
+				session.abortFutures(cause);
+			}
+		}
+		else if (reg.attachment instanceof IStreamSessionFactory) {
+			if (reg.channel instanceof ServerSocketChannel) {
+				((IStreamSessionFactory) reg.attachment).closed((ServerSocketChannel) reg.channel);
+			}
+		}	
+		reg.future.abort(cause);
+	}
+
 	/**
 	 * Gently stops this selector loop. As a result, all associated sessions
 	 * will be gently closed by calling the {@link org.snf4j.core.session.ISession#close() close} method.
@@ -721,7 +764,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by this channel
 	 */
-	void register(SelectableChannel channel, int ops, Object attachement) throws ClosedChannelException {
+	IFuture<Void> register(SelectableChannel channel, int ops, Object attachment) throws ClosedChannelException {
 		if (channel == null) {
 			throw new IllegalArgumentException("channel is null");
 		}
@@ -746,9 +789,17 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		
 		reg.channel = channel;
 		reg.ops = ops;
-		reg.attachement = attachement;
-		registrations.add(reg);
+		reg.attachment = attachment;
+		reg.future = new RegisterFuture<Void>(attachment instanceof ISession ? (ISession)attachment : null);
+		synchronized (registrationLock) {
+			//make sure not to register while stopping
+			if (stopping) {
+				throw new SelectorLoopStoppingException();
+			}
+			registrations.add(reg);
+		}
 		wakeup();
+		return reg.future;
 	}
 	
 	/**
@@ -928,7 +979,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	static final class PendingRegistration {
 		SelectableChannel channel;
 		int ops;
-		Object attachement;
+		Object attachment;
+		RegisterFuture<Void> future;
 	}
 
 	class Loop implements Runnable {

@@ -108,7 +108,7 @@ public class SessionFuturesController {
 		}
 		else {
 			if (event == SessionEvent.ENDING) {
-				sentFuture.cancel(false);
+				sentFuture.cancel();
 			}
 			eventFutures[event.ordinal()].success();
 		}
@@ -136,6 +136,28 @@ public class SessionFuturesController {
 	 */
 	public void exception(Throwable cause) {
 		if (this.cause.compareAndSet(null, cause)) {
+			sentFuture.failure(cause);
+		}
+	}
+	
+	/**
+	 * Notifies this controller about aborting registration.
+	 * 
+	 * @param cause
+	 *            the cause of the failure, or <code>null</code> if controlled
+	 *            futures should be cancelled
+	 */
+	public void abort(Throwable cause) {
+		if (cause == null) {
+			for (EventFuture<Void> future: eventFutures) {
+				future.cancel();
+			}
+			sentFuture.cancel();
+		}
+		else {
+			for (EventFuture<Void> future: eventFutures) {
+				future.failure(cause);
+			}
 			sentFuture.failure(cause);
 		}
 	}
