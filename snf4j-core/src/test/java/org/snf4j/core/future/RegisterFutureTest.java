@@ -1,13 +1,36 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2017 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
 package org.snf4j.core.future;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -22,17 +45,12 @@ import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.TestHandler;
 import org.snf4j.core.session.IDatagramSession;
-import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IStreamSession;
 
 public class RegisterFutureTest {
 
 	static final int PORT = 7777;
 	static final long TIMEOUT = 2000;
-	
-	private void waitFor(long millis) throws InterruptedException {
-		Thread.sleep(millis);
-	}
 	
 	class SessionFactory extends AbstractSessionFactory {
 
@@ -41,6 +59,59 @@ public class RegisterFutureTest {
 			return new TestHandler();
 		}
 		
+	}
+	
+	@Test
+	public void testSuccess() {
+		RegisterFuture<Void> f = new RegisterFuture<Void>(null);
+		
+		assertNull(f.getSession());
+		assertFalse(f.isDone());
+		f.success();
+		assertTrue(f.isDone());
+		assertTrue(f.isSuccessful());
+		f.success();
+		assertTrue(f.isDone());
+		assertTrue(f.isSuccessful());
+		
+		f = new RegisterFuture<Void>(null);
+		f.abort(null);
+		assertTrue(f.isDone());
+		assertTrue(f.isCancelled());
+		f.success();
+		assertTrue(f.isDone());
+		assertFalse(f.isSuccessful());
+	}
+	
+	@Test
+	public void testAbort() {
+		RegisterFuture<Void> f = new RegisterFuture<Void>(null);
+		Exception cause = new Exception();
+		
+		f.abort(null);
+		assertTrue(f.isDone());
+		assertTrue(f.isCancelled());
+		f.abort(cause);
+		assertTrue(f.isDone());
+		assertTrue(f.isCancelled());
+		assertNull(f.cause());
+		
+		f = new RegisterFuture<Void>(null);
+		f.success();
+		f.abort(null);
+		assertTrue(f.isDone());
+		assertFalse(f.isCancelled());
+
+		f = new RegisterFuture<Void>(null);
+		f.abort(cause);
+		assertTrue(f.isDone());
+		assertTrue(f.isFailed());
+		assertTrue(cause == f.cause());
+		f.abort(null);
+		assertTrue(f.isDone());
+		assertTrue(f.isFailed());
+		assertTrue(cause == f.cause());
+
 	}
 	
 	@Test
@@ -134,87 +205,4 @@ public class RegisterFutureTest {
 		
 	}
 	
-	void assertNotSuccessfulSessionFutures(ISession session, Throwable cause, String futuresStates) {
-		@SuppressWarnings("unchecked")
-		IFuture<Void>[] futures = new IFuture[4];
-		
-		futures[0] = session.getCreateFuture();
-		futures[1] = session.getOpenFuture();
-		futures[2] = session.getCloseFuture();
-		futures[3] = session.getEndFuture();
-		
-		StringBuilder sb = new StringBuilder();
-		
-		for (int i = 0; i < futures.length; ++i) {
-			if (futures[i].isCancelled()) {
-				sb.append('C');
-			} else if (futures[i].isSuccessful()) {
-				sb.append('S');
-			} else if (futures[i].isFailed()) {
-				sb.append('F');
-			} else {
-				sb.append('N');
-			}
-		}
-		assertEquals(futuresStates, sb.toString());
-	}
-	
-	@Test
-	public void testAbortRegister() throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-		
-		//exception thrown
-		DatagramChannel channel = DatagramChannel.open();
-		channel.configureBlocking(true);
-		channel.socket().bind(new InetSocketAddress(PORT));
-		TestDatagramHandler h1 = new TestDatagramHandler();
-		h1.createException = new NullPointerException();
-		IFuture<Void> f1 = loop.register(channel, h1);
-		channel = DatagramChannel.open();
-		channel.configureBlocking(true);
-		channel.socket().bind(new InetSocketAddress(PORT+1));
-		IFuture<Void> f2 = loop.register(channel, new TestDatagramHandler());
-		loop.start();
-		assertTrue(f1.await(TIMEOUT).isFailed());
-		//assertNotSuccessfulSessionFutures(f1.getSession(), h1.createException, "SCCS");
-		f2.sync(TIMEOUT);
-		loop.stop();
-		assertTrue(loop.join(TIMEOUT));
-		
-		//registration of registered channel
-		loop = new SelectorLoop();
-		channel = DatagramChannel.open();
-		channel.configureBlocking(true);
-		channel.socket().bind(new InetSocketAddress(PORT));
-		f1 = loop.register(channel, new TestDatagramHandler());
-		f2 = loop.register(channel, new TestDatagramHandler());
-		loop.start();
-		f1.sync(TIMEOUT);
-		assertTrue(f2.await(TIMEOUT).isCancelled());
-		assertNotSuccessfulSessionFutures(f2.getSession(), null, "CCCC");
-		loop.stop();
-		assertTrue(loop.join(TIMEOUT));
-		
-		//registration with closed selector exception
-		loop = new SelectorLoop();
-		channel = DatagramChannel.open();
-		channel.configureBlocking(true);
-		channel.socket().bind(new InetSocketAddress(PORT));
-		h1 = new TestDatagramHandler();
-		h1.createException = new ClosedSelectorException();
-		f1 = loop.register(channel, h1);
-		channel = DatagramChannel.open();
-		channel.configureBlocking(true);
-		channel.socket().bind(new InetSocketAddress(PORT+1));
-		f2 = loop.register(channel, new TestDatagramHandler());
-		loop.start();
-		assertTrue(f1.await(TIMEOUT).isCancelled());
-		//assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
-		assertTrue(f2.await(TIMEOUT).isCancelled());
-		assertNotSuccessfulSessionFutures(f2.getSession(), null, "CCCC");
-		waitFor(500);
-		assertTrue(loop.isStopped());
-		loop.stop();
-		assertTrue(loop.join(TIMEOUT));
-	}
 }

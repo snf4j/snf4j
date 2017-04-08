@@ -1386,7 +1386,7 @@ public class StreamSelectorLoopTest {
     public void testWaitAndWorkTime() throws Exception {
 		s = new Server(PORT);
 		s.start();
-		waitFor(5500);
+		waitFor(10500);
 		long waitTime1 = s.getSelectLoop().getTotalWaitTime();
 		long workTime1 = s.getSelectLoop().getTotalWorkTime();
 		s.stop(TIMEOUT);
@@ -1397,7 +1397,7 @@ public class StreamSelectorLoopTest {
 		try {
 			s = new Server(PORT);
 			s.start();
-			waitFor(5500);
+			waitFor(10500);
 			waitTime2 = s.getSelectLoop().getTotalWaitTime();
 			workTime2 = s.getSelectLoop().getTotalWorkTime();
 			s.stop(TIMEOUT);
@@ -1405,9 +1405,9 @@ public class StreamSelectorLoopTest {
 		} finally {
 			System.setProperty("org.snf4j.SelectorSelectTimeout", "1000");
 		}
-		assertTrue(waitTime1 > waitTime2);
-		assertTrue(workTime1 > workTime2);
-		assertTrue(waitTime1 > workTime1);
-		assertTrue(waitTime2 < workTime2);
+		assertTrue("" +waitTime1 +">"+ waitTime2, waitTime1 > waitTime2);
+		assertTrue("" +workTime1 +">"+ workTime2, workTime1 > workTime2);
+		assertTrue("" +waitTime1 +">"+ workTime1, waitTime1 > workTime1);
+		assertTrue("" +waitTime2 +"<"+ workTime2, waitTime2 < workTime2);
     }
 }

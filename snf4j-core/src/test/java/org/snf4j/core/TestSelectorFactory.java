@@ -38,6 +38,12 @@ public class TestSelectorFactory implements ISelectorLoopStructureFactory {
 	
 	volatile boolean delegateException;
 	
+	volatile int delegateExceptionCounter = -1;
+	
+	volatile boolean delegateCloseSelector;
+	
+	volatile boolean delegateCloseSelectorWithNullPointerException;
+	
 	@Override
 	public Selector openSelector() throws IOException {
 		if (throwException) {
@@ -51,6 +57,9 @@ public class TestSelectorFactory implements ISelectorLoopStructureFactory {
 			TestSelector s = new TestSelector();
 			
 			s.delegateException = delegateException;
+			s.delegateCloseSelector = delegateCloseSelector;
+			s.delegateExceptionCounter = delegateExceptionCounter;
+			s.delegateCloseSelectorWithNullPointerException = delegateCloseSelectorWithNullPointerException; 
 			return s; 
 		}
 	}

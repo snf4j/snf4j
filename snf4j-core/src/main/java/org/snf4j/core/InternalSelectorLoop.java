@@ -471,15 +471,13 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 								session.close();
 							}
 						}
-						else if (key.channel() instanceof ServerSocketChannel) {
+						else {
 							try {
 								if (debugEnabled) {
 									logger.debug("Closing of channel {}", toString(key.channel()));
 								}
 								key.channel().close();
-								if (key.attachment() instanceof IStreamSessionFactory) {
-									((IStreamSessionFactory)key.attachment()).closed((ServerSocketChannel) key.channel());
-								}
+								((IStreamSessionFactory)key.attachment()).closed((ServerSocketChannel) key.channel());
 							}
 							catch (Exception e) {
 								elogWarnOrError(logger, "Closing of channel {} failed: {}", toString(key.channel()), e);
@@ -496,7 +494,12 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 					for (int i=0; i<len; ++i) {
 						SelectionKey key = keyArray[i];
 						
-						handleInvalidKey(key, stoppingKeys);
+						try {
+							handleInvalidKey(key, stoppingKeys);
+						}
+						catch (Exception e){
+							elogger.error(logger, "Processing of invalidated key for {} failed: {}", key.attachment(), e);
+						}
 					}
 				}
 				
@@ -516,6 +519,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 							//Ignore
 						}
 						catch (Exception e) {
+							key.cancel();
 							elogger.error(logger, "Processing of selected key for {} failed: {}", key.attachment(), e);
 						}
 
@@ -582,6 +586,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 							throw e;
 						}
 						catch (Exception e) {
+							//JDK1.6 does not throw ClosedSelectorException if registering with closed selector
+							if (!selector.isOpen()) {
+								abortRegistration(reg, true, null);
+								throw new ClosedSelectorException();
+							}
 							elogger.error(logger, "Registering of channel {} failed: {}", toString(channel), e);
 							abortRegistration(reg, true, e);
 						}
@@ -632,10 +641,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		if (reg.attachment instanceof InternalSession) {
 			handleRegisteredKey(key, reg.channel, (InternalSession)reg.attachment);
 		}
-		else if (reg.attachment instanceof IStreamSessionFactory) {
-			if (reg.channel instanceof ServerSocketChannel) {
-				((IStreamSessionFactory) reg.attachment).registered((ServerSocketChannel) reg.channel);
-			}
+		else {
+			((IStreamSessionFactory) reg.attachment).registered((ServerSocketChannel) reg.channel);
 		}	
 		reg.future.success();
 	}
@@ -663,10 +670,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 				session.abortFutures(cause);
 			}
 		}
-		else if (reg.attachment instanceof IStreamSessionFactory) {
-			if (reg.channel instanceof ServerSocketChannel) {
-				((IStreamSessionFactory) reg.attachment).closed((ServerSocketChannel) reg.channel);
-			}
+		else {
+			((IStreamSessionFactory) reg.attachment).closed((ServerSocketChannel) reg.channel);
 		}	
 		reg.future.abort(cause);
 	}
@@ -956,9 +961,9 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 					((DatagramChannel)key.channel()).disconnect();
 				}
 				key.channel().close();
-				fireEvent(session, SessionEvent.CLOSED);
 			}
 			finally {
+				fireEvent(session, SessionEvent.CLOSED);
 				fireEndingEvent(session, skipCloseWhenEmpty);
 			}
 		}

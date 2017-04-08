@@ -324,26 +324,18 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 			else {
 				//If the channel is closed notify session
-				try {
-					fireCreatedEvent(session, channel);
-				}
-				finally {
-					fireEndingEvent(session, false);
-				}
+				fireCreatedEvent(session, channel);
+				fireEndingEvent(session, false);
 				return;
 			}
 		}
 		
-		try {
-			fireCreatedEvent(session, channel);
+		fireCreatedEvent(session, channel);
+		session.setSelectionKey(key);
+		if (debugEnabled) {
+			logger.debug("Channel {} associated with {}", toString(channel), session);
 		}
-		finally {
-			session.setSelectionKey(key);
-			if (debugEnabled) {
-				logger.debug("Channel {} associated with {}", toString(channel), session);
-			}
-			fireEvent(session, SessionEvent.OPENED);
-		}
+		fireEvent(session, SessionEvent.OPENED);
 	}
 
 	@Override
@@ -435,25 +427,17 @@ public class SelectorLoop extends InternalSelectorLoop {
 				opened = true;
 			}
 			catch (Exception e) {
-				try {
-					fireCreatedEvent(session, channel);
-				}
-				finally {
-					elogger.error(logger, "Unable to reqister channel {} with selector: {}", toString(channel), e);
-					fireException(session, e);
-				}
+				elogger.error(logger, "Unable to register channel {} with selector: {}", toString(channel), e);
+				fireCreatedEvent(session, channel);
+				fireException(session, e);
 			}
 			
 			if (opened) {
-				try {
-					fireCreatedEvent(session, channel);
+				fireCreatedEvent(session, channel);
+				if (debugEnabled) {
+					logger.debug("Channel {} is associated with {}", toString(channel), session);
 				}
-				finally {
-					if (debugEnabled) {
-						logger.debug("Channel {} is associated with {}", toString(channel), session);
-					}
-					fireEvent(session, SessionEvent.OPENED);
-				}
+				fireEvent(session, SessionEvent.OPENED);
 			}
 			else {
 				try {

@@ -548,9 +548,12 @@ public class DatagramSelectorLoopTest {
 	
 	@Test
 	public void testExceptionDuringRegistration() throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-		
-		//exception thrown
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	factory.delegateCloseSelector = true;
+
+		//closed selector exception
+    	SelectorLoop loop = new SelectorLoop("loop", null, factory);
 		DatagramChannel channel = DatagramChannel.open();
 		channel.configureBlocking(true);
 		channel.socket().bind(new InetSocketAddress(PORT));
@@ -560,14 +563,104 @@ public class DatagramSelectorLoopTest {
 		channel = DatagramChannel.open();
 		channel.configureBlocking(true);
 		channel.socket().bind(new InetSocketAddress(PORT+1));
-		IFuture<Void> f2 = loop.register(channel, new TestDatagramHandler());
+		TestDatagramHandler h2 = new TestDatagramHandler();
+		IFuture<Void> f2 = loop.register(channel, h2);
+		loop.start();
+		assertTrue(f1.await(TIMEOUT).isCancelled());
+		assertEquals("", h1.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertTrue(f2.await(TIMEOUT).isCancelled());
+		assertEquals("", h2.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+
+		//closed selector exception (for JDK1.6)
+    	factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	factory.delegateCloseSelector = true;
+    	factory.delegateCloseSelectorWithNullPointerException = true;
+    	loop = new SelectorLoop("loop", null, factory);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		h1 = new TestDatagramHandler();
+		h1.createException = new NullPointerException();
+		f1 = loop.register(channel, h1);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT+1));
+		h2 = new TestDatagramHandler();
+		f2 = loop.register(channel, h2);
+		loop.start();
+		assertTrue(f1.await(TIMEOUT).isCancelled());
+		assertEquals("", h1.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertTrue(f2.await(TIMEOUT).isCancelled());
+		assertEquals("", h2.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+		
+		//thrown exception
+    	factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	factory.delegateException = true;
+    	factory.delegateExceptionCounter = 1;
+    	loop = new SelectorLoop("loop", null, factory);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		h1 = new TestDatagramHandler();
+		h1.createException = new NullPointerException();
+		f1 = loop.register(channel, h1);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT+1));
+		h2 = new TestDatagramHandler();
+		f2 = loop.register(channel, h2);
 		loop.start();
 		assertTrue(f1.await(TIMEOUT).isFailed());
-		assertEquals("CR|EN|", h1.getEventLog());
-		
-		//assertNotSuccessfulSessionFutures(f1.getSession(), h1.createException, "SCCS");
-		f2.sync(TIMEOUT);
+		assertEquals("", h1.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "FFFF");
+		assertTrue(f2.await(TIMEOUT).isSuccessful());
+		assertEquals("CR|OP|", h2.getEventLog());
+		assertNotSuccessfulSessionFutures(f2.getSession(), null, "SSNN");
 		loop.stop();
-		assertTrue(loop.join(TIMEOUT));		
+		assertTrue(loop.join(TIMEOUT));
+    	
+		//registration of registered channel
+		loop = new SelectorLoop();
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		f1 = loop.register(channel, new TestDatagramHandler());
+		h2 = new TestDatagramHandler();
+		f2 = loop.register(channel, h2);
+		loop.start();
+		f1.sync(TIMEOUT);
+		assertTrue(f2.await(TIMEOUT).isCancelled());
+		assertNotSuccessfulSessionFutures(f2.getSession(), null, "CCCC");
+		assertEquals("", h2.getEventLog());
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+		
+		//registration when loop is closing
+		loop = new SelectorLoop();
+		loop.setThreadFactory(new DelayedThreadFactory(500));
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		h1 = new TestDatagramHandler();
+		f1 = loop.register(channel, h1);
+		loop.start();
+		waitFor(100);
+		loop.stop();
+		assertTrue(f1.await(TIMEOUT).isCancelled());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertEquals("", h1.getEventLog());
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+		
 	}
 }

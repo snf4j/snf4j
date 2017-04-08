@@ -297,6 +297,13 @@ public class AbstractBlockingFutureTest {
 		assertTrue(f.isDone());
 		assertTrue(f.isFailed());
 		assertTrue(cause == f.cause());
+		
+		sf.abort(null);
+		try {
+			sf.getOpenFuture().sync();
+			fail("exception not frown");
+		} catch (CancellationException e) {
+		}
 	}
 	
 	@Test
