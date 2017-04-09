@@ -44,11 +44,13 @@ public class DataFutureTest {
 		f.add(100);
 		assertEquals(100, f.size());
 		
+		assertFalse(f.cancel(true));
+		assertFalse(f.cancel(false));
 		assertFalse(f.isDone());
-		assertTrue(f.cancel(true));
+		f.cancel();
 		assertTrue(f.isDone());
 		assertTrue(f.isCancelled());
-		assertFalse(f.cancel(true));
+		f.cancel();
 		
 		f.add(50);
 		assertEquals(150, f.size());

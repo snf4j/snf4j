@@ -111,6 +111,8 @@ public interface IFuture<V> extends Future<V> {
 	 *             if the current thread was interrupted.
 	 * @throws ExecutionException
 	 *             if this future failed
+	 * @throws CancellationException
+	 *             if this future was cancelled
 	 */
 	IFuture<V> sync() throws InterruptedException, ExecutionException;
 	
@@ -128,6 +130,8 @@ public interface IFuture<V> extends Future<V> {
 	 *             if this future failed
 	 * @throws TimeoutException
 	 *             if the time limit expired without completion of this future
+	 * @throws CancellationException
+	 *             if this future was cancelled
 	 */
 	IFuture<V> sync(long timeoutMillis) throws InterruptedException, ExecutionException, TimeoutException;
 
@@ -147,6 +151,8 @@ public interface IFuture<V> extends Future<V> {
 	 *             if this future failed
 	 * @throws TimeoutException
 	 *             if the time limit expired without completion of this future
+	 * @throws CancellationException
+	 *             if this future was cancelled
 	 */
 	IFuture<V> sync(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;
 
@@ -157,6 +163,8 @@ public interface IFuture<V> extends Future<V> {
 	 * @return this future
 	 * @throws ExecutionException
 	 *             if this future failed
+	 * @throws CancellationException
+	 *             if this future was cancelled
 	 */
 	IFuture<V> syncUninterruptibly() throws ExecutionException;
 
@@ -172,6 +180,8 @@ public interface IFuture<V> extends Future<V> {
 	 *             if this future failed
 	 * @throws TimeoutException
 	 *             if the time limit expired without completion of this future
+	 * @throws CancellationException
+	 *             if this future was cancelled
 	 */
 	IFuture<V> syncUninterruptibly(long timeoutMillis) throws ExecutionException, TimeoutException;
 
@@ -189,6 +199,8 @@ public interface IFuture<V> extends Future<V> {
 	 *             if this future failed
 	 * @throws TimeoutException
 	 *             if the time limit expired without completion of this future
+	 * @throws CancellationException
+	 *             if this future was cancelled
 	 */
 	IFuture<V> syncUninterruptibly(long timeout, TimeUnit unit) throws ExecutionException, TimeoutException;
 	

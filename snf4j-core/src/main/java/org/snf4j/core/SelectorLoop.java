@@ -40,6 +40,7 @@ import java.util.Queue;
 import org.snf4j.core.DatagramSession.DatagramRecord;
 import org.snf4j.core.factory.ISelectorLoopStructureFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.IStreamHandler;
@@ -174,7 +175,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *            loop
 	 * @param handler
 	 *            the handler that will be associated with the channel
-	 * @return the stream-oriented session that will associated with the channel
+	 * @return the future associated with this registration
 	 * @throws ClosedChannelException
 	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
@@ -185,11 +186,10 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by the channel
 	 */
-	public StreamSession register(SocketChannel channel, IStreamHandler handler) throws ClosedChannelException {
+	public IFuture<Void> register(SocketChannel channel, IStreamHandler handler) throws ClosedChannelException {
 		StreamSession session = new StreamSession(handler);
 		
-		super.register(channel, 0, session);
-		return session;
+		return super.register(channel, 0, session);
 	}
 	
 	/**
@@ -203,6 +203,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *            loop
 	 * @param session
 	 *            the session that will be associated with the channel
+	 * @return the future associated with this registration
 	 * @throws ClosedChannelException 
 	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
@@ -215,9 +216,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @throws IllegalArgumentException
 	 *             if the session argument is <code>null</code>
 	 */
-	public void register(SocketChannel channel, StreamSession session) throws ClosedChannelException {
+	public IFuture<Void> register(SocketChannel channel, StreamSession session) throws ClosedChannelException {
 		if (session == null) throw new IllegalArgumentException("session is null");
-		super.register(channel, 0, session);
+		return super.register(channel, 0, session);
 	}
 
 	/**
@@ -231,7 +232,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *            loop
 	 * @param handler
 	 *            the handler that will be associated with the channel
-	 * @return the datagram-oriented session that will associated with the channel
+	 * @return the future associated with this registration
 	 * @throws ClosedChannelException 
 	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
@@ -242,11 +243,10 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by the channel
 	 */
-	public DatagramSession register(DatagramChannel channel, IDatagramHandler handler) throws ClosedChannelException {
+	public IFuture<Void> register(DatagramChannel channel, IDatagramHandler handler) throws ClosedChannelException {
 		DatagramSession session = new DatagramSession(handler);
 		
-		super.register(channel, SelectionKey.OP_READ, session);
-		return session;
+		return super.register(channel, SelectionKey.OP_READ, session);
 	}
 
 	/**
@@ -260,6 +260,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *            loop
 	 * @param session
 	 *            the session that will be associated with the channel
+	 * @return the future associated with this registration
 	 * @throws ClosedChannelException 
 	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
@@ -272,9 +273,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @throws IllegalArgumentException
 	 *             if the session argument is <code>null</code>
 	 */
-	public void register(DatagramChannel channel, DatagramSession session) throws ClosedChannelException {
+	public IFuture<Void> register(DatagramChannel channel, DatagramSession session) throws ClosedChannelException {
 		if (session == null) throw new IllegalArgumentException("session is null");
-		super.register(channel, SelectionKey.OP_READ, session);
+		return super.register(channel, SelectionKey.OP_READ, session);
 	}
 	
 	/**
@@ -290,6 +291,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @param factory
 	 *            the factory that will be associated with the channel. It will
 	 *            be used to create sessions for newly accepted channels
+	 * @return the future associated with this registration
 	 * @throws ClosedChannelException 
 	 *             if the channel is closed
 	 * @throws SelectorLoopStoppingException
@@ -302,9 +304,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 * @throws IllegalArgumentException
 	 *             if the factory argument is <code>null</code>
 	 */
-	public void register(ServerSocketChannel channel, IStreamSessionFactory factory) throws ClosedChannelException {
+	public IFuture<Void> register(ServerSocketChannel channel, IStreamSessionFactory factory) throws ClosedChannelException {
 		if (factory == null) throw new IllegalArgumentException("factory is null");
-		super.register(channel, SelectionKey.OP_ACCEPT, factory);
+		return super.register(channel, SelectionKey.OP_ACCEPT, factory);
 	}
 	
 	@Override
@@ -322,26 +324,18 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 			else {
 				//If the channel is closed notify session
-				try {
-					fireCreatedEvent(session, channel);
-				}
-				finally {
-					fireEndingEvent(session, false);
-				}
+				fireCreatedEvent(session, channel);
+				fireEndingEvent(session, false);
 				return;
 			}
 		}
 		
-		try {
-			fireCreatedEvent(session, channel);
+		fireCreatedEvent(session, channel);
+		session.setSelectionKey(key);
+		if (debugEnabled) {
+			logger.debug("Channel {} associated with {}", toString(channel), session);
 		}
-		finally {
-			session.setSelectionKey(key);
-			if (debugEnabled) {
-				logger.debug("Channel {} associated with {}", toString(channel), session);
-			}
-			fireEvent(session, SessionEvent.OPENED);
-		}
+		fireEvent(session, SessionEvent.OPENED);
 	}
 
 	@Override
@@ -433,25 +427,17 @@ public class SelectorLoop extends InternalSelectorLoop {
 				opened = true;
 			}
 			catch (Exception e) {
-				try {
-					fireCreatedEvent(session, channel);
-				}
-				finally {
-					elogger.error(logger, "Unable to reqister channel {} with selector: {}", toString(channel), e);
-					fireException(session, e);
-				}
+				elogger.error(logger, "Unable to register channel {} with selector: {}", toString(channel), e);
+				fireCreatedEvent(session, channel);
+				fireException(session, e);
 			}
 			
 			if (opened) {
-				try {
-					fireCreatedEvent(session, channel);
+				fireCreatedEvent(session, channel);
+				if (debugEnabled) {
+					logger.debug("Channel {} is associated with {}", toString(channel), session);
 				}
-				finally {
-					if (debugEnabled) {
-						logger.debug("Channel {} is associated with {}", toString(channel), session);
-					}
-					fireEvent(session, SessionEvent.OPENED);
-				}
+				fireEvent(session, SessionEvent.OPENED);
 			}
 			else {
 				try {

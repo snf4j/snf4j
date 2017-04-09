@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -67,6 +68,11 @@ public class Server {
 	public volatile ServerSocketChannel registeredSsc;
 	public volatile ServerSocketChannel closedSsc;
  
+	public volatile boolean throwInRead;
+	public volatile boolean throwInException;
+	public volatile boolean throwInEvent;
+	public final AtomicInteger throwInEventCount = new AtomicInteger();
+	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionEndingLock = new AtomicBoolean(false);
@@ -386,6 +392,10 @@ public class Server {
 				break;
 			}
 			Server.this.notify(dataReadLock);
+			
+			if (throwInRead) {
+				throw new NullPointerException();
+			}
 		}
 
 		private boolean event(EventType type) {
@@ -415,6 +425,11 @@ public class Server {
 				break;
 
 			}
+			
+			if (Server.this.throwInEvent) {
+				throwInEventCount.incrementAndGet();
+				throw new NullPointerException();
+			}
 			return false;
 		}
 
@@ -431,6 +446,10 @@ public class Server {
 		@Override
 		public boolean exception(Throwable t) {
 			event(EventType.EXCEPTION_CAUGHT);
+			if (Server.this.throwInException) {
+				Server.this.throwInExceptionCount.incrementAndGet();
+				throw new IllegalArgumentException();
+			}
 			return exceptionResult;
 		}
 		

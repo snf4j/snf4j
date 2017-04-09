@@ -23,47 +23,57 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.chat;
+package org.snf4j.core.future;
 
-import java.net.InetSocketAddress;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import org.snf4j.core.session.ISession;
 
-import org.snf4j.core.SelectorLoop;
-import org.snf4j.core.factory.AbstractSessionFactory;
-import org.snf4j.core.handler.IStreamHandler;
+/**
+ * A future that represents the result of the asynchronous register methods of selector loops.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class RegisterFuture<V> extends AbstractBlockingFuture<V> {
 
-public class ChatServer {
-	static final String PREFIX = "org.snf4j.";
-	static final int PORT = Integer.getInteger(PREFIX+"Port", 8002);
+	/**
+	 * Constructs a register future associated with a session.
+	 * 
+	 * @param session
+	 *            the session this future is associated with, or
+	 *            <code>null</code> if this future is not associated with any
+	 *            session
+	 */
+	public RegisterFuture(ISession session) {
+		super(session);
+	}
 
-	public static void main(String[] args) throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-
-		try {
-			loop.start();
-			
-			// Initialize the listener
-			ServerSocketChannel channel = ServerSocketChannel.open();
-			channel.configureBlocking(false);
-			channel.socket().bind(new InetSocketAddress(PORT));
-			
-			// Register the listener
-			loop.register(channel, new AbstractSessionFactory() {
-
-				@Override
-				protected IStreamHandler createHandler(SocketChannel channel) {
-					return new ChatServerHandler();
-				}
-			}).sync();
-			
-			// Wait till the loop ends
-			loop.join();
+	/**
+	 * Marks this future as successful and notifies all threads waiting for this
+	 * future to be completed.
+	 */
+	public void success() {
+		if (setState(FutureState.SUCCESSFUL)) {
+			notifyWaiters();
 		}
-		finally {
-			
-			// Gently stop the loop
-			loop.stop();
+	}	
+	
+	/**
+	 * Aborts this future and notifies all threads waiting for this future to be
+	 * completed.
+	 * 
+	 * @param cause
+	 *            the cause of the failure, or <code>null</code> if this future
+	 *            should be cancelled
+	 * 
+	 */
+	public void abort(Throwable cause) {
+		if (cause != null) {
+			if (setState(FutureState.FAILED)) {
+				this.cause = cause;
+				notifyWaiters();
+			}
+		}
+		else if (setState(FutureState.CANCELLED)) {
+			notifyWaiters();
 		}
 	}
 }

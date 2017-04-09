@@ -37,13 +37,10 @@ class DataFuture<V> extends AbstractBlockingFuture<V> {
 		super(session);
 	}
 	
-	@Override
-	public boolean cancel(boolean arg0) {
+	void cancel() {
 		if (setState(FutureState.CANCELLED)) {
 			notifyWaiters();
-			return true;
 		}		
-		return false;
 	}
 	
 	void failure(Throwable cause) {

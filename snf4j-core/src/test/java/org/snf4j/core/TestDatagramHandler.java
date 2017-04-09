@@ -28,9 +28,20 @@ package org.snf4j.core;
 import java.net.SocketAddress;
 
 import org.snf4j.core.handler.AbstractDatagramHandler;
+import org.snf4j.core.handler.SessionEvent;
 
 public class TestDatagramHandler extends AbstractDatagramHandler {
 
+	public RuntimeException createException;
+	
+	StringBuilder sb = new StringBuilder();
+	
+	String getEventLog() {
+		String s = sb.toString();
+		sb.setLength(0);
+		return s;
+	}
+	
 	@Override
 	public void read(byte[] datagram) {
 	}
@@ -39,4 +50,29 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 	public void read(SocketAddress remoteAddress, byte[] datagram) {
 	}
 
+	@Override
+	public void event(SessionEvent event) {
+		switch (event) {
+		case CREATED:
+			sb.append("CR|");
+			if (createException != null) {
+				throw createException; 
+			}
+			break;
+			
+		case OPENED:
+			sb.append("OP|");
+			break;
+			
+		case CLOSED:
+			sb.append("CL|");
+			break;
+			
+		case ENDING:
+			sb.append("EN|");
+			break;
+			
+		default:
+		}
+	}
 }

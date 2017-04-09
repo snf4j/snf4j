@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
@@ -38,7 +39,9 @@ import java.nio.channels.SelectionKey;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IDatagramHandler;
+import org.snf4j.core.session.ISession;
 
 public class DatagramSelectorLoopTest {
 	final long TIMEOUT = 2000;
@@ -516,5 +519,148 @@ public class DatagramSelectorLoopTest {
 		waitFor(500);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
 		assertFalse(s.loop.isOpen());
+	}
+	
+	void assertNotSuccessfulSessionFutures(ISession session, Throwable cause, String futuresStates) {
+		@SuppressWarnings("unchecked")
+		IFuture<Void>[] futures = new IFuture[4];
+		
+		futures[0] = session.getCreateFuture();
+		futures[1] = session.getOpenFuture();
+		futures[2] = session.getCloseFuture();
+		futures[3] = session.getEndFuture();
+		
+		StringBuilder sb = new StringBuilder();
+		
+		for (int i = 0; i < futures.length; ++i) {
+			if (futures[i].isCancelled()) {
+				sb.append('C');
+			} else if (futures[i].isSuccessful()) {
+				sb.append('S');
+			} else if (futures[i].isFailed()) {
+				sb.append('F');
+			} else {
+				sb.append('N');
+			}
+		}
+		assertEquals(futuresStates, sb.toString());
+	}
+	
+	@Test
+	public void testExceptionDuringRegistration() throws Exception {
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	factory.delegateCloseSelector = true;
+
+		//closed selector exception
+    	SelectorLoop loop = new SelectorLoop("loop", null, factory);
+		DatagramChannel channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		TestDatagramHandler h1 = new TestDatagramHandler();
+		h1.createException = new NullPointerException();
+		IFuture<Void> f1 = loop.register(channel, h1);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT+1));
+		TestDatagramHandler h2 = new TestDatagramHandler();
+		IFuture<Void> f2 = loop.register(channel, h2);
+		loop.start();
+		assertTrue(f1.await(TIMEOUT).isCancelled());
+		assertEquals("", h1.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertTrue(f2.await(TIMEOUT).isCancelled());
+		assertEquals("", h2.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+
+		//closed selector exception (for JDK1.6)
+    	factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	factory.delegateCloseSelector = true;
+    	factory.delegateCloseSelectorWithNullPointerException = true;
+    	loop = new SelectorLoop("loop", null, factory);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		h1 = new TestDatagramHandler();
+		h1.createException = new NullPointerException();
+		f1 = loop.register(channel, h1);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT+1));
+		h2 = new TestDatagramHandler();
+		f2 = loop.register(channel, h2);
+		loop.start();
+		assertTrue(f1.await(TIMEOUT).isCancelled());
+		assertEquals("", h1.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertTrue(f2.await(TIMEOUT).isCancelled());
+		assertEquals("", h2.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+		
+		//thrown exception
+    	factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	factory.delegateException = true;
+    	factory.delegateExceptionCounter = 1;
+    	loop = new SelectorLoop("loop", null, factory);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		h1 = new TestDatagramHandler();
+		h1.createException = new NullPointerException();
+		f1 = loop.register(channel, h1);
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT+1));
+		h2 = new TestDatagramHandler();
+		f2 = loop.register(channel, h2);
+		loop.start();
+		assertTrue(f1.await(TIMEOUT).isFailed());
+		assertEquals("", h1.getEventLog());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "FFFF");
+		assertTrue(f2.await(TIMEOUT).isSuccessful());
+		assertEquals("CR|OP|", h2.getEventLog());
+		assertNotSuccessfulSessionFutures(f2.getSession(), null, "SSNN");
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+    	
+		//registration of registered channel
+		loop = new SelectorLoop();
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		f1 = loop.register(channel, new TestDatagramHandler());
+		h2 = new TestDatagramHandler();
+		f2 = loop.register(channel, h2);
+		loop.start();
+		f1.sync(TIMEOUT);
+		assertTrue(f2.await(TIMEOUT).isCancelled());
+		assertNotSuccessfulSessionFutures(f2.getSession(), null, "CCCC");
+		assertEquals("", h2.getEventLog());
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+		
+		//registration when loop is closing
+		loop = new SelectorLoop();
+		loop.setThreadFactory(new DelayedThreadFactory(500));
+		channel = DatagramChannel.open();
+		channel.configureBlocking(true);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		h1 = new TestDatagramHandler();
+		f1 = loop.register(channel, h1);
+		loop.start();
+		waitFor(100);
+		loop.stop();
+		assertTrue(f1.await(TIMEOUT).isCancelled());
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertEquals("", h1.getEventLog());
+		loop.stop();
+		assertTrue(loop.join(TIMEOUT));
+		
 	}
 }

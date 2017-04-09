@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.io.IOException;
+import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.spi.SelectorProvider;
@@ -41,6 +42,12 @@ public class TestSelector extends Selector implements IDelegatingSelector {
 	volatile boolean closeException;
 	
 	volatile boolean delegateException;
+	
+	volatile boolean delegateCloseSelector;
+	
+	volatile boolean delegateCloseSelectorWithNullPointerException;
+	
+	volatile int delegateExceptionCounter = -1;
 	
 	TestSelector() throws IOException {
 		delegate = Selector.open();
@@ -97,7 +104,22 @@ public class TestSelector extends Selector implements IDelegatingSelector {
 	@Override
 	public Selector getDelegate() {
 		if (delegateException) {
-			throw new IllegalStateException();
+			if (delegateExceptionCounter != 0) {
+				if (delegateExceptionCounter > 0) {
+					--delegateExceptionCounter;
+				}
+				throw new IllegalStateException();
+			}
+		}
+		if (delegateCloseSelector) {
+			try {
+				delegate.close();
+				if (delegateCloseSelectorWithNullPointerException) {
+					throw new NullPointerException();
+				}
+				throw new ClosedSelectorException();
+			} catch (IOException e) {
+			}
 		}
 		return delegate;
 	}

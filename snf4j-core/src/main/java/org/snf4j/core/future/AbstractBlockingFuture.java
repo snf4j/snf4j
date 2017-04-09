@@ -78,10 +78,17 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 		return awaitUninterruptibly0(unit.toNanos(timeout));
 	}
 
+	/**
+	 * @throws CancellationException
+	 *             if the future was cancelled
+	 */
 	IFuture<V> rethrow() throws ExecutionException {
 		Throwable cause = this.cause;
 		
 		if (cause == null) {
+			if (isCancelled()) {
+				throw new CancellationException();
+			}
 			return this;
 		}
 		throw new ExecutionException(cause);

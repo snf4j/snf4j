@@ -1443,4 +1443,61 @@ public class SessionTest {
 		catch (IllegalSessionStateException e) {
 		}
 	}
+	
+	@Test
+	public void testEventHandlerWithException() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.throwInEvent = true;
+		s.start();
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		waitFor(100);
+		assertEquals(6, c.throwInEventCount.get());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		
+		c = new Client(PORT);
+		c.throwInException = true;
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|SEN|", c.getRecordedData(true));
+		assertEquals(1,c.throwInExceptionCount.get());
+		c.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testReadHandlerWithException() throws Exception {
+		s = new Server(PORT);
+		s.throwInRead = true;
+		c = new Client(PORT);
+		s.start();
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.write(new Packet(PacketType.ECHO));
+		waitFor(500);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|SCL|SEN|", s.getRecordedData(true));
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
 }

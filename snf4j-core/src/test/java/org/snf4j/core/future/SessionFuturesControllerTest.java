@@ -198,7 +198,7 @@ public class SessionFuturesControllerTest {
 		sf.getCreateFuture().await();
 		long t1 = System.currentTimeMillis();
 		long delta = t1-t0;
-		assertTrue(delta > 950 && delta < 1050);
+		assertTrue("expected (950,1050) but was " + delta, delta > 950 && delta < 1050);
 		sf.getCreateFuture().await();
 		
 		IFuture<Void> f = sf.getWriteFuture(100);
@@ -208,7 +208,7 @@ public class SessionFuturesControllerTest {
 		f.await();
 		t1 = System.currentTimeMillis();
 		delta = t1-t0;
-		assertTrue(delta > 1950 && delta < 2050);
+		assertTrue("expected (1950,2050) but was " + delta, delta > 1950 && delta < 2050);
 		f.await();
 	}
 	
