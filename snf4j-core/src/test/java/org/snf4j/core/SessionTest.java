@@ -1462,9 +1462,11 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		waitFor(100);
 		assertEquals(6, c.throwInEventCount.get());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+		
 		
 		c = new Client(PORT);
 		c.throwInException = true;
