@@ -71,8 +71,8 @@ public class Server {
 	public volatile boolean throwInRead;
 	public volatile boolean throwInException;
 	public volatile boolean throwInEvent;
-	public AtomicInteger throwInEventCount = new AtomicInteger();
-	public AtomicInteger throwInExceptionCount = new AtomicInteger();
+	public final AtomicInteger throwInEventCount = new AtomicInteger();
+	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionEndingLock = new AtomicBoolean(false);
