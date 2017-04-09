@@ -795,7 +795,12 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		reg.channel = channel;
 		reg.ops = ops;
 		reg.attachment = attachment;
-		reg.future = new RegisterFuture<Void>(attachment instanceof ISession ? (ISession)attachment : null);
+		if (attachment instanceof ISession) {
+			reg.future = new RegisterFuture<Void>((ISession)attachment);
+		}
+		else {
+			reg.future = new RegisterFuture<Void>(null);
+		}
 		synchronized (registrationLock) {
 			//make sure not to register while stopping
 			if (stopping) {

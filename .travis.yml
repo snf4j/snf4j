@@ -3,17 +3,26 @@ sudo: true
 language: java
 
 jdk:
-  - openjdk6
-  - oraclejdk7
   - oraclejdk8
   
+matrix:
+  include:
+  - jdk: openjdk6
+    env: SKIP_COBERTURA=true
+  - jdk: oraclejdk7
+    env: SKIP_COBERTURA=true
+  - jdk: oraclejdk8
+    env: SKIP_COBERTURA=false
+    
 branches:
   only:
   - master
 
 after_success:
-  - mvn cobertura:cobertura
-  - bash <(curl -s https://codecov.io/bash)
+  - if [ $SKIP_COBERTURA == "false" ]; then
+      mvn cobertura:cobertura;
+      bash <(curl -s https://codecov.io/bash);
+    fi
   
 after_failure:
   - pwd
