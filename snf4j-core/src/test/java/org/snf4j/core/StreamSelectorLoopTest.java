@@ -1397,6 +1397,7 @@ public class StreamSelectorLoopTest {
 		try {
 			s = new Server(PORT);
 			s.start();
+			s.getSelectLoop().wakeup();
 			waitFor(10500);
 			waitTime2 = s.getSelectLoop().getTotalWaitTime();
 			workTime2 = s.getSelectLoop().getTotalWorkTime();
@@ -1408,6 +1409,40 @@ public class StreamSelectorLoopTest {
 		assertTrue("" +waitTime1 +">"+ waitTime2, waitTime1 > waitTime2);
 		assertTrue("" +workTime1 +">"+ workTime2, workTime1 > workTime2);
 		assertTrue("" +waitTime1 +">"+ workTime1, waitTime1 > workTime1);
-		assertTrue("" +waitTime2 +"<"+ workTime2, waitTime2 < workTime2);
+		
+		//wait > work
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		c.start();
+		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionOpen(TIMEOUT);
+		for (int i=0; i<10; ++i) {
+			waitFor(200);
+			c.write(new Packet(PacketType.ECHO));
+		}
+		waitTime1 = c.getSelectLoop().getTotalWaitTime();
+		workTime1 = c.getSelectLoop().getTotalWorkTime();
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(waitTime1 > workTime1);
+		
+		//work > wait
+		c = new Client(PORT);
+		c.start();
+		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionOpen(TIMEOUT);
+		for (int i=0; i<10; ++i) {
+			s.write(new Packet(PacketType.WRITE_AND_WAIT, "200"));
+			s.waitForDataRead(TIMEOUT);
+		}
+		waitTime1 = c.getSelectLoop().getTotalWaitTime();
+		workTime1 = c.getSelectLoop().getTotalWorkTime();
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(waitTime1 < workTime1);
+		s.stop(TIMEOUT);
     }
-}
+ }

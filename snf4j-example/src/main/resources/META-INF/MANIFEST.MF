@@ -1,8 +1,5 @@
 Implementation-Title: snf4j-example
 Bundle-ManifestVersion: 2
-Bundle-SymbolicName: snf4j.example
-Bundle-Name: snf4j-example
-Bundle-Vendor: SNF4J.ORG
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: org.snf4j.example.discarding;version=${parsedVersion.osgiVersion}
 Import-Package: org.snf4j.core;version=${parsedVersion.osgiVersion},

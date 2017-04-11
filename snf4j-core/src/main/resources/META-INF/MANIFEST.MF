@@ -1,8 +1,5 @@
 Implementation-Title: snf4j-core
 Bundle-ManifestVersion: 2
-Bundle-SymbolicName: snf4j.core
-Bundle-Name: snf4j-core
-Bundle-Vendor: SNF4J.ORG
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: org.snf4j.core;version=${parsedVersion.osgiVersion},
   org.snf4j.core.allocator;version=${parsedVersion.osgiVersion},
