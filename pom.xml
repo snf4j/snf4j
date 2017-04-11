@@ -8,7 +8,7 @@
   <packaging>pom</packaging>
  
   <name>SNF4J</name>
-  <description>Top SLF4J project</description>
+  <description>Top SNF4J project</description>
   <url>http://snf4j.org</url>
   <inceptionYear>2017</inceptionYear>
   

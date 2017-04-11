@@ -12,7 +12,7 @@
   <packaging>jar</packaging>
   <name>SNF4J/Core/SLF4J</name>
   <description>The SNF4J core logger binder for SLF4J api</description>
-  <url>http://www.snf4j.org</url>
+  <url>http://snf4j.org</url>
 
   <dependencies>
     <dependency>
