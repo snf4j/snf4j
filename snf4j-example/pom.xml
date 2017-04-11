@@ -5,14 +5,14 @@
   <parent>
     <groupId>org.snf4j</groupId>
     <artifactId>snf4j-project</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
   </parent>
     
   <artifactId>snf4j-example</artifactId>
   <packaging>jar</packaging>
-  <name>SNF4J Example Module</name>
+  <name>SNF4J/Example</name>
   <description>The SNF4J examples</description>
-  <url>http://www.snf4j.org</url>
+  <url>http://snf4j.org</url>
 
   <dependencies>
     <dependency>
