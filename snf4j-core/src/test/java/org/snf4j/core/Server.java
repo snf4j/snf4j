@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -75,6 +75,7 @@ public class Server {
 	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
+	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
 	AtomicBoolean sessionEndingLock = new AtomicBoolean(false);
 	AtomicBoolean dataReceivedLock = new AtomicBoolean(false);
 	AtomicBoolean dataReadLock = new AtomicBoolean(false);
@@ -87,6 +88,7 @@ public class Server {
 	static {
 		eventMapping.put(EventType.SESSION_CREATED, "SCR");
 		eventMapping.put(EventType.SESSION_OPENED, "SOP");
+		eventMapping.put(EventType.SESSION_READY, "RDY");
 		eventMapping.put(EventType.SESSION_CLOSED, "SCL");
 		eventMapping.put(EventType.SESSION_ENDING, "SEN");
 		eventMapping.put(EventType.DATA_RECEIVED, "DR");
@@ -216,7 +218,11 @@ public class Server {
 	public void waitForSessionOpen(long millis) throws InterruptedException {
 		waitFor(sessionOpenLock, millis);
 	}
-
+	
+	public void waitForSessionReady(long millis) throws InterruptedException {
+		waitFor(sessionReadyLock, millis);
+	}
+	
 	public void waitForSessionEnding(long millis) throws InterruptedException {
 		waitFor(sessionEndingLock, millis);
 	}
@@ -407,6 +413,10 @@ public class Server {
 				
 			case SESSION_OPENED:
 				Server.this.notify(sessionOpenLock);
+				break;
+				
+			case SESSION_READY:
+				Server.this.notify(sessionReadyLock);
 				break;
 				
 			case SESSION_ENDING:

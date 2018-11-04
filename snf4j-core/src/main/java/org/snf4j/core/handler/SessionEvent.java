@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,14 @@ public enum SessionEvent {
 	 * @see org.snf4j.core.session.SessionState
 	 */
 	OPENED(EventType.SESSION_OPENED),
+	
+	/**
+	 * The session is fully initialized and is ready to send/receive user data.
+	 * 
+	 * @since 1.0
+	 * @see org.snf4j.core.session.SessionState
+	 */		
+	READY(EventType.SESSION_READY),
 	
 	/**
 	 * The session has just been closed.

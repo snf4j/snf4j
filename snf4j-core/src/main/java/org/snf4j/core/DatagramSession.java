@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IDatagramHandler;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.IDatagramSession;
@@ -219,7 +220,14 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		outQueueSize -= number;
 	}
 	
-
+	@Override
+	void event(SessionEvent event) {
+		super.event(event);
+		if (event == SessionEvent.OPENED) {
+			super.event(SessionEvent.READY);
+		}
+	}
+	
 	/**
 	 * Handles closing operation being in progress. It should be executed only
 	 * when the output queue have no more data after writing.

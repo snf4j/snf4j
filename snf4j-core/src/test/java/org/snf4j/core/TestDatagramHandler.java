@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -62,6 +62,10 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 			
 		case OPENED:
 			sb.append("OP|");
+			break;
+
+		case READY:
+			sb.append("RD|");
 			break;
 			
 		case CLOSED:

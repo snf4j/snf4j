@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -244,6 +244,14 @@ public interface ISession {
 	 */
 	IFuture<Void> getOpenFuture();
 
+	/**
+	 * Gets the future that can be use to wait for the completion of the ready
+	 * phase.
+	 * 
+	 * @return the future associated with the opening phase of this session
+	 */
+	IFuture<Void> getReadyFuture();
+	
 	/**
 	 * Gets the future that can be use to wait for the completion of the closing
 	 * phase.

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -75,12 +75,12 @@ public class DatagramSelectorLoopTest {
 		s.startServer();
 		c.startClient();
 		c2.start(true, s.loop);
-		s.waitForSessionOpen(TIMEOUT);
-		c.waitForSessionOpen(TIMEOUT);
-		c2.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c2.getRecordedData(true));
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c2.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c2.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, s.loop.getSize());
 		assertEquals(1, c.loop.getSize());
@@ -112,10 +112,10 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		s.startServer();
 		c.startClient();
-		s.waitForSessionOpen(TIMEOUT);
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
@@ -134,13 +134,13 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		
 		s.startServer();
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		//quick stop
 		c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.getSession().suspendWrite();
 		c.getSession().write(new Packet(PacketType.ECHO, "X").toBytes());
 		waitFor(1000);
@@ -151,8 +151,8 @@ public class DatagramSelectorLoopTest {
 		//gentle stop 
 		c = new DatagramHandler(PORT);
 		c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.getSession().suspendWrite();
 		c.getSession().write(new Packet(PacketType.ECHO, "X").toBytes());
 		waitFor(1000);
@@ -169,13 +169,13 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		
 		s.startServer();
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		
 		//quick stop
 		c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.getSession().suspendRead();
 		c.quickStop(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
@@ -183,8 +183,8 @@ public class DatagramSelectorLoopTest {
 
 		//gentle stop
 		c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.getSession().suspendRead();
 		c.stop(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
@@ -198,13 +198,13 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		
 		s.startServer();
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		
 		//quick stop
 		c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.getSession().suspendRead();
 		c.getSession().suspendWrite();
 		c.quickStop(TIMEOUT);
@@ -213,8 +213,8 @@ public class DatagramSelectorLoopTest {
 
 		//gentle stop
 		c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.getSession().suspendRead();
 		c.getSession().suspendWrite();
 		c.stop(TIMEOUT);
@@ -359,10 +359,10 @@ public class DatagramSelectorLoopTest {
 		
 		s.start(false, true, null);
 		c.start(true, true, null);
-		s.waitForSessionOpen(TIMEOUT);
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
@@ -414,7 +414,7 @@ public class DatagramSelectorLoopTest {
 		DatagramHandler s = new DatagramHandler(PORT);
 		
 		s.startServer();
-		s.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		s.loop.register((DatagramChannel)s.getSession().channel, s.getSession());
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, s.loop.getSize());
@@ -427,7 +427,7 @@ public class DatagramSelectorLoopTest {
 
 		//default action
 		s.startClient();
-		s.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		s.getSession().close();
 		s.waitForSessionEnding(TIMEOUT);
 		assertTrue(s.loop.isOpen());
@@ -437,7 +437,7 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		s.endingAction = EndingAction.STOP;
 		s.startClient();
-		s.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		s.getSession().close();
 		s.waitForSessionEnding(TIMEOUT);
 		assertTrue(s.loop.join(TIMEOUT));
@@ -447,7 +447,7 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		s.endingAction = EndingAction.QUICK_STOP;
 		s.startClient();
-		s.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		s.getSession().close();
 		s.waitForSessionEnding(TIMEOUT);
 		assertTrue(s.loop.join(TIMEOUT));
@@ -457,14 +457,14 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		s.endingAction = EndingAction.STOP;
 		s.startClient();
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		DatagramSession session1 = s.getSession();
 		s.endingAction = EndingAction.DEFAULT;
 		s.port = PORT+1;
 		s.start(true, s.loop);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		session1.close();
 		waitFor(500);
 		assertEquals("SCL|SEN|SCL|SEN|", s.getRecordedData(true));
@@ -475,14 +475,14 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		s.endingAction = EndingAction.QUICK_STOP;
 		s.startClient();
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		session1 = s.getSession();
 		s.endingAction = EndingAction.DEFAULT;
 		s.port = PORT+1;
 		s.start(true, s.loop);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		session1.close();
 		waitFor(500);
 		assertEquals("SCL|SEN|SCL|SEN|", s.getRecordedData(true));
@@ -493,7 +493,7 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		s.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		s.startClient();
-		s.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		s.getSession().close();
 		s.waitForSessionEnding(TIMEOUT);
 		assertTrue(s.loop.join(TIMEOUT));
@@ -503,14 +503,14 @@ public class DatagramSelectorLoopTest {
 		s = new DatagramHandler(PORT);
 		s.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		s.startClient();
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		session1 = s.getSession();
 		s.endingAction = EndingAction.DEFAULT;
 		s.port = PORT+1;
 		s.start(true, s.loop);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		session1.close();
 		waitFor(500);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -523,12 +523,13 @@ public class DatagramSelectorLoopTest {
 	
 	void assertNotSuccessfulSessionFutures(ISession session, Throwable cause, String futuresStates) {
 		@SuppressWarnings("unchecked")
-		IFuture<Void>[] futures = new IFuture[4];
+		IFuture<Void>[] futures = new IFuture[5];
 		
 		futures[0] = session.getCreateFuture();
 		futures[1] = session.getOpenFuture();
-		futures[2] = session.getCloseFuture();
-		futures[3] = session.getEndFuture();
+		futures[2] = session.getReadyFuture();
+		futures[3] = session.getCloseFuture();
+		futures[4] = session.getEndFuture();
 		
 		StringBuilder sb = new StringBuilder();
 		
@@ -568,10 +569,10 @@ public class DatagramSelectorLoopTest {
 		loop.start();
 		assertTrue(f1.await(TIMEOUT).isCancelled());
 		assertEquals("", h1.getEventLog());
-		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCCC");
 		assertTrue(f2.await(TIMEOUT).isCancelled());
 		assertEquals("", h2.getEventLog());
-		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCCC");
 		loop.stop();
 		assertTrue(loop.join(TIMEOUT));
 
@@ -595,10 +596,10 @@ public class DatagramSelectorLoopTest {
 		loop.start();
 		assertTrue(f1.await(TIMEOUT).isCancelled());
 		assertEquals("", h1.getEventLog());
-		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCCC");
 		assertTrue(f2.await(TIMEOUT).isCancelled());
 		assertEquals("", h2.getEventLog());
-		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCCC");
 		loop.stop();
 		assertTrue(loop.join(TIMEOUT));
 		
@@ -622,10 +623,10 @@ public class DatagramSelectorLoopTest {
 		loop.start();
 		assertTrue(f1.await(TIMEOUT).isFailed());
 		assertEquals("", h1.getEventLog());
-		assertNotSuccessfulSessionFutures(f1.getSession(), null, "FFFF");
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "FFFFF");
 		assertTrue(f2.await(TIMEOUT).isSuccessful());
-		assertEquals("CR|OP|", h2.getEventLog());
-		assertNotSuccessfulSessionFutures(f2.getSession(), null, "SSNN");
+		assertEquals("CR|OP|RD|", h2.getEventLog());
+		assertNotSuccessfulSessionFutures(f2.getSession(), null, "SSSNN");
 		loop.stop();
 		assertTrue(loop.join(TIMEOUT));
     	
@@ -640,7 +641,7 @@ public class DatagramSelectorLoopTest {
 		loop.start();
 		f1.sync(TIMEOUT);
 		assertTrue(f2.await(TIMEOUT).isCancelled());
-		assertNotSuccessfulSessionFutures(f2.getSession(), null, "CCCC");
+		assertNotSuccessfulSessionFutures(f2.getSession(), null, "CCCCC");
 		assertEquals("", h2.getEventLog());
 		loop.stop();
 		assertTrue(loop.join(TIMEOUT));
@@ -657,7 +658,7 @@ public class DatagramSelectorLoopTest {
 		waitFor(100);
 		loop.stop();
 		assertTrue(f1.await(TIMEOUT).isCancelled());
-		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCC");
+		assertNotSuccessfulSessionFutures(f1.getSession(), null, "CCCCC");
 		assertEquals("", h1.getEventLog());
 		loop.stop();
 		assertTrue(loop.join(TIMEOUT));

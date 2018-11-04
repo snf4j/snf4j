@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -190,6 +190,178 @@ public class SessionFuturesControllerTest {
 	}
 	
 	@Test
+	public void testSessionEventPropagation() {
+		Exception cause = new Exception();
+		sf = new SessionFuturesController(null);
+		
+		IFuture<Void> cr = sf.getCreateFuture();
+		IFuture<Void> op = sf.getOpenFuture();
+		IFuture<Void> rd = sf.getReadyFuture();
+		IFuture<Void> cl = sf.getCloseFuture();
+		IFuture<Void> en = sf.getEndFuture();
+		IFuture<Void> wr = sf.getWriteFuture(100);
+		
+		assertNotDone(cr);
+		assertNotDone(op);
+		assertNotDone(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+		
+		sf.event(SessionEvent.CREATED);
+		assertSuccessful(cr);
+		assertNotDone(op);
+		assertNotDone(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+		
+		sf.exception(cause);
+		assertSuccessful(cr);
+		assertNotDone(op);
+		assertNotDone(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertFailed(wr, cause);
+
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(cr);
+		assertFailed(op, cause);
+		assertFailed(rd, cause);
+		assertFailed(cl, cause);
+		assertFailed(en, cause);
+		assertFailed(wr, cause);
+		
+		sf = new SessionFuturesController(null);
+		
+		cr = sf.getCreateFuture();
+		op = sf.getOpenFuture();
+		rd = sf.getReadyFuture();
+		cl = sf.getCloseFuture();
+		en = sf.getEndFuture();
+		wr = sf.getWriteFuture(100);		
+
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertNotDone(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+
+		sf.exception(cause);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertNotDone(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertFailed(wr, cause);
+
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertFailed(rd, cause);
+		assertFailed(cl, cause);
+		assertFailed(en, cause);
+		assertFailed(wr, cause);
+	
+		sf = new SessionFuturesController(null);
+		
+		cr = sf.getCreateFuture();
+		op = sf.getOpenFuture();
+		rd = sf.getReadyFuture();
+		cl = sf.getCloseFuture();
+		en = sf.getEndFuture();
+		wr = sf.getWriteFuture(100);		
+
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		sf.event(SessionEvent.READY);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+
+		sf.exception(cause);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertFailed(wr, cause);
+
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertFailed(cl, cause);
+		assertFailed(en, cause);
+		assertFailed(wr, cause);
+	
+		sf = new SessionFuturesController(null);
+		
+		cr = sf.getCreateFuture();
+		op = sf.getOpenFuture();
+		rd = sf.getReadyFuture();
+		cl = sf.getCloseFuture();
+		en = sf.getEndFuture();
+		wr = sf.getWriteFuture(100);		
+
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		sf.event(SessionEvent.READY);
+		sf.event(SessionEvent.CLOSED);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertSuccessful(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+
+		sf.exception(cause);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertSuccessful(cl);
+		assertNotDone(en);
+		assertFailed(wr, cause);
+
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertSuccessful(cl);
+		assertFailed(en, cause);
+		assertFailed(wr, cause);
+
+		sf = new SessionFuturesController(null);
+		
+		cr = sf.getCreateFuture();
+		op = sf.getOpenFuture();
+		rd = sf.getReadyFuture();
+		cl = sf.getCloseFuture();
+		en = sf.getEndFuture();
+		wr = sf.getWriteFuture(100);		
+
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		sf.event(SessionEvent.READY);
+		sf.event(SessionEvent.CLOSED);
+		sf.event(SessionEvent.ENDING);
+		
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertSuccessful(cl);
+		assertSuccessful(en);
+		assertCanceled(wr);
+	
+	}
+	
+	@Test
 	public void testSessionFuturesAwait() throws Exception {
 		sf = new SessionFuturesController(null);
 		
@@ -224,12 +396,19 @@ public class SessionFuturesControllerTest {
 			f = session.getOpenFuture();
 			break;
 			
+		case READY:
+			f = session.getReadyFuture();
+			break;
+			
 		case CLOSED:
 			f = session.getCloseFuture();
 			break;
 			
 		case ENDING:
 			f = session.getEndFuture();
+			break;
+			
+		default:
 			break;
 		}
 		
@@ -261,8 +440,8 @@ public class SessionFuturesControllerTest {
 		//write without suspend
 		cdh = new DatagramHandler(PORT);
 		cdh.startClient();
-		cdh.waitForSessionOpen(TIMEOUT);
-		sdh.waitForSessionOpen(TIMEOUT);
+		cdh.waitForSessionReady(TIMEOUT);
+		sdh.waitForSessionReady(TIMEOUT);
 		sdh.getRecordedData(true);
 		cdh.getRecordedData(true);
 		IFuture<Void> f = cdh.getSession().write(new Packet(PacketType.ECHO).toBytes());
@@ -282,8 +461,8 @@ public class SessionFuturesControllerTest {
 		sdh.startServer();
 		cdh = new DatagramHandler(PORT);
 		cdh.startClient();
-		cdh.waitForSessionOpen(TIMEOUT);
-		sdh.waitForSessionOpen(TIMEOUT);
+		cdh.waitForSessionReady(TIMEOUT);
+		sdh.waitForSessionReady(TIMEOUT);
 		sdh.getRecordedData(true);
 		cdh.getRecordedData(true);
 		cdh.getSession().suspendWrite();
@@ -311,8 +490,8 @@ public class SessionFuturesControllerTest {
 		//write without suspend
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 		IFuture<Void> f = c.getSession().write(new Packet(PacketType.ECHO).toBytes());
@@ -330,8 +509,8 @@ public class SessionFuturesControllerTest {
 		//write with suspend
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 		c.getSession().suspendWrite();
@@ -361,9 +540,11 @@ public class SessionFuturesControllerTest {
 		DatagramSession session = cdh.createSession();
 		assertNotDone(session, SessionEvent.CREATED);
 		assertNotDone(session, SessionEvent.OPENED);
+		assertNotDone(session, SessionEvent.READY);
 		cdh.startClient();
 		assertDone(session, SessionEvent.CREATED);
 		assertDone(session, SessionEvent.OPENED);
+		assertDone(session, SessionEvent.READY);
 		assertNotDone(session, SessionEvent.CLOSED);
 		assertNotDone(session, SessionEvent.ENDING);
 		session.close();
@@ -390,6 +571,19 @@ public class SessionFuturesControllerTest {
 		cdh.startClient();
 		assertTrue(await(session, SessionEvent.OPENED, AWAIT, 500).isDone());
 		assertDone(session, SessionEvent.CREATED);
+		delayedClose(session, 500);
+		assertTrue(await(session, SessionEvent.ENDING, AWAIT, 500).isDone());
+		assertDone(session, SessionEvent.CLOSED);
+		cdh.stop(TIMEOUT);
+
+		//futures done while waiting
+		cdh = new DatagramHandler(PORT);
+		cdh.setThreadFactory(new DelayedThreadFactory(500));
+		session = cdh.createSession();
+		cdh.startClient();
+		assertTrue(await(session, SessionEvent.READY, AWAIT, 500).isDone());
+		assertDone(session, SessionEvent.CREATED);
+		assertDone(session, SessionEvent.OPENED);
 		delayedClose(session, 500);
 		assertTrue(await(session, SessionEvent.ENDING, AWAIT, 500).isDone());
 		assertDone(session, SessionEvent.CLOSED);
@@ -483,26 +677,37 @@ public class SessionFuturesControllerTest {
 		sf = new SessionFuturesController(null);
 		assertNotDone(sf.getCreateFuture());
 		assertNotDone(sf.getOpenFuture());
+		assertNotDone(sf.getReadyFuture());
 		assertNotDone(sf.getCloseFuture());
 		assertNotDone(sf.getEndFuture());
 		sf.event(SessionEvent.CREATED);
 		assertSuccessful(sf.getCreateFuture());
 		assertNotDone(sf.getOpenFuture());
+		assertNotDone(sf.getReadyFuture());
 		assertNotDone(sf.getCloseFuture());
 		assertNotDone(sf.getEndFuture());
 		sf.event(SessionEvent.OPENED);
 		assertSuccessful(sf.getCreateFuture());
 		assertSuccessful(sf.getOpenFuture());
+		assertNotDone(sf.getReadyFuture());
+		assertNotDone(sf.getCloseFuture());
+		assertNotDone(sf.getEndFuture());
+		sf.event(SessionEvent.READY);
+		assertSuccessful(sf.getCreateFuture());
+		assertSuccessful(sf.getOpenFuture());
+		assertSuccessful(sf.getReadyFuture());
 		assertNotDone(sf.getCloseFuture());
 		assertNotDone(sf.getEndFuture());
 		sf.event(SessionEvent.CLOSED);
 		assertSuccessful(sf.getCreateFuture());
 		assertSuccessful(sf.getOpenFuture());
+		assertSuccessful(sf.getReadyFuture());
 		assertSuccessful(sf.getCloseFuture());
 		assertNotDone(sf.getEndFuture());
 		sf.event(SessionEvent.ENDING);
 		assertSuccessful(sf.getCreateFuture());
 		assertSuccessful(sf.getOpenFuture());
+		assertSuccessful(sf.getReadyFuture());
 		assertSuccessful(sf.getCloseFuture());
 		assertSuccessful(sf.getEndFuture());
 		
@@ -513,11 +718,13 @@ public class SessionFuturesControllerTest {
 		sf.exception(cause2);
 		assertSuccessful(sf.getCreateFuture());
 		assertNotDone(sf.getOpenFuture());
+		assertNotDone(sf.getReadyFuture());
 		assertNotDone(sf.getCloseFuture());
 		assertNotDone(sf.getEndFuture());
 		sf.event(SessionEvent.ENDING);
 		assertSuccessful(sf.getCreateFuture());
 		assertFailed(sf.getOpenFuture(),cause1);
+		assertFailed(sf.getReadyFuture(),cause1);
 		assertFailed(sf.getCloseFuture(), cause1);
 		assertFailed(sf.getEndFuture(), cause1);
 
@@ -525,20 +732,24 @@ public class SessionFuturesControllerTest {
 		sf = new SessionFuturesController(null);
 		sf.event(SessionEvent.CREATED);
 		sf.event(SessionEvent.OPENED);
+		sf.event(SessionEvent.READY);
 		sf.exception(cause1);
 		sf.exception(cause2);
 		assertSuccessful(sf.getCreateFuture());
 		assertSuccessful(sf.getOpenFuture());
+		assertSuccessful(sf.getReadyFuture());
 		assertNotDone(sf.getCloseFuture());
 		assertNotDone(sf.getEndFuture());
 		sf.event(SessionEvent.CLOSED);
 		assertSuccessful(sf.getCreateFuture());
 		assertSuccessful(sf.getOpenFuture());
+		assertSuccessful(sf.getReadyFuture());
 		assertFailed(sf.getCloseFuture(), cause1);
 		assertNotDone(sf.getEndFuture());
 		sf.event(SessionEvent.ENDING);
 		assertSuccessful(sf.getCreateFuture());
 		assertSuccessful(sf.getOpenFuture());
+		assertSuccessful(sf.getReadyFuture());
 		assertFailed(sf.getCloseFuture(), cause1);
 		assertFailed(sf.getEndFuture(), cause1);
 	}
@@ -619,7 +830,7 @@ public class SessionFuturesControllerTest {
 		c.write(new Packet(PacketType.DEADLOCK));
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|DS|DR|DEADLOCK_RESPONSE(YES)|",c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DS|DR|DEADLOCK_RESPONSE(YES)|",c.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 	}
