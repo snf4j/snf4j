@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -97,10 +97,10 @@ public class StreamSelectorLoopTest {
 		//quick stopping 
 		//---------------------------------------------------------------------
 		c = new Client(PORT);	c.start(); 
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(2, s.getSelectLoop().getSize());
 		assertEquals(1, c.getSelectLoop().getSize());
@@ -122,10 +122,10 @@ public class StreamSelectorLoopTest {
 		//gentle stopping
 		//---------------------------------------------------------------------
 		c = new Client(PORT); c.start();	
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
@@ -153,13 +153,13 @@ public class StreamSelectorLoopTest {
 		//quick stopping with suspended write
 		//---------------------------------------------------------------------
 		c = new Client(PORT); c.start(); 
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendWrite();
 		c.getSession().write(new Packet(PacketType.ECHO, "X").toBytes());
 		waitFor(1000);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.quickStop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
@@ -169,13 +169,14 @@ public class StreamSelectorLoopTest {
 		
 		//gentle stopping with suspended write
 		//---------------------------------------------------------------------
-		c = new Client(PORT); c.start();	c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
+		c = new Client(PORT); c.start();	
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendWrite();
 		c.getSession().write(new Packet(PacketType.ECHO, "X").toBytes());
 		waitFor(1000);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
@@ -196,11 +197,11 @@ public class StreamSelectorLoopTest {
 		//quick stopping with suspended read
 		//---------------------------------------------------------------------
 		c = new Client(PORT); c.start(); 
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendRead();
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.quickStop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
@@ -210,11 +211,12 @@ public class StreamSelectorLoopTest {
 		
 		//gentle stopping with suspended read
 		//---------------------------------------------------------------------
-		c = new Client(PORT); c.start();	c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
+		c = new Client(PORT); c.start();	
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendRead();
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
@@ -235,12 +237,12 @@ public class StreamSelectorLoopTest {
 		//quick stopping with suspended read and write
 		//---------------------------------------------------------------------
 		c = new Client(PORT); c.start(); 
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendRead();
 		c.getSession().suspendWrite();
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.quickStop(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
@@ -250,12 +252,12 @@ public class StreamSelectorLoopTest {
 		//gentle stopping with suspended read and write
 		//---------------------------------------------------------------------
 		c = new Client(PORT); c.start();	
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendRead();
 		c.getSession().suspendWrite();
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
@@ -275,10 +277,10 @@ public class StreamSelectorLoopTest {
 		//quick stopping 
 		//---------------------------------------------------------------------
 		c = new Client(PORT);	c.start(); 
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		s.quickStop(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -292,10 +294,10 @@ public class StreamSelectorLoopTest {
 		//---------------------------------------------------------------------
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();	
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		s.stop(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
@@ -303,7 +305,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		
 		try {
-			c.getSession().write(null);
+			c.getSession().write((byte[])null);
 			fail("exception not thrown");
 		}
 		catch (IllegalSessionStateException e) {
@@ -327,10 +329,10 @@ public class StreamSelectorLoopTest {
 		assertTrue(pool == s.getSelectLoop().getPool());
 		
 		c = new Client(PORT);	c.start(); 
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		assertNull(c.getSelectLoop().getParentPool());
 		assertTrue(pool.getPool()[0].getParentPool() == pool);
 		
@@ -361,10 +363,10 @@ public class StreamSelectorLoopTest {
 		s.getSelectLoop().setPool(pool);
 
 		c = new Client(PORT);	c.start(); 
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		
 		c.getSession().write(new Packet(PacketType.GET_THREAD, "").toBytes());
 		c.waitForDataRead(TIMEOUT);
@@ -556,10 +558,10 @@ public class StreamSelectorLoopTest {
 		c = new Client(PORT);
 		c.start(true);
 
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForDataRead(TIMEOUT);
@@ -626,10 +628,10 @@ public class StreamSelectorLoopTest {
 		s.getSelectLoop().setPool(pool);
 		c1 = new Client(PORT);
 		c1.start();
-		c1.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c1.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c1.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c1.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		
 		//disable accepting
 		c2 = new Client(PORT);
@@ -639,7 +641,7 @@ public class StreamSelectorLoopTest {
 		c2.waitForSessionEnding(TIMEOUT);
 		waitFor(100);
 		assertEquals("", s.getRecordedData(true));
-		assertEquals("SCR|SOP|SCL|SEN|", c2.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c2.getRecordedData(true));
 		c2.stop(TIMEOUT);
 		
 		//exception while accepting
@@ -684,10 +686,10 @@ public class StreamSelectorLoopTest {
 		s.start();
 		c1 = new Client(PORT);
 		c1.start();
-		c1.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c1.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c1.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c1.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		//disable connecting
 		slc.connect = TestSelectorLoopController.BLOCK;
@@ -696,7 +698,7 @@ public class StreamSelectorLoopTest {
 		c2.start();
 		s.waitForSessionEnding(TIMEOUT);
 		c2.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
 		assertEquals("SCR|SEN|", c2.getRecordedData(true));
 		c2.stop(TIMEOUT);
 		
@@ -707,7 +709,7 @@ public class StreamSelectorLoopTest {
 		c3.start();
 		s.waitForSessionEnding(TIMEOUT);
 		c3.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
 		assertEquals("SCR|EXC|SEN|", c3.getRecordedData(true));
 		c3.stop(TIMEOUT);
 		
@@ -807,10 +809,10 @@ public class StreamSelectorLoopTest {
 		c2.start();
 		c1.start();
 		
-		c1.waitForSessionOpen(TIMEOUT);
-		c2.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c1.getRecordedData(true));
-		assertEquals("SCR|SOP|", c2.getRecordedData(true));
+		c1.waitForSessionReady(TIMEOUT);
+		c2.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c1.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", c2.getRecordedData(true));
 		
 		c1.write(new Packet(PacketType.ECHO));
 		
@@ -836,10 +838,10 @@ public class StreamSelectorLoopTest {
 		s.start();
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.exceptionResult = true;
 		c.getSession().exception(new Exception());
@@ -913,13 +915,13 @@ public class StreamSelectorLoopTest {
 		c = new Client(PORT);
 		c.endingAction = EndingAction.STOP;
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		StreamSession session1 = c.getSession();
 		c.endingAction = EndingAction.DEFAULT;
 		c.start(false, c.loop);
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		session1.close();
 		waitFor(500);
 		assertEquals("SCL|SEN|SCL|SEN|", c.getRecordedData(true));
@@ -929,8 +931,8 @@ public class StreamSelectorLoopTest {
 		c = new Client(PORT);
 		c.endingAction = EndingAction.STOP;
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		ServerSocketChannel ssc = ServerSocketChannel.open();
 		ssc.configureBlocking(false);
 		ssc.socket().bind(new InetSocketAddress(PORT+1));
@@ -958,13 +960,13 @@ public class StreamSelectorLoopTest {
 		c = new Client(PORT);
 		c.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		session1 = c.getSession();
 		c.endingAction = EndingAction.DEFAULT;
 		c.start(false, c.loop);
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		session1.close();
 		waitFor(500);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
@@ -978,8 +980,8 @@ public class StreamSelectorLoopTest {
 		c = new Client(PORT);
 		c.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		ssc = ServerSocketChannel.open();
 		ssc.configureBlocking(false);
 		ssc.socket().bind(new InetSocketAddress(PORT+1));
@@ -1012,12 +1014,12 @@ public class StreamSelectorLoopTest {
 		c = new Client(PORT);
 		c.endingAction = EndingAction.STOP_WHEN_EMPTY;
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		session1 = c.getSession();
 		c.start(false, c.loop);
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		waitFor(500);
 		session1.close();
 		waitFor(500);
@@ -1038,8 +1040,8 @@ public class StreamSelectorLoopTest {
 		c = new Client(PORT);
 		c.start();
 
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 
@@ -1056,8 +1058,8 @@ public class StreamSelectorLoopTest {
 		s.start();
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		
@@ -1088,10 +1090,10 @@ public class StreamSelectorLoopTest {
 		assertTrue(s.loop.selector.keys().iterator().next() != key);
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		key = s.getSession().key;
 		assertTrue(key.isValid());
@@ -1129,8 +1131,8 @@ public class StreamSelectorLoopTest {
 		s.start(false, loop);
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		assertEquals("R|",s.getServerSocketLogs());
@@ -1160,8 +1162,8 @@ public class StreamSelectorLoopTest {
 			s.start(false, loop);
 			c = new Client(PORT);
 			c.start();
-			c.waitForSessionOpen(TIMEOUT);
-			s.waitForSessionOpen(TIMEOUT);
+			c.waitForSessionReady(TIMEOUT);
+			s.waitForSessionReady(TIMEOUT);
 			c.getRecordedData(true);
 			s.getRecordedData(true);
 			assertEquals("R|",s.getServerSocketLogs());
@@ -1192,8 +1194,8 @@ public class StreamSelectorLoopTest {
 		s.start(false, loop);
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
     	
@@ -1222,10 +1224,10 @@ public class StreamSelectorLoopTest {
 
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -1241,8 +1243,8 @@ public class StreamSelectorLoopTest {
 		s.start(false, loop);
 		c = new Client(PORT);
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		assertEquals("R|",s.getServerSocketLogs());
@@ -1277,8 +1279,8 @@ public class StreamSelectorLoopTest {
 			s.start(false, loop);
 			c = new Client(PORT);
 			c.start();
-			c.waitForSessionOpen(TIMEOUT);
-			s.waitForSessionOpen(TIMEOUT);
+			c.waitForSessionReady(TIMEOUT);
+			s.waitForSessionReady(TIMEOUT);
 			c.getRecordedData(true);
 			s.getRecordedData(true);
 			assertEquals("R|",s.getServerSocketLogs());
@@ -1303,10 +1305,10 @@ public class StreamSelectorLoopTest {
 	}    
     
     private void assertConnection(Server s, Client c) throws InterruptedException {
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);    	
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);    	
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);

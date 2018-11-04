@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -495,9 +495,9 @@ public class SessionTest {
 
 		s.start();
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.write(new Packet(PacketType.ECHO, "1"));
 		c.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
@@ -611,8 +611,8 @@ public class SessionTest {
 		s.start();
 		c.start();
 		
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		long t1 = System.currentTimeMillis();
 		
 		StreamSession cs = c.getSession();
@@ -635,8 +635,8 @@ public class SessionTest {
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		t1 = System.currentTimeMillis();
-		assertEquals("SCR|SOP|DS|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|DR|NOP(1234)|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DS|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP(1234)|", s.getRecordedData(true));
 		assertEquals(0, cs.getReadBytes());
 		assertEquals(7, cs.getWrittenBytes());
 		assertEquals(7, ss.getReadBytes());
@@ -752,10 +752,10 @@ public class SessionTest {
 		//close inside the loop
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.CLOSE));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -766,10 +766,10 @@ public class SessionTest {
 		//close outside the loop
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -783,10 +783,10 @@ public class SessionTest {
 		//close inside the loop with data to send
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_CLOSE));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -797,10 +797,10 @@ public class SessionTest {
 		//close outside the loop with data to send (closed on other side)
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		waitFor(500);
 		c.getSession().close();
@@ -813,10 +813,10 @@ public class SessionTest {
 		//close outside the loop with data to send (closed on the same side)
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		waitFor(500);
 		s.getSession().close();
@@ -829,10 +829,10 @@ public class SessionTest {
 		//quick close inside the loop
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.QUICK_CLOSE));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -843,10 +843,10 @@ public class SessionTest {
 		//quick close outside the loop
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.getSession().quickClose();
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
@@ -859,10 +859,10 @@ public class SessionTest {
 		//quick close inside the loop with data to send
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_QUICK_CLOSE));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -873,10 +873,10 @@ public class SessionTest {
 		//quick close outside the loop with data to send (closed on other side)
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		waitFor(500);
 		c.getSession().quickClose();
@@ -889,10 +889,10 @@ public class SessionTest {
 		//quick close outside the loop with data to send (closed on the same side)
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		waitFor(500);
 		s.getSession().quickClose();
@@ -906,10 +906,10 @@ public class SessionTest {
 	private void testCloseOutsideSuspendWrite(boolean suspendS, boolean suspendC, boolean writeS, boolean writeC, boolean quickClose) throws Exception {
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		if (suspendS) s.getSession().suspendWrite();
 		if (suspendC) c.getSession().suspendWrite();
 		if (writeS) s.write(new Packet(PacketType.NOP));
@@ -930,10 +930,10 @@ public class SessionTest {
 	private void testCloseInsideSuspendWrite(boolean suspendS, boolean suspendC, boolean writeS, boolean writeC, boolean quickClose) throws Exception {
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		StringBuilder sb = new StringBuilder();
 		if (suspendS) s.getSession().suspendWrite();
 		if (suspendC) sb.append("S");
@@ -1011,10 +1011,10 @@ public class SessionTest {
 	private void testCloseOutsideSuspendRead(boolean suspendS, boolean suspendC, boolean quickClose) throws Exception {
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		if (suspendS) s.getSession().suspendRead();
 		if (suspendC) c.getSession().suspendRead();
 		if (quickClose) {
@@ -1060,10 +1060,10 @@ public class SessionTest {
 		//close with written data (data length==0 but OP_WRITE set)
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		StreamSession session = c.getSession();
 		session.suspendRead();
 		session.key.interestOps(session.key.interestOps() | SelectionKey.OP_WRITE);
@@ -1078,10 +1078,10 @@ public class SessionTest {
 		//close with written data
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		session = c.getSession();
 		session.suspendRead();
 		session.suspendWrite();
@@ -1101,10 +1101,10 @@ public class SessionTest {
 		//quick close after blocked gentle close (server closed by resume)
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		s.getSession().suspendRead();
 		c.getSession().close();
 		waitFor(2000);
@@ -1122,10 +1122,10 @@ public class SessionTest {
 		//quick close after blocked gentle close (server closed by close)
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		s.getSession().suspendRead();
 		c.getSession().close();
 		waitFor(2000);
@@ -1143,10 +1143,10 @@ public class SessionTest {
 		//quick close after blocked gentle close (server closed by quick close)
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		s.getSession().suspendRead();
 		c.getSession().close();
 		waitFor(2000);
@@ -1171,10 +1171,10 @@ public class SessionTest {
 		
 		s = new Server(PORT); s.start();
 		c = new Client(PORT); c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		
 		assertNotNull(c.getSession().getLocalAddress());
 		assertNotNull(s.getSession().getLocalAddress());
@@ -1205,10 +1205,10 @@ public class SessionTest {
 		//write one packet
 		s.start();
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
@@ -1302,6 +1302,10 @@ public class SessionTest {
 		case SESSION_OPENED:
 			s.event(SessionEvent.OPENED);
 			break;
+
+		case SESSION_READY:
+			s.event(SessionEvent.READY);
+			break;
 			
 		default:
 			break;
@@ -1322,7 +1326,12 @@ public class SessionTest {
 			EventType t = getEventType(splitted[i]);
 
 			fireEvent(s, t);
-			assertEquals(t.toString()+"|", h.getEvents());
+			if (t == EventType.SESSION_OPENED) {
+				assertEquals(t.toString()+"|"+EventType.SESSION_READY+"|", h.getEvents());
+			}
+			else {
+				assertEquals(t.toString()+"|", h.getEvents());
+			}
 		}
 		return s;
 	}
@@ -1374,7 +1383,7 @@ public class SessionTest {
 		assertEvents("SCR|SEN", "", "");
 		assertEvents("SCR|EXC|SEN", "", "");
 
-		assertEvents("SCR|SOP", "EXC|DS|DR", "SCL|SEN");
+		assertEvents("SCR|SOP", "EXC|DS|DR|", "SCL|SEN");
 		assertEvents("SCR|SOP|DS", "EXC|DS|DR", "SCL|SEN");
 		assertEvents("SCR|SOP|DR", "EXC|DS|DR", "SCL|SEN");
 		assertEvents("SCR|SOP|EXC", "EXC|DS|DR", "SCL|SEN");
@@ -1451,9 +1460,9 @@ public class SessionTest {
 		c.throwInEvent = true;
 		s.start();
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
@@ -1463,7 +1472,7 @@ public class SessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		waitFor(100);
-		assertEquals(6, c.throwInEventCount.get());
+		assertEquals(7, c.throwInEventCount.get());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
@@ -1484,10 +1493,10 @@ public class SessionTest {
 		c = new Client(PORT);
 		s.start();
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.ECHO));
 		waitFor(500);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));

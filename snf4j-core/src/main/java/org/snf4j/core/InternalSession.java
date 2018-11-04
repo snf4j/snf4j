@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -134,6 +134,11 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	@Override
 	public IFuture<Void> getOpenFuture() {
 		return futuresController.getOpenFuture();
+	}
+
+	@Override
+	public IFuture<Void> getReadyFuture() {
+		return futuresController.getReadyFuture();
 	}
 
 	@Override
@@ -473,7 +478,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 	
-	final void event(DataEvent event, long length) {
+	void event(DataEvent event, long length) {
 		if (isValid(event.type())) {
 			futuresController.event(event, length);
 			try {
@@ -485,7 +490,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 	
-	final void event(SessionEvent event) {
+	void event(SessionEvent event) {
 		if (isValid(event.type())) {
 			futuresController.event(event);
 			try {
@@ -497,7 +502,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 	
-	final void exception(Throwable t) {
+	void exception(Throwable t) {
 		if (isValid(EventType.EXCEPTION_CAUGHT)) {
 			try {
 				if (!handler.exception(t)) {

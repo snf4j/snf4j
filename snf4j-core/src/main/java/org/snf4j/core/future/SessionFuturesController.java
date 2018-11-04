@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,6 +42,8 @@ public class SessionFuturesController {
 	private final static int CREATED_IDX = SessionEvent.CREATED.ordinal();
 	
 	private final static int OPENED_IDX = SessionEvent.OPENED.ordinal();
+	
+	private final static int READY_IDX = SessionEvent.READY.ordinal();
 	
 	private final static int CLOSED_IDX = SessionEvent.CLOSED.ordinal();
 	
@@ -99,6 +101,9 @@ public class SessionFuturesController {
 			if (event == SessionEvent.ENDING) {
 				if (!eventFutures[OPENED_IDX].isDone()) {
 					eventFutures[OPENED_IDX].failure(cause);
+				}
+				if (!eventFutures[READY_IDX].isDone()) {
+					eventFutures[READY_IDX].failure(cause);
 				}
 				if (!eventFutures[CLOSED_IDX].isDone()) {
 					eventFutures[CLOSED_IDX].failure(cause);
@@ -181,7 +186,17 @@ public class SessionFuturesController {
 	public final IFuture<Void> getOpenFuture() {
 		return eventFutures[OPENED_IDX];
 	}
-
+	
+	/**
+	 * Returns the future that can be use to wait for the completion of the
+	 * session's ready phase.
+	 * 
+	 * @return the future associated with the session's ready phase
+	 */	
+	public final IFuture<Void> getReadyFuture() {
+		return eventFutures[READY_IDX];
+	}
+	
 	/**
 	 * Returns the future that can be use to wait for the completion of the
 	 * session's closing phase.

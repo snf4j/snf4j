@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,10 +83,10 @@ public class DatagramSessionTest {
 		
 		s.startServer();
 		c.startClient();
-		s.waitForSessionOpen(TIMEOUT);
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		assertNotNull(c.getSession().getLocalAddress());
 		assertNotNull(s.getSession().getLocalAddress());
@@ -121,10 +121,10 @@ public class DatagramSessionTest {
 		c = new DatagramHandler(PORT);
 		s.startServer();
 		c.startClient();
-		s.waitForSessionOpen(TIMEOUT);
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForDataRead(TIMEOUT);
@@ -162,10 +162,10 @@ public class DatagramSessionTest {
 		c = new DatagramHandler(PORT);
 		s.startServer();
 		c.startClient();
-		s.waitForSessionOpen(TIMEOUT);
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		
 		//write suspend&resume
 		DatagramSession session = c.getSession();
@@ -246,11 +246,11 @@ public class DatagramSessionTest {
 		s.startServer();
 		c.startClient();
 		
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		long t1 = System.currentTimeMillis();
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		DatagramSession cs = c.getSession();
 		DatagramSession ss = s.getSession();
@@ -403,10 +403,10 @@ public class DatagramSessionTest {
 		//close inside the loop
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.CLOSE));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -419,10 +419,10 @@ public class DatagramSessionTest {
 		//close outside the loop
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
@@ -437,10 +437,10 @@ public class DatagramSessionTest {
 		//close inside the loop with data to send
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_CLOSE));
 		c.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
@@ -454,10 +454,10 @@ public class DatagramSessionTest {
 		//close outside the loop with data to send
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		waitFor(500);
 		c.getSession().close();
@@ -473,10 +473,10 @@ public class DatagramSessionTest {
 		//close outside the loop with data to send (other side)
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		waitFor(500);
 		s.getSession().close();
@@ -493,10 +493,10 @@ public class DatagramSessionTest {
 		//quick close inside the loop
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.QUICK_CLOSE));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -509,10 +509,10 @@ public class DatagramSessionTest {
 		//quick close outside the loop
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.getSession().quickClose();
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
@@ -527,10 +527,10 @@ public class DatagramSessionTest {
 		//quick close inside the loop with data to send
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_QUICK_CLOSE));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -543,10 +543,10 @@ public class DatagramSessionTest {
 		//quick close outside the loop with data to send
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		waitFor(500);
 		c.getSession().quickClose();
@@ -562,10 +562,10 @@ public class DatagramSessionTest {
 		//quick close outside the loop with data to send (other side)
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.write(new Packet(PacketType.WRITE_AND_WAIT, "1000"));
 		waitFor(500);
 		s.getSession().quickClose();
@@ -584,10 +584,10 @@ public class DatagramSessionTest {
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
 		
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		s.getSession().suspendWrite();
 		c.getSession().suspendWrite();
 		if (write) s.getSession().write(c.getSession().getLocalAddress(), new Packet(PacketType.NOP).toBytes());
@@ -614,10 +614,10 @@ public class DatagramSessionTest {
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
 		
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		StringBuilder sb = new StringBuilder();
 		if (write) sb.append("W");
 		if (quickClose) sb.append("Q");
@@ -630,8 +630,8 @@ public class DatagramSessionTest {
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DS|", s.getRecordedData(true));
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		
 		c.write(new Packet(PacketType.SUSPEND_WRITE_CLOSE, sb.toString()));
 		s.waitForSessionEnding(TIMEOUT);
@@ -663,10 +663,10 @@ public class DatagramSessionTest {
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
 		
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		c.getSession().suspendRead();
 		s.getSession().suspendRead();
 		if (quickClose) {
@@ -693,10 +693,10 @@ public class DatagramSessionTest {
 		//close with written data (data length==0 but OP_WRITE set)
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		DatagramSession session = c.getSession();
 		session.suspendRead();
 		session.key.interestOps(session.key.interestOps() | SelectionKey.OP_WRITE);
@@ -717,10 +717,10 @@ public class DatagramSessionTest {
 		//close with written data
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		session = c.getSession();
 		session.suspendRead();
 		session.suspendWrite();
@@ -735,8 +735,8 @@ public class DatagramSessionTest {
 
 		//close with written data (other side)
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		session = s.getSession();
 		session.suspendRead();
 		session.suspendWrite();
@@ -755,10 +755,10 @@ public class DatagramSessionTest {
 	public void testIgnorePossiblyIncomplete() throws Exception {
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		int min = s.getSession().getConfig().getMinInBufferCapacity()-3;
 
@@ -802,10 +802,10 @@ public class DatagramSessionTest {
 		c = new DatagramHandler(PORT);
 		c.ignorePossiblyIncomplete = false;
 		c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		//sending pocket with size that equals than buffer size
 		bytes = new byte[min];
@@ -835,10 +835,10 @@ public class DatagramSessionTest {
 		c = new DatagramHandler(PORT);
 		c.ignorePossiblyIncomplete = false;
 		c.startClient();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
-		assertEquals("SCR|SOP|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|", s.getRecordedData(true));
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
 		//sending pocket with size greater than buffer size
 		bytes = new byte[min-1];

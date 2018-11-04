@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,7 +55,7 @@ public class ChatClient {
 			IStreamSession session = (IStreamSession) loop.register(channel, new ChatClientHandler()).sync().getSession();
 			
 			// Confirm that the connection was successful
-			session.getOpenFuture().sync();
+			session.getReadyFuture().sync();
 			
 			// Read commands from the standard input
 			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
