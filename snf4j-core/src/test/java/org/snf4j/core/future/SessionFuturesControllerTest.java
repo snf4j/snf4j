@@ -440,8 +440,8 @@ public class SessionFuturesControllerTest {
 		//write without suspend
 		cdh = new DatagramHandler(PORT);
 		cdh.startClient();
-		cdh.waitForSessionOpen(TIMEOUT);
-		sdh.waitForSessionOpen(TIMEOUT);
+		cdh.waitForSessionReady(TIMEOUT);
+		sdh.waitForSessionReady(TIMEOUT);
 		sdh.getRecordedData(true);
 		cdh.getRecordedData(true);
 		IFuture<Void> f = cdh.getSession().write(new Packet(PacketType.ECHO).toBytes());
@@ -461,8 +461,8 @@ public class SessionFuturesControllerTest {
 		sdh.startServer();
 		cdh = new DatagramHandler(PORT);
 		cdh.startClient();
-		cdh.waitForSessionOpen(TIMEOUT);
-		sdh.waitForSessionOpen(TIMEOUT);
+		cdh.waitForSessionReady(TIMEOUT);
+		sdh.waitForSessionReady(TIMEOUT);
 		sdh.getRecordedData(true);
 		cdh.getRecordedData(true);
 		cdh.getSession().suspendWrite();

@@ -2,11 +2,9 @@ sudo: true
 
 language: java
 
-jdk:
-  - oraclejdk9
-  
 matrix:
   include:
+  - jdk: oraclejdk9
   - jdk: openjdk8
     env: SKIP_COBERTURA=true
   - jdk: oraclejdk8
