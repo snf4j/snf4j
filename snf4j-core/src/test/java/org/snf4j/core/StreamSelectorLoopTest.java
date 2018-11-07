@@ -523,6 +523,88 @@ public class StreamSelectorLoopTest {
 		
 	}
 	
+	final StringBuilder taskResult = new StringBuilder();
+	
+	class Task implements Runnable {
+
+		String text;
+		boolean exception;
+		SelectorLoop loop;
+		
+		Task(String text, boolean exception, SelectorLoop loop) {
+			this.text = text;
+			this.exception = exception;
+			this.loop = loop;
+		}
+
+		Task(String text, boolean exception) {
+			this.text = text;
+			this.exception = exception;
+		}
+		
+		@Override
+		public void run() {
+			if (loop != null) {
+				loop.registerTask(new Task("L"+text, exception));
+			}
+			else {
+				if (exception) {
+					taskResult.append("E");
+					throw new NullPointerException();
+				}
+				synchronized (taskResult) {
+					taskResult.append(text);
+				}
+			}
+		}
+		
+	}
+	
+	@Test
+	public void testRegisterTask() throws Exception {
+		
+		//register task before start
+		SelectorLoop loop = new SelectorLoop();
+		loop.registerTask(new Task("T1", false));
+		waitFor(500);
+		assertEquals("", taskResult.toString());
+		loop.start();
+		waitFor(50);
+		assertEquals("T1", taskResult.toString());
+		loop.stop();
+		loop.join(1000);
+		
+		//register 2 tasks before start
+		loop = new SelectorLoop();
+		loop.registerTask(new Task("T2", false));
+		loop.registerTask(new Task("T0", true));
+		loop.registerTask(new Task("T3", false));
+		loop.start();
+		waitFor(50);
+		assertEquals("T1T2ET3", taskResult.toString());
+		
+		//register task after start
+		loop.registerTask(new Task("T4", false));
+		loop.registerTask(new Task("T5", false, loop));
+		waitFor(50);
+		assertEquals("T1T2ET3T4LT5", taskResult.toString());
+		
+		//register task after stop
+		loop.stop();
+		loop.join();
+		try {
+			loop.registerTask(new Task("T6", false));
+			fail("exception should be thrown");
+		}
+		catch (SelectorLoopStoppingException e) {
+		}
+		
+		//register task from loop
+		loop = new SelectorLoop();
+		
+		
+	}
+	
 	@Test
 	public void testSetThreadFactory() throws Exception {
 		ThreadFactory tf = new ThreadFactory() {

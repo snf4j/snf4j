@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -104,8 +104,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	
 	private boolean closeWhenEmpty;
 
-	ConcurrentLinkedQueue<PendingRegistration> registrations = new ConcurrentLinkedQueue<PendingRegistration>();
+	private final ConcurrentLinkedQueue<PendingRegistration> registrations = new ConcurrentLinkedQueue<PendingRegistration>();
 	
+	private final ConcurrentLinkedQueue<Runnable> tasks = new ConcurrentLinkedQueue<Runnable>();
+
 	private final Object registrationLock = new Object();
 	
 	private Set<SelectionKey> invalidatedKeys = new HashSet<SelectionKey>();
@@ -538,6 +540,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 					}
 				}
 				
+				handleTasks();	
+				
 				//Handle keys invalidated during stopping of the selector loop
 				if (stoppingKeys != null) {
 					for (Iterator<SelectionKey> it = stoppingKeys.iterator(); it.hasNext();) {
@@ -631,9 +635,27 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			abortRegistration(reg, true, null);
 		}		
 		
+		handleTasks();
+		
 		thread = null;
 		if (logger.isDebugEnabled()) {
 			logger.debug("Stopping main loop");
+		}
+	}
+	
+	private final void handleTasks() {
+		Runnable task;
+		while((task = tasks.poll()) != null) {
+			handleTask(task);
+		}			
+	}
+	
+	private final void handleTask(Runnable task) {
+		try {
+			task.run();
+		}
+		catch (Exception e) {
+			elogger.error(logger, "Unexpected exception thrown during task execution: {}", e);
 		}
 	}
 	
@@ -810,6 +832,25 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		}
 		wakeup();
 		return reg.future;
+	}
+
+	/**
+	 * Register a task that should be executed in the selector-loop's thread
+	 * 
+	 * @param task
+	 *            task to be executed in the selector-loop's thread
+	 * @throws SelectorLoopStoppingException
+	 *             if selector loop is in the process of stopping
+	 */	
+	void registerTask(Runnable task) {
+		synchronized (registrationLock) {
+			//make sure not to register while stopping
+			if (stopping) {
+				throw new SelectorLoopStoppingException();
+			}
+			tasks.add(task);
+		}		
+		wakeup();
 	}
 	
 	/**
@@ -992,7 +1033,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		Object attachment;
 		RegisterFuture<Void> future;
 	}
-
+	
 	class Loop implements Runnable {
 		
 		@Override
