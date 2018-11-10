@@ -227,7 +227,20 @@ public class SessionFuturesController {
 	 * @return a future associated with a write operation
 	 */
 	public IFuture<Void> getWriteFuture(long expectedSize) {
-		return new WriteFuture<Void>(sentFuture, expectedSize);
+		return new ThresholdFuture<Void>(sentFuture, expectedSize);
+	}
+	
+	/**
+	 * Returns a future that can be used to wait for the completion of a SSL write
+	 * operation.
+	 * 
+	 * @param expectedUnwrappedSize
+	 *            the expected unwrapped (before encryption) size of total bytes 
+	 *            sent by the future executor that completes this future
+	 * @return a future associated with a write operation
+	 */
+	public IFuture<Void> getSSLWriteFuture(long expectedUnwrappedSize) {
+		return new TwoThresholdFuture<Void>(sentFuture, expectedUnwrappedSize);
 	}
 	
 	/**

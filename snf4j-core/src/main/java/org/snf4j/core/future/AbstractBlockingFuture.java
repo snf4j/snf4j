@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,7 +83,7 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 	 *             if the future was cancelled
 	 */
 	IFuture<V> rethrow() throws ExecutionException {
-		Throwable cause = this.cause;
+		Throwable cause = cause();
 		
 		if (cause == null) {
 			if (isCancelled()) {
