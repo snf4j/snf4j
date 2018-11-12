@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,10 +45,10 @@ public interface IByteBufferAllocator {
 	ByteBuffer allocate(int capacity);
 	
 	/**
-	 * Assures that returned buffer will contain some room for new data. The
+	 * Ensures that returned buffer will contain some room for new data. The
 	 * content of the original buffer must be preserved in the returned buffer.
 	 * If the original buffer is full and its capacity reached the max capacity
-	 * the method should return buffer with no room for new data.
+	 * the method should throw an {@link IndexOutOfBoundsException}.
 	 * <p>
 	 * It is only used to manage the capacity of the input buffer associated
 	 * with the stream-oriented sessions.
@@ -60,8 +60,34 @@ public interface IByteBufferAllocator {
 	 * @param maxCapacity
 	 *            max capacity
 	 * @return the original buffer or new one in the write mode.
+	 * @throws IndexOutOfBoundsException
+	 *             if the buffer is full and its capacity reached the max
+	 *             capacity
 	 */
-	ByteBuffer assure(ByteBuffer buffer, int minCapacity, int maxCapacity);
+	ByteBuffer ensureSome(ByteBuffer buffer, int minCapacity, int maxCapacity);
+
+	/**
+	 * Assures that returned buffer will contain room for new data. The
+	 * content of the original buffer must be preserved in the returned buffer.
+	 * If there is no room in the buffer for the new data the method should throw 
+	 * an {@link IndexOutOfBoundsException}.
+	 * <p>
+	 * It is only used to manage the capacity of the input buffer associated
+	 * with the SSL stream-oriented sessions.
+	 * 
+	 * @param buffer
+	 *            buffer in the write mode (i.e. not flipped yet)
+	 * @param size
+	 *            size of data to be put to the buffer 
+	 * @param minCapacity
+	 *            min capacity
+	 * @param maxCapacity
+	 *            max capacity
+	 * @return the original buffer or new one in the write mode.
+	 * @throws IndexOutOfBoundsException
+	 *             if there is no room in the buffer for the new data
+	 */
+	ByteBuffer ensure(ByteBuffer buffer, int size, int minCapacity, int maxCapacity);	
 	
 	/**
 	 * Tries to reduce the capacity of the buffer based on its content. The
