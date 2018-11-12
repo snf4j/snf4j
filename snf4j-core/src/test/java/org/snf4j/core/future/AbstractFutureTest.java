@@ -44,6 +44,10 @@ public class AbstractFutureTest {
 		assertEquals("Session-1-SuccessfulFuture[successful]", futures.getSuccessfulFuture().toString());
 		assertEquals("Session-1-FailedFuture[failed:"+cause+"]", futures.getFailedFuture(cause).toString());
 		assertEquals("Session-1-EventFuture[incomplete,event=CREATED]", futures.getCreateFuture().toString());
-		assertEquals("Session-1-WriteFuture[incomplete,expectedSize=100]", futures.getWriteFuture(100).toString());
-	}
+		assertEquals("Session-1-ThresholdFuture[incomplete,threshold=100]", futures.getWriteFuture(100).toString());
+
+		ITwoThresholdFuture f = (ITwoThresholdFuture) futures.getSSLWriteFuture(100);
+		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=-1]", f.toString());
+		f.setSecondThreshold(99);
+		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=99]", f.toString());	}
 }

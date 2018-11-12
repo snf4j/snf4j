@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,8 @@ public class DefaultAllocator implements IByteBufferAllocator {
 	 */
 	public final static DefaultAllocator DEFAULT = new DefaultAllocator(false); 
 	
+	private static final int CALCULATE_CHUNK = 1024 * 1024 * 4;
+
 	private final boolean direct;
 	
 	/**
@@ -98,7 +100,7 @@ public class DefaultAllocator implements IByteBufferAllocator {
 	 * reached.
 	 */
 	@Override
-	public ByteBuffer assure(ByteBuffer buffer, int minCapacity, int maxCapacity) {
+	public ByteBuffer ensureSome(ByteBuffer buffer, int minCapacity, int maxCapacity) {
 		int bufferCapacity = buffer.capacity();
 		
 		if (!buffer.hasRemaining()) {
@@ -109,6 +111,10 @@ public class DefaultAllocator implements IByteBufferAllocator {
 				
 				buffer.flip();
 				return newBuffer.put(buffer);
+			}
+			else {
+				throw new IndexOutOfBoundsException(
+						"Buffer allocation failure: maximum capacity (" + maxCapacity + ") reached");
 			}
 		}
 		else if (bufferCapacity > minCapacity) {
@@ -131,6 +137,63 @@ public class DefaultAllocator implements IByteBufferAllocator {
 		return buffer;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * This implementation uses following rules to calculate the capacity of the
+	 * new buffer:
+	 * <p>
+	 * a) if the new minimal capacity that is required to store a new data is
+	 * less than 4MB the capacity will calculated as a minimum power of two
+	 * that is greater or equal to the new minimal required capacity. However,
+	 * if the calculated size is greater than the maximum capacity then the
+	 * maximum will be used as the new capacity.
+	 * 
+	 * <p>
+	 * b) if the new minimal capacity that is required to store a new data is
+	 * greater or equal to 4MB the capacity will calculated as a minimum
+	 * multiple of 4MB that is greater or equal to the new minimal required
+	 * capacity. However, if the calculated size is greater than the maximum
+	 * capacity then the maximum will be used as the new capacity.
+	 */
+	@Override
+	public ByteBuffer ensure(ByteBuffer buffer, int size, int minCapacity, int maxCapacity) {
+		if (size <= buffer.remaining()) {
+			return buffer;
+		}
+		
+		int newCapacity = size + buffer.position();
+		
+		if (newCapacity > maxCapacity) {
+			throw new IndexOutOfBoundsException("Buffer allocation failure: maximum capacity (" + maxCapacity
+					+ ") > current size (" + buffer.position() + ") + additional size (" + size + ")");
+		}
+		
+		final int chunk = CALCULATE_CHUNK;
+		
+		if (newCapacity > chunk) {
+			newCapacity = newCapacity / chunk * chunk;
+			if (newCapacity > maxCapacity - chunk) {
+				newCapacity = maxCapacity;
+			}
+			else {
+				newCapacity += chunk;
+			}
+		}
+		else if (newCapacity < chunk) {
+			int tmpCapacity = 64;
+			
+			while (tmpCapacity < newCapacity) {
+				tmpCapacity <<= 1;
+			}
+			newCapacity = tmpCapacity <= maxCapacity ? tmpCapacity : maxCapacity;
+		}
+		ByteBuffer newBuffer = allocate(newCapacity, buffer.isDirect());
+		
+		buffer.flip();
+		return newBuffer.put(buffer);
+	}	
+	
 	/**
 	 * {@inheritDoc}
 	 * <p>

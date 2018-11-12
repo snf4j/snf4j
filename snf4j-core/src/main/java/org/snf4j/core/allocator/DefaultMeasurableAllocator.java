@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,9 @@ public class DefaultMeasurableAllocator extends DefaultAllocator implements IMea
 
 	AtomicLong allocateCount = new AtomicLong();
 
-	AtomicLong assureCount = new AtomicLong();
+	AtomicLong ensureSomeCount = new AtomicLong();
+
+	AtomicLong ensureCount = new AtomicLong();
 	
 	AtomicLong reduceCount = new AtomicLong();
 	
@@ -90,11 +92,25 @@ public class DefaultMeasurableAllocator extends DefaultAllocator implements IMea
 	 * {@inheritDoc}
 	 */
 	@Override
-	public ByteBuffer assure(ByteBuffer buffer, int minCapacity, int maxCapacity) {
-		ByteBuffer newBuffer = super.assure(buffer, minCapacity, maxCapacity);
+	public ByteBuffer ensureSome(ByteBuffer buffer, int minCapacity, int maxCapacity) {
+		ByteBuffer newBuffer = super.ensureSome(buffer, minCapacity, maxCapacity);
 		
 		if (newBuffer != buffer) {
-			assureCount.incrementAndGet();
+			ensureSomeCount.incrementAndGet();
+			setMaxCapacity(newBuffer.capacity());
+		}
+		return newBuffer;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public ByteBuffer ensure(ByteBuffer buffer, int size, int minCapacity, int maxCapacity) {
+		ByteBuffer newBuffer = super.ensure(buffer, size, minCapacity, maxCapacity);
+		
+		if (newBuffer != buffer) {
+			ensureCount.incrementAndGet();
 			setMaxCapacity(newBuffer.capacity());
 		}
 		return newBuffer;
@@ -134,8 +150,13 @@ public class DefaultMeasurableAllocator extends DefaultAllocator implements IMea
 	}
 
 	@Override
-	public long getAssureCount() {
-		return assureCount.get();
+	public long getEnsureSomeCount() {
+		return ensureSomeCount.get();
+	}
+
+	@Override
+	public long getEnsureCount() {
+		return ensureCount.get();
 	}
 
 	@Override

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,50 +25,40 @@
  */
 package org.snf4j.core.future;
 
-class WriteFuture<V> extends AbstractBlockingFuture<V> {
+import org.junit.Test;
+import org.snf4j.core.TestSession;
 
-	private final DataFuture<V> future;
-	
-	private final long expectedSize;
-	
-	WriteFuture(DataFuture<V> future, long expectedSize) {
-		super(future.getSession());
-		this.future = future;
-		this.expectedSize = expectedSize;
-	}
-	
-	@Override
-	protected String toStringDetails() {
-		return "expectedSize=" + expectedSize;
-	}
-	
-	@Override
-	public boolean isDone() {
-		return isSuccessful() || future.isDone();
-	}
-	
-	@Override
-	public boolean isSuccessful() {
-		return future.size() >= expectedSize;
-	}
-	
-	@Override
-	public boolean isCancelled() {
-		return !isSuccessful() && future.isCancelled(); 
-	}
-	
-	@Override
-	public boolean isFailed() {
-		return !isSuccessful() && future.isFailed();
-	}
-	
-	public Throwable cause() {
-		return isSuccessful() ? null : future.cause();
-	}
-	
-	@Override
-	protected FutureLock getLock() {
-		return future.getLock();
-	}
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
+public class TwoThresholdFutureTest {
+
+	@Test
+	public void testGetFirstThreshold() {
+		DataFuture<Void> df = new DataFuture<Void>(new TestSession());
+		TwoThresholdFuture<Void> f = new TwoThresholdFuture<Void>(df, 100);
+		
+		assertEquals(100, f.getFirstThreshold());
+	}
+	
+	@Test
+	public void testIsSuccessful() {
+		DataFuture<Void> df = new DataFuture<Void>(new TestSession());
+		TwoThresholdFuture<Void> f = new TwoThresholdFuture<Void>(df, 100);
+
+		assertFalse(f.isSuccessful());
+		df.add(100);
+		assertFalse(f.isSuccessful());
+		f.setSecondThreshold(101);
+		assertFalse(f.isSuccessful());
+		df.add(1);
+		assertTrue(f.isSuccessful());
+		
+		TwoThresholdFuture<Void> f2 = new TwoThresholdFuture<Void>(df, 100);
+		assertFalse(f2.isSuccessful());
+		f2.setSecondThreshold(101);
+		assertTrue(f2.isSuccessful());
+		
+	}
 }

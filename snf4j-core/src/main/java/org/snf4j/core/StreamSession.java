@@ -234,7 +234,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	 * @return buffer in the write mode (i.e. not flipped yet).
 	 */
 	ByteBuffer getInBuffer() {
-		inBuffer = allocator.assure(inBuffer, minInBufferCapacity, maxInBufferCapacity);
+		inBuffer = allocator.ensureSome(inBuffer, minInBufferCapacity, maxInBufferCapacity);
 		return inBuffer;
 	}
 

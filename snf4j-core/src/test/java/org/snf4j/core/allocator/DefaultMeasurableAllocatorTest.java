@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,9 +36,9 @@ public class DefaultMeasurableAllocatorTest {
 
 	DefaultMeasurableAllocator heap = new DefaultMeasurableAllocator(false);
 	
-	private void assertCounters(long allocateCount,	long assureCount,long reduceCount,long extendCount) {
+	private void assertCounters(long allocateCount,	long ensureSomeCount, long ensureCount, long reduceCount,long extendCount) {
 		assertEquals(allocateCount, heap.getAllocateCount());
-		assertEquals(assureCount, heap.getAssureCount());
+		assertEquals(ensureSomeCount, heap.getEnsureSomeCount());
 		assertEquals(reduceCount, heap.getReduceCount());
 		assertEquals(extendCount, heap.getExtendCount());
 	}
@@ -59,29 +59,36 @@ public class DefaultMeasurableAllocatorTest {
 	public void testCounters() {
 		ByteBuffer b;
 		
-		assertCounters(0,0,0,0);
+		assertCounters(0,0,0,0,0);
 		b = heap.allocate(8);
-		assertCounters(1,0,0,0);
+		assertCounters(1,0,0,0,0);
 
-		b = heap.assure(b, 4, 16);
+		b = heap.ensureSome(b, 4, 16);
 		assertEquals(4, b.capacity());
-		assertCounters(2,1,0,0);
-		b = heap.assure(b, 4, 16);
+		assertCounters(2,1,0,0,0);
+		b = heap.ensureSome(b, 4, 16);
 		assertEquals(4, b.capacity());
-		assertCounters(2,1,0,0);
+		assertCounters(2,1,0,0,0);
 
 		b = heap.extend(b, 16);
-		assertCounters(3,1,0,1);
+		assertCounters(3,1,0,0,1);
 		assertEquals(8, b.capacity());
 		b = heap.extend(b, 8);
-		assertCounters(3,1,0,1);
+		assertCounters(3,1,0,0,1);
 		assertEquals(8, b.capacity());
 		
 		b = heap.reduce(b, 4);
-		assertCounters(4,1,1,1);
+		assertCounters(4,1,0,1,1);
 		assertEquals(4, b.capacity());
 		b = heap.reduce(b, 4);
-		assertCounters(4,1,1,1);
+		assertCounters(4,1,0,1,1);
 		assertEquals(4, b.capacity());
+
+		b = heap.ensure(b, 17, 4, 128);
+		assertCounters(5,1,1,1,1);
+		assertEquals(64, b.capacity());
+		b = heap.ensure(b, 17, 4, 128);
+		assertCounters(5,1,1,1,1);
+		assertEquals(64, b.capacity());
 	}
 }
