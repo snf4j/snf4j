@@ -38,7 +38,7 @@ import static org.junit.Assert.fail;
 
 public class ThresholdFutureTest {
 
-	void update(Runnable r) {
+	void update(final Runnable r) {
 		new Thread(new Runnable() {
 
 			@Override
