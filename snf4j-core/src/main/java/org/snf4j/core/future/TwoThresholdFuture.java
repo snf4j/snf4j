@@ -25,7 +25,7 @@
  */
 package org.snf4j.core.future;
 
-public class TwoThresholdFuture<V> extends ThresholdFuture<V> implements ITwoThresholdFuture {
+class TwoThresholdFuture<V> extends ThresholdFuture<V> implements ITwoThresholdFuture {
 
 	private volatile long secondThreshold = ITwoThresholdFuture.UNKNOWN_THRESHOLD;
 	

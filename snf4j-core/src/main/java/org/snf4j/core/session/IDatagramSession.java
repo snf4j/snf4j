@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 package org.snf4j.core.session;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IDatagramHandler;
@@ -45,27 +46,176 @@ public interface IDatagramSession extends ISession {
 	@Override
 	IDatagramHandler getHandler();
 
+
 	/**
-	 * Writes a datagram to the associated datagram-oriented channel that needs
-	 * to be connected.
+	 * Writes a <code>datagram.length</code> byte datagram from the specified
+	 * byte array to the datagram-oriented channel associated with this session. 
 	 * <p>
-	 * After returning from this method the passed byte array should not be
-	 * modified by the caller.
+	 * This method may only be invoked if the associated channel's socket is 
+	 * connected, in which case it writes the datagram directly to the socket's 
+	 * peer.
+	 * <p>
+	 * The operation is asynchronous.
 	 * 
 	 * @param datagram
-	 *            the datagram to be sent
+	 *            the datagram to be written
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
 	 * @return the future associated with this write operation
 	 */
 	IFuture<Void> write(byte[] datagram);
+
+	/**
+	 * Writes a <code>datagram.length</code> byte datagram from the specified
+	 * byte array to the datagram-oriented channel associated with this session. 
+	 * <p>
+	 * This method may only be invoked if the associated channel's socket is 
+	 * connected, in which case it writes the datagram directly to the socket's 
+	 * peer.
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize on
+	 * a future object. This will save some resources and may improve performance.
+	 * 
+	 * @param datagram
+	 *            the datagram to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void writenf(byte[] datagram);
 	
 	/**
-	 * Writes a datagram to the associated datagram-oriented channel that is not
-	 * connected.
+	 * Writes a <code>length</code> byte datagram from the specified byte array
+	 * to the datagram-oriented channel associated with this session. 
 	 * <p>
-	 * After returning from this method the passed byte array should not be
-	 * modified by the caller.
+	 * This method may only be invoked if the associated channel's socket is connected, 
+	 * in which case it writes the datagram directly to the socket's peer.
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param datagram
+	 *            the datagram to be written
+	 * @param offset
+	 *            offset within the array of the first byte to be written
+	 * @param length
+	 *            number of bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this write operation
+	 */
+	IFuture<Void> write(byte[] datagram, int offset, int length);
+
+	/**
+	 * Writes a <code>length</code> byte datagram from the specified byte array
+	 * to the datagram-oriented channel associated with this session. 
+	 * <p>
+	 * This method may only be invoked if the associated channel's socket is connected, 
+	 * in which case it writes the datagram directly to the socket's peer.
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize on
+	 * a future object. This will save some resources and may improve performance.
+	 * 
+	 * @param datagram
+	 *            the datagram to be written
+	 * @param offset
+	 *            offset within the array of the first byte to be written
+	 * @param length
+	 *            number of bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void writenf(byte[] datagram, int offset, int length);
+
+	/**
+	 * Writes a <code>datagram.remaining()</code> byte datagram from the specified byte buffer
+	 * to the datagram-oriented channel associated with this session. 
+	 * <p>
+	 * This method may only be invoked if the associated channel's socket is connected, 
+	 * in which case it writes the datagram directly to the socket's peer.
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param datagram
+	 *            the datagram to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this write operation
+	 */
+	IFuture<Void> write(ByteBuffer datagram);
+
+	/**
+	 * Writes a <code>datagram.remaining()</code> byte datagram from the specified byte buffer
+	 * to the datagram-oriented channel associated with this session. 
+	 * <p>
+	 * This method may only be invoked if the associated channel's socket is connected, 
+	 * in which case it writes the datagram directly to the socket's peer.
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize on
+	 * a future object. This will save some resources and may improve performance.
+	 * 
+	 * @param datagram
+	 *            the datagram to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void writenf(ByteBuffer datagram);
+
+	/**
+	 * Writes a <code>length</code> byte datagram from the specified byte buffer
+	 * to the datagram-oriented channel associated with this session. 
+	 * <p>
+	 * This method may only be invoked if the associated channel's socket is connected, 
+	 * in which case it writes the datagram directly to the socket's peer.
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param datagram
+	 *            the datagram to be written
+	 * @param length
+	 *            number of bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this write operation
+	 */
+	IFuture<Void> write(ByteBuffer datagram, int length);
+
+	/**
+	 * Writes a <code>length</code> byte datagram from the specified byte buffer
+	 * to the datagram-oriented channel associated with this session. 
+	 * <p>
+	 * This method may only be invoked if the associated channel's socket is connected, 
+	 * in which case it writes the datagram directly to the socket's peer.
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize on
+	 * a future object. This will save some resources and may improve performance.
+	 * 
+	 * @param datagram
+	 *            the datagram to be written
+	 * @param length
+	 *            number of bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void writenf(ByteBuffer datagram, int length);
+	
+	/**
+	 * Sends a <code>datagram.length</code> byte datagram from the specified
+	 * byte array to a remote end via the datagram-oriented channel associated 
+	 * with this session. 
+	 * <p>
+	 * If the <code>remoteAddress</code> argument is not <code>null</code> then 
+	 * the method may only be invoked if the associated channel's socket is not 
+	 * connected. In case the argument is <code>null</code> the method will work 
+	 * as the adequate write method. 
+	 * <p>
+	 * The operation is asynchronous.
 	 * 
 	 * @param remoteAddress
 	 *            the address of the remote end where the datagram should be sent
@@ -73,7 +223,181 @@ public interface IDatagramSession extends ISession {
 	 *            the datagram to be sent
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
-	 * @return the future associated with this write operation
+	 * @return the future associated with this send operation
+	 */	
+	IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram);
+
+	/**
+	 * Sends a <code>datagram.length</code> byte datagram from the specified
+	 * byte array to a remote end via the datagram-oriented channel associated 
+	 * with this session. 
+	 * <p>
+	 * If the <code>remoteAddress</code> argument is not <code>null</code> then 
+	 * the method may only be invoked if the associated channel's socket is not 
+	 * connected. In case the argument is <code>null</code> the method will work 
+	 * as the adequate write method. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize on
+	 * a future object. This will save some resources and may improve performance.
+	 * 
+	 * @param remoteAddress
+	 *            the address of the remote end where the datagram should be sent
+	 * @param datagram
+	 *            the datagram to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */	
+	void sendnf(SocketAddress remoteAddress, byte[] datagram);
+	
+	/**
+	 * Sends a <code>length</code> byte datagram from the specified byte array 
+	 * to a remote end via the datagram-oriented channel associated with this 
+	 * session. 
+	 * <p>
+	 * If the <code>remoteAddress</code> argument is not <code>null</code> then 
+	 * the method may only be invoked if the associated channel's socket is not 
+	 * connected. In case the argument is <code>null</code> the method will work 
+	 * as the adequate write method. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param remoteAddress
+	 *            the address of the remote end where the datagram should be sent
+	 * @param datagram
+	 *            the datagram to be sent
+	 * @param offset
+	 *            offset within the array of the first byte to be sent
+	 * @param length
+	 *            number of bytes to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this send operation
 	 */
-	IFuture<Void> write(SocketAddress remoteAddress, byte[] datagram);
+	IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram, int offset, int length);
+
+	/**
+	 * Sends a <code>length</code> byte datagram from the specified byte array 
+	 * to a remote end via the datagram-oriented channel associated with this 
+	 * session. 
+	 * <p>
+	 * If the <code>remoteAddress</code> argument is not <code>null</code> then 
+	 * the method may only be invoked if the associated channel's socket is not 
+	 * connected. In case the argument is <code>null</code> the method will work 
+	 * as the adequate write method. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize on
+	 * a future object. This will save some resources and may improve performance.
+	 * 
+	 * @param remoteAddress
+	 *            the address of the remote end where the datagram should be sent
+	 * @param datagram
+	 *            the datagram to be sent
+	 * @param offset
+	 *            offset within the array of the first byte to be sent
+	 * @param length
+	 *            number of bytes to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void sendnf(SocketAddress remoteAddress, byte[] datagram, int offset, int length);
+
+	/**
+	 * Sends a <code>datagram.remaining()</code> byte datagram from the specified byte 
+	 * buffer to a remote end via the datagram-oriented channel associated with this 
+	 * session. 
+	 * <p>
+	 * If the <code>remoteAddress</code> argument is not <code>null</code> then 
+	 * the method may only be invoked if the associated channel's socket is not 
+	 * connected. In case the argument is <code>null</code> the method will work 
+	 * as the adequate write method. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param remoteAddress
+	 *            the address of the remote end where the datagram should be sent
+	 * @param datagram
+	 *            the datagram to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this send operation
+	 */	
+	IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram);
+
+	/**
+	 * Sends a <code>datagram.remaining()</code> byte datagram from the specified byte 
+	 * buffer to a remote end via the datagram-oriented channel associated with this 
+	 * session. 
+	 * <p>
+	 * If the <code>remoteAddress</code> argument is not <code>null</code> then 
+	 * the method may only be invoked if the associated channel's socket is not 
+	 * connected. In case the argument is <code>null</code> the method will work 
+	 * as the adequate write method. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize on
+	 * a future object. This will save some resources and may improve performance.
+	 * 
+	 * @param remoteAddress
+	 *            the address of the remote end where the datagram should be sent
+	 * @param datagram
+	 *            the datagram to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */	
+	void sendnf(SocketAddress remoteAddress, ByteBuffer datagram);
+
+	/**
+	 * Sends a <code>length</code> byte datagram from the specified byte buffer 
+	 * to a remote end via the datagram-oriented channel associated with this 
+	 * session. 
+	 * <p>
+	 * If the <code>remoteAddress</code> argument is not <code>null</code> then 
+	 * the method may only be invoked if the associated channel's socket is not 
+	 * connected. In case the argument is <code>null</code> the method will work 
+	 * as the adequate write method. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param remoteAddress
+	 *            the address of the remote end where the datagram should be sent
+	 * @param datagram
+	 *            the datagram to be sent
+	 * @param length
+	 *            number of bytes to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this send operation
+	 */	
+	IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram, int length);
+
+	/**
+	 * Sends a <code>length</code> byte datagram from the specified byte buffer 
+	 * to a remote end via the datagram-oriented channel associated with this 
+	 * session. 
+	 * <p>
+	 * If the <code>remoteAddress</code> argument is not <code>null</code> then 
+	 * the method may only be invoked if the associated channel's socket is not 
+	 * connected. In case the argument is <code>null</code> the method will work 
+	 * as the adequate write method. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize on
+	 * a future object. This will save some resources and may improve performance.
+	 * 
+	 * @param remoteAddress
+	 *            the address of the remote end where the datagram should be sent
+	 * @param datagram
+	 *            the datagram to be sent
+	 * @param length
+	 *            number of bytes to be sent
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */	
+	void sendnf(SocketAddress remoteAddress, ByteBuffer datagram, int length);
 }

@@ -35,6 +35,10 @@ import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.snf4j.core.allocator.DefaultAllocator;
+import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractDatagramHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
@@ -50,6 +54,8 @@ public class DatagramHandler {
 	long throughputCalcInterval = 1000;
 	boolean ignorePossiblyIncomplete = true;
 	volatile EndingAction endingAction = EndingAction.DEFAULT;
+	boolean directAllocator;
+	boolean canOwnPasseData;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
@@ -244,6 +250,13 @@ public class DatagramHandler {
 		waitFor(dataSentLock, millis);
 	}
 
+	class StructureFactory extends DefaultSessionStructureFactory {
+		@Override
+		public IByteBufferAllocator getAllocator() {
+			return new DefaultAllocator(directAllocator);
+		}
+	}
+	
 	class Handler extends AbstractDatagramHandler {
 
 		@Override
@@ -255,7 +268,13 @@ public class DatagramHandler {
 			config.setThroughputCalculationInterval(throughputCalcInterval);
 			config.setIgnorePossiblyIncompleteDatagrams(ignorePossiblyIncomplete);
 			config.setEndingAction(endingAction);
+			config.setCanOwnDataPassedToWriteAndSendMethods(canOwnPasseData);
 			return config;
+		}
+
+		@Override
+		public ISessionStructureFactory getFactory() {
+			return new StructureFactory();
 		}
 		
 		@Override
@@ -270,7 +289,7 @@ public class DatagramHandler {
 				session.write(datagram);
 			}
 			else {
-				session.write(remoteAddress, datagram);
+				session.send(remoteAddress, datagram);
 			}
 		}
 		

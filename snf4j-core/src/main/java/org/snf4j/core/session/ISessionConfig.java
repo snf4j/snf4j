@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -105,6 +105,18 @@ public interface ISessionConfig {
 	 * @see java.nio.channels.DatagramChannel#read
 	 */
 	boolean ignorePossiblyIncompleteDatagrams();
+	
+	/**
+	 * Determines if the session object can own the data (i.e. byte arrays or byte
+	 * buffers) passed to the write and send methods. Setting this parameter to
+	 * <code>true</code> instructs the write and Send methods that the passed data 
+	 * will be no longer used by the caller. In such situation the write and send 
+	 * methods may, if possible, eliminate not needed copy operations what can 
+	 * improve the performance.
+	 * 
+	 * @return <code>true</code> if the session object can own the passed data
+	 */
+	boolean canOwnDataPassedToWriteAndSendMethods();
 	
 	/**
 	 * Gets the action that should be performed by the selector

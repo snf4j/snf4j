@@ -54,8 +54,6 @@ import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.TestLogger;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
-import org.snf4j.core.session.IllegalSessionStateException;
-import org.snf4j.core.session.SessionState;
 
 public class StreamSelectorLoopTest {
 	final long TIMEOUT = 2000;
@@ -308,8 +306,7 @@ public class StreamSelectorLoopTest {
 			c.getSession().write((byte[])null);
 			fail("exception not thrown");
 		}
-		catch (IllegalSessionStateException e) {
-			assertEquals(SessionState.CLOSING, e.getIllegalState());
+		catch (NullPointerException e) {
 		}
 		
 		c.quickStop(TIMEOUT);

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -641,18 +641,20 @@ public class SelectorLoop extends InternalSelectorLoop {
 		
 		try {
 			while ((record = outQueue.peek()) != null) {
+				long length = record.buffer.remaining();
+				
 				if (isConnected) {
-					bytes = channel.write(ByteBuffer.wrap(record.datagram));
+					bytes = channel.write(record.buffer);
 				}
 				else if (record.address != null) {
-					bytes = channel.send(ByteBuffer.wrap(record.datagram), record.address);
+					bytes = channel.send(record.buffer, record.address);
 				}
 				else {
 					logger.error("No remote address for not connected channel in {}", session);
 					bytes = 0;
 				}
 				
-				if (bytes == record.datagram.length) {
+				if (bytes == length) {
 					if (traceEnabled) {
 						logger.trace("{} byte(s) written to channel in {}", bytes, session);
 					}

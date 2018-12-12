@@ -522,4 +522,10 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		channel.close();
 	}
 
+    static void checkBounds(int offset, int length, int size) {
+        if ((offset | length | (offset + length) | (size - (offset + length))) < 0) {
+        	throw new IndexOutOfBoundsException();        	
+        }
+    } 
+    
 }

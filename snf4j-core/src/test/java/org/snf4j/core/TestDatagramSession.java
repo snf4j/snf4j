@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentMap;
 
 import org.snf4j.core.future.IFuture;
@@ -164,7 +165,7 @@ public class TestDatagramSession implements IDatagramSession {
 	}
 
 	@Override
-	public IFuture<Void> write(SocketAddress remoteAddress, byte[] datagram) {
+	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram) {
 		return futures.getCancelledFuture();
 	}
 
@@ -191,6 +192,68 @@ public class TestDatagramSession implements IDatagramSession {
 	@Override
 	public IFuture<Void> getEndFuture() {
 		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void writenf(byte[] datagram) {
+	}
+
+	@Override
+	public IFuture<Void> write(byte[] datagram, int offset, int length) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void writenf(byte[] datagram, int offset, int length) {
+	}
+
+	@Override
+	public IFuture<Void> write(ByteBuffer datagram) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void writenf(ByteBuffer datagram) {
+	}
+
+	@Override
+	public IFuture<Void> write(ByteBuffer datagram, int length) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void writenf(ByteBuffer datagram, int length) {
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, byte[] datagram) {
+	}
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram, int offset, int length) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, byte[] datagram, int offset, int length) {
+	}
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram) {
+	}
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
 	}
 
 }

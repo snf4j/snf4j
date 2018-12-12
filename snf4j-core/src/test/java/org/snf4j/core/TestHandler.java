@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,13 @@
 package org.snf4j.core;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.snf4j.core.allocator.DefaultAllocator;
+import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractStreamHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
@@ -39,8 +45,27 @@ public class TestHandler extends AbstractStreamHandler {
 	
 	Boolean exceptionResult;
 	
+	List<ByteBuffer> released = new ArrayList<ByteBuffer>();
+	
+	IByteBufferAllocator allocator = new DefaultAllocator(false) {
+		public void release(ByteBuffer buffer) {
+			released.add(buffer);
+		}
+	};
+	
+	ISessionStructureFactory factory = new DefaultSessionStructureFactory() {
+		@Override
+		public IByteBufferAllocator getAllocator() {
+			return allocator;
+		}
+	};
+	
 	TestHandler(String name) {
 		super(name);
+	}
+
+	public List<ByteBuffer> getReleasedBuffers() {
+		return released;
 	}
 	
 	@Override
@@ -99,4 +124,10 @@ public class TestHandler extends AbstractStreamHandler {
 		events.setLength(0);
 		return s;
 	}
+	
+	@Override
+	public ISessionStructureFactory getFactory() {
+		return factory;
+	}
+	
 }
