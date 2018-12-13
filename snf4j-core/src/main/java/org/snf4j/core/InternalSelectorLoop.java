@@ -160,6 +160,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 * Rebuilds the associated selector by replacing it with newly created one. All valid 
 	 * selection keys registered with the current selector will be re-registered to the 
 	 * new selector. 
+	 * <p>
+	 * This operation is asynchronous.
 	 */
 	public void rebuild() {
 		rebuildRequested.compareAndSet(false, true);
@@ -770,7 +772,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	}
 	 
 	/**
-	 * Waits for this selector loop's thread of to die.
+	 * Waits for this selector loop's thread to die.
 	 * 
 	 * @throws InterruptedException
 	 *             if any thread has interrupted the current thread

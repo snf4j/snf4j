@@ -44,6 +44,12 @@ public class DefaultAllocatorTest {
 	private IByteBufferAllocator direct = new DefaultAllocator(true);
 	
 	@Test
+	public void testUsesArray() {
+		assertTrue(heap.usesArray());
+		assertFalse(direct.usesArray());
+	}
+	
+	@Test
 	public void testAllocate() {
 		ByteBuffer b = heap.allocate(10);
 		

@@ -54,6 +54,15 @@ public class DefaultAllocator implements IByteBufferAllocator {
 		this.direct = direct;
 	}
 	
+	@Override
+	public boolean usesArray() {
+		return !direct;
+	}
+	
+	@Override
+	public void release(ByteBuffer buffer) {
+	}
+	
 	/**
 	 * Allocates a new buffer with given capacity and type
 	 * 

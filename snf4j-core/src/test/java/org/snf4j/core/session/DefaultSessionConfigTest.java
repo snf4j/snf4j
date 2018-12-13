@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,21 +31,22 @@ import org.junit.Test;
 import org.snf4j.core.EndingAction;
 
 public class DefaultSessionConfigTest {
-	
+
 	@Test
 	public void testAll() {
 		DefaultSessionConfig c = new DefaultSessionConfig();
-		
+
 		assertEquals(2048, c.getMinInBufferCapacity());
 		assertEquals(8192, c.getMaxInBufferCapacity());
 		assertEquals(2048, c.getMinOutBufferCapacity());
 		assertEquals(3000, c.getThroughputCalculationInterval());
 		assertEquals(true, c.ignorePossiblyIncompleteDatagrams());
 		assertEquals(EndingAction.DEFAULT, c.getEndingAction());
-		
+		assertEquals(false, c.canOwnDataPassedToWriteAndSendMethods());
+
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
-			.setEndingAction(EndingAction.STOP);
+			.setEndingAction(EndingAction.STOP).setCanOwnDataPassedToWriteAndSendMethods(true);
 
 		assertEquals(10, c.getMinInBufferCapacity());
 		assertEquals(100, c.getMaxInBufferCapacity());
@@ -53,6 +54,7 @@ public class DefaultSessionConfigTest {
 		assertEquals(5000, c.getThroughputCalculationInterval());
 		assertEquals(false, c.ignorePossiblyIncompleteDatagrams());
 		assertEquals(EndingAction.STOP, c.getEndingAction());
+		assertEquals(true, c.canOwnDataPassedToWriteAndSendMethods());
 
 	}
 }

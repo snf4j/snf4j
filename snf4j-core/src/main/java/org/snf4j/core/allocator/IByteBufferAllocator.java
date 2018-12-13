@@ -29,20 +29,40 @@ import java.nio.ByteBuffer;
 
 /**
  * Allocates and manages {@link ByteBuffer}s used by the sessions for I/O
- * operations
+ * operations.
+ * <p>
+ * The implementation should be thread safe.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public interface IByteBufferAllocator {
 
 	/**
-	 * Allocates a new byte buffer
+	 * Tells whether or not this allocator allocates buffers that are backed by
+	 * an accessible byte array.
+	 * 
+	 * @return true if the buffers allocated by this allocator are backed by an
+	 *         accessible byte array
+	 */
+	boolean usesArray();
+	
+	/**
+	 * Allocates a new byte buffer.
 	 * 
 	 * @param capacity
 	 *            The new buffer's capacity, in bytes
 	 * @return The new byte buffer
 	 */
 	ByteBuffer allocate(int capacity);
+	
+	/**
+	 * Informs that given buffer that was allocated by this allocator is no
+	 * longer used and can be released.
+	 * 
+	 * @param buffer
+	 *            buffer to be released
+	 */
+	void release(ByteBuffer buffer);
 	
 	/**
 	 * Ensures that returned buffer will contain some room for new data. The

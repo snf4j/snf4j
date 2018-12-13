@@ -67,6 +67,8 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	private final int maxInBufferCapacity;
 	
 	private final boolean ignorePossiblyIncomplete;
+	
+	private final boolean canOwnPassedData;
 
 	/**
 	 * Constructs a named datagram-oriented session associated with a handler.
@@ -82,6 +84,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		minInBufferCapacity = config.getMinInBufferCapacity();
 		maxInBufferCapacity = config.getMaxInBufferCapacity();
 		ignorePossiblyIncomplete = config.ignorePossiblyIncompleteDatagrams();
+		canOwnPassedData = config.canOwnDataPassedToWriteAndSendMethods();
 		inBuffer = allocator.allocate(minInBufferCapacity);
 	}
 
@@ -121,13 +124,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		return socket != null ? socket.getRemoteSocketAddress() : null;
 	}
 
-	@Override
-	public IFuture<Void> write(byte[] datagram) {
-		return write(null, datagram);
-	}
-
-	@Override
-	public IFuture<Void> write(SocketAddress remoteAddress, byte[] datagram) {
+	private final long write0(DatagramRecord record) {
 		SelectionKey key = checkKey(this.key);
 		long futureExpectedLen;
 		
@@ -135,11 +132,11 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			synchronized (writeLock) {
 				key = detectRebuild(key);
 				if (closing != ClosingState.NONE) {
-					return futuresController.getCancelledFuture();
+					return -1;
 				}
-				outQueue.add(new DatagramRecord(remoteAddress, datagram));
+				outQueue.add(record);
 				setWriteInterestOps(key);
-				outQueueSize += datagram.length;
+				outQueueSize += record.buffer.remaining();
 				futureExpectedLen = outQueueSize + getWrittenBytes();  
 			}
 		}
@@ -147,7 +144,197 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			throw new IllegalSessionStateException(SessionState.CLOSING);
 		}
 		lazyWakeup();
+		return futureExpectedLen;
+	}
+
+	private final long write0(DatagramRecord record, byte[] datagram, int offset, int length) {
+		if (canOwnPassedData && allocator.usesArray()) {
+			record.buffer = ByteBuffer.wrap(datagram, offset, length);
+		}
+		else {
+			ByteBuffer buffer = allocator.allocate(length);
+			
+			buffer.put(datagram, offset, length).flip();
+			record.buffer = buffer;
+			record.release = true;
+		}
+		return write0(record);
+	}
+
+	private final long write0(DatagramRecord record, ByteBuffer datagram, int length) {
+		boolean allRemaining = length == datagram.remaining();
+		
+		if (canOwnPassedData && allRemaining) {
+			record.buffer = datagram;
+		}
+		else {
+			ByteBuffer buffer = allocator.allocate(length);
+
+			if (allRemaining) {
+				buffer.put(datagram).flip();
+			}
+			else {
+				ByteBuffer dup = datagram.duplicate();
+				
+				dup.limit(dup.position()+length);
+				buffer.put(dup).flip();
+				datagram.position(dup.position());
+			}
+			record.buffer = buffer;
+			record.release = true;
+		}
+		return write0(record);
+	}
+	
+	@Override
+	public IFuture<Void> write(byte[] datagram) {
+		return send(null, datagram);
+	}
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		}
+		if (datagram.length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+
+		long futureExpectedLen = write0(new DatagramRecord(remoteAddress), datagram, 0, datagram.length);	
+
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
 		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	@Override
+	public void writenf(byte[] datagram) {
+		sendnf(null, datagram);
+	}
+
+	@Override
+	public IFuture<Void> write(byte[] datagram, int offset, int length) {
+		return send(null, datagram, offset, length);
+	}
+
+	@Override
+	public void writenf(byte[] datagram, int offset, int length) {
+		sendnf(null, datagram, offset, length);
+	}
+
+	@Override
+	public IFuture<Void> write(ByteBuffer datagram) {
+		return send(null, datagram);
+	}
+
+	@Override
+	public void writenf(ByteBuffer datagram) {
+		sendnf(null, datagram);
+	}
+
+	@Override
+	public IFuture<Void> write(ByteBuffer datagram, int length) {
+		return send(null, datagram, length);
+	}
+
+	@Override
+	public void writenf(ByteBuffer datagram, int length) {
+		sendnf(null, datagram, length);
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, byte[] datagram) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		}
+		if (datagram.length > 0) {
+			write0(new DatagramRecord(remoteAddress), datagram, 0, datagram.length);	
+		}
+	}
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram, int offset, int length) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		}
+		checkBounds(offset, length, datagram.length);
+		if (length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+
+		long futureExpectedLen = write0(new DatagramRecord(remoteAddress), datagram, offset, length);	
+
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, byte[] datagram, int offset, int length) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		}
+		checkBounds(offset, length, datagram.length);
+
+		if (length > 0) {
+			write0(new DatagramRecord(remoteAddress), datagram, offset, length);	
+		}
+	}
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		} else if (datagram.remaining() == 0) {
+			return futuresController.getSuccessfulFuture();
+		}		
+
+		long futureExpectedLen = write0(new DatagramRecord(remoteAddress), datagram, datagram.remaining());
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		} else if (datagram.remaining() > 0) {
+			write0(new DatagramRecord(remoteAddress), datagram, datagram.remaining());
+		}
+	}
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		} else if (datagram.remaining() < length) {
+			throw new IndexOutOfBoundsException();
+		} else if (length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}		
+
+		long futureExpectedLen = write0(new DatagramRecord(remoteAddress), datagram, length);
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		} else if (datagram.remaining() < length) {
+			throw new IndexOutOfBoundsException();
+		} else if (length > 0) {
+			write0(new DatagramRecord(remoteAddress), datagram, length);
+		}
 	}
 	
 	private final void close(SelectionKey key) throws IOException {
@@ -276,11 +463,12 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	static class DatagramRecord {
 		SocketAddress address;
-		byte[] datagram;
+		ByteBuffer buffer;
+		boolean release;
 
-		DatagramRecord(SocketAddress address, byte[] datagram) {
+		DatagramRecord(SocketAddress address) {
 			this.address = address;
-			this.datagram = datagram;
 		}
+		
 	}
 }

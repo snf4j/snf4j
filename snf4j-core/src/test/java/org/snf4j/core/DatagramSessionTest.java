@@ -34,6 +34,8 @@ import static org.junit.Assert.fail;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -58,6 +60,14 @@ public class DatagramSessionTest {
 		Thread.sleep(millis);
 	}
 
+	private byte[] getBytes(int size, int value) {
+		return ByteUtils.getBytes(size, value);
+	}
+	
+	private ByteBuffer getBuffer(int size, int value) {
+		return ByteBuffer.wrap(getBytes(size, value));
+	}
+	
 	@Before
 	public void before() {
 		s = c = null;
@@ -134,7 +144,7 @@ public class DatagramSessionTest {
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		assertEquals("DR|$ECHO()|DS|", s.getRecordedData(true));
 		
-		s.getSession().write(c.getSession().getLocalAddress(), new Packet(PacketType.ECHO, "1").toBytes());
+		s.getSession().send(c.getSession().getLocalAddress(), new Packet(PacketType.ECHO, "1").toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DR|ECHO(1)|DS|", c.getRecordedData(true));
@@ -286,7 +296,7 @@ public class DatagramSessionTest {
 		assertEquals(ss.getCreationTime(), ss.getLastWriteTime());
 		assertTrue(ss.getLastReadTime() >= t0 && ss.getLastReadTime() <= t1);
 
-		ss.write(cs.getLocalAddress(), new Packet(PacketType.NOP, "12345").toBytes());
+		ss.send(cs.getLocalAddress(), new Packet(PacketType.NOP, "12345").toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DS|", s.getRecordedData(true));
@@ -296,7 +306,7 @@ public class DatagramSessionTest {
 		assertEquals(7, ss.getReadBytes());
 		assertEquals(8, ss.getWrittenBytes());
 
-		ss.write(cs.getLocalAddress(), new Packet(PacketType.ECHO, "").toBytes());
+		ss.send(cs.getLocalAddress(), new Packet(PacketType.ECHO, "").toBytes());
 		s.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
@@ -590,7 +600,7 @@ public class DatagramSessionTest {
 		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 		s.getSession().suspendWrite();
 		c.getSession().suspendWrite();
-		if (write) s.getSession().write(c.getSession().getLocalAddress(), new Packet(PacketType.NOP).toBytes());
+		if (write) s.getSession().send(c.getSession().getLocalAddress(), new Packet(PacketType.NOP).toBytes());
 		if (write) c.write(new Packet(PacketType.NOP));
 		if (quickClose) {
 			c.getSession().quickClose();
@@ -622,7 +632,7 @@ public class DatagramSessionTest {
 		if (write) sb.append("W");
 		if (quickClose) sb.append("Q");
 		
-		s.getSession().write(c.getSession().getLocalAddress(), new Packet(PacketType.SUSPEND_WRITE_CLOSE, sb.toString()).toBytes());
+		s.getSession().send(c.getSession().getLocalAddress(), new Packet(PacketType.SUSPEND_WRITE_CLOSE, sb.toString()).toBytes());
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DR|SUSPEND_WRITE_CLOSE(" + sb.toString() +")|SCL|SEN|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
@@ -740,7 +750,7 @@ public class DatagramSessionTest {
 		session = s.getSession();
 		session.suspendRead();
 		session.suspendWrite();
-		session.write(c.getSession().getLocalAddress(), new Packet(PacketType.NOP).toBytes());
+		session.send(c.getSession().getLocalAddress(), new Packet(PacketType.NOP).toBytes());
 		session.key.interestOps(session.key.interestOps() | SelectionKey.OP_WRITE);
 		session.close();
 		s.waitForSessionEnding(TIMEOUT);
@@ -892,4 +902,428 @@ public class DatagramSessionTest {
 		s.stop(TIMEOUT);
 		c.stop(TIMEOUT);
 	}
+	
+	private void assertOutOfBoundException(DatagramSession session, byte[] data, int off, int len) {
+		try {
+			session.write(data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.writenf(data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.send(null, data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.sendnf(null, data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+	}
+	
+	private void assertIllegalStateException(DatagramSession session, byte[] data, int off, int len) {
+		try {
+			session.write(data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IllegalStateException e) {}
+		try {
+			session.writenf(data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IllegalStateException e) {}
+	}
+
+	@Test
+	public void testWriteArguments() throws Exception {
+		s = new DatagramHandler(PORT); s.startServer();
+		s.waitForSessionReady(TIMEOUT);
+
+		DatagramSession session = s.getSession();
+
+		session.closing = ClosingState.SENDING;
+		assertFalse(session.write(new byte[3], 0, 1).isSuccessful());
+		assertFalse(session.write(new byte[3]).isSuccessful());
+		assertFalse(session.write(getBuffer(10,0)).isSuccessful());
+		assertFalse(session.write(getBuffer(10,0), 5).isSuccessful());
+		assertFalse(session.send(null, new byte[3], 0, 1).isSuccessful());
+		assertFalse(session.send(null, new byte[3]).isSuccessful());
+		assertFalse(session.send(null, getBuffer(10,0)).isSuccessful());
+		assertFalse(session.send(null, getBuffer(10,0), 5).isSuccessful());
+		session.closing = ClosingState.NONE;
+
+		s.stop(TIMEOUT);
+
+		try {
+			session.write((byte[]) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.writenf((byte[]) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.write((byte[]) null, 0, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.writenf((byte[]) null, 0, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.send(null, (byte[]) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.sendnf(null, (byte[]) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.send(null, (byte[]) null, 0, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.sendnf(null, (byte[]) null, 0, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.write((ByteBuffer) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.writenf((ByteBuffer) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.write((ByteBuffer) null, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.writenf((ByteBuffer) null, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.send(null, (ByteBuffer) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.sendnf(null, (ByteBuffer) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.send(null, (ByteBuffer) null, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.sendnf(null, (ByteBuffer) null, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+
+		assertTrue(session.write(new byte[0]).isSuccessful());
+		assertTrue(session.write(new byte[3], 0, 0).isSuccessful());
+		assertTrue(session.write(new byte[3], 1, 0).isSuccessful());
+		assertTrue(session.write(getBuffer(0,0)).isSuccessful());
+		assertTrue(session.write(getBuffer(10,0), 0).isSuccessful());
+		assertTrue(session.send(null, new byte[0]).isSuccessful());
+		assertTrue(session.send(null, new byte[3], 0, 0).isSuccessful());
+		assertTrue(session.send(null, new byte[3], 1, 0).isSuccessful());
+		assertTrue(session.send(null, getBuffer(0,0)).isSuccessful());
+		assertTrue(session.send(null, getBuffer(10,0), 0).isSuccessful());
+		session.writenf(new byte[0]);
+		session.writenf(new byte[3], 0, 0);
+		session.writenf(new byte[3], 1, 0);
+		session.writenf(getBuffer(0,0));
+		session.writenf(getBuffer(10,0), 0);
+		session.sendnf(null, new byte[0]);
+		session.sendnf(null, new byte[3], 0, 0);
+		session.sendnf(null, new byte[3], 1, 0);
+		session.sendnf(null, getBuffer(0,0));
+		session.sendnf(null, getBuffer(10,0), 0);
+		
+		assertOutOfBoundException(session, new byte[10], -1, 4);
+		assertOutOfBoundException(session, new byte[10], 10, 1);
+		assertOutOfBoundException(session, new byte[10], 0, -1);
+		assertOutOfBoundException(session, new byte[10], 5, 6);
+		assertOutOfBoundException(session, new byte[10], 0x7fffffff, 1);
+		try {
+			session.write(getBuffer(0,90), 11);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.writenf(getBuffer(0,90), 11);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}	
+		try {
+			session.send(null, getBuffer(0,90), 11);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.sendnf(null, getBuffer(0,90), 11);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}	
+		
+		assertIllegalStateException(session, new byte[10], 0, 10);
+		assertIllegalStateException(session, new byte[10], 1, 9);
+		assertIllegalStateException(session, new byte[10], 0, 1);
+
+	}
+	
+	@Test
+	public void testWriteWhenConnected() throws Exception {
+		s = new DatagramHandler(PORT); s.startServer();
+		c = new DatagramHandler(PORT); c.startClient();
+		
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		DatagramSession session = c.getSession();
+
+		byte[] data = new Packet(PacketType.ECHO, "567").toBytes(0, 0);
+		session.write(data);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|$ECHO(567)|DS|", s.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "5").toBytes(0, 0);
+		session.writenf(data);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(5)|DS|", s.getRecordedData(true));
+		
+		data = new Packet(PacketType.ECHO, "77").toBytes(4, 5);
+		session.write(data, 4, data.length-9);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(77)|DS|", s.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "778").toBytes(4, 5);
+		session.writenf(data, 4, data.length-9);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(778)|DS|", s.getRecordedData(true));
+
+		ByteBuffer buf;
+		data = new Packet(PacketType.ECHO, "33").toBytes(0, 0);
+		buf = ByteBuffer.wrap(data);
+		session.write(buf);
+		assertEquals(0, buf.remaining());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(33)|DS|", s.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "339").toBytes(0, 0);
+		buf = ByteBuffer.wrap(data);
+		session.writenf(buf);
+		assertEquals(0, buf.remaining());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(339)|DS|", s.getRecordedData(true));
+		
+		data = new Packet(PacketType.ECHO, "343").toBytes(0, 3);
+		buf = ByteBuffer.wrap(data);
+		session.write(buf, data.length-3);
+		assertEquals(3, buf.remaining());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(343)|DS|", s.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "3369").toBytes(0, 3);
+		buf = ByteBuffer.wrap(data);
+		session.writenf(buf, data.length-3);
+		assertEquals(3, buf.remaining());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(3369)|DS|", s.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+
+	@Test
+	public void testWriteWhenNotConnected() throws Exception {
+		s = new DatagramHandler(PORT); s.startServer();
+		c = new DatagramHandler(PORT+1); c.startServer();
+		SocketAddress addr = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT);
+		
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		DatagramSession session = c.getSession();
+
+		byte[] data = new Packet(PacketType.ECHO, "567").toBytes(0, 0);
+		session.send(addr, data);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|$ECHO(567)|DS|", s.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "5").toBytes(0, 0);
+		session.sendnf(addr, data);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(5)|DS|", s.getRecordedData(true));
+
+		data = new Packet(PacketType.ECHO, "77").toBytes(4, 5);
+		session.send(addr, data, 4, data.length-9);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(77)|DS|", s.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "778").toBytes(4, 5);
+		session.sendnf(addr, data, 4, data.length-9);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(778)|DS|", s.getRecordedData(true));
+
+		ByteBuffer buf;
+		data = new Packet(PacketType.ECHO, "33").toBytes(0, 0);
+		buf = ByteBuffer.wrap(data);
+		session.send(addr, buf);
+		assertEquals(0, buf.remaining());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(33)|DS|", s.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "339").toBytes(0, 0);
+		buf = ByteBuffer.wrap(data);
+		session.sendnf(addr, buf);
+		assertEquals(0, buf.remaining());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(339)|DS|", s.getRecordedData(true));
+		
+		data = new Packet(PacketType.ECHO, "343").toBytes(0, 3);
+		buf = ByteBuffer.wrap(data);
+		session.send(addr, buf, data.length-3);
+		assertEquals(3, buf.remaining());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(343)|DS|", s.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "3369").toBytes(0, 3);
+		buf = ByteBuffer.wrap(data);
+		session.sendnf(addr, buf, data.length-3);
+		assertEquals(3, buf.remaining());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(3369)|DS|", s.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testOwningOfPassedDatagrams() throws Exception {
+		//flag == false, heap buffer
+		s = new DatagramHandler(PORT); s.startServer();
+		c = new DatagramHandler(PORT); c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		DatagramSession session = c.getSession();
+
+		byte[] data = new Packet(PacketType.ECHO, "567").toBytes(0, 0);
+		session.suspendWrite();
+		session.write(data);
+		Arrays.fill(data, (byte)0);
+		session.resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(567)|DS|", s.getRecordedData(true));
+
+		ByteBuffer buf;
+		data = new Packet(PacketType.ECHO, "33").toBytes(0, 0);
+		buf = ByteBuffer.wrap(data);
+		session.suspendWrite();
+		session.write(buf);
+		Arrays.fill(data, (byte)0);
+		assertEquals(0, buf.remaining());
+		session.resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(33)|DS|", s.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		//flag == true, heap buffer
+		s = new DatagramHandler(PORT); s.startServer();
+		c = new DatagramHandler(PORT); c.canOwnPasseData = true; c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		session = c.getSession();
+
+		data = new Packet(PacketType.ECHO, "567").toBytes(0, 0);
+		session.suspendWrite();
+		session.write(data);
+		data[data.length-1] = '8';
+		session.resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(568)|DS|", s.getRecordedData(true));
+
+		data = new Packet(PacketType.ECHO, "33").toBytes(0, 0);
+		buf = ByteBuffer.wrap(data);
+		session.suspendWrite();
+		session.write(buf);
+		assertEquals(data.length, buf.remaining());
+		data[data.length-1] = '4';
+		session.resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(34)|DS|", s.getRecordedData(true));
+
+		data = new Packet(PacketType.ECHO, "33").toBytes(0, 4);
+		buf = ByteBuffer.wrap(data);
+		session.suspendWrite();
+		session.write(buf, data.length-4);
+		assertEquals(4, buf.remaining());
+		Arrays.fill(data, (byte)0);
+		session.resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(33)|DS|", s.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		//flag == true, direct buffer
+		s = new DatagramHandler(PORT); s.startServer();
+		c = new DatagramHandler(PORT); 
+		c.canOwnPasseData = true;
+		c.directAllocator = true;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		session = c.getSession();
+	
+		data = new Packet(PacketType.ECHO, "567").toBytes(0, 0);
+		session.suspendWrite();
+		session.write(data);
+		Arrays.fill(data, (byte)0);
+		session.resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(567)|DS|", s.getRecordedData(true));
+		
+		data = new Packet(PacketType.ECHO, "33").toBytes(0, 0);
+		buf = ByteBuffer.wrap(data);
+		session.suspendWrite();
+		session.write(buf);
+		assertEquals(data.length, buf.remaining());
+		data[data.length-1] = '4';
+		session.resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(34)|DS|", s.getRecordedData(true));
+		
+		data = new Packet(PacketType.ECHO, "3388").toBytes(0, 2);
+		buf = ByteBuffer.wrap(data);
+		session.suspendWrite();
+		session.write(buf, data.length-2);
+		assertEquals(2, buf.remaining());
+		Arrays.fill(data, (byte)0);
+		data[data.length-1] = '4';
+		session.resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(3388)|DS|", s.getRecordedData(true));
+
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+
 }

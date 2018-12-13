@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.session;
 
+import java.nio.ByteBuffer;
+
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 
@@ -44,11 +46,10 @@ public interface IStreamSession extends ISession {
 	IStreamHandler getHandler();
 
 	/**
-	 * Writes bytes.
+	 * Writes <code>data.length</code> bytes from the specified byte array
+	 * to the stream-oriented channel associated with this session. 
 	 * <p>
-	 * After returning from this method the passed byte array can be safely
-	 * modified by the caller. The content of <code>data</code> is not 
-	 * changed by this method.
+	 * The operation is asynchronous.
 	 * 
 	 * @param data
 	 *            bytes to be written
@@ -58,4 +59,128 @@ public interface IStreamSession extends ISession {
 	 */
 	IFuture<Void> write(byte[] data);
 
+	/**
+	 * Writes <code>data.length</code> bytes from the specified byte array
+	 * to the stream-oriented channel associated with this session. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to 
+	 * synchronize on a future object. This will save some resources and 
+	 * may improve performance.
+	 * 
+	 * @param data
+	 *            bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void writenf(byte[] data);
+	
+	/**
+	 * Writes <code>length</code> bytes from the specified byte array
+	 * to the stream-oriented channel associated with this session. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param data
+	 *            bytes to be written
+	 * @param offset
+	 *            offset within the array of the first byte to be written
+	 * @param length
+	 *            number of bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this write operation
+	 */
+	IFuture<Void> write(byte[] data, int offset, int length);
+
+	/**
+	 * Writes <code>length</code> bytes from the specified byte array
+	 * to the stream-oriented channel associated with this session. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to 
+	 * synchronize on a future object. This will save some resources and 
+	 * may improve performance.
+	 * 
+	 * @param data
+	 *            bytes to be written
+	 * @param offset
+	 *            offset within the array of the first byte to be written
+	 * @param length
+	 *            number of bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void writenf(byte[] data, int offset, int length);
+	
+	/**
+	 * Writes <code>data.remaining()</code> bytes from the specified 
+	 * byte buffer to the stream-oriented channel associated with 
+	 * this session. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param data
+	 *            bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this write operation
+	 */
+	IFuture<Void> write(ByteBuffer data);
+
+	/**
+	 * Writes <code>data.remaining()</code> bytes from the specified 
+	 * byte buffer to the stream-oriented channel associated with 
+	 * this session. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to 
+	 * synchronize on a future object. This will save some resources and 
+	 * may improve performance.
+	 * 
+	 * @param data
+	 *            bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void writenf(ByteBuffer data);
+	
+	/**
+	 * Writes <code>length</code> bytes from the specified byte buffer
+	 * to the stream-oriented channel associated with this session. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * 
+	 * @param data
+	 *            bytes to be written
+	 * @param length
+	 *            number of bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @return the future associated with this write operation
+	 */
+	IFuture<Void> write(ByteBuffer data, int length);	
+
+	/**
+	 * Writes <code>length</code> bytes from the specified byte buffer
+	 * to the stream-oriented channel associated with this session. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to 
+	 * synchronize on a future object. This will save some resources and 
+	 * may improve performance.
+	 * 
+	 * @param data
+	 *            bytes to be written
+	 * @param length
+	 *            number of bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 */
+	void writenf(ByteBuffer data, int length);	
+	
 }

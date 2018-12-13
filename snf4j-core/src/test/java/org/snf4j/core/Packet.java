@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -56,14 +56,18 @@ public class Packet {
 	}
 	
 	public byte[] toBytes() {
+		return toBytes(0,0);
+	}
+	
+	public byte[] toBytes(int off, int padding) {
 		byte[] payload = this.payload.getBytes();
-		byte[] data = new byte[3 + payload.length];
+		byte[] data = new byte[3 + payload.length+off+padding];
 		int len = 3 + payload.length;
 	
-		data[0] = (byte) (len >>> 8);
-		data[1] = (byte) len;
-		data[2] = (byte) type.ordinal();
-		System.arraycopy(payload, 0, data, 3, payload.length);
+		data[0+off] = (byte) (len >>> 8);
+		data[1+off] = (byte) len;
+		data[2+off] = (byte) type.ordinal();
+		System.arraycopy(payload, 0, data, 3+off, payload.length);
 		return data;
 	}
 }

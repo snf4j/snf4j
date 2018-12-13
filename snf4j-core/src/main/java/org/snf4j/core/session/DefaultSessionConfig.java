@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2018 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,37 +34,42 @@ public class DefaultSessionConfig implements ISessionConfig {
 
 	/** The minimum size of the input buffer used to read incoming data */
 	private int minInBufferCapacity = 2048;
-	
+
 	/** The maximum size of the input buffer used to read incoming data */
 	private int maxInBufferCapacity = 8192;
-	
+
 	/** The minimum size of the output buffer used to write outgoing data */
 	private int minOutBufferCapacity = 2048;
-	
+
 	/** The interval between each throughput calculation */
 	private long throughputCalculationInterval = 3000;
-	
+
 	/** Determines if possibly incomplete datagrams should be ignored */
 	private boolean ignorePossibleIncompleteDatagrams = true;
-	
+
+	/** Determines if the session object can own the data passed to 
+	 * the write methods */
+	private boolean canOwnDataPassedToWriteAndSendMethods;
+
+	/** Determines the action that should be performed by the selector 
+	 * loop after ending of the associated session. */
 	private EndingAction endingAction = EndingAction.DEFAULT;
-	
+
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
 	 * 
-	 * @param capacity
-	 *            the minimum capacity in bytes
+	 * @param capacity the minimum capacity in bytes
 	 * @return this session config object
 	 */
 	public DefaultSessionConfig setMinInBufferCapacity(int capacity) {
 		minInBufferCapacity = capacity;
 		return this;
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The default value is 2048 
+	 * The default value is 2048
 	 */
 	@Override
 	public int getMinInBufferCapacity() {
@@ -85,7 +90,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The default value is 8192 
+	 * The default value is 8192
 	 */
 	@Override
 	public int getMaxInBufferCapacity() {
@@ -106,7 +111,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The default value is 2048 
+	 * The default value is 2048
 	 */
 	@Override
 	public int getMinOutBufferCapacity() {
@@ -127,7 +132,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The default value is 3000 
+	 * The default value is 3000
 	 */
 	@Override
 	public long getThroughputCalculationInterval() {
@@ -136,9 +141,9 @@ public class DefaultSessionConfig implements ISessionConfig {
 
 	/**
 	 * Configures the behavior after receiving possibly incomplete datagrams.
-	 *  
-	 * @param ignore <code>true</code> if possibly incomplete datagrams should 
-	 * be ignored.
+	 * 
+	 * @param ignore <code>true</code> if possibly incomplete datagrams should be
+	 *               ignored.
 	 * @return this session config object
 	 */
 	public DefaultSessionConfig setIgnorePossiblyIncompleteDatagrams(boolean ignore) {
@@ -157,8 +162,33 @@ public class DefaultSessionConfig implements ISessionConfig {
 	}
 
 	/**
-	 * Sets an action that should be performed by the selector
-	 * loop after ending of the associated session.
+	 * 
+	 * Configures if the session object can own the data (i.e. byte arrays or byte
+	 * buffers) passed to the write and send methods.
+	 * 
+	 * @param canOwnData <code>true</code> if the session object can own the data
+	 *                   passed in the write methods.
+	 * @return this session config object
+	 * @see #canOwnDataPassedToWriteAndSendMethods()
+	 */
+	public DefaultSessionConfig setCanOwnDataPassedToWriteAndSendMethods(boolean canOwnData) {
+		canOwnDataPassedToWriteAndSendMethods = canOwnData;
+		return this;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>false</code>
+	 */
+	@Override
+	public boolean canOwnDataPassedToWriteAndSendMethods() {
+		return canOwnDataPassedToWriteAndSendMethods;
+	}
+
+	/**
+	 * Sets an action that should be performed by the selector loop after ending of
+	 * the associated session.
 	 * 
 	 * @param action en ending action
 	 * @return this session config object
@@ -167,7 +197,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 		endingAction = action;
 		return this;
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 * <p>

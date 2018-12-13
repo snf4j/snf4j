@@ -101,32 +101,60 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return (IStreamHandler) handler;
 	}
 	
-	@Override
-	public IFuture<Void> write(byte[] data) {
+	/** 
+	 * Returns -1 if session is in closing state 
+	 */
+	private final long write0(Object data, int offset, int length, boolean buffer) {
 		SelectionKey key = checkKey(this.key);
 		long futureExpectedLen;
 		
 		synchronized (writeLock) {
 			if (closing != ClosingState.NONE) {
-				return futuresController.getCancelledFuture();
+				return -1;
 			}
 			int lastIndex = outBuffers.length - 1;
 			ByteBuffer lastBuffer = outBuffers[lastIndex];
 			int lastRemaining = lastBuffer.remaining();
 
-			if (lastRemaining >= data.length) {
-				lastBuffer.put(data);
+			if (lastRemaining >= length) {
+				if (buffer) {
+					ByteBuffer buf = (ByteBuffer)data;
+					if (buf.remaining() == length) {
+						lastBuffer.put(buf);
+					}
+					else {
+						ByteBuffer dup = buf.duplicate();
+						dup.limit(dup.position()+length);
+						lastBuffer.put(dup);
+						buf.position(dup.position());
+					}
+				}
+				else {
+					lastBuffer.put((byte[])data, offset, length);
+				}
 			}
 			else {
-				lastBuffer.put(data, 0, lastRemaining).flip();
+				int remaining = length - lastRemaining;
 				ByteBuffer[] newBuffers = new ByteBuffer[lastIndex+2];
 				System.arraycopy(outBuffers, 0, newBuffers, 0, outBuffers.length);
-				ByteBuffer newBuffer = allocator.allocate(Math.max(minOutBufferCapacity, data.length - lastRemaining));
-				newBuffer.put(data, lastRemaining, data.length - lastRemaining);
+				ByteBuffer newBuffer = allocator.allocate(Math.max(minOutBufferCapacity, remaining));
+				if (buffer) {
+					ByteBuffer buf = (ByteBuffer)data;
+					ByteBuffer dup = buf.duplicate();
+					dup.limit(dup.position() + lastRemaining);
+					lastBuffer.put(dup).flip();
+					dup.limit(dup.position() + remaining);
+					newBuffer.put(dup);
+					buf.position(dup.position());
+				}
+				else {
+					lastBuffer.put((byte[])data, offset, lastRemaining).flip();
+					newBuffer.put((byte[])data, offset + lastRemaining, remaining);
+				}
 				newBuffers[lastIndex+1] = newBuffer;
 				outBuffers = newBuffers;
 			}
-			outBuffersSize += data.length;
+			outBuffersSize += length;
 			futureExpectedLen = outBuffersSize + getWrittenBytes();  
 
 			try {
@@ -137,9 +165,117 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			}
 		}
 		lazyWakeup();
+		return futureExpectedLen;
+	}
+
+	@Override
+	public IFuture<Void> write(byte[] data) {
+		if (data == null) {
+			throw new NullPointerException();
+		} else if (data.length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+		
+		long futureExpectedLen = write0(data, 0, data.length, false);
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
 		return futuresController.getWriteFuture(futureExpectedLen);
 	}
 
+	@Override
+	public void writenf(byte[] data) {
+		if (data == null) {
+			throw new NullPointerException();
+		} else if (data.length > 0) {
+			write0(data, 0, data.length, false);
+		}
+	}
+	
+	@Override
+	public IFuture<Void> write(byte[] data, int offset, int length) {
+		if (data == null) {
+			throw new NullPointerException();
+		}
+		checkBounds(offset, length, data.length);
+		if (length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+		
+		long futureExpectedLen = write0(data, offset, length, false);
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	@Override
+	public void writenf(byte[] data, int offset, int length) {
+		if (data == null) {
+			throw new NullPointerException();
+		}
+		checkBounds(offset, length, data.length);
+		if (length > 0) {
+			write0(data, offset, length, false);
+		}
+	}
+	
+	@Override
+	public IFuture<Void> write(ByteBuffer data) {
+		if (data == null) {
+			throw new NullPointerException();
+		} else if (data.remaining() == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+
+		long futureExpectedLen = write0(data, 0, data.remaining(), true);
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	@Override
+	public void writenf(ByteBuffer data) {
+		if (data == null) {
+			throw new NullPointerException();
+		} else if (data.remaining() > 0) {
+			write0(data, 0, data.remaining(), true);
+		}
+	}
+
+	@Override
+	public IFuture<Void> write(ByteBuffer data, int length) {
+		if (data == null) {
+			throw new NullPointerException();
+		} else if (data.remaining() < length) {
+			throw new IndexOutOfBoundsException();
+		} else if (length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+
+		long futureExpectedLen = write0(data, 0, length, true);
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	@Override
+	public void writenf(ByteBuffer data, int length) {
+		if (data == null) {
+			throw new NullPointerException();
+		} else if (data.remaining() < length) {
+			throw new IndexOutOfBoundsException();
+		} else if (length > 0) {
+			write0(data, 0, length, true);
+		}
+	}
+	
 	@Override
 	public void close() {
 		close(false);
@@ -351,8 +487,11 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			if (count > 0) {
 				ByteBuffer[] newBuffers = new ByteBuffer[outBuffers.length - count];
 				System.arraycopy(outBuffers, count, newBuffers, 0, newBuffers.length);
-				outBuffers = newBuffers;
 				lastIndex -= count;
+				for (--count; count >=0; --count) {
+					allocator.release(outBuffers[count]);
+				}
+				outBuffers = newBuffers;
 			}
 		}
 		

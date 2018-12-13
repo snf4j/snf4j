@@ -43,13 +43,13 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.handler.DataEvent;
-import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
@@ -59,7 +59,7 @@ import org.snf4j.core.session.SessionState;
 public class SessionTest {
 	long TIMEOUT = 2000;
 	int PORT = 7777;
-	IStreamHandler handler = new TestHandler("TestHandler");
+	TestHandler handler = new TestHandler("TestHandler");
 	
 	Server s;
 	Client c;
@@ -119,6 +119,10 @@ public class SessionTest {
 	
 	private byte[] getBytes(int size, int value) {
 		return ByteUtils.getBytes(size, value);
+	}
+	
+	private ByteBuffer getBuffer(int size, int value) {
+		return ByteBuffer.wrap(getBytes(size, value));
 	}
 	
 	@Test
@@ -240,15 +244,77 @@ public class SessionTest {
 	private void assertOutBuffers(StreamSession session, String expectedContent) {
 		assertOutBuffers(session, expectedContent, true);
 	}
-	
+
+	private void write(StreamSession session, int size, int value, boolean buffer, int padding, boolean nofuture) {
+		if (buffer) {
+			if (padding > 0) {
+				byte[] d = getBytes(size+padding,value);
+				Arrays.fill(d, size, size+padding, (byte)-1);
+				if (nofuture) {
+					session.writenf(ByteBuffer.wrap(d), size);
+				}
+				else {
+					session.write(ByteBuffer.wrap(d), size);
+				}
+			}
+			else {
+				if (nofuture) {
+					session.writenf(ByteBuffer.wrap(getBytes(size,value)));
+				}
+				else {
+					session.write(ByteBuffer.wrap(getBytes(size,value)));
+				}
+			}
+		}
+		else {
+			if (padding > 0) {
+				byte[] d = getBytes(size+padding,value);
+				int off = 1;
+				
+				d[0] = (byte)-1;
+				Arrays.fill(d, size+1, size+padding, (byte)-1);
+				if (nofuture) {
+					session.writenf(d, off, size);
+				}
+				else {
+					session.write(d, off, size);
+				}
+			}
+			else {
+				if (nofuture) {
+					session.writenf(getBytes(size,value));
+				}
+				else {
+					session.write(getBytes(size,value));
+				}
+			}
+		}
+	}
+
 	@Test
-	public void testWrite() throws Exception {
+	public void testWriteWithArray() throws Exception {
+		testWrite(false, 0, true);
+		testWrite(false, 10, true);
+		testWrite(false, 0, false);
+		testWrite(false, 10, false);
+	}
+
+	@Test
+	public void testWriteWithBuffer() throws Exception {
+		testWrite(true, 0, true);
+		testWrite(true, 10, true);
+		testWrite(true, 0, false);
+		testWrite(true, 10, false);
+	}
+
+	
+	private void testWrite(boolean buffer, int padding, boolean nofuture) throws Exception {
 		SelectionKey key1 = registerServerSocketChannel(Selector.open(), PORT);
 		SelectionKey key2 = registerSocketChannel(key1.selector(), PORT);
 		StreamSession s = new StreamSession(handler);
 		
 		try {
-			s.write(getBytes(10,0));
+			write(s, 10,0, buffer, padding, nofuture);
 			fail("exception should be thrown");
 		}
 		catch (IllegalSessionStateException e) {
@@ -260,42 +326,42 @@ public class SessionTest {
 		s.setSelectionKey(key2);
 		
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(0, 0));
-		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
+		write(s, 0, 0, buffer, padding, nofuture);
+		assertEquals(SelectionKey.OP_READ, key2.interestOps());
 		assertOutBuffers(s, "1024:0=0");
 		
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(1, 2));
+		write(s, 1, 2, buffer, padding, nofuture);
 		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
 		assertOutBuffers(s, "1024:1=2");
 
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(1023, 3));
+		write(s, 1023, 3, buffer, padding, nofuture);
 		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
 		assertOutBuffers(s, "1024:1=2,1023=3");
 
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(0, 0));
-		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
+		write(s, 0, 0, buffer, padding, nofuture);
+		assertEquals(SelectionKey.OP_READ, key2.interestOps());
 		assertOutBuffers(s, "1024:1=2,1023=3");
 		
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(1, 4));
+		write(s, 1, 4, buffer, padding, nofuture);
 		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
 		assertOutBuffers(s, "1024:1=2,1023=3;1024:1=4");
 		
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(1023, 5));
+		write(s, 1023, 5, buffer, padding, nofuture);
 		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
 		assertOutBuffers(s, "1024:1=2,1023=3;1024:1=4,1023=5");
 		
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(1000,6));
+		write(s, 1000,6, buffer, padding, nofuture);
 		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
 		assertOutBuffers(s, "1024:1=2,1023=3;1024:1=4,1023=5;1024:1000=6");
 		
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(1049,7));
+		write(s, 1049,7, buffer, padding, nofuture);
 		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
 		assertOutBuffers(s, "1024:1=2,1023=3;1024:1=4,1023=5;1024:1000=6,24=7;1025:1025=7");
 		
@@ -305,18 +371,18 @@ public class SessionTest {
 		assertOutBuffers(s, "1024:1023=3;1024:1=4,1023=5;1024:1000=6,24=7;1025:1025=7");
 		
 		key2.interestOps(SelectionKey.OP_READ);
-		s.write(getBytes(1, 8));
+		write(s, 1, 8, buffer, padding, nofuture);
 		assertEquals(SelectionKey.OP_READ | SelectionKey.OP_WRITE, key2.interestOps());
 		assertOutBuffers(s, "1024:1023=3;1024:1=4,1023=5;1024:1000=6,24=7;1025:1025=7;1024:1=8");
 		
 		s.closing = ClosingState.SENDING;
-		s.write(getBytes(1, 9));
+		write(s, 1, 9, buffer, padding, nofuture);
 		assertOutBuffers(s, "1024:1023=3;1024:1=4,1023=5;1024:1000=6,24=7;1025:1025=7;1024:1=8");
 		s.closing = ClosingState.FINISHING;
-		s.write(getBytes(1, 9));
+		write(s, 1, 9, buffer, padding, nofuture);
 		assertOutBuffers(s, "1024:1023=3;1024:1=4,1023=5;1024:1000=6,24=7;1025:1025=7;1024:1=8");
 		s.closing = ClosingState.FINISHED;
-		s.write(getBytes(1, 9));
+		write(s, 1, 9, buffer, padding, nofuture);
 		assertOutBuffers(s, "1024:1023=3;1024:1=4,1023=5;1024:1000=6,24=7;1025:1025=7;1024:1=8");
 		s.closing = ClosingState.NONE;
 		
@@ -325,7 +391,7 @@ public class SessionTest {
 		key1.selector().close();
 
 		try {
-			s.write(getBytes(20, 0));
+			write(s, 20, 0, buffer, padding, nofuture);
 			fail("exception should be thrown");
 		}
 		catch (IllegalSessionStateException e) {
@@ -342,6 +408,35 @@ public class SessionTest {
 		buffer.get(data);
 		assertEquals(Arrays.toString(expected), Arrays.toString(data));
 	}
+
+	private boolean contains(List<ByteBuffer> buffers, ByteBuffer buffer) {
+		for (ByteBuffer b: buffers) {
+			if (b == buffer) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private void assertReleasedBuffers(int expectedSize, List<ByteBuffer> buffers, ByteBuffer[] oldBuffers) {
+		assertEquals(expectedSize, buffers.size());
+		if (!buffers.isEmpty()) {
+			for (ByteBuffer b: buffers) {
+				assertFalse(b.hasRemaining());
+			}
+			
+			int i=0;
+			for (; i<expectedSize; ++i) {
+				assertTrue(contains(buffers, oldBuffers[i]));
+			}
+
+			for (; i<oldBuffers.length; ++i) {
+				assertFalse(contains(buffers, oldBuffers[i]));
+			}
+			
+			buffers.clear();
+		}
+	}
 	
 	@Test
 	public void testCompactOutBuffers() throws Exception {
@@ -356,6 +451,7 @@ public class SessionTest {
 		ByteBuffer[] bufs = s.getOutBuffers();
 		assertTrue(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:0=0");
+		assertReleasedBuffers(0, handler.getReleasedBuffers(), bufs);
 		
 		//get 1 from 1
 		s.write(getBytes(1,1));
@@ -363,6 +459,7 @@ public class SessionTest {
 		assertBufferGet(bufs[0], "1=1");
 		assertTrue(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:0=0");
+		assertReleasedBuffers(0, handler.getReleasedBuffers(), bufs);
 		
 		//get 1 from 2
 		s.write(getBytes("1=2,1=3"));
@@ -370,6 +467,7 @@ public class SessionTest {
 		assertBufferGet(bufs[0], "1=2");
 		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=3");
+		assertReleasedBuffers(0, handler.getReleasedBuffers(), bufs);
 
 		//get 1023 from 1024
 		s.write(getBytes(1023,4));
@@ -377,6 +475,7 @@ public class SessionTest {
 		assertBufferGet(bufs[0], "1=3,1022=4");
 		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=4");
+		assertReleasedBuffers(0, handler.getReleasedBuffers(), bufs);
 
 		//get 1024 from 1024
 		s.write(getBytes(1023,5));
@@ -384,6 +483,7 @@ public class SessionTest {
 		assertBufferGet(bufs[0], "1=4,1023=5");
 		assertTrue(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:0=0");
+		assertReleasedBuffers(0, handler.getReleasedBuffers(), bufs);
 		
 		//get 1 from 1024;1
 		s.write(getBytes("1=6,1=7,1023=8"));
@@ -391,12 +491,14 @@ public class SessionTest {
 		assertBufferGet(bufs[0], "1=6");
 		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=7,1022=8;1024:1=8");
+		assertReleasedBuffers(0, handler.getReleasedBuffers(), bufs);
 		
 		//get 1023 from 1023;1
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=7,1022=8");
 		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=8");
+		assertReleasedBuffers(1, handler.getReleasedBuffers(), bufs);
 		
 		//get 1024 from 1024;1025
 		s.write(getBytes("2048=9"));
@@ -404,12 +506,14 @@ public class SessionTest {
 		assertBufferGet(bufs[0], "1=8,1023=9");
 		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1025:1025=9");
+		assertReleasedBuffers(1, handler.getReleasedBuffers(), bufs);
 		
 		//get 1025 from 1025
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1025=9");
 		assertTrue(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:0=0");
+		assertReleasedBuffers(0, handler.getReleasedBuffers(), bufs);
 		
 		//get 1024 from 1025;1
 		s.write(getBytes("2049=1"));
@@ -417,18 +521,21 @@ public class SessionTest {
 		assertBufferGet(bufs[0], "1024=1");
 		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1025:1025=1");
+		assertReleasedBuffers(1, handler.getReleasedBuffers(), bufs);
 		s.write(getBytes("1=2"));
 		assertOutBuffers(s, "1025:1025=1;1024:1=2");
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1024=1");
 		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1025:1=1;1024:1=2");
+		assertReleasedBuffers(0, handler.getReleasedBuffers(), bufs);
 		
 		//get 1 from 1/1025;1
 		bufs = s.getOutBuffers();
 		assertBufferGet(bufs[0], "1=1");
 		s.compactOutBuffers(0);
 		assertOutBuffers(s, "1024:1=2");
+		assertReleasedBuffers(1, handler.getReleasedBuffers(), bufs);
 		
 		//get 1025;1026;1 from 1025;1026;2
 		s.write(getBytes("2048=3"));
@@ -442,6 +549,7 @@ public class SessionTest {
 		assertBufferGet(bufs[3], "1=5");
 		assertFalse(s.compactOutBuffers(0));
 		assertOutBuffers(s, "1024:1=5");
+		assertReleasedBuffers(3, handler.getReleasedBuffers(), bufs);
 		
 		key1.channel().close();
 		key2.channel().close();
@@ -486,6 +594,150 @@ public class SessionTest {
 		session.resumeWrite();
 		session.clearWriteInterestOps(key);
 		assertEquals(SelectionKey.OP_READ, key.interestOps());
+	}
+	
+	private void assertOutOfBoundException(StreamSession session, byte[] data, int off, int len) {
+		try {
+			session.write(data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.writenf(data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+	}
+
+	private void assertIllegalStateException(StreamSession session, byte[] data, int off, int len) {
+		try {
+			session.write(data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IllegalStateException e) {}
+		try {
+			session.writenf(data, off, len);
+			fail("Exception not thrown");
+		}
+		catch (IllegalStateException e) {}
+	}
+	
+	@Test
+	public void testWriteArguments() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		
+		StreamSession session = c.getSession();
+		session.write(new Packet(PacketType.ECHO, "1234").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(1234)|", c.getRecordedData(true));
+		
+		byte[] data = new Packet(PacketType.ECHO, "567").toBytes(0, 4);
+		session.write(data, 0, data.length-4);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(567)|", c.getRecordedData(true));
+
+		data = new Packet(PacketType.ECHO, "89").toBytes(3, 0);
+		session.write(data, 3, data.length-3);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(89)|", c.getRecordedData(true));
+
+		data = new Packet(PacketType.ECHO, "0").toBytes(7, 10);
+		session.write(data, 7, data.length-17);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(0)|", c.getRecordedData(true));
+		
+		session.closing = ClosingState.SENDING;
+		assertFalse(session.write(new byte[3], 0, 1).isSuccessful());
+		assertFalse(session.write(new byte[3]).isSuccessful());
+		assertFalse(session.write(getBuffer(10,0)).isSuccessful());
+		assertFalse(session.write(getBuffer(10,0), 5).isSuccessful());
+		session.closing = ClosingState.NONE;
+
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		try {
+			session.write((byte[])null);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.write((byte[])null, 0, 0);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.write((ByteBuffer)null);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.write((ByteBuffer)null, 0);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.writenf((byte[])null);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.writenf((byte[])null, 0, 0);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.writenf((ByteBuffer)null);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.writenf((ByteBuffer)null, 0);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		
+		assertTrue(session.write(new byte[0]).isSuccessful());
+		assertTrue(session.write(new byte[3], 0, 0).isSuccessful());
+		assertTrue(session.write(getBuffer(0,0)).isSuccessful());
+		assertTrue(session.write(getBuffer(10,0), 0).isSuccessful());
+		assertTrue(session.write(new byte[3], 1, 0).isSuccessful());
+		session.writenf(new byte[0]);
+		session.writenf(new byte[3], 0, 0);
+		session.writenf(getBuffer(0,0));
+		session.writenf(getBuffer(10,0), 0);
+		session.writenf(new byte[3], 1, 0);
+		
+		assertOutOfBoundException(session, new byte[10], -1, 4);
+		assertOutOfBoundException(session, new byte[10], 10, 1);
+		assertOutOfBoundException(session, new byte[10], 0, -1);
+		assertOutOfBoundException(session, new byte[10], 5, 6);
+		assertOutOfBoundException(session, new byte[10], 0x7fffffff, 1);
+		try {
+			session.write(getBuffer(0,90), 11);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.writenf(getBuffer(0,90), 11);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		
+		assertIllegalStateException(session, new byte[10], 0, 10);
+		assertIllegalStateException(session, new byte[10], 1, 9);
+		assertIllegalStateException(session, new byte[10], 0, 1);
 	}
 	
 	@Test
