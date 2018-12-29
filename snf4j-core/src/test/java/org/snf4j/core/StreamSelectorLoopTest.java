@@ -651,6 +651,32 @@ public class StreamSelectorLoopTest {
 	}
 	
 	@Test
+	public void testRegistrationOfUsedSession() throws Exception {
+		SelectorLoop loop = new SelectorLoop();
+		
+		loop.start();
+		SocketChannel channel = SocketChannel.open();
+		
+		channel.configureBlocking(false);
+		channel.socket().bind(new InetSocketAddress(PORT));
+		
+		StreamSession session = new StreamSession(new TestHandler("Test"));
+		session.setChannel(channel);
+		
+		try {
+			loop.register(channel, session);
+			fail("Exception not thrown");
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("session cannot be reused", e.getMessage());
+		}
+		
+		channel.close();
+		loop.stop();
+		loop.join(TIMEOUT);
+	}
+	
+	@Test
 	public void testRegistrationWhileStopping() throws Exception {
 		s = new Server(PORT);
 		
@@ -669,14 +695,6 @@ public class StreamSelectorLoopTest {
 		c.stop(TIMEOUT);
 		assertEquals("",c.getRecordedData(true));
 		
-		//register client socket (session created)
-		c = new Client(PORT);
-		c.setThreadFactory(new DelayedThreadFactory(100));
-		c.registerConnectedSession = true;
-		c.start();
-		c.stop(TIMEOUT);
-		assertEquals("SCR|SEN|",c.getRecordedData(true));
-		
 		s.stop(TIMEOUT);
 	}
 	
@@ -689,7 +707,8 @@ public class StreamSelectorLoopTest {
 		c.start();
 		s.waitForSessionOpen(TIMEOUT);
 		c.waitForSessionOpen(TIMEOUT);
-		c.loop.register(c.getSession().channel, SelectionKey.OP_CONNECT, c.getSession());
+		StreamSession session = new StreamSession(new TestHandler("Test1"));
+		c.loop.register(c.getSession().channel, SelectionKey.OP_CONNECT, session);
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, c.loop.getSize());
 		c.stop(TIMEOUT);

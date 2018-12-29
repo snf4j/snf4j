@@ -42,6 +42,12 @@ public class DefaultAllocatorTest {
 
 	private IByteBufferAllocator heap = DefaultAllocator.DEFAULT;
 	private IByteBufferAllocator direct = new DefaultAllocator(true);
+
+	@Test
+	public void testIsReleasable() {
+		assertFalse(heap.isReleasable());
+		assertFalse(direct.isReleasable());
+	}
 	
 	@Test
 	public void testUsesArray() {

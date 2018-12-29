@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractDatagramHandler;
@@ -55,6 +56,7 @@ public class DatagramHandler {
 	boolean ignorePossiblyIncomplete = true;
 	volatile EndingAction endingAction = EndingAction.DEFAULT;
 	boolean directAllocator;
+	TestAllocator allocator;
 	boolean canOwnPasseData;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
@@ -158,6 +160,7 @@ public class DatagramHandler {
 			if (registerConnectedSession) {
 				session = new DatagramSession(new Handler());
 				session.setChannel(dc);
+				session.preCreated();
 				session.event(SessionEvent.CREATED);
 				loop.register(dc, session);
 			}
@@ -175,6 +178,7 @@ public class DatagramHandler {
 			if (registerConnectedSession) {
 				session = new DatagramSession(new Handler());
 				session.setChannel(dc);
+				session.preCreated();
 				session.event(SessionEvent.CREATED);
 				loop.register(dc, session);
 			}
@@ -253,6 +257,9 @@ public class DatagramHandler {
 	class StructureFactory extends DefaultSessionStructureFactory {
 		@Override
 		public IByteBufferAllocator getAllocator() {
+			if (allocator != null) {
+				return allocator;
+			}
 			return new DefaultAllocator(directAllocator);
 		}
 	}

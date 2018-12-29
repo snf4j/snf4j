@@ -56,6 +56,14 @@ public interface IByteBufferAllocator {
 	ByteBuffer allocate(int capacity);
 	
 	/**
+	 * Tells if an implementation of the allocator supports releasing of no
+	 * longer used buffers.
+	 * 
+	 * @return <code>true</code> if the releasing is supported
+	 */
+	boolean isReleasable();
+	
+	/**
 	 * Informs that given buffer that was allocated by this allocator is no
 	 * longer used and can be released.
 	 * 

@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.session;
 
+import javax.net.ssl.SSLEngine;
+
 import org.snf4j.core.EndingAction;
 
 /**
@@ -125,4 +127,31 @@ public interface ISessionConfig {
 	 * @return the ending action
 	 */
 	EndingAction getEndingAction();
+	
+	/**
+	 * Creates a new SSLEngine for SSL session.
+	 * 
+	 * @return the SSLEngine object
+	 */
+	SSLEngine createSSLEngine() throws Exception;
+	
+	/**
+	 * Gets the ratio that is used to calculate the maximum size of the SSL
+	 * application buffers. The base for the calculation is the maximum SSL 
+	 * application packet size. 
+	 * 
+	 * @return the ratio
+	 * @see javax.net.ssl.SSLSession#getApplicationBufferSize()
+	 */
+	int getMaxSSLApplicationBufferSizeRatio();
+	
+	/**
+	 * Gets the ratio that is used to calculate the maximum size of the SSL
+	 * network buffers. The base for the calculation is the maximum SSL 
+	 * network packet size that is determined by <code>SSLEngine</code>.
+	 * 
+	 * @return the ratio
+	 * @see javax.net.ssl.SSLSession#getPacketBufferSize()
+	 */
+	int getMaxSSLNetworkBufferSizeRatio();
 }

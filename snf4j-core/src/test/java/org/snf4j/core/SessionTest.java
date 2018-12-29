@@ -49,6 +49,7 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
@@ -134,6 +135,7 @@ public class SessionTest {
 		catch (IllegalArgumentException e) {
 		}
 		StreamSession s = new StreamSession(handler);
+		s.preCreated();
 		assertTrue(handler.getSession() == s);
 		assertTrue(s.getHandler() == handler);
 		ByteBuffer buf = s.getInBuffer();
@@ -312,6 +314,7 @@ public class SessionTest {
 		SelectionKey key1 = registerServerSocketChannel(Selector.open(), PORT);
 		SelectionKey key2 = registerSocketChannel(key1.selector(), PORT);
 		StreamSession s = new StreamSession(handler);
+		s.preCreated();
 		
 		try {
 			write(s, 10,0, buffer, padding, nofuture);
@@ -443,6 +446,7 @@ public class SessionTest {
 		SelectionKey key1 = registerServerSocketChannel(Selector.open(), PORT);
 		SelectionKey key2 = registerSocketChannel(key1.selector(), PORT);
 		StreamSession s = new StreamSession(handler);
+		s.preCreated();
 		
 		s.setChannel((SocketChannel) key2.channel());
 		s.setSelectionKey(key2);
@@ -1759,6 +1763,89 @@ public class SessionTest {
 		assertEquals("", c.getRecordedData(true));
 		assertEquals("", s.getRecordedData(true));
 		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testReleaseOfAllocatedBuffers() throws Exception {
+		TestHandler handler = new TestHandler("Test");
+		TestAllocator allocator = handler.allocator;
+		
+		assertEquals(0, allocator.getSize());
+		StreamSession session = new StreamSession(handler);
+		assertEquals(0, allocator.getSize());
+		try {
+			session.write(new byte[10]);
+			fail("Exception not thrown");
+		}
+		catch (IllegalSessionStateException e) {}
+		assertEquals(0, allocator.getSize());
+		assertEquals(0, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		
+		allocator = new TestAllocator(false, true);
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.allocator = allocator;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals(2, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals(0, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(2, allocator.getReleasedCount());
+
+		allocator = new TestAllocator(false, true);
+		c = new Client(PORT);
+		c.allocator = allocator;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().suspendWrite();
+		byte[] data = new byte[2000];
+		Arrays.fill(data, (byte)'A');
+		c.getSession().write(new Packet(PacketType.NOP, new String(data)).toBytes());
+		assertEquals(3, allocator.getSize());
+		assertEquals(3, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.getSession().resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		assertEquals(2, allocator.getSize());
+		assertEquals(3, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getReleasedCount());
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals(0, allocator.getSize());
+		assertEquals(3, allocator.getAllocatedCount());
+		assertEquals(3, allocator.getReleasedCount());
+
+		allocator = new TestAllocator(false, false);
+		c = new Client(PORT);
+		c.allocator = allocator;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().suspendWrite();
+		data = new byte[2000];
+		Arrays.fill(data, (byte)'A');
+		c.getSession().write(new Packet(PacketType.NOP, new String(data)).toBytes());
+		assertEquals(3, allocator.getSize());
+		assertEquals(3, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.getSession().resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		assertEquals(3, allocator.getSize());
+		assertEquals(3, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals(3, allocator.getSize());
+		assertEquals(3, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		
 		s.stop(TIMEOUT);
 	}
 }

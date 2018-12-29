@@ -43,10 +43,13 @@ public class DefaultSessionConfigTest {
 		assertEquals(true, c.ignorePossiblyIncompleteDatagrams());
 		assertEquals(EndingAction.DEFAULT, c.getEndingAction());
 		assertEquals(false, c.canOwnDataPassedToWriteAndSendMethods());
+		assertEquals(1, c.getMaxSSLApplicationBufferSizeRatio());
+		assertEquals(1, c.getMaxSSLNetworkBufferSizeRatio());
 
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
-			.setEndingAction(EndingAction.STOP).setCanOwnDataPassedToWriteAndSendMethods(true);
+			.setEndingAction(EndingAction.STOP).setCanOwnDataPassedToWriteAndSendMethods(true)
+			.setMaxSSLApplicationBufferSizeRatio(5).setMaxSSLNetworkBufferSizeRatio(6);
 
 		assertEquals(10, c.getMinInBufferCapacity());
 		assertEquals(100, c.getMaxInBufferCapacity());
@@ -55,6 +58,8 @@ public class DefaultSessionConfigTest {
 		assertEquals(false, c.ignorePossiblyIncompleteDatagrams());
 		assertEquals(EndingAction.STOP, c.getEndingAction());
 		assertEquals(true, c.canOwnDataPassedToWriteAndSendMethods());
+		assertEquals(5, c.getMaxSSLApplicationBufferSizeRatio());
+		assertEquals(6, c.getMaxSSLNetworkBufferSizeRatio());
 
 	}
 }

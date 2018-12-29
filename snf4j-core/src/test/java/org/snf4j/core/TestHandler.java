@@ -26,11 +26,13 @@
 package org.snf4j.core;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
-import org.snf4j.core.allocator.DefaultAllocator;
+import javax.net.ssl.SSLEngine;
+
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractStreamHandler;
@@ -45,13 +47,15 @@ public class TestHandler extends AbstractStreamHandler {
 	
 	Boolean exceptionResult;
 	
-	List<ByteBuffer> released = new ArrayList<ByteBuffer>();
+	SSLEngine engine;
 	
-	IByteBufferAllocator allocator = new DefaultAllocator(false) {
-		public void release(ByteBuffer buffer) {
-			released.add(buffer);
-		}
-	};
+	int toReadBytes;
+	
+	int maxAppBufRatio = 1;
+	
+	int maxNetBufRatio = 1;
+	
+	volatile TestAllocator allocator = new TestAllocator(false, true);
 	
 	ISessionStructureFactory factory = new DefaultSessionStructureFactory() {
 		@Override
@@ -65,12 +69,12 @@ public class TestHandler extends AbstractStreamHandler {
 	}
 
 	public List<ByteBuffer> getReleasedBuffers() {
-		return released;
+		return allocator.getReleased();
 	}
 	
 	@Override
 	public int toRead(ByteBuffer buffer, boolean flipped) {
-		return 0;
+		return toReadBytes;
 	}
 
 	@Override
@@ -79,16 +83,23 @@ public class TestHandler extends AbstractStreamHandler {
 
 	@Override
 	public int toRead(byte[] buffer, int off, int len) {
-		return 0;
+		return toReadBytes;
 	}
 
 	@Override
 	public ISessionConfig getConfig() {
-		DefaultSessionConfig config = new DefaultSessionConfig();
+		DefaultSessionConfig config = new DefaultSessionConfig() {
+			@Override
+			public SSLEngine createSSLEngine() throws NoSuchAlgorithmException {
+				return engine;
+			}
+		};
 		
 		config.setMinInBufferCapacity(1024);
 		config.setMinOutBufferCapacity(1024);
 		config.setThroughputCalculationInterval(1000);
+		config.setMaxSSLApplicationBufferSizeRatio(maxAppBufRatio);
+		config.setMaxSSLNetworkBufferSizeRatio(maxNetBufRatio);
 		return config;
 	}
 	
