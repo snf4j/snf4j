@@ -44,6 +44,7 @@ import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
@@ -1076,7 +1077,6 @@ public class DatagramSessionTest {
 		session.write(data);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
-		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|$ECHO(567)|DS|", s.getRecordedData(true));
 		data = new Packet(PacketType.ECHO, "5").toBytes(0, 0);
 		session.writenf(data);
@@ -1326,4 +1326,136 @@ public class DatagramSessionTest {
 		s.stop(TIMEOUT);
 	}
 
+	@Test
+	public void testReleaseOfAllocatedBuffers() throws Exception {
+		TestDatagramHandler handler = new TestDatagramHandler();
+		TestAllocator allocator = new TestAllocator(false, true);
+		handler.allocator = allocator;
+		InetSocketAddress address = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT);
+		
+		assertEquals(0, allocator.getSize());
+		DatagramSession session = new DatagramSession(handler);
+		assertEquals(0, allocator.getSize());
+		try {
+			session.send(address, new byte[10]);
+			fail("Exception not thrown");
+		}
+		catch (IllegalSessionStateException e) {}
+
+		//start and stop, releasing
+		c = new DatagramHandler(PORT);
+		allocator = new TestAllocator(false, true);
+		c.allocator = allocator;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals(1, allocator.getSize());
+		assertEquals(1, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals(0, allocator.getSize());
+		assertEquals(1, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getReleasedCount());
+		
+		//writing, releasing
+		c = new DatagramHandler(PORT);
+		allocator = new TestAllocator(false, true);
+		c.allocator = allocator;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().suspendWrite();
+		c.getSession().send(address, new Packet(PacketType.ECHO, "33").toBytes());
+		assertEquals(2, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.getSession().resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		assertEquals(1, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getReleasedCount());
+		c.stop(TIMEOUT);
+		assertEquals(0, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(2, allocator.getReleasedCount());
+
+		//write suspended, releasing
+		c = new DatagramHandler(PORT);
+		allocator = new TestAllocator(false, true);
+		c.allocator = allocator;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().suspendWrite();
+		c.getSession().send(address, new Packet(PacketType.ECHO, "33").toBytes());
+		assertEquals(2, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.getSession().quickClose();
+		c.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		assertEquals(0, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(2, allocator.getReleasedCount());
+
+		//write, no releasing
+		c = new DatagramHandler(PORT);
+		allocator = new TestAllocator(false, false);
+		c.allocator = allocator;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().suspendWrite();
+		byte[] data = new Packet(PacketType.ECHO, "33").toBytes();
+		c.getSession().send(address, data);
+		assertEquals(2, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.getSession().resumeWrite();
+		c.waitForDataSent(TIMEOUT);
+		assertEquals(1, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getReleasedCount());
+		c.stop(TIMEOUT);
+		assertEquals(1, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getReleasedCount());
+		assertEquals(data.length, allocator.getReleased().get(0).capacity());
+		
+		//write suspended, not releasing
+		c = new DatagramHandler(PORT);
+		allocator = new TestAllocator(false, false);
+		c.allocator = allocator;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().suspendWrite();
+		c.getSession().send(address, new Packet(PacketType.ECHO, "33").toBytes());
+		assertEquals(2, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.getSession().quickClose();
+		c.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		assertEquals(2, allocator.getSize());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		
+		//write suspended, releasing, can own passed data
+		c = new DatagramHandler(PORT);
+		c.canOwnPasseData = true;
+		allocator = new TestAllocator(false, true);
+		c.allocator = allocator;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().suspendWrite();
+		c.getSession().send(address, new Packet(PacketType.ECHO, "33").toBytes());
+		assertEquals(1, allocator.getSize());
+		assertEquals(1, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
+		c.getSession().quickClose();
+		c.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		assertEquals(0, allocator.getSize());
+		assertEquals(1, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getReleasedCount());
+		
+	}
+	
 }

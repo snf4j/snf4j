@@ -692,6 +692,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			}
 			else {
 				session.abortFutures(cause);
+
 			}
 		}
 		else {
@@ -819,8 +820,12 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		reg.channel = channel;
 		reg.ops = ops;
 		reg.attachment = attachment;
-		if (attachment instanceof ISession) {
-			reg.future = new RegisterFuture<Void>((ISession)attachment);
+		if (attachment instanceof InternalSession) {
+			InternalSession session = (InternalSession)attachment; 
+			if (session.isCreated()) {
+				throw new IllegalArgumentException("session cannot be reused");
+			}
+			reg.future = new RegisterFuture<Void>(session);
 		}
 		else {
 			reg.future = new RegisterFuture<Void>(null);
@@ -930,12 +935,14 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	final void fireCreatedEvent(final InternalSession session, SelectableChannel channel) {
 		session.setChannel(channel);
 		session.setLoop(this);
+		session.preCreated();
 		fireEvent(session, SessionEvent.CREATED);
 	}
 	
 	final void fireEndingEvent(final InternalSession session, boolean skipCloseWhenEmpty) {
 		fireEvent(session, SessionEvent.ENDING);
-
+		session.postEnding();
+		
 		switch (session.getConfig().getEndingAction()) {
 		case STOP:
 			stop();

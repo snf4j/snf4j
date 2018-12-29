@@ -25,6 +25,11 @@
  */
 package org.snf4j.core.session;
 
+import java.security.NoSuchAlgorithmException;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+
 import org.snf4j.core.EndingAction;
 
 /**
@@ -55,6 +60,10 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * loop after ending of the associated session. */
 	private EndingAction endingAction = EndingAction.DEFAULT;
 
+	private int maxSSLApplicationBufferSizeRatio = 1;
+	
+	private int maxSSLNetworkBufferSizeRatio = 1;
+	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
 	 * 
@@ -206,6 +215,65 @@ public class DefaultSessionConfig implements ISessionConfig {
 	@Override
 	public EndingAction getEndingAction() {
 		return endingAction;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it returns value returned by <code>SSLContext.getDefault().createSSLEngine()</code>
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public SSLEngine createSSLEngine() throws NoSuchAlgorithmException {
+		return SSLContext.getDefault().createSSLEngine();
+	}
+	
+	/**
+	 * Sets the ratio that is used to calculate the maximum size of the SSL
+	 * application buffers.
+	 * 
+	 * @param ratio
+	 *            the ratio
+	 * @return this session config object
+	 * @see #getMaxSSLApplicationBufferSizeRatio()
+	 */
+	public DefaultSessionConfig setMaxSSLApplicationBufferSizeRatio(int ratio) {
+		maxSSLApplicationBufferSizeRatio = ratio;
+		return this;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is 1
+	 */
+	@Override
+	public int getMaxSSLApplicationBufferSizeRatio() {
+		return maxSSLApplicationBufferSizeRatio;
+	}
+
+	/**
+	 * Sets the ratio that is used to calculate the maximum size of the SSL
+	 * network buffers.
+	 * 
+	 * @param ratio
+	 *            the ratio
+	 * @return this session config object
+	 * @see #getMaxSSLNetworkBufferSizeRatio()
+	 */
+	public DefaultSessionConfig setMaxSSLNetworkBufferSizeRatio(int ratio) {
+		maxSSLNetworkBufferSizeRatio = ratio;
+		return this;
+	}
+	
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is 1
+	 */
+	@Override
+	public int getMaxSSLNetworkBufferSizeRatio() {
+		return maxSSLNetworkBufferSizeRatio;
 	}
 
 }

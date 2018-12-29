@@ -82,8 +82,6 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		minInBufferCapacity = config.getMinInBufferCapacity();
 		maxInBufferCapacity = config.getMaxInBufferCapacity();
 		minOutBufferCapacity = config.getMinOutBufferCapacity();
-		inBuffer = allocator.allocate(minInBufferCapacity);
-		outBuffers = new ByteBuffer[] {allocator.allocate(minOutBufferCapacity)};
 	}
 
 	/**
@@ -365,6 +363,30 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		}
 	}
 	
+	@Override
+	void preCreated() {
+		inBuffer = allocator.allocate(minInBufferCapacity);
+		outBuffers = new ByteBuffer[] {allocator.allocate(minOutBufferCapacity)};
+	}
+	
+	@Override
+	void postEnding() {
+		if (allocator.isReleasable()) {
+			if (inBuffer != null) {
+				allocator.release(inBuffer);
+				inBuffer = null;
+			}
+			for (int i = 0; i < outBuffers.length; ++i) {
+				ByteBuffer buf = outBuffers[i];
+
+				if (buf != null) {
+					allocator.release(buf);
+					outBuffers[i] = null;
+				}
+			}
+		}
+	}
+	
 	/**
 	 * Gets the buffer into which received data should be written. 
 	 * @return buffer in the write mode (i.e. not flipped yet).
@@ -488,8 +510,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 				ByteBuffer[] newBuffers = new ByteBuffer[outBuffers.length - count];
 				System.arraycopy(outBuffers, count, newBuffers, 0, newBuffers.length);
 				lastIndex -= count;
-				for (--count; count >=0; --count) {
-					allocator.release(outBuffers[count]);
+				if (allocator.isReleasable()) {
+					for (--count; count >=0; --count) {
+						allocator.release(outBuffers[count]);
+					}
 				}
 				outBuffers = newBuffers;
 			}

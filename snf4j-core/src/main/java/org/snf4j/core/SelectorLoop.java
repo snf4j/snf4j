@@ -214,7 +214,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by the channel
 	 * @throws IllegalArgumentException
-	 *             if the session argument is <code>null</code>
+	 *             if the session argument is <code>null</code> or the session
+	 *             object is reused (was already registered with some selector 
+	 *             loop)
 	 */
 	public IFuture<Void> register(SocketChannel channel, StreamSession session) throws ClosedChannelException {
 		if (session == null) throw new IllegalArgumentException("session is null");
@@ -271,7 +273,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by the channel
 	 * @throws IllegalArgumentException
-	 *             if the session argument is <code>null</code>
+	 *             if the session argument is <code>null</code> or the session
+	 *             object is reused (was already registered with some selector 
+	 *             loop)
 	 */
 	public IFuture<Void> register(DatagramChannel channel, DatagramSession session) throws ClosedChannelException {
 		if (session == null) throw new IllegalArgumentException("session is null");
@@ -660,6 +664,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 					}
 					outQueue.poll();
 					totalBytes += bytes;
+					if (record.release) {
+						session.release(record.buffer);
+					}
 				}
 				else {
 					break;

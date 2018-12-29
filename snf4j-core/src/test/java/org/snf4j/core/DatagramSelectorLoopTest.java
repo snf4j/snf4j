@@ -377,6 +377,30 @@ public class DatagramSelectorLoopTest {
 	}
 	
 	@Test
+	public void testRegistrationOfUsedSession() throws Exception {
+		SelectorLoop loop = new SelectorLoop();
+
+		loop.start();
+		DatagramChannel channel = DatagramChannel.open();
+		channel.configureBlocking(false);
+		
+		DatagramSession session = new DatagramSession(new TestDatagramHandler());
+		session.setChannel(channel);
+		
+		try {
+			loop.register(channel, session);
+			fail("Exception not thrown");
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("session cannot be reused", e.getMessage());
+		}
+		
+		channel.close();
+		loop.stop();
+		loop.join(TIMEOUT);
+}
+	
+	@Test
 	public void testRegistrationWhileStopping() throws Exception {
 		DatagramHandler s = new DatagramHandler(PORT);
 
@@ -386,13 +410,6 @@ public class DatagramSelectorLoopTest {
 		s.stop(TIMEOUT);
 		assertEquals("",s.getRecordedData(true));
 		
-		s = new DatagramHandler(PORT);
-		s.setThreadFactory(new DelayedThreadFactory(100));
-		s.registerConnectedSession = true;
-		s.startServer();
-		s.stop(TIMEOUT);
-		assertEquals("SCR|SEN|",s.getRecordedData(true));
-
 		//register connected channel (session not created)
 		DatagramHandler c = new DatagramHandler(PORT);
 		c.setThreadFactory(new DelayedThreadFactory(100));
@@ -400,13 +417,6 @@ public class DatagramSelectorLoopTest {
 		c.stop(TIMEOUT);
 		assertEquals("",c.getRecordedData(true));
 
-		//register connected channel (session created)
-		c = new DatagramHandler(PORT);
-		c.setThreadFactory(new DelayedThreadFactory(100));
-		c.registerConnectedSession = true;
-		c.startClient();
-		c.stop(TIMEOUT);
-		assertEquals("SCR|SEN|",c.getRecordedData(true));
 	}
 	
 	@Test
@@ -415,7 +425,8 @@ public class DatagramSelectorLoopTest {
 		
 		s.startServer();
 		s.waitForSessionReady(TIMEOUT);
-		s.loop.register((DatagramChannel)s.getSession().channel, s.getSession());
+		DatagramSession session = new DatagramSession(new TestDatagramHandler());
+		s.loop.register((DatagramChannel)s.getSession().channel, session);
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, s.loop.getSize());
 		s.stop(TIMEOUT);

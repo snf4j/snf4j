@@ -59,6 +59,15 @@ public class DefaultAllocator implements IByteBufferAllocator {
 		return !direct;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * @return <code>false</code>
+	 */
+	@Override
+	public boolean isReleasable() {
+		return false;
+	}
+
 	@Override
 	public void release(ByteBuffer buffer) {
 	}

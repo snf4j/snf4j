@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.BlockingFutureOperationException;
@@ -60,6 +61,7 @@ public class Server {
 	public ISelectorLoopController controller;
 	public long throughputCalcInterval = 1000;
 	public boolean directAllocator;
+	public TestAllocator allocator;
 	public ISelectorLoopPool pool;
 	public volatile boolean exceptionResult;
 	public volatile EndingAction endingAction = EndingAction.DEFAULT;
@@ -264,7 +266,11 @@ public class Server {
 
 		@Override
 		public IByteBufferAllocator getAllocator() {
+			if (allocator != null) {
+				return allocator;
+			}
 			return directAllocator ? new DefaultAllocator(true) : DefaultAllocator.DEFAULT;
+			
 		}
 
 		@Override

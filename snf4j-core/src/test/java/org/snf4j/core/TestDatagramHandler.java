@@ -27,6 +27,11 @@ package org.snf4j.core;
 
 import java.net.SocketAddress;
 
+import org.snf4j.core.allocator.DefaultAllocator;
+import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractDatagramHandler;
 import org.snf4j.core.handler.SessionEvent;
 
@@ -35,11 +40,28 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 	public RuntimeException createException;
 	
 	StringBuilder sb = new StringBuilder();
+
+	volatile TestAllocator allocator;
 	
 	String getEventLog() {
 		String s = sb.toString();
 		sb.setLength(0);
 		return s;
+	}
+	
+	class StructureFactory extends DefaultSessionStructureFactory {
+		@Override
+		public IByteBufferAllocator getAllocator() {
+			if (allocator != null) {
+				return allocator;
+			}
+			return new DefaultAllocator(false);
+		}
+	}
+	
+	@Override
+	public ISessionStructureFactory getFactory() {
+		return new StructureFactory();
 	}
 	
 	@Override

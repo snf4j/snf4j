@@ -85,7 +85,6 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		maxInBufferCapacity = config.getMaxInBufferCapacity();
 		ignorePossiblyIncomplete = config.ignorePossiblyIncompleteDatagrams();
 		canOwnPassedData = config.canOwnDataPassedToWriteAndSendMethods();
-		inBuffer = allocator.allocate(minInBufferCapacity);
 	}
 
 	/**
@@ -431,6 +430,31 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			catch (IOException e) {
 			}
 		}
+	}
+	
+	@Override
+	void preCreated() {
+		inBuffer = allocator.allocate(minInBufferCapacity);
+	}
+	
+	@Override
+	void postEnding() {
+		if (allocator.isReleasable()) {
+			if (inBuffer != null) {
+				allocator.release(inBuffer);
+				inBuffer = null;
+			}
+			DatagramRecord record;
+			while ((record = outQueue.poll()) != null) {
+				if (record.release) {
+					allocator.release(record.buffer);
+				}
+			}
+		}
+	}
+	
+	final void release(ByteBuffer buffer) {
+		allocator.release(buffer);
 	}
 	
 	final Queue<DatagramRecord> getOutQueue() {
