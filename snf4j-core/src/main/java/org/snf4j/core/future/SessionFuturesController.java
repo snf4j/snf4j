@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -98,24 +98,25 @@ public class SessionFuturesController {
 		Throwable cause = this.cause.get();
 		
 		if (cause != null) {
+			eventFutures[event.ordinal()].failure(cause);
 			if (event == SessionEvent.ENDING) {
-				if (!eventFutures[OPENED_IDX].isDone()) {
-					eventFutures[OPENED_IDX].failure(cause);
-				}
-				if (!eventFutures[READY_IDX].isDone()) {
-					eventFutures[READY_IDX].failure(cause);
-				}
-				if (!eventFutures[CLOSED_IDX].isDone()) {
-					eventFutures[CLOSED_IDX].failure(cause);
+				for (EventFuture<Void> future: eventFutures) {
+					if (!future.isDone()) {
+						future.failure(cause);
+					}
 				}
 			}
-			eventFutures[event.ordinal()].failure(cause);
 		}
 		else {
+			eventFutures[event.ordinal()].success();
 			if (event == SessionEvent.ENDING) {
+				for (EventFuture<Void> future: eventFutures) {
+					if (!future.isDone()) {
+						future.cancel();
+					}
+				}
 				sentFuture.cancel();
 			}
-			eventFutures[event.ordinal()].success();
 		}
 	}
 

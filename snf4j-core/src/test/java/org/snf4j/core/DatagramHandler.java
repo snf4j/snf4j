@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -409,9 +409,8 @@ public class DatagramHandler {
 		}
 
 		@Override
-		public boolean exception(Throwable t) {
+		public void exception(Throwable t) {
 			event(EventType.EXCEPTION_CAUGHT);
-			return false;
 		}
 
 	}

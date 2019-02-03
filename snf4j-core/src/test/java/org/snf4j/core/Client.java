@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,6 @@
  */
 package org.snf4j.core;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -50,13 +49,22 @@ public class Client extends Server {
 		super(port);
 	}
 
-	public StreamSession createSession() {
-		initSession = new StreamSession(new Handler());
+	public Client(int port, boolean ssl) {
+		super(port, ssl);
+	}
+
+	public StreamSession createSession() throws Exception {
+		if (ssl) {
+			initSession = new SSLSession(new Handler(), true);
+		}
+		else {
+			initSession = new StreamSession(new Handler());
+		}
 		return initSession;
 	}
 	
 	@Override
-	public void start(boolean firstRegistrate, SelectorLoop loop) throws IOException {
+	public void start(boolean firstRegistrate, SelectorLoop loop) throws Exception {
 		if (loop == null) {
 			this.loop = new SelectorLoop();
 			loop = this.loop;
@@ -87,7 +95,12 @@ public class Client extends Server {
 		}
 		
 		if (registerConnectedSession) {
-			session = new StreamSession(new Handler());
+			if (ssl) {
+				session = new SSLSession(new Handler(), true);
+			}
+			else {
+				session = new StreamSession(new Handler());
+			}
 			session.setChannel(sc);
 			session.preCreated();
 			session.event(SessionEvent.CREATED);
@@ -95,7 +108,12 @@ public class Client extends Server {
 		}
 		else {
 			if (initSession == null) {
-				loop.register(sc, new Handler());
+				if (ssl) {
+					loop.register(sc, new SSLSession(new Handler(), true));
+				}
+				else {
+					loop.register(sc, new Handler());
+				}
 			}
 			else {
 				loop.register(sc, initSession);

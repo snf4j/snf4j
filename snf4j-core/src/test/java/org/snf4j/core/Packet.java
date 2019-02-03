@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,14 +45,19 @@ public class Packet {
 			if (expected <= len) {
 				return expected;
 			}
+			if (typeFromBytes(buffer).big()) {
+				return -expected;
+			}
 		}
 		return 0;
 	}
 	
+	static PacketType typeFromBytes(byte[] data) {
+		return PacketType.values()[data[2]];
+	}
+	
 	static Packet fromBytes(byte[] data) {
-		byte t = data[2];
-		
-		return new Packet(PacketType.values()[t], new String(data, 3, data.length - 3));
+		return new Packet(typeFromBytes(data), new String(data, 3, data.length - 3));
 	}
 	
 	public byte[] toBytes() {

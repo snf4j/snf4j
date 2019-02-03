@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,8 +24,6 @@
  * -----------------------------------------------------------------------------
  */
 package org.snf4j.core.session;
-
-import java.security.NoSuchAlgorithmException;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -210,7 +208,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The default value is {@link org.snf4j.core.EndingAction#DEFAULT DEFAUL}
+	 * The default value is {@link org.snf4j.core.EndingAction#DEFAULT DEFAULT}
 	 */
 	@Override
 	public EndingAction getEndingAction() {
@@ -221,10 +219,11 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * {@inheritDoc}
 	 * <p>
 	 * By default it returns value returned by <code>SSLContext.getDefault().createSSLEngine()</code>
-	 * @throws NoSuchAlgorithmException 
 	 */
-	public SSLEngine createSSLEngine() throws NoSuchAlgorithmException {
-		return SSLContext.getDefault().createSSLEngine();
+	public SSLEngine createSSLEngine(boolean clientMode) throws Exception {
+		SSLEngine engine = SSLContext.getDefault().createSSLEngine();
+		engine.setUseClientMode(clientMode);
+		return engine;
 	}
 	
 	/**

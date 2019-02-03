@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -84,7 +84,11 @@ public abstract class AbstractHandler implements IHandler {
 	}
 
 	@Override
-	public boolean exception(Throwable t) {
+	public void exception(Throwable t) {
+	}
+
+	@Override
+	public boolean incident(SessionIncident incident, Throwable t) {
 		return false;
 	}
 	

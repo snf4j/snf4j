@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,39 +23,17 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.handler;
 
-public enum PacketType {
-	ECHO,
-	ECHO_RESPONSE,
-	GET_THREAD,
-	GET_THREAD_RESPONSE,
-	NOP,
-	CLOSE,
-	QUICK_CLOSE,
-	WRITE_AND_CLOSE,
-	WRITE_AND_CLOSE_RESPONSE,
-	WRITE_AND_QUICK_CLOSE,
-	WRITE_AND_WAIT,
-	WRITE_AND_WAIT_RESPONSE,
-	SUSPEND_WRITE_CLOSE,
-	IN_LOOP,
-	IN_LOOP_RESPONSE,
-	DEADLOCK,
-	DEADLOCK_RESPONSE,
-	BIG_NOP(true);
-	
-	private final boolean big;
-	
-	PacketType() {
-		big = false;
-	}
+/**
+ * An <code>enum</code> that represents session incidents that may occur during processing
+ * of SSL or IO operations.
+ */
+public enum SessionIncident {
 
-	PacketType(boolean big) {
-		this.big = big;
-	}
-	
-	boolean big() {
-		return big;
-	}
+	/**
+	 * SSL/TLS connection closed by peer without sending close_notify. It may
+	 * indicate a possibility of an truncation attack.
+	 */
+	SSL_CLOSED_WITHOUT_CLOSE_NOTIFY
 }

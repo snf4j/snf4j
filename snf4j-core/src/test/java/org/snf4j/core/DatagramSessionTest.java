@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1144,9 +1144,9 @@ public class DatagramSessionTest {
 
 		byte[] data = new Packet(PacketType.ECHO, "567").toBytes(0, 0);
 		session.send(addr, data);
-		c.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
-		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DS|DR|$ECHO_RESPONSE(567)|", c.getRecordedData(true));
 		assertEquals("DR|$ECHO(567)|DS|", s.getRecordedData(true));
 		data = new Packet(PacketType.ECHO, "5").toBytes(0, 0);
 		session.sendnf(addr, data);

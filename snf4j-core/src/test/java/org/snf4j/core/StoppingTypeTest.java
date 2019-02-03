@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,37 +25,24 @@
  */
 package org.snf4j.core;
 
-public enum PacketType {
-	ECHO,
-	ECHO_RESPONSE,
-	GET_THREAD,
-	GET_THREAD_RESPONSE,
-	NOP,
-	CLOSE,
-	QUICK_CLOSE,
-	WRITE_AND_CLOSE,
-	WRITE_AND_CLOSE_RESPONSE,
-	WRITE_AND_QUICK_CLOSE,
-	WRITE_AND_WAIT,
-	WRITE_AND_WAIT_RESPONSE,
-	SUSPEND_WRITE_CLOSE,
-	IN_LOOP,
-	IN_LOOP_RESPONSE,
-	DEADLOCK,
-	DEADLOCK_RESPONSE,
-	BIG_NOP(true);
-	
-	private final boolean big;
-	
-	PacketType() {
-		big = false;
-	}
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
-	PacketType(boolean big) {
-		this.big = big;
+public class StoppingTypeTest {
+	
+	private void assertArray(StoppingType[] expect, StoppingType[] value) {
+		assertEquals(expect.length, value.length);
+		
+		for (int i=0; i<value.length; ++i) {
+			assertTrue(expect[i] == value[i]);
+		}
 	}
 	
-	boolean big() {
-		return big;
+	@Test
+	public void testExpect() {
+		assertArray(new StoppingType[] {null}, StoppingType.GENTLE.expect());
+		assertArray(new StoppingType[] {null, StoppingType.GENTLE}, StoppingType.QUICK.expect());
+		assertArray(new StoppingType[] {null, StoppingType.GENTLE, StoppingType.QUICK}, StoppingType.DIRTY.expect());
 	}
 }

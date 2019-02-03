@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -188,9 +188,119 @@ public class SessionFuturesControllerTest {
 		sf.event(SessionEvent.OPENED);
 		assertFailed(f, cause);
 	}
+
+	@Test
+	public void testSessionEventPropagationWhenEnding() {
+		sf = new SessionFuturesController(null);
+		
+		IFuture<Void> cr = sf.getCreateFuture();
+		IFuture<Void> op = sf.getOpenFuture();
+		IFuture<Void> rd = sf.getReadyFuture();
+		IFuture<Void> cl = sf.getCloseFuture();
+		IFuture<Void> en = sf.getEndFuture();
+		IFuture<Void> wr = sf.getWriteFuture(100);
+
+		sf.event(SessionEvent.CREATED);
+		assertSuccessful(cr);
+		assertNotDone(op);
+		assertNotDone(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(cr);
+		assertCanceled(op);
+		assertCanceled(rd);
+		assertCanceled(cl);
+		assertSuccessful(en);
+		assertCanceled(wr);
+
+		sf = new SessionFuturesController(null);
+		
+		cr = sf.getCreateFuture();
+		op = sf.getOpenFuture();
+		rd = sf.getReadyFuture();
+		cl = sf.getCloseFuture();
+		en = sf.getEndFuture();
+		wr = sf.getWriteFuture(100);		
+
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertNotDone(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertCanceled(rd);
+		assertCanceled(cl);
+		assertSuccessful(en);
+		assertCanceled(wr);
+
+		sf = new SessionFuturesController(null);
+		
+		cr = sf.getCreateFuture();
+		op = sf.getOpenFuture();
+		rd = sf.getReadyFuture();
+		cl = sf.getCloseFuture();
+		en = sf.getEndFuture();
+		wr = sf.getWriteFuture(100);		
+
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		sf.event(SessionEvent.READY);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertNotDone(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertCanceled(cl);
+		assertSuccessful(en);
+		assertCanceled(wr);
+
+		sf = new SessionFuturesController(null);
+		
+		cr = sf.getCreateFuture();
+		op = sf.getOpenFuture();
+		rd = sf.getReadyFuture();
+		cl = sf.getCloseFuture();
+		en = sf.getEndFuture();
+		wr = sf.getWriteFuture(100);		
+
+		sf.event(SessionEvent.CREATED);
+		sf.event(SessionEvent.OPENED);
+		sf.event(SessionEvent.READY);
+		sf.event(SessionEvent.CLOSED);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertSuccessful(cl);
+		assertNotDone(en);
+		assertNotDone(wr);
+
+		sf.event(SessionEvent.ENDING);
+		assertSuccessful(cr);
+		assertSuccessful(op);
+		assertSuccessful(rd);
+		assertSuccessful(cl);
+		assertSuccessful(en);
+		assertCanceled(wr);
+		
+	}	
 	
 	@Test
-	public void testSessionEventPropagation() {
+	public void testSessionEventPropagationWhenException() {
 		Exception cause = new Exception();
 		sf = new SessionFuturesController(null);
 		

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -94,12 +94,18 @@ public interface ISession {
 	void close();
 	
 	/**
-	 * Quickly closes this session without flushing any pending data waiting for writing. This operation is
+	 * Quickly closes this session without flushing any pending data. This operation is
 	 * asynchronous.
 	 * <p>
 	 * After returning from this method any consecutive writes will be simply discarded.
 	 */
 	void quickClose();
+	
+	/**
+	 * Quickly closes this session without flushing any pending data and without following 
+	 * close procedure of an application layer (e.g. SSL/TLS).
+	 */
+	void dirtyClose();
 	
 	/**
 	 * Returns the thread safe map of the user-defined attributes associated with this session.

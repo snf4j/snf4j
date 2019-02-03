@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,6 @@
 package org.snf4j.core.handler;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -47,7 +46,7 @@ public class AbstractHandlerTest {
 		assertEquals("HandlerName", h2.getName());
 		assertNull(h.getName());
 		assertNull(h.getSession());
-		assertFalse(h.exception(null));
+		h.exception(null);
 		assertTrue(DefaultSessionStructureFactory.DEFAULT == h.getFactory());
 		assertTrue(h.getConfig() instanceof DefaultSessionConfig);
 		assertTrue(h.getConfig() == h.getConfig());

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,17 +25,24 @@
  */
 package org.snf4j.core;
 
-import java.io.IOException;
+import java.io.File;
+import java.io.FileInputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.security.KeyStore;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -47,6 +54,7 @@ import org.snf4j.core.handler.AbstractStreamHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.pool.ISelectorLoopPool;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
@@ -55,6 +63,7 @@ public class Server {
 	
 	public SelectorLoop loop;
 	public int port;
+	public boolean ssl;
 	public StreamSession session;
 	public StreamSession initSession;
 	public ThreadFactory threadFactory;
@@ -63,13 +72,16 @@ public class Server {
 	public boolean directAllocator;
 	public TestAllocator allocator;
 	public ISelectorLoopPool pool;
-	public volatile boolean exceptionResult;
 	public volatile EndingAction endingAction = EndingAction.DEFAULT;
 	public volatile StringBuilder serverSocketLogs = new StringBuilder();
 	public volatile ServerSocketChannel ssc;
 	public volatile ServerSocketChannel registeredSsc;
 	public volatile ServerSocketChannel closedSsc;
- 
+
+	public volatile int minInBufferCapacity = 1024;
+	public volatile int minOutBufferCapacity = 1024;
+	
+	public volatile boolean incident;
 	public volatile boolean throwInRead;
 	public volatile boolean throwInException;
 	public volatile boolean throwInEvent;
@@ -86,6 +98,8 @@ public class Server {
 	StringBuilder recorder = new StringBuilder();
 	
 	static Map<EventType, String> eventMapping = new HashMap<EventType, String>();
+
+	static volatile SSLContext sslContext = null; 
 	
 	static {
 		eventMapping.put(EventType.SESSION_CREATED, "SCR");
@@ -98,8 +112,40 @@ public class Server {
 		eventMapping.put(EventType.EXCEPTION_CAUGHT, "EXC");
 	}
 	
+	public SSLContext getSSLContext() throws Exception {
+		if (sslContext == null) {
+			synchronized (Server.class) {
+				if (sslContext == null) {
+					KeyStore ks = KeyStore.getInstance("JKS");
+					KeyStore ts = KeyStore.getInstance("JKS");
+					char[] password = "password".toCharArray();
+
+					File file = new File(getClass().getClassLoader().getResource("keystore.jks").getFile());
+
+					ks.load(new FileInputStream(file), password);
+					ts.load(new FileInputStream(file), password);
+
+					KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+					kmf.init(ks, password);
+					TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+					tmf.init(ts);
+
+					SSLContext ctx = SSLContext.getInstance("TLS");
+					ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+					sslContext = ctx;
+				}
+			}
+		}
+		return sslContext;
+	}
+	
 	public Server(int port) {
 		this.port = port;
+	}
+
+	public Server(int port, boolean ssl) {
+		this.port = port;
+		this.ssl = ssl;
 	}
 	
 	public String getServerSocketLogs() {
@@ -139,15 +185,15 @@ public class Server {
 		return s;
 	}
 	
-	public void start() throws IOException {
+	public void start() throws Exception {
 		start(false, null);
 	}
 	
-	public void start(boolean firstRegistrate) throws IOException {
+	public void start(boolean firstRegistrate) throws Exception {
 		start(firstRegistrate, null);
 	}
 	
-	public void start(boolean firstRegistrate, SelectorLoop loop) throws IOException {
+	public void start(boolean firstRegistrate, SelectorLoop loop) throws Exception {
 		if (loop == null) {
 			this.loop = new SelectorLoop();
 			loop = this.loop;
@@ -185,6 +231,14 @@ public class Server {
 	
 	public void quickStop(long millis) throws InterruptedException {
 		loop.quickStop();
+		loop.join(millis);
+		if (loop.thread != null) {
+			throw new InterruptedException();
+		}
+	}
+
+	public void dirtyStop(long millis) throws InterruptedException {
+		loop.dirtyStop();
 		loop.join(millis);
 		if (loop.thread != null) {
 			throw new InterruptedException();
@@ -247,6 +301,14 @@ public class Server {
 		public IStreamHandler createHandler(SocketChannel channel) {
 			return new Handler();
 		}
+
+		@Override
+		public StreamSession create(SocketChannel channel) throws Exception {
+			if (ssl) {
+				return new SSLSession(createHandler(channel), false);
+			}
+			return new StreamSession(createHandler(channel));
+		}
 		
 		@Override
 		public void registered(ServerSocketChannel channel) {
@@ -288,12 +350,24 @@ public class Server {
 		
 		@Override
 		public ISessionConfig getConfig() {
-			DefaultSessionConfig config = new DefaultSessionConfig();
+			DefaultSessionConfig config = new DefaultSessionConfig() {
+				@Override
+				public SSLEngine createSSLEngine(boolean clientMode) throws Exception {
+					SSLEngine engine = getSSLContext().createSSLEngine();
+					engine.setUseClientMode(clientMode);
+					if (!clientMode) {
+						engine.setNeedClientAuth(true);
+					}
+					return new TestSSLEngine(engine);
+				}
+			};
 			
-			config.setMinInBufferCapacity(1024);
-			config.setMinOutBufferCapacity(1024);
+			config.setMinInBufferCapacity(minInBufferCapacity);
+			config.setMinOutBufferCapacity(minOutBufferCapacity);
 			config.setThroughputCalculationInterval(throughputCalcInterval);
 			config.setEndingAction(endingAction);
+			config.setMaxSSLApplicationBufferSizeRatio(1);
+			config.setMaxSSLNetworkBufferSizeRatio(1);
 			return config;
 		}
 
@@ -315,20 +389,65 @@ public class Server {
 			byte[] d = new byte[dupBuffer.remaining()];
 			
 			dupBuffer.get(d);
-			return Packet.toRead(d, 0, d.length);
+			return toRead0(d, 0, d.length);
 		}
 
 		@Override
 		public int toRead(byte[] buffer, int off, int len) {
 			if (directAllocator) throw new IllegalStateException();
-			return Packet.toRead(buffer, off, len);
+			return toRead0(buffer, off, len);
 		}
 
+		ByteBuffer bigPacket;
+
+		int toRead0(byte[] buffer, int off, int len) {
+			if (bigPacket == null) {
+				int read = Packet.toRead(buffer, off, len);
+				
+				if (read < 0) {
+					read = -read;
+					bigPacket = ByteBuffer.allocate(read);
+					return len;
+				}
+				return read;
+			}
+			else {
+				if (len <= bigPacket.remaining()) {
+					return len;
+				}
+				else {
+					return bigPacket.remaining();
+				}
+			}
+		}
+		
 		@Override
 		public void read(byte[] data) {
-			Packet packet = Packet.fromBytes(data);
+			Packet packet;
 			
-			record(packet.type+"("+packet.payload+")");
+			if (bigPacket != null) {
+				bigPacket.put(data);
+				if (!bigPacket.hasRemaining()) {
+					data = new byte[bigPacket.position()];
+					bigPacket.flip();
+					bigPacket.get(data);
+					bigPacket = null;
+					packet = Packet.fromBytes(data);
+				}
+				else {
+					return;
+				}
+			}
+			else {
+				packet = Packet.fromBytes(data);
+			}
+			
+			if (packet.type == PacketType.BIG_NOP) {
+				record(packet.type+"("+packet.payload.length()+")");
+			}
+			else {
+				record(packet.type+"("+packet.payload+")");
+			}
 			
 			switch (packet.type) {
 			case ECHO:
@@ -460,13 +579,18 @@ public class Server {
 		}
 
 		@Override
-		public boolean exception(Throwable t) {
+		public void exception(Throwable t) {
 			event(EventType.EXCEPTION_CAUGHT);
 			if (Server.this.throwInException) {
 				Server.this.throwInExceptionCount.incrementAndGet();
 				throw new IllegalArgumentException();
 			}
-			return exceptionResult;
+		}
+		
+		@Override
+		public boolean incident(SessionIncident incident, Throwable t) {
+			record(incident.toString());
+			return Server.this.incident;
 		}
 		
 	}

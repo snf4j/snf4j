@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,6 @@
 package org.snf4j.core;
 
 import java.nio.ByteBuffer;
-import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 import javax.net.ssl.SSLEngine;
@@ -44,8 +43,6 @@ import org.snf4j.core.session.ISessionConfig;
 public class TestHandler extends AbstractStreamHandler {
 	
 	StringBuilder events;
-	
-	Boolean exceptionResult;
 	
 	SSLEngine engine;
 	
@@ -90,7 +87,7 @@ public class TestHandler extends AbstractStreamHandler {
 	public ISessionConfig getConfig() {
 		DefaultSessionConfig config = new DefaultSessionConfig() {
 			@Override
-			public SSLEngine createSSLEngine() throws NoSuchAlgorithmException {
+			public SSLEngine createSSLEngine(boolean clientMode) throws Exception {
 				return engine;
 			}
 		};
@@ -122,12 +119,12 @@ public class TestHandler extends AbstractStreamHandler {
 	}
 
 	@Override
-	public boolean exception(Throwable t) {
+	public void exception(Throwable t) {
 		if (events != null) {
 			events.append(EventType.EXCEPTION_CAUGHT);
 			events.append('|');
 		}
-		return exceptionResult == null ? super.exception(t) : exceptionResult;
+		super.exception(t);
 	}
 	
 	public String getEvents() {

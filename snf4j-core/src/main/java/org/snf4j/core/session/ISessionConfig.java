@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -131,9 +131,14 @@ public interface ISessionConfig {
 	/**
 	 * Creates a new SSLEngine for SSL session.
 	 * 
+	 * @param clientMode
+	 *            <code>true</code> if the engine should start its handshaking
+	 *            in client mode
 	 * @return the SSLEngine object
+	 * @throws Exception
+	 *             when a SSL engine could not be created
 	 */
-	SSLEngine createSSLEngine() throws Exception;
+	SSLEngine createSSLEngine(boolean clientMode) throws Exception;
 	
 	/**
 	 * Gets the ratio that is used to calculate the maximum size of the SSL
