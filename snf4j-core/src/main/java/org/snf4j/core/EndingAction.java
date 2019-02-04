@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,11 @@ public enum EndingAction {
 	 * The selector loop is quickly stopped.  
 	 */
 	QUICK_STOP,
+
+	/**
+	 * The selector loop is quickly stopped in a dirty way.  
+	 */
+	DIRTY_STOP,
 	
 	/**
 	 * The selector loop will be stopped once all its other sessions are closed.  

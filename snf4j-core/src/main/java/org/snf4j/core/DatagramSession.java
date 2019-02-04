@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -399,6 +399,11 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		}
 	}	
 
+	@Override
+	public void dirtyClose() {
+		quickClose();
+	}
+	
 	/**
 	 * This method must be protected by the write lock. 
 	 */
@@ -410,7 +415,13 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	void event(SessionEvent event) {
 		super.event(event);
 		if (event == SessionEvent.OPENED) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Firing event {} for {}", EventType.SESSION_READY, this);
+			}
 			super.event(SessionEvent.READY);
+			if (logger.isTraceEnabled()) {
+				logger.trace("Ending event {} for {}", EventType.SESSION_READY, this);
+			}
 		}
 	}
 	

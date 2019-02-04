@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,8 +49,10 @@ public interface IStreamSessionFactory {
 	 *            the socket channel associated with the accepted connection.
 	 * @return a stream-oriented session that will be associated with the
 	 *         accepted connection
+	 * @throws Exception
+	 *             when a stream-oriented session could not be created
 	 */
-	StreamSession create(SocketChannel channel);
+	StreamSession create(SocketChannel channel) throws Exception;
 	
 	/**
 	 * Notifies about registration of an listening channel. Once it is called

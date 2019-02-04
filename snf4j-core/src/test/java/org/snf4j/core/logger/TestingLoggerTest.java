@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.PrintStream;
+import java.lang.reflect.Field;
 
 import org.junit.After;
 import org.junit.Before;
@@ -59,9 +60,18 @@ public class TestingLoggerTest {
 		assertEquals(expectedMsg, msg.substring(i+s1.length()));
 	}
 
+	private void assertLog(String expectedMsg, String msg) {
+		msg = msg.replace("\n", "").replace("\r", "");
+		assertEquals(expectedMsg, msg);
+	}
+
 	@Test
-	public void testLog() {
+	public void testLog() throws Exception {
 		ILogger l = new TestingLogger(this.getClass().getName());
+		
+		Field f = l.getClass().getDeclaredField("skipLogging");
+		f.setAccessible(true);
+		f.set(l, false);
 		
 		TestPrintStream s = TestPrintStream.getInstance();
 
@@ -117,5 +127,29 @@ public class TestingLoggerTest {
 		assertLog(level, "Message {} {} [1] [2]", s.getString());
 		l.error("Message {} {} {}", 1, null, 3);
 		assertLog(level, "Message {} {} {} [1] [null] [3]", s.getString());
+
+		f.set(l, true);
+		l.error("Message");
+		assertEquals("", s.getString());
+		l.error("Message {}", 1);
+		assertEquals("", s.getString());
+		l.error("Message {} {}", 1, 2);
+		assertEquals("", s.getString());
+		l.error("Message {} {} {}", 1, null, 3);
+		assertEquals("", s.getString());
+
+		l.error("Message {}");
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {}]", s.getString());
+		l.error("Message {}", 1, 2);
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {}]", s.getString());
+		l.error("Message {} {}", 1);
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {} {}]", s.getString());
+		l.error("Message {} {}", 1, 2, 3);
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {} {}]", s.getString());
+		l.error("Message {} {} {}", 1, 2);
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {} {} {}]", s.getString());
+		l.error("Message {} {} {}", 1, 2, 3, 4);
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {} {} {}]", s.getString());
+		
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -94,17 +94,29 @@ public interface IHandler {
 	void event(DataEvent event, long length);
 	
 	/**
-	 * Called to notify about an exception caught during processing the I/O
-	 * operations. This method can, by the returned value, inform the caller not
-	 * to close the associated session what is the default action after catching
-	 * an exception.
+	 * Called to notify about an exception caught during processing of I/O or SSL
+	 * operations. After returning form this method the associated session will 
+	 * be quickly closed. 
 	 * 
 	 * @param t
 	 *            the exception caught
-	 * @return <code>true</code> to inform the caller not to perform the default
-	 *         action.
 	 */
-	boolean exception(Throwable t);
+	void exception(Throwable t);
+	
+	/**
+	 * Called to notify about an incident that occurred during processing of I/O
+	 * or SSL operations.
+	 * 
+	 * @param incident
+	 *            an incident that occurred
+	 * 
+	 * @param t
+	 *            an exception that is related with the incident or
+	 *            <code>null</code>
+	 * @return <code>true</code> to indicate that the incident was handled and
+	 *         no warning should be logged by the framework underneath.
+	 */
+	boolean incident(SessionIncident incident, Throwable t);
 	
 	/**
 	 * Returns the factory object that will be used to configure the internal

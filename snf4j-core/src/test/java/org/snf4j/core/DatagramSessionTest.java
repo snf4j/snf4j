@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -588,6 +588,24 @@ public class DatagramSessionTest {
 		s.stop(TIMEOUT); c.stop(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("", s.getRecordedData(true));
+
+		//dirty close outside the loop
+		s = new DatagramHandler(PORT); s.startServer();
+		c = new DatagramHandler(PORT); c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.getSession().dirtyClose();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		c.getSession().dirtyClose();
+		waitFor(500);
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		s.stop(TIMEOUT); c.stop(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals("", c.getRecordedData(true));
 		
 	}
 	
@@ -1144,9 +1162,9 @@ public class DatagramSessionTest {
 
 		byte[] data = new Packet(PacketType.ECHO, "567").toBytes(0, 0);
 		session.send(addr, data);
-		c.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
-		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DS|DR|$ECHO_RESPONSE(567)|", c.getRecordedData(true));
 		assertEquals("DR|$ECHO(567)|DS|", s.getRecordedData(true));
 		data = new Packet(PacketType.ECHO, "5").toBytes(0, 0);
 		session.sendnf(addr, data);

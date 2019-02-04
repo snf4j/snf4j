@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -642,24 +642,43 @@ public class SessionTest {
 		c.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(1234)|", c.getRecordedData(true));
+		session.writenf(new Packet(PacketType.ECHO, "12").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(12)|", c.getRecordedData(true));
 		
 		byte[] data = new Packet(PacketType.ECHO, "567").toBytes(0, 4);
 		session.write(data, 0, data.length-4);
 		c.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(567)|", c.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "67").toBytes(0, 4);
+		session.writenf(data, 0, data.length-4);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(67)|", c.getRecordedData(true));
 
 		data = new Packet(PacketType.ECHO, "89").toBytes(3, 0);
 		session.write(data, 3, data.length-3);
 		c.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(89)|", c.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "891").toBytes(3, 0);
+		session.writenf(data, 3, data.length-3);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(891)|", c.getRecordedData(true));
 
 		data = new Packet(PacketType.ECHO, "0").toBytes(7, 10);
 		session.write(data, 7, data.length-17);
 		c.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(0)|", c.getRecordedData(true));
+		data = new Packet(PacketType.ECHO, "01").toBytes(7, 10);
+		session.writenf(data, 7, data.length-17);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(01)|", c.getRecordedData(true));
 		
 		session.closing = ClosingState.SENDING;
 		assertFalse(session.write(new byte[3], 0, 1).isSuccessful());

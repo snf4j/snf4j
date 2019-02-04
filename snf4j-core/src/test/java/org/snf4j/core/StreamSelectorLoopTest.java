@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -82,6 +82,107 @@ public class StreamSelectorLoopTest {
 	
 	private void waitFor(long millis) throws InterruptedException {
 		Thread.sleep(millis);
+	}
+	
+	@Test
+	public void testStop() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		
+		s.start();
+		c.start();
+
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		SelectorLoop loop = c.getSelectLoop(); 
+		loop.stopping.set(StoppingType.DIRTY);
+		
+		loop.stop();
+		assertFalse(loop.join(TIMEOUT));
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		loop.quickStop();
+		assertFalse(loop.join(TIMEOUT));
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		loop.dirtyStop();
+		assertFalse(loop.join(TIMEOUT));
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		
+		loop.stopping.set(StoppingType.QUICK);
+		loop.stop();
+		assertFalse(loop.join(TIMEOUT));
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		loop.quickStop();
+		assertFalse(loop.join(TIMEOUT));
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+
+		loop.dirtyStop();
+		assertTrue(loop.join(TIMEOUT));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
+		
+		s.stop(TIMEOUT);
+		
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		
+		s.start();
+		c.start();
+
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		loop = c.getSelectLoop(); 
+		loop.stopping.set(StoppingType.GENTLE);
+
+		loop.stop();
+		assertFalse(loop.join(TIMEOUT));
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		loop.quickStop();
+		assertTrue(loop.join(TIMEOUT));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		
+		s.start();
+		c.start();
+
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		loop = c.getSelectLoop(); 
+		loop.stopping.set(StoppingType.GENTLE);
+
+		loop.stop();
+		assertFalse(loop.join(TIMEOUT));
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		loop.dirtyStop();
+		assertTrue(loop.join(TIMEOUT));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
+		
+		s.stop(TIMEOUT);
 	}
 	
 	@Test
@@ -503,13 +604,13 @@ public class StreamSelectorLoopTest {
 			assertEquals("invalid options 16", e.getMessage());
 		}
 		
-		loop1.stopping = true;
+		loop1.stopping.set(StoppingType.GENTLE);
 		try {
 			loop1.register(sc, h);
 			fail("loop cannot be is stopping state");
 		}
 		catch (SelectorLoopStoppingException e) {}
-		loop1.stopping = false;
+		loop1.stopping.set(null);
 		
 		loop1.stop();
 		try {
@@ -941,11 +1042,6 @@ public class StreamSelectorLoopTest {
 		s.waitForSessionReady(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
-		c.exceptionResult = true;
-		c.getSession().exception(new Exception());
-
-		assertEquals("EXC|", c.getRecordedData(true));
-		
 		c.write(new Packet(PacketType.ECHO));
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
@@ -953,7 +1049,6 @@ public class StreamSelectorLoopTest {
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
 		
-		c.exceptionResult = false;
 		c.getSession().exception(new Exception());
 
 		c.waitForSessionEnding(TIMEOUT);

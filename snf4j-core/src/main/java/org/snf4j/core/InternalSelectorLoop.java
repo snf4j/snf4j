@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
@@ -96,13 +97,15 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	
 	private AtomicBoolean stoppingRequested = new AtomicBoolean(false);
 	
-	volatile boolean stopping;
-	
-	volatile boolean quickStopping;
+	final AtomicReference<StoppingType> stopping = new AtomicReference<StoppingType>(); 
 	
 	private Set<SelectionKey> stoppingKeys;
 	
 	private boolean closeWhenEmpty;
+	
+	private boolean ending;
+	
+	private boolean inTask;
 
 	private final ConcurrentLinkedQueue<PendingRegistration> registrations = new ConcurrentLinkedQueue<PendingRegistration>();
 	
@@ -430,6 +433,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		return thread == Thread.currentThread();
 	}
 	
+	final boolean inTask() {
+		return inTask;
+	}
+	
 	@Override
 	public final boolean inExecutor() {
 		return inLoop();
@@ -468,11 +475,18 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 							ISession session = (ISession) key.attachment();
 							
 							stoppingKeys.add(key);
-							if (quickStopping) {
+							switch (stopping.get()) {
+							case QUICK:
 								session.quickClose();
-							}
-							else {
+								break;
+
+							case DIRTY:
+								session.dirtyClose();
+								break;
+								
+							default:
 								session.close();
+								break;
 							}
 						}
 						else {
@@ -571,7 +585,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 							channel.configureBlocking(false);
 							
 							//Abort pending registrations when stopping is in progress
-							if (stopping) {
+							if (stopping.get() != null) {
 
 								if (debugEnabled) {
 									logger.debug("Aborting pending registration for channel {}", toString(channel));
@@ -622,10 +636,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			}
 		}
 
-		if (!stopping) {
+		if (stopping.get() == null) {
 			//make sure we are not in the middle of adding registration
 			synchronized (registrationLock) {
-				stopping = true;
+				stopping.compareAndSet(null, StoppingType.DIRTY);
 			}
 		}
 		
@@ -635,7 +649,12 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 				logger.debug("Aborting pending registration for channel {}", toString(reg.channel));
 			}
 			abortRegistration(reg, true, null);
-		}		
+		}
+		
+		//make sure we are not in the middle of registering task
+		synchronized (registrationLock) {
+			ending = true;
+		}
 		
 		handleTasks();
 		
@@ -647,9 +666,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	
 	private final void handleTasks() {
 		Runnable task;
+		inTask = true;
 		while((task = tasks.poll()) != null) {
 			handleTask(task);
 		}			
+		inTask = false;
 	}
 	
 	private final void handleTask(Runnable task) {
@@ -701,6 +722,29 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		reg.future.abort(cause);
 	}
 
+	void stop(StoppingType type) {
+		if (selector.isOpen()) {
+			boolean stoppingSet = false;
+			for (StoppingType expectedType: type.expect()) {
+				if (stopping.compareAndSet(expectedType, type)) {
+					stoppingSet = true;
+					break;
+				}
+			}
+			if (stoppingSet) {
+				stoppingRequested.getAndSet(true);
+				wakeup();
+				if (isStopped()) {
+					try {
+						selector.close();
+					} catch (IOException e) {
+						//Ignore
+					}
+				}
+			}
+		}
+	}
+	
 	/**
 	 * Gently stops this selector loop. As a result, all associated sessions
 	 * will be gently closed by calling the {@link org.snf4j.core.session.ISession#close() close} method.
@@ -708,17 +752,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 * This method is asynchronous.
 	 */
 	public void stop() {
-		if (selector.isOpen()) {
-			stoppingRequested.getAndSet(true);
-			stopping = true;
-			wakeup();
-			if (isStopped()) {
-				try {
-					selector.close();
-				} catch (IOException e) {
-				}
-			}
-		}
+		stop(StoppingType.GENTLE);
 	}
 	
 	/**
@@ -728,8 +762,17 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 * This method is asynchronous.
 	 */
 	public void quickStop() {
-		quickStopping = true;
-		stop();
+		stop(StoppingType.QUICK);
+	}
+
+	/**
+	 * Quickly stops this selector loop. As a result, all associated sessions
+	 * will be quickly closed by calling the {@link org.snf4j.core.session.ISession#quickClose() dirtyClose} method.
+	 * <p>
+	 * This method is asynchronous.
+	 */
+	public void dirtyStop() {
+		stop(StoppingType.DIRTY);
 	}
 	
 	/**
@@ -738,7 +781,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 * @return <code>true</code> if stopping is in progress or this selector loop is already stopped 
 	 */
 	public boolean isStopping() {
-		return stopping;
+		return stopping.get() != null;
 	}
 	
 	/**
@@ -807,7 +850,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		if (!selector.isOpen()) {
 			throw new ClosedSelectorException();
 		}
-		if (stopping) {
+		if (stopping.get() != null) {
 			throw new SelectorLoopStoppingException();
 		}
 		
@@ -832,7 +875,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		}
 		synchronized (registrationLock) {
 			//make sure not to register while stopping
-			if (stopping) {
+			if (stopping.get() != null) {
 				throw new SelectorLoopStoppingException();
 			}
 			registrations.add(reg);
@@ -852,7 +895,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	void registerTask(Runnable task) {
 		synchronized (registrationLock) {
 			//make sure not to register while stopping
-			if (stopping) {
+			if (ending) {
 				throw new SelectorLoopStoppingException();
 			}
 			tasks.add(task);
@@ -904,7 +947,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 *            the key that was invalidated
 	 */
 	final void finishInvalidatedKey(SelectionKey key) {
-		if (!inLoop()) {
+		if (!inLoop() || inTask()) {
 			synchronized (invalidatedKeys) {
 				invalidatedKeys.add(key);
 			}
@@ -950,6 +993,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 
 		case QUICK_STOP:
 			quickStop();
+			return;
+			
+		case DIRTY_STOP:
+			dirtyStop();
 			return;
 
 		case STOP_WHEN_EMPTY:

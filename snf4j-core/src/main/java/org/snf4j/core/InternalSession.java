@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@ import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.ExceptionLogger;
 import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
@@ -97,8 +98,6 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	/** Used to synchronize write operations and changing key's selection interests */
 	final Object writeLock = new Object();
 	
-	final Object eventBitsLock = new Object();
-
 	/** Used to track already fired events. */
 	int eventBits;
 	
@@ -463,18 +462,20 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		return lastWriteTime;
 	}
 	
-	private final boolean isValid(EventType eventType) {
-		synchronized(eventBitsLock) {
-			if (eventType.isValid(eventBits)) {
-				eventBits |= eventType.bitMask();
-				return true;
+	final boolean wasException() {
+		return (eventBits & EventType.EXCEPTION_CAUGHT.bitMask()) != 0;
+	}
+	
+	final boolean isValid(EventType eventType) {
+		if (eventType.isValid(eventBits)) {
+			eventBits |= eventType.bitMask();
+			return true;
+		}
+		else {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Skipping event {} for {}", eventType, this);
 			}
-			else {
-				if (logger.isDebugEnabled()) {
-					logger.debug("Skipping event {} for {}", eventType, this);
-				}
-				return false;
-			}
+			return false;
 		}
 	}
 	
@@ -505,10 +506,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	void exception(Throwable t) {
 		if (isValid(EventType.EXCEPTION_CAUGHT)) {
 			try {
-				if (!handler.exception(t)) {
-					futuresController.exception(t);
-					quickClose();
-				}
+				handler.exception(t);
+				futuresController.exception(t);
+				quickClose();
 			}
 			catch (Exception e) {
 				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);
@@ -518,11 +518,19 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 	
-	void preCreated() {
+	boolean incident(SessionIncident incident, Throwable t) {
+		try {
+			return handler.incident(incident, t);
+		}
+		catch (Exception e) {
+			elogger.error(logger, "Failed incident {} for {}: {}", incident, this, e);
+		}
+		return false;
 	}
 	
-	void postEnding() {
-	}
+	abstract void preCreated();
+	
+	abstract void postEnding();
 	
 	void close(SelectableChannel channel) throws IOException {
 		channel.close();

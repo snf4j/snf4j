@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -413,9 +413,10 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 		
 		if (channel != null) {
-			StreamSession session = factory.create(channel);
+			StreamSession session = null; 
 			
 			try {
+				session = factory.create(channel);
 				ISelectorLoopPool pool = this.pool;
 				SelectorLoop loop = pool != null ? pool.getLoop(channel) : null;
 				if (loop != null) {
@@ -431,6 +432,16 @@ public class SelectorLoop extends InternalSelectorLoop {
 				opened = true;
 			}
 			catch (Exception e) {
+				if (session == null) {
+					elogger.error(logger, "Unable to create session for accepted channel {}: {}", toString(channel), e);
+					try {
+						channel.close();
+					}
+					catch (Exception ex) {
+						//Ignore
+					}
+					return;
+				}
 				elogger.error(logger, "Unable to register channel {} with selector: {}", toString(channel), e);
 				fireCreatedEvent(session, channel);
 				fireException(session, e);

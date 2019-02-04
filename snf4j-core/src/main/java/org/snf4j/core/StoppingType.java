@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,37 +25,22 @@
  */
 package org.snf4j.core;
 
-public enum PacketType {
-	ECHO,
-	ECHO_RESPONSE,
-	GET_THREAD,
-	GET_THREAD_RESPONSE,
-	NOP,
-	CLOSE,
-	QUICK_CLOSE,
-	WRITE_AND_CLOSE,
-	WRITE_AND_CLOSE_RESPONSE,
-	WRITE_AND_QUICK_CLOSE,
-	WRITE_AND_WAIT,
-	WRITE_AND_WAIT_RESPONSE,
-	SUSPEND_WRITE_CLOSE,
-	IN_LOOP,
-	IN_LOOP_RESPONSE,
-	DEADLOCK,
-	DEADLOCK_RESPONSE,
-	BIG_NOP(true);
-	
-	private final boolean big;
-	
-	PacketType() {
-		big = false;
-	}
 
-	PacketType(boolean big) {
-		this.big = big;
+enum StoppingType {
+
+	GENTLE(new StoppingType[] {null}),
+
+	QUICK(new StoppingType[] {null, StoppingType.GENTLE}),
+	
+	DIRTY(new StoppingType[] {null, StoppingType.GENTLE, StoppingType.QUICK});
+	
+	private StoppingType[] expect;
+	
+	StoppingType(StoppingType[] expect) {
+		this.expect = expect;
 	}
 	
-	boolean big() {
-		return big;
+	public StoppingType[] expect() {
+		return expect;
 	}
 }
