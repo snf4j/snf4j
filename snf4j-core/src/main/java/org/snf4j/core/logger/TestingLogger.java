@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,8 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.snf4j.core.Constants;
+
 
 class TestingLogger implements ILogger {
 
@@ -39,6 +41,8 @@ class TestingLogger implements ILogger {
 	private static final int WARN = 1;
 	private static final int ERROR = 0;
 	
+	private static final String SKIP_LOGGING_ENV = "SNF4J_SKIP_TEST_LOGGING";  
+	
 	private static final String[] levels = new String[] {"ERROR"," WARN"," INFO","DEBUG","TRACE"};
 	
 	private final String name;
@@ -47,15 +51,31 @@ class TestingLogger implements ILogger {
 	
 	private static DateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 	
+	private final boolean skipLogging;
 	
 	TestingLogger(String name) {
 		this.name = name;
+		skipLogging = "true".equalsIgnoreCase(System.getenv(SKIP_LOGGING_ENV));
+	}
+	
+	private void checkMessage(String msg, int argCount) {
+		int i0 = 0;
+		int i;
+		int count = 0;
+		
+		while ((i = msg.indexOf("{}", i0)) != -1) {
+			i0 = i+2;
+			++count;
+		}
+		if (count != argCount) {
+			System.err.println(Constants.SHORT_NAME + ": Wrong number of arguments for log message: [" + msg + "]");
+		}
 	}
 	
 	private final void log0(int level, String msg, Throwable t) {
 		StringBuilder sb = new StringBuilder(msg.length() + 50);
 		String time;
-		
+
 		synchronized (dateFormatter) {
 			time = dateFormatter.format(new Date());
 		}
@@ -84,16 +104,32 @@ class TestingLogger implements ILogger {
 		return sb.toString();
 	}
 	
+	private void log1(int level, String msg) {
+		checkMessage(msg, 0);
+		if (!skipLogging) {
+			log0(level, msg, null);
+		}
+	}
+
 	private void log(int level, String msg, Object arg) {
-		log0(level, format(msg, new Object[] {arg}), null);
+		checkMessage(msg, 1);
+		if (!skipLogging) {
+			log0(level, format(msg, new Object[] {arg}), null);
+		}
 	}
 
 	private void log(int level, String msg, Object arg1, Object arg2) {
-		log0(level, format(msg, new Object[] {arg1, arg2}), null);
+		checkMessage(msg, 2);
+		if (!skipLogging) {
+			log0(level, format(msg, new Object[] {arg1, arg2}), null);
+		}
 	}
 	
 	private void log(int level, String msg, Object... args) {
-		log0(level, format(msg, args), null);
+		checkMessage(msg, args.length);
+		if (!skipLogging) {
+			log0(level, format(msg, args), null);
+		}
 	}
 	
 	@Override
@@ -108,7 +144,7 @@ class TestingLogger implements ILogger {
 	
 	@Override
 	public void debug(String msg) {
-		log0(DEBUG, msg, null);
+		log1(DEBUG, msg);
 	}
 
 	@Override
@@ -128,7 +164,7 @@ class TestingLogger implements ILogger {
 
 	@Override
 	public void trace(String msg) {
-		log0(TRACE, msg, null);
+		log1(TRACE, msg);
 	}
 
 	@Override
@@ -148,7 +184,7 @@ class TestingLogger implements ILogger {
 	
 	@Override
 	public void warn(String msg) {
-		log0(WARN, msg, null);
+		log1(WARN, msg);
 	}
 
 	@Override
@@ -168,7 +204,7 @@ class TestingLogger implements ILogger {
 
 	@Override
 	public void error(String msg) {
-		log0(ERROR, msg, null);
+		log1(ERROR, msg);
 	}
 
 	@Override
@@ -188,7 +224,7 @@ class TestingLogger implements ILogger {
 
 	@Override
 	public void info(String msg) {
-		log0(INFO, msg, null);
+		log1(INFO, msg);
 	}
 
 	@Override

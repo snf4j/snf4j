@@ -184,6 +184,26 @@ public class Server {
 		}
 		return s;
 	}
+
+	public String getRecordedData(String limit, boolean clear) {
+		String s;
+		
+		synchronized(recorder) {
+			s = recorder.toString();
+			if (clear) {
+				recorder.setLength(0);
+			}
+
+			int i = s.indexOf(limit);
+			if (i != -1) {
+				if (clear) {
+					recorder.append(s.substring(i + limit.length()));
+				}
+				s = s.substring(0, i);
+			}
+		}
+		return s;
+	}
 	
 	public void start() throws Exception {
 		start(false, null);

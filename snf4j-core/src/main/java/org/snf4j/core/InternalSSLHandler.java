@@ -419,8 +419,6 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 			long futureThreshold = session.write0(outNetBuffer);
 			outNetBuffer.compact();
 
-			System.out.println("polledFuture=" + polledFuture + ", netCounter=" + netCounter + ", pendingFutures=" + pendingFutures);
-			
 			//update futures
 			if (polledFuture != null) {
 				if (polledFuture.getFirstThreshold() <= netCounter) {
@@ -430,7 +428,6 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 					skipUpdate = true;
 				}
 			}
-			System.out.println("skipUpdate=" + skipUpdate);
 			if (!skipUpdate) {
 				while ((polledFuture = pendingFutures.poll()) != null && polledFuture.getFirstThreshold() <= netCounter) {
 					polledFuture.setSecondThreshold(futureThreshold);

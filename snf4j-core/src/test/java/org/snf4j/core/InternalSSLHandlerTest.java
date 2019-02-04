@@ -128,8 +128,6 @@ public class InternalSSLHandlerTest {
 
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
-		c.getRecordedData(true);
-		s.getRecordedData(true);
 		SSLSession session = (SSLSession) c.getSession(); 
 		
 		Handler h = new Handler(handler, true, LOGGER);
