@@ -60,6 +60,11 @@ public class TestingLoggerTest {
 		assertEquals(expectedMsg, msg.substring(i+s1.length()));
 	}
 
+	private void assertLog(String expectedMsg, String msg) {
+		msg = msg.replace("\n", "").replace("\r", "");
+		assertEquals(expectedMsg, msg);
+	}
+
 	@Test
 	public void testLog() throws Exception {
 		ILogger l = new TestingLogger(this.getClass().getName());
@@ -134,17 +139,17 @@ public class TestingLoggerTest {
 		assertEquals("", s.getString());
 
 		l.error("Message {}");
-		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {}]\r\n", s.getString());
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {}]", s.getString());
 		l.error("Message {}", 1, 2);
-		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {}]\r\n", s.getString());
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {}]", s.getString());
 		l.error("Message {} {}", 1);
-		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {} {}]\r\n", s.getString());
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {} {}]", s.getString());
 		l.error("Message {} {}", 1, 2, 3);
-		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {} {}]\r\n", s.getString());
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {} {}]", s.getString());
 		l.error("Message {} {} {}", 1, 2);
-		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {} {} {}]\r\n", s.getString());
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {} {} {}]", s.getString());
 		l.error("Message {} {} {}", 1, 2, 3, 4);
-		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {} {} {}]\r\n", s.getString());
+		assertLog("SNF4J: Wrong number of arguments for log message: [Message {} {} {}]", s.getString());
 		
 	}
 }
