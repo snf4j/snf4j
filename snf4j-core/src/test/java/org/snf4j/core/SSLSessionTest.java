@@ -145,6 +145,18 @@ public class SSLSessionTest {
 		assertEquals("Test2", session.getName());
 	}
 	
+	@Test
+	public void testCreateSessionException() throws Exception {
+		s = new Server(PORT, true);
+		s.throwInCreateSession = true;
+		c = new Client(PORT, true);
+		s.start();
+		c.start();
+		
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+	}
+	
 	@Test 
 	public void testClose() throws Exception {
 		TestHandler handler = new TestHandler("Test1");
@@ -1032,6 +1044,28 @@ public class SSLSessionTest {
 
 		TestSSLEngine engine = getSSLEngine((SSLSession) s.getSession());
 		engine.unwrapException = new SSLException("");
+		c.write(new Packet(PacketType.NOP, ""));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|EXC|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+	}
+	
+	@Test
+	public void testIncidentException() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+
+		TestSSLEngine engine = getSSLEngine((SSLSession) s.getSession());
+		engine.unwrapException = new SSLException("");
+		c.throwInIncident = true;
 		c.write(new Packet(PacketType.NOP, ""));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);

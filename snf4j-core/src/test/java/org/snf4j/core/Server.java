@@ -84,7 +84,9 @@ public class Server {
 	public volatile boolean incident;
 	public volatile boolean throwInRead;
 	public volatile boolean throwInException;
+	public volatile boolean throwInIncident;
 	public volatile boolean throwInEvent;
+	public volatile boolean throwInCreateSession;
 	public final AtomicInteger throwInEventCount = new AtomicInteger();
 	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	
@@ -324,6 +326,9 @@ public class Server {
 
 		@Override
 		public StreamSession create(SocketChannel channel) throws Exception {
+			if (throwInCreateSession) {
+				throw new Exception("");
+			}
 			if (ssl) {
 				return new SSLSession(createHandler(channel), false);
 			}
@@ -610,6 +615,9 @@ public class Server {
 		@Override
 		public boolean incident(SessionIncident incident, Throwable t) {
 			record(incident.toString());
+			if (Server.this.throwInIncident) {
+				throw new IllegalArgumentException();
+			}
 			return Server.this.incident;
 		}
 		

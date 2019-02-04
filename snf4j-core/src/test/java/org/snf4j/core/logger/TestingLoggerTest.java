@@ -122,5 +122,29 @@ public class TestingLoggerTest {
 		assertLog(level, "Message {} {} [1] [2]", s.getString());
 		l.error("Message {} {} {}", 1, null, 3);
 		assertLog(level, "Message {} {} {} [1] [null] [3]", s.getString());
+
+		f.set(l, true);
+		l.error("Message");
+		assertEquals("", s.getString());
+		l.error("Message {}", 1);
+		assertEquals("", s.getString());
+		l.error("Message {} {}", 1, 2);
+		assertEquals("", s.getString());
+		l.error("Message {} {} {}", 1, null, 3);
+		assertEquals("", s.getString());
+
+		l.error("Message {}");
+		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {}]\r\n", s.getString());
+		l.error("Message {}", 1, 2);
+		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {}]\r\n", s.getString());
+		l.error("Message {} {}", 1);
+		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {} {}]\r\n", s.getString());
+		l.error("Message {} {}", 1, 2, 3);
+		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {} {}]\r\n", s.getString());
+		l.error("Message {} {} {}", 1, 2);
+		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {} {} {}]\r\n", s.getString());
+		l.error("Message {} {} {}", 1, 2, 3, 4);
+		assertEquals("SNF4J: Wrong number of arguments for log message: [Message {} {} {}]\r\n", s.getString());
+		
 	}
 }

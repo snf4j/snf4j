@@ -528,11 +528,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		return false;
 	}
 	
-	void preCreated() {
-	}
+	abstract void preCreated();
 	
-	void postEnding() {
-	}
+	abstract void postEnding();
 	
 	void close(SelectableChannel channel) throws IOException {
 		channel.close();

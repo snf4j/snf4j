@@ -26,6 +26,11 @@
 package org.snf4j.core.session;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import javax.net.ssl.SSLEngine;
 
 import org.junit.Test;
 import org.snf4j.core.EndingAction;
@@ -33,7 +38,7 @@ import org.snf4j.core.EndingAction;
 public class DefaultSessionConfigTest {
 
 	@Test
-	public void testAll() {
+	public void testAll() throws Exception {
 		DefaultSessionConfig c = new DefaultSessionConfig();
 
 		assertEquals(2048, c.getMinInBufferCapacity());
@@ -60,6 +65,13 @@ public class DefaultSessionConfigTest {
 		assertEquals(true, c.canOwnDataPassedToWriteAndSendMethods());
 		assertEquals(5, c.getMaxSSLApplicationBufferSizeRatio());
 		assertEquals(6, c.getMaxSSLNetworkBufferSizeRatio());
-
+		
+		SSLEngine engine = c.createSSLEngine(true);
+		assertNotNull(engine);
+		assertTrue(engine.getUseClientMode());
+		engine = c.createSSLEngine(false);
+		assertNotNull(engine);
+		assertFalse(engine.getUseClientMode());
+		
 	}
 }

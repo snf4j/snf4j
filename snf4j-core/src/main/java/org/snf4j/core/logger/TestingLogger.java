@@ -68,7 +68,7 @@ class TestingLogger implements ILogger {
 			++count;
 		}
 		if (count != argCount) {
-			System.err.println(Constants.SHORT_NAME + ": Wrong number of arguments for log message: [" + msg + "]");
+			out.println(Constants.SHORT_NAME + ": Wrong number of arguments for log message: [" + msg + "]");
 		}
 	}
 	

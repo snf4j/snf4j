@@ -588,6 +588,24 @@ public class DatagramSessionTest {
 		s.stop(TIMEOUT); c.stop(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("", s.getRecordedData(true));
+
+		//dirty close outside the loop
+		s = new DatagramHandler(PORT); s.startServer();
+		c = new DatagramHandler(PORT); c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.getSession().dirtyClose();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		c.getSession().dirtyClose();
+		waitFor(500);
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		s.stop(TIMEOUT); c.stop(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals("", c.getRecordedData(true));
 		
 	}
 	
