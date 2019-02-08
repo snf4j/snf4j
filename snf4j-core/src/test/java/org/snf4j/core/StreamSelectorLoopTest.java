@@ -95,7 +95,7 @@ public class StreamSelectorLoopTest {
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
-		s.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
 		
 		SelectorLoop loop = c.getSelectLoop(); 
 		loop.stopping.set(StoppingType.DIRTY);
@@ -103,7 +103,7 @@ public class StreamSelectorLoopTest {
 		loop.stop();
 		assertFalse(loop.join(TIMEOUT));
 		assertEquals("", c.getRecordedData(true));
-		assertEquals("", s.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
 		loop.quickStop();
 		assertFalse(loop.join(TIMEOUT));
 		assertEquals("", c.getRecordedData(true));
@@ -141,7 +141,7 @@ public class StreamSelectorLoopTest {
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
-		s.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
 
 		loop = c.getSelectLoop(); 
 		loop.stopping.set(StoppingType.GENTLE);
@@ -149,7 +149,7 @@ public class StreamSelectorLoopTest {
 		loop.stop();
 		assertFalse(loop.join(TIMEOUT));
 		assertEquals("", c.getRecordedData(true));
-		assertEquals("", s.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
 		loop.quickStop();
 		assertTrue(loop.join(TIMEOUT));
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
@@ -166,7 +166,7 @@ public class StreamSelectorLoopTest {
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
-		s.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
 
 		loop = c.getSelectLoop(); 
 		loop.stopping.set(StoppingType.GENTLE);
@@ -174,7 +174,7 @@ public class StreamSelectorLoopTest {
 		loop.stop();
 		assertFalse(loop.join(TIMEOUT));
 		assertEquals("", c.getRecordedData(true));
-		assertEquals("", s.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
 		loop.dirtyStop();
 		assertTrue(loop.join(TIMEOUT));
 		c.waitForSessionEnding(TIMEOUT);
