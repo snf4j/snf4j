@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -153,8 +153,8 @@ public class DefaultSelectorLoopPoolTest {
 		s.pool = pool;
 		s.start();
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		c.write(new Packet(PacketType.GET_THREAD));
@@ -171,8 +171,8 @@ public class DefaultSelectorLoopPoolTest {
 		s.pool = pool;
 		s.start();
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		c.write(new Packet(PacketType.GET_THREAD));
@@ -190,8 +190,8 @@ public class DefaultSelectorLoopPoolTest {
 		s.pool = pool;
 		s.start();
 		c.start();
-		c.waitForSessionOpen(TIMEOUT);
-		s.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		c.write(new Packet(PacketType.GET_THREAD));

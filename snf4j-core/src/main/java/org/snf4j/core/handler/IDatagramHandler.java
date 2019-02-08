@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,14 +36,6 @@ import org.snf4j.core.session.ISession;
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public interface IDatagramHandler extends IHandler {
-
-	/**
-	 * Sets the datagram-oriented session that will be associated with this handler.
-	 * 
-	 * @param session
-	 *            the datagram-oriented session
-	 */
-	void setSession(IDatagramSession session);
 
 	/**
 	 * Sets the datagram-oriented session that will be associated with this handler.

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,11 +49,6 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 	 */
 	protected AbstractDatagramHandler(String name) {
 		super(name);
-	}
-
-	@Override
-	public void setSession(IDatagramSession session) {
-		super.setSession(session);
 	}
 
 	/**
