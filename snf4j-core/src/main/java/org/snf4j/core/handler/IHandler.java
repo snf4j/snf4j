@@ -61,9 +61,7 @@ public interface IHandler {
 	String getName();
 	
 	/**
-	 * Called when new bytes were read from the input buffer. The number of
-	 * bytes in the passed array is determined by the value returned from the
-	 * <code>toRead</code> method that was called recently.
+	 * Called when new bytes were read from the input buffer.	
 	 * <p>
 	 * The passed array can be safely stored or modified by this method as it
 	 * will not be used by the caller.

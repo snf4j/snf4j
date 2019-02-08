@@ -402,7 +402,7 @@ public class Server {
 		}
 
 		@Override
-		public int toRead(ByteBuffer buffer, boolean flipped) {
+		public int available(ByteBuffer buffer, boolean flipped) {
 			if (!directAllocator) throw new IllegalStateException();
 
 			ByteBuffer dupBuffer = buffer.duplicate();
@@ -414,20 +414,20 @@ public class Server {
 			byte[] d = new byte[dupBuffer.remaining()];
 			
 			dupBuffer.get(d);
-			return toRead0(d, 0, d.length);
+			return available0(d, 0, d.length);
 		}
 
 		@Override
-		public int toRead(byte[] buffer, int off, int len) {
+		public int available(byte[] buffer, int off, int len) {
 			if (directAllocator) throw new IllegalStateException();
-			return toRead0(buffer, off, len);
+			return available0(buffer, off, len);
 		}
 
 		ByteBuffer bigPacket;
 
-		int toRead0(byte[] buffer, int off, int len) {
+		int available0(byte[] buffer, int off, int len) {
 			if (bigPacket == null) {
-				int read = Packet.toRead(buffer, off, len);
+				int read = Packet.available(buffer, off, len);
 				
 				if (read < 0) {
 					read = -read;

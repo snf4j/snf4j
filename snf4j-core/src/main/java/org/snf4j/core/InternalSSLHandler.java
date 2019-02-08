@@ -631,12 +631,6 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 	}
 
 	@Override
-	public void setSession(IStreamSession session) {
-		handler.setSession(session);
-		this.session = (SSLSession) session;
-	}
-
-	@Override
 	public void setSession(ISession session) {
 		handler.setSession(session);
 		this.session = (SSLSession) session;
@@ -648,7 +642,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 	}
 
 	@Override
-	public int toRead(ByteBuffer buffer, boolean flipped) {
+	public int available(ByteBuffer buffer, boolean flipped) {
 		int maxLen = maxNetBufferSize - inNetBuffer.position();
 		int len = flipped ? buffer.remaining() : buffer.position();
 		
@@ -659,7 +653,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 	}
 
 	@Override
-	public int toRead(byte[] buffer, int off, int len) {
+	public int available(byte[] buffer, int off, int len) {
 		int maxLen = maxNetBufferSize - inNetBuffer.position();
 
 		if (maxLen >= len || maxLen == 0) {

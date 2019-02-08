@@ -46,7 +46,7 @@ public class TestHandler extends AbstractStreamHandler {
 	
 	SSLEngine engine;
 	
-	int toReadBytes;
+	int availableBytes;
 	
 	int maxAppBufRatio = 1;
 	
@@ -70,8 +70,8 @@ public class TestHandler extends AbstractStreamHandler {
 	}
 	
 	@Override
-	public int toRead(ByteBuffer buffer, boolean flipped) {
-		return toReadBytes;
+	public int available(ByteBuffer buffer, boolean flipped) {
+		return availableBytes;
 	}
 
 	@Override
@@ -79,8 +79,8 @@ public class TestHandler extends AbstractStreamHandler {
 	}
 
 	@Override
-	public int toRead(byte[] buffer, int off, int len) {
-		return toReadBytes;
+	public int available(byte[] buffer, int off, int len) {
+		return availableBytes;
 	}
 
 	@Override

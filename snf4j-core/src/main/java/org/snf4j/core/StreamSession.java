@@ -473,38 +473,38 @@ public class StreamSession extends InternalSession implements IStreamSession {
 
 	static void consumeBuffer(ByteBuffer inBuffer, IStreamHandler handler) {
 		boolean hasArray = inBuffer.hasArray();
-		int toRead;
+		int available;
 		byte[] array;
 		int arrayOff;
 		
 		if (hasArray) {
 			array = inBuffer.array();
 			arrayOff = inBuffer.arrayOffset();
-			toRead = ((IStreamHandler)handler).toRead(array, arrayOff, inBuffer.position());
+			available = ((IStreamHandler)handler).available(array, arrayOff, inBuffer.position());
 		}
 		else {
 			array = null;
 			arrayOff = 0;
-			toRead = handler.toRead(inBuffer, false);
+			available = handler.available(inBuffer, false);
 		}
 		
-		if (toRead > 0) {
-			byte[] data = new byte[toRead];
+		if (available > 0) {
+			byte[] data = new byte[available];
 
 			inBuffer.flip();
 			inBuffer.get(data);
 			handler.read(data);
 			
 			if (hasArray) {
-				while ((toRead = handler.toRead(array, arrayOff + inBuffer.position(), inBuffer.remaining())) > 0) {
-					data = new byte[toRead];
+				while ((available = handler.available(array, arrayOff + inBuffer.position(), inBuffer.remaining())) > 0) {
+					data = new byte[available];
 					inBuffer.get(data);
 					handler.read(data);
 				}
 			}
 			else {
-				while ((toRead = handler.toRead(inBuffer, true)) > 0) {
-					data = new byte[toRead];
+				while ((available = handler.available(inBuffer, true)) > 0) {
+					data = new byte[available];
 					inBuffer.get(data);
 					handler.read(data);
 				}

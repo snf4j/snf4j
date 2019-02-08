@@ -200,7 +200,7 @@ public class InternalSSLHandlerTest {
 		
 		//10 bytes to unwrap, ready to read 0
 		engine.unwrapBytes = 10;
-		handler.toReadBytes = 0;
+		handler.availableBytes = 0;
 		ByteBuffer inNet = getBuffer(h, "inNetBuffer");
 		ByteBuffer inApp = getBuffer(h, "inAppBuffer");
 		assertEquals(0, inNet.position());

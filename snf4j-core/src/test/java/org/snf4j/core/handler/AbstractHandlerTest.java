@@ -61,21 +61,21 @@ public class AbstractHandlerTest {
 	}
 	
 	@Test
-	public void testToRead() {
+	public void testAvailable() {
 		TestHandler h = new TestHandler();
 
 		ByteBuffer b = ByteBuffer.allocate(100);
-		assertEquals(0, h.toRead(b, false));
+		assertEquals(0, h.available(b, false));
 		b.put((byte) 44);
-		assertEquals(1, h.toRead(b, false));
+		assertEquals(1, h.available(b, false));
 		b.put((byte) 55);
-		assertEquals(2, h.toRead(b, false));
+		assertEquals(2, h.available(b, false));
 		b.flip();
-		assertEquals(2, h.toRead(b, true));
+		assertEquals(2, h.available(b, true));
 		
 		byte[] a = new byte[100];
-		assertEquals(0, h.toRead(a, 0, 0));
-		assertEquals(6, h.toRead(a, 1, 6));
+		assertEquals(0, h.available(a, 0, 0));
+		assertEquals(6, h.available(a, 1, 6));
 		
 	}
 }

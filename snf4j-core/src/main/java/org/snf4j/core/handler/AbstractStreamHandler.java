@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,11 +53,6 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 		super(name);
 	}
 	
-	@Override
-	public void setSession(IStreamSession session) {
-		super.setSession(session);
-	}
-
 	/**
 	 * Sets the stream-oriented session that will be associated with this
 	 * handler.
@@ -89,7 +84,7 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 	 * This implementation always returns total number of bytes in the buffer.
 	 */
 	@Override
-	public int toRead(ByteBuffer buffer, boolean flipped) {
+	public int available(ByteBuffer buffer, boolean flipped) {
 		return flipped ? buffer.remaining() : buffer.position();
 	}
 
@@ -100,7 +95,7 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 	 * (i.e. the <code>len</code> value).
 	 */
 	@Override
-	public int toRead(byte[] buffer, int off, int len) {
+	public int available(byte[] buffer, int off, int len) {
 		return len;
 	}
 }

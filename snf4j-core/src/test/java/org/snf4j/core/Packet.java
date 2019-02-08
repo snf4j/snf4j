@@ -38,7 +38,7 @@ public class Packet {
 		this(type, "");
 	}
 	
-	static int toRead(byte[] buffer, int off, int len) {
+	static int available(byte[] buffer, int off, int len) {
 		if (len >= 3) {
 			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
 			

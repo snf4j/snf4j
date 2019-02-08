@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,6 @@ package org.snf4j.core.handler;
 
 import java.nio.ByteBuffer;
 
-import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IStreamSession;
 
@@ -43,17 +42,9 @@ public interface IStreamHandler extends IHandler {
 	 * 
 	 * @param session
 	 *            the stream-oriented session
-	 */
-	void setSession(IStreamSession session);
-
-	/**
-	 * Set the stream-oriented session that will be associated with this handler.
-	 * 
-	 * @param session
-	 *            the stream-oriented session
 	 * @throws IllegalArgumentException
 	 *             when the session argument is not an instance of the
-	 *             {@link IDatagramSession} interface.
+	 *             {@link IStreamSession} interface.
 	 */
 	@Override
 	void setSession(ISession session);
@@ -80,7 +71,7 @@ public interface IStreamHandler extends IHandler {
 	 * @return the number of bytes to read or 0 if the buffer has not enough data yet and the
 	 * reading should skipped.
 	 */
-	int toRead(ByteBuffer buffer, boolean flipped);
+	int available(ByteBuffer buffer, boolean flipped);
 	
 	/**
 	 * Determines how many bytes can be read from the input buffer after receiving new data
@@ -95,6 +86,19 @@ public interface IStreamHandler extends IHandler {
 	 * @param len the number of the bytes in the array 
 	 * @return number of bytes to read
 	 */
-	int toRead(byte[] buffer, int off, int len);
+	int available(byte[] buffer, int off, int len);
+	
+	/**
+	 * Called when new bytes were read from the input buffer. The number of
+	 * bytes in the passed array is determined by the value returned from the
+	 * <code>available</code> method that was called recently.	
+	 * <p>
+	 * The passed array can be safely stored or modified by this method as it
+	 * will not be used by the caller.
+	 * 
+	 * @param data
+	 *            bytes that was read from the input buffer.
+	 */
+	void read(byte[] data);
 
 }
