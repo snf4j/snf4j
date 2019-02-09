@@ -36,11 +36,11 @@ import org.snf4j.core.logger.LoggerFactory;
 
 /**
  * The core implementation of the {@link org.snf4j.core.session.IStreamSession
- * IStreamSession} interface handling SSL/TLS connection.
+ * IStreamSession} interface handling SSL/TLS connections.
  * <p>
- * It uses {@link javax.net.ssl.SSLEngine SSLEngine} to handle protocols such as 
- * the Secure Sockets Layer (SSL) or IETF RFC 2246 "Transport Layer Security" 
- * (TLS) protocols.
+ * It uses {@link javax.net.ssl.SSLEngine SSLEngine} to handle secure protocols 
+ * such as the Secure Sockets Layer (SSL) or IETF RFC 2246 "Transport Layer 
+ * Security" (TLS) protocols.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */

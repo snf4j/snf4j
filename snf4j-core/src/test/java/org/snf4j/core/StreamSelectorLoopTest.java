@@ -759,6 +759,7 @@ public class StreamSelectorLoopTest {
 		SocketChannel channel = SocketChannel.open();
 		
 		channel.configureBlocking(false);
+		channel.socket().setReuseAddress(true);
 		channel.socket().bind(new InetSocketAddress(PORT));
 		
 		StreamSession session = new StreamSession(new TestHandler("Test"));
@@ -1621,23 +1622,26 @@ public class StreamSelectorLoopTest {
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertTrue(waitTime1 > workTime1);
+		assertTrue("" + waitTime1 + ">" + workTime1, waitTime1 > workTime1);
+		s.stop(TIMEOUT);
 		
 		//work > wait
+		s = new Server(PORT);
+		s.start();
 		c = new Client(PORT);
 		c.start();
 		s.waitForSessionOpen(TIMEOUT);
 		c.waitForSessionOpen(TIMEOUT);
 		for (int i=0; i<10; ++i) {
 			s.write(new Packet(PacketType.WRITE_AND_WAIT, "200"));
-			s.waitForDataRead(TIMEOUT);
+			waitFor(250);
 		}
 		waitTime1 = c.getSelectLoop().getTotalWaitTime();
 		workTime1 = c.getSelectLoop().getTotalWorkTime();
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertTrue(waitTime1 < workTime1);
+		assertTrue("" + waitTime1 + "<" + workTime1, waitTime1 < workTime1);
 		s.stop(TIMEOUT);
     }
  }
