@@ -28,6 +28,7 @@ package org.snf4j.core.factory;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
+import org.snf4j.core.SSLSession;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.handler.IStreamHandler;
 
@@ -38,8 +39,26 @@ import org.snf4j.core.handler.IStreamHandler;
  */
 public abstract class AbstractSessionFactory implements IStreamSessionFactory {
 
-	/** Constructs the factory */
+	private final boolean ssl;
+	
+	/**
+	 * Constructs a factory that creates the basic stream-oriented sessions.
+	 */
 	protected AbstractSessionFactory() {
+		ssl = false;
+	}
+
+	/**
+	 * Constructs a factory that creates sessions of the given type (basic or
+	 * SSL/TLS).
+	 * 
+	 * @param ssl
+	 *            the type of created sessions. <code>true</code> for SSL/TLS
+	 *            sessions using client mode and <code>false</code> for basic
+	 *            stream-oriented sessions.
+	 */
+	protected AbstractSessionFactory(boolean ssl) {
+		this.ssl = ssl;
 	}
 	
 	/**
@@ -54,7 +73,8 @@ public abstract class AbstractSessionFactory implements IStreamSessionFactory {
 	 */
 	@Override
 	public StreamSession create(SocketChannel channel) throws Exception {
-		return new StreamSession(createHandler(channel));
+		return ssl ? new SSLSession(createHandler(channel), true) 
+				: new StreamSession(createHandler(channel));
 	}
 	
 	/**

@@ -389,7 +389,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	}
 	
 	private final void handleAccepting(final IStreamSessionFactory factory, final SelectionKey key) {
-		SocketChannel channel;
+		SocketChannel channel = null;
 		boolean opened = false;
 
 		if (debugEnabled) {
@@ -409,7 +409,14 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 		catch (Exception e) {
 			elogWarnOrError(logger, "Accepting from channel {} failed: {}", toString(key.channel()), e);
-			channel = null;
+			if (channel != null) {
+				try {
+					channel.close();
+				} catch (Exception e1) {
+					//Ignore
+				}
+				channel = null;
+			}
 		}
 		
 		if (channel != null) {
@@ -644,6 +651,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	private final void handleWriting(final DatagramSession session, final SelectionKey key) {
 		long totalBytes = 0;
 		int bytes;
+		Exception exception = null;
 		
 		if (traceEnabled) {
 			logger.trace("Writting to channel in {}", session);
@@ -699,12 +707,16 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 		}
 		catch (Exception e) {
-			elogWarnOrError(logger, "Writting to chennel in {} failed: {}", session, e);
-			fireException(session, e);
+			exception = e;
 		}
 
 		if (totalBytes > 0) {
 			fireEvent(session, DataEvent.SENT, totalBytes);
+		}
+		
+		if (exception != null) {
+			elogWarnOrError(logger, "Writting to chennel in {} failed: {}", session, exception);
+			fireException(session, exception);
 		}
 	}
 	

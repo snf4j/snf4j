@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,39 +23,60 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.factory;
 
-import java.nio.ByteBuffer;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
-import org.snf4j.core.handler.IDatagramHandler;
+import java.nio.channels.SocketChannel;
 
-public class TestDatagramSession extends DatagramSession {
+import org.junit.Test;
+import org.snf4j.core.SSLSession;
+import org.snf4j.core.StreamSession;
+import org.snf4j.core.handler.AbstractStreamHandler;
+import org.snf4j.core.handler.IStreamHandler;
 
-	public volatile boolean getInBufferException;
+public class AbstractSessionFactoryTest {
 	
-	public volatile boolean calculateThroughputException;
-	
-	public TestDatagramSession(String name, IDatagramHandler handler) {
-		super(name, handler);
+	@Test
+	public void testCreate() throws Exception {
+		Factory f = new Factory();
+		
+		SocketChannel channel = SocketChannel.open();
+		StreamSession s = f.create(channel);
+		assertNotNull(s);
+		assertFalse(s instanceof SSLSession);
+		
+		f = new Factory(false);
+		s = f.create(channel);
+		assertNotNull(s);
+		assertFalse(s instanceof SSLSession);
+
+		f = new Factory(true);
+		s = f.create(channel);
+		assertNotNull(s);
+		assertTrue(s instanceof SSLSession);
+		
 	}
-
-	public TestDatagramSession(IDatagramHandler handler) {
-		super(handler);
-	}
 	
-	@Override
-	ByteBuffer getInBuffer() {
-		if (getInBufferException) {
-			throw new IllegalStateException();
-		}
-		return super.getInBuffer();
-	}	
+	static class Factory extends AbstractSessionFactory {
 
-	@Override
-	void calculateThroughput(long currentTime, boolean force) {
-		if (calculateThroughputException) {
-			throw new IllegalStateException();
+		Factory() {
 		}
-		super.calculateThroughput(currentTime, force);
+
+		Factory(boolean ssl) {
+			super(ssl);
+		}
+		
+		@Override
+		protected IStreamHandler createHandler(SocketChannel channel) {
+			return new AbstractStreamHandler() {
+
+				@Override
+				public void read(byte[] data) {
+				}
+			};
+		}
 	}
 }

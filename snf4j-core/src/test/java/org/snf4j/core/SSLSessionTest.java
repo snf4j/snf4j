@@ -1154,8 +1154,7 @@ public class SSLSessionTest {
 		engine.beginHandshake();
 		
 		session.write(new Packet(PacketType.ECHO, "2").toBytes());
-		s.waitForDataSent(TIMEOUT);
-		c.waitForDataRead(TIMEOUT);
+		waitFor(500);
 		assertEquals("DS|DR|DR|DS|DR|DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
 		assertEquals("DR|DS|DR|DR|DS|DR|ECHO(2)|DS|", s.getRecordedData(true));
 
@@ -1163,14 +1162,12 @@ public class SSLSessionTest {
 		engine.beginHandshake();
 		
 		session.write(new Packet(PacketType.ECHO, "3").toBytes());
-		s.waitForDataSent(TIMEOUT);
-		c.waitForDataRead(TIMEOUT);
+		waitFor(500);
 		assertEquals("DS|DR|DS|DR|DR|DS|DR|ECHO_RESPONSE(3)|", c.getRecordedData(true));
 		assertEquals("DR|ECHO(3)|DS|DR|DS|DR|DR|DS|", s.getRecordedData(true));
 
 		session.write(new Packet(PacketType.ECHO, "4").toBytes());
-		s.waitForDataSent(TIMEOUT);
-		c.waitForDataRead(TIMEOUT);
+		waitFor(500);
 		assertEquals("DS|DR|ECHO_RESPONSE(4)|", c.getRecordedData(true));
 		assertEquals("DR|ECHO(4)|DS|", s.getRecordedData(true));
 		

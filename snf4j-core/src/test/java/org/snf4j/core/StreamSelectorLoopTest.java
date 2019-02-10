@@ -144,7 +144,9 @@ public class StreamSelectorLoopTest {
 		s.getRecordedData("RDY|", true);
 
 		loop = c.getSelectLoop(); 
+		assertFalse(loop.isStopping());
 		loop.stopping.set(StoppingType.GENTLE);
+		assertTrue(loop.isStopping());
 
 		loop.stop();
 		assertFalse(loop.join(TIMEOUT));
@@ -152,6 +154,8 @@ public class StreamSelectorLoopTest {
 		assertEquals("DS|", s.getRecordedData(true));
 		loop.quickStop();
 		assertTrue(loop.join(TIMEOUT));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
 
@@ -848,21 +852,19 @@ public class StreamSelectorLoopTest {
 		c3 = new Client(PORT);
 		slc.accept = TestSelectorLoopController.EXCEPTION;
 		c3.start();
-		c3.stop(TIMEOUT);
-		waitFor(100);
+		c3.waitForSessionEnding(TIMEOUT);
 		assertEquals("", s.getRecordedData(true));
-		assertEquals("", c3.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c3.getRecordedData(true));
 		
 		//exception while getting from the pool
 		c4 = new Client(PORT);
 		slc.accept = TestSelectorLoopController.DEFAULT;
 		pool.getException = true;
 		c4.start();
-		c4.stop(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		waitFor(100);
+		c4.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|EXC|SEN|", s.getRecordedData(true));
-		assertEquals("", c4.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c4.getRecordedData(true));
 		
 		//check if the loop is not broken
 		c1.write(new Packet(PacketType.ECHO));

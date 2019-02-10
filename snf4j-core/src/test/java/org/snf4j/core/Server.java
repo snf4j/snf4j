@@ -77,6 +77,7 @@ public class Server {
 	public volatile ServerSocketChannel ssc;
 	public volatile ServerSocketChannel registeredSsc;
 	public volatile ServerSocketChannel closedSsc;
+	public volatile boolean useTestSession;
 
 	public volatile int minInBufferCapacity = 1024;
 	public volatile int minOutBufferCapacity = 1024;
@@ -332,7 +333,8 @@ public class Server {
 			if (ssl) {
 				return new SSLSession(createHandler(channel), false);
 			}
-			return new StreamSession(createHandler(channel));
+			return useTestSession ? new TestStreamSession(createHandler(channel)) : 
+				new StreamSession(createHandler(channel));
 		}
 		
 		@Override

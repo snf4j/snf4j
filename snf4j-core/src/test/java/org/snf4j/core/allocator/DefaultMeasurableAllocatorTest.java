@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@ public class DefaultMeasurableAllocatorTest {
 	private void assertCounters(long allocateCount,	long ensureSomeCount, long ensureCount, long reduceCount,long extendCount) {
 		assertEquals(allocateCount, heap.getAllocateCount());
 		assertEquals(ensureSomeCount, heap.getEnsureSomeCount());
+		assertEquals(ensureCount, heap.getEnsureCount());
 		assertEquals(reduceCount, heap.getReduceCount());
 		assertEquals(extendCount, heap.getExtendCount());
 	}

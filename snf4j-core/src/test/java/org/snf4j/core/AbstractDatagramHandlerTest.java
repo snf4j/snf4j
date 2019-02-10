@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,11 +46,11 @@ public class AbstractDatagramHandlerTest {
 			assertEquals("session is not an instance of IDatagramSession", e.getMessage());
 		}
 		
-		TestDatagramSession s = new TestDatagramSession();
+		TestDummyDatagramSession s = new TestDummyDatagramSession();
 		h.setSession(s);
 		assertTrue(s == h.getSession());
 		h.setSession(s);
-		TestDatagramSession s2 = new TestDatagramSession();
+		TestDummyDatagramSession s2 = new TestDummyDatagramSession();
 		
 		h.setSession(s2);
 		assertTrue(s2 == h.getSession());
