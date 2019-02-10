@@ -154,6 +154,8 @@ public class StreamSelectorLoopTest {
 		assertEquals("DS|", s.getRecordedData(true));
 		loop.quickStop();
 		assertTrue(loop.join(TIMEOUT));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
 
