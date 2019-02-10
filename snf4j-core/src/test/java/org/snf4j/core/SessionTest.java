@@ -1908,7 +1908,13 @@ public class SessionTest {
 		c.write(new Packet(PacketType.NOP));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		String recordedData = c.getRecordedData(true);
+		if (recordedData.indexOf("EXC") == -1) {
+			assertEquals("DS|SCL|SEN|", recordedData);
+		}
+		else {
+			assertEquals("DS|EXC|SCL|SEN|", recordedData);
+		}
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
 	}
 }
