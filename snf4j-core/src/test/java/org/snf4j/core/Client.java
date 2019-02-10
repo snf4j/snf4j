@@ -58,7 +58,8 @@ public class Client extends Server {
 			initSession = new SSLSession(new Handler(), true);
 		}
 		else {
-			initSession = new StreamSession(new Handler());
+			initSession = this.useTestSession ? new TestStreamSession(new Handler()) 
+					: new StreamSession(new Handler());
 		}
 		return initSession;
 	}
@@ -99,7 +100,8 @@ public class Client extends Server {
 				session = new SSLSession(new Handler(), true);
 			}
 			else {
-				session = new StreamSession(new Handler());
+				session = useTestSession ? new StreamSession(new Handler()) 
+						: new StreamSession(new Handler());
 			}
 			session.setChannel(sc);
 			session.preCreated();
@@ -112,7 +114,12 @@ public class Client extends Server {
 					loop.register(sc, new SSLSession(new Handler(), true));
 				}
 				else {
-					loop.register(sc, new Handler());
+					if (useTestSession) {
+						loop.register(sc, new TestStreamSession(new Handler()));
+					}
+					else {
+						loop.register(sc, new Handler());
+					}
 				}
 			}
 			else {

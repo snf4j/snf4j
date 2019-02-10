@@ -1475,5 +1475,45 @@ public class DatagramSessionTest {
 		assertEquals(1, allocator.getReleasedCount());
 		
 	}
-	
+
+	@Test
+	public void testExceptionInHandleReading() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useTestSession = true;
+		s.startServer();
+		c = new DatagramHandler(PORT); 
+		c.useTestSession = true;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		((TestDatagramSession)s.getSession()).getInBufferException = true;
+		c.write(new Packet(PacketType.NOP));
+		
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
+		
+	}
+
+	@Test
+	public void testExceptionInHandleWriting() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useTestSession = true;
+		s.startServer();
+		c = new DatagramHandler(PORT); 
+		c.useTestSession = true;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		
+		((TestDatagramSession)c.getSession()).calculateThroughputException = true;
+		c.write(new Packet(PacketType.NOP));
+		
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|EXC|SCL|SEN|", c.getRecordedData(true));
+		
+	}
+
 }

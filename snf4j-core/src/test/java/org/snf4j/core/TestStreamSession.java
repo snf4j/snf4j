@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,35 +27,35 @@ package org.snf4j.core;
 
 import java.nio.ByteBuffer;
 
-import org.snf4j.core.handler.IDatagramHandler;
+import org.snf4j.core.handler.IStreamHandler;
 
-public class TestDatagramSession extends DatagramSession {
+public class TestStreamSession extends StreamSession {
+
+	public volatile boolean getOutBuffersException;
 
 	public volatile boolean getInBufferException;
 	
-	public volatile boolean calculateThroughputException;
-	
-	public TestDatagramSession(String name, IDatagramHandler handler) {
+	public TestStreamSession(String name, IStreamHandler handler) {
 		super(name, handler);
 	}
 
-	public TestDatagramSession(IDatagramHandler handler) {
+	public TestStreamSession(IStreamHandler handler) {
 		super(handler);
 	}
 	
+	@Override
+	ByteBuffer[] getOutBuffers() {
+		if (getOutBuffersException) {
+			throw new IllegalStateException();
+		}
+		return super.getOutBuffers();
+	}
+
 	@Override
 	ByteBuffer getInBuffer() {
 		if (getInBufferException) {
 			throw new IllegalStateException();
 		}
 		return super.getInBuffer();
-	}	
-
-	@Override
-	void calculateThroughput(long currentTime, boolean force) {
-		if (calculateThroughputException) {
-			throw new IllegalStateException();
-		}
-		super.calculateThroughput(currentTime, force);
 	}
 }

@@ -1867,4 +1867,48 @@ public class SessionTest {
 		
 		s.stop(TIMEOUT);
 	}
+	
+	@Test
+	public void testExceptionInHandleWriting() throws Exception {
+		s = new Server(PORT);
+		s.useTestSession = true;
+		c = new Client(PORT);
+		c.useTestSession = true;
+		
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+
+		((TestStreamSession)c.getSession()).getOutBuffersException = true;
+		c.write(new Packet(PacketType.NOP));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+	}
+
+	@Test
+	public void testExceptionInHandleReadding() throws Exception {
+		s = new Server(PORT);
+		s.useTestSession = true;
+		c = new Client(PORT);
+		c.useTestSession = true;
+		
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+
+		((TestStreamSession)s.getSession()).getInBufferException = true;
+		c.write(new Packet(PacketType.NOP));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
+	}
 }

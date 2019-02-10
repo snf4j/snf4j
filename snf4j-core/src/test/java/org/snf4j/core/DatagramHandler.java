@@ -58,6 +58,7 @@ public class DatagramHandler {
 	boolean directAllocator;
 	TestAllocator allocator;
 	boolean canOwnPasseData;
+	volatile boolean useTestSession;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
@@ -88,7 +89,8 @@ public class DatagramHandler {
 	}
 
 	public DatagramSession createSession() {
-		initSession = new DatagramSession(new Handler());
+		initSession = useTestSession ? new TestDatagramSession(new Handler()) 
+				: new DatagramSession(new Handler());
 		return initSession;
 	}
 
@@ -158,7 +160,8 @@ public class DatagramHandler {
 			dc.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
 			
 			if (registerConnectedSession) {
-				session = new DatagramSession(new Handler());
+				session = useTestSession ? new TestDatagramSession(new Handler()) 
+						: new DatagramSession(new Handler());
 				session.setChannel(dc);
 				session.preCreated();
 				session.event(SessionEvent.CREATED);
@@ -166,7 +169,12 @@ public class DatagramHandler {
 			}
 			else {
 				if (initSession == null) {
-					loop.register(dc, new Handler());
+					if (useTestSession) {
+						loop.register(dc, new TestDatagramSession(new Handler()));
+					}
+					else {
+						loop.register(dc, new Handler());
+					}
 				}
 				else {
 					loop.register(dc, initSession);
@@ -176,14 +184,16 @@ public class DatagramHandler {
 		else {
 			dc.socket().bind(new InetSocketAddress(port));
 			if (registerConnectedSession) {
-				session = new DatagramSession(new Handler());
+				session = useTestSession ? new TestDatagramSession(new Handler()) 
+						: new DatagramSession(new Handler());
 				session.setChannel(dc);
 				session.preCreated();
 				session.event(SessionEvent.CREATED);
 				loop.register(dc, session);
 			}
 			else {
-				loop.register(dc, new DatagramSession(new Handler()));
+				loop.register(dc, useTestSession ? new TestDatagramSession(new Handler()) 
+						: new DatagramSession(new Handler()));
 			}
 		}
 
