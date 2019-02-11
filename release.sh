@@ -75,7 +75,3 @@ for (( i=0; i<$DOCS_LEN; i++)); do
 done
 
 echo $REPO_NAME released successfully
-
-done
-
-echo $REPO_NAME released successfully
