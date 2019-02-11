@@ -9,6 +9,7 @@ JARS_LEN=${#JARS[@]}
 DOCS=( core )
 DOCS_LEN=${#DOCS[@]}
 export TRAVIS=true
+export SNF4J_SKIP_TEST_LOGGING=true
 
 if [ ¨$VERSION¨ == ¨¨ ]; then
   echo Usage: release.sh VERSION
@@ -32,6 +33,10 @@ git clone https://github.com/snf4j/snf4j.git
 echo $REPO_NAME cloned successfully
 
 cd $REPO_NAME
+git checkout -b bld$VERSION v$VERSION
+[ $? -eq 0 ] || exit $?
+echo $REPO_NAME checked out the tag v$VERSION successfully
+
 mvn install -DskipTests
 [ $? -eq 0 ] || exit $?
 echo $REPO_NAME installed successfully
@@ -56,6 +61,10 @@ for (( i=0; i<$JARS_LEN; i++)); do
   echo ${PASS} | gpg --batch --no-tty --yes --passphrase-fd 0 -ab $FILE-sources.jar
   [ $? -eq 0 ] || exit $?
   echo $FILE-sources.jar signed successfully
+  cp $REPO_NAME-${JARS[${i}]}/pom.xml $FILE.pom
+  echo ${PASS} | gpg --batch --no-tty --yes --passphrase-fd 0 -ab $FILE.pom
+  [ $? -eq 0 ] || exit $?
+  echo $FILE.pom signed successfully
 done
 
 for (( i=0; i<$DOCS_LEN; i++)); do
@@ -63,6 +72,10 @@ for (( i=0; i<$DOCS_LEN; i++)); do
   echo ${PASS} | gpg --batch --no-tty --yes --passphrase-fd 0 -ab $FILE-javadoc.jar
   [ $? -eq 0 ] || exit $?
   echo $FILE-javadoc.jar signed successfully
+done
+
+echo $REPO_NAME released successfully
+
 done
 
 echo $REPO_NAME released successfully
