@@ -218,7 +218,7 @@ public class Server {
 			s = map.get(ids.get(origIndex)).toString();
 			++origIndex;
 			if (origIndex != i) {
-				s.replace("@"+origIndex+"|", "@" + i + "|");
+				s = s.replace("@"+origIndex+"|", "@" + i + "|");
 			}
 			sb.append(s);
 		}
