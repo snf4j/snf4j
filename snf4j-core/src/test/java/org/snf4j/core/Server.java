@@ -32,7 +32,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.KeyStore;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ThreadFactory;
@@ -78,6 +80,7 @@ public class Server {
 	public volatile ServerSocketChannel registeredSsc;
 	public volatile ServerSocketChannel closedSsc;
 	public volatile boolean useTestSession;
+	public volatile boolean recordSessionId;
 
 	public volatile int minInBufferCapacity = 1024;
 	public volatile int minOutBufferCapacity = 1024;
@@ -174,6 +177,41 @@ public class Server {
 			recorder.append(data);
 			recorder.append('|');
 		}
+	}
+	
+	public String getOrderedRecordedData(boolean clean) {
+		String s = getRecordedData(clean);
+		Map<String, StringBuilder> map = new HashMap<String, StringBuilder>();
+		List<String> ids = new ArrayList<String>();
+		StringBuilder sb = new StringBuilder();
+		
+		int i;
+
+		while ((i = s.indexOf('|')) != -1) {
+			int i0 = s.indexOf('@');
+			
+			if (i0 > i || i == -1) {
+				sb.append(s.substring(0, i+1));
+			}
+			else {
+				String id = s.substring(i0, i);
+				StringBuilder sb2 = map.get(id);
+				if (sb2 == null) {
+					sb2 = new StringBuilder();
+					map.put(id, sb2);
+					ids.add(id);
+				}
+				sb2.append(s.substring(0, i0));
+				sb2.append('@');
+				sb2.append(ids.indexOf(id)+1);
+				sb2.append('|');
+			}
+			s = s.substring(i+1);
+		}
+		for (i = 0; i<ids.size(); ++i) {
+			sb.append(map.get(ids.get(i)).toString());
+		}
+		return sb.toString();
 	}
 	
 	public String getRecordedData(boolean clear) {
@@ -373,6 +411,15 @@ public class Server {
 
 		Handler() {
 			super(null);
+		}
+		
+		void record(String data) {
+			if (recordSessionId) {
+				Server.this.record(data + "@" + getSession().getId());
+			}
+			else {
+				Server.this.record(data);
+			}
 		}
 		
 		@Override
