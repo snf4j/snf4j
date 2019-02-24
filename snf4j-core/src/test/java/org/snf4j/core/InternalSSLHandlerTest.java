@@ -26,7 +26,6 @@
 package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -208,7 +207,7 @@ public class InternalSSLHandlerTest {
 		inNet.put(ByteUtils.getBytes(15, 1));
 		engine.unwrapResult[0] = new SSLEngineResult(SSLEngineResult.Status.CLOSED,
 				SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING, 0, 0);
-		assertFalse(h.unwrap(status));
+		assertTrue(h.unwrap(status));
 		h.read(null);
 	}
 	

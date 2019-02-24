@@ -297,6 +297,12 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 					if (debugEnabled) {
 						logger.debug("Unwrapping has been closed for {}", session);
 					}
+					if (!engine.isOutboundDone()) {
+						return true;
+					}
+					else {
+						session.superQuickClose();
+					}
 					return false;
 			}
 		} while (repeat);
@@ -402,7 +408,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 						logger.debug("Wrapping has been closed for {}", session);
 					}
 					flush();
-					session.close(false);
+					session.close(true);
 					break;
 			}
 		} while (repeat);

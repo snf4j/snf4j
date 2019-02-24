@@ -32,7 +32,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.KeyStore;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ThreadFactory;
@@ -78,6 +81,7 @@ public class Server {
 	public volatile ServerSocketChannel registeredSsc;
 	public volatile ServerSocketChannel closedSsc;
 	public volatile boolean useTestSession;
+	public volatile boolean recordSessionId;
 
 	public volatile int minInBufferCapacity = 1024;
 	public volatile int minOutBufferCapacity = 1024;
@@ -174,6 +178,51 @@ public class Server {
 			recorder.append(data);
 			recorder.append('|');
 		}
+	}
+	
+	public String getOrderedRecordedData(boolean clean) {
+		String s = getRecordedData(clean);
+		Map<Integer, StringBuilder> map = new HashMap<Integer, StringBuilder>();
+		List<Integer> ids = new ArrayList<Integer>();
+		StringBuilder sb = new StringBuilder();
+		
+		int i;
+
+		while ((i = s.indexOf('|')) != -1) {
+			int i0 = s.indexOf('@');
+			
+			if (i0 > i || i == -1) {
+				sb.append(s.substring(0, i+1));
+			}
+			else {
+				Integer id = Integer.parseInt(s.substring(i0+1, i));
+				StringBuilder sb2 = map.get(id);
+				if (sb2 == null) {
+					sb2 = new StringBuilder();
+					map.put(id, sb2);
+					ids.add(id);
+				}
+				sb2.append(s.substring(0, i0));
+				sb2.append('@');
+				sb2.append(ids.indexOf(id)+1);
+				sb2.append('|');
+			}
+			s = s.substring(i+1);
+		}
+		
+		Integer[] sortedIds = new Integer[ids.size()];
+		Arrays.sort(ids.toArray(sortedIds));
+		
+		for (i = 1; i<=sortedIds.length; ++i) {
+			int origIndex = ids.indexOf(sortedIds[i-1]);
+			s = map.get(ids.get(origIndex)).toString();
+			++origIndex;
+			if (origIndex != i) {
+				s = s.replace("@"+origIndex+"|", "@" + i + "|");
+			}
+			sb.append(s);
+		}
+		return sb.toString();
 	}
 	
 	public String getRecordedData(boolean clear) {
@@ -373,6 +422,15 @@ public class Server {
 
 		Handler() {
 			super(null);
+		}
+		
+		void record(String data) {
+			if (recordSessionId) {
+				Server.this.record(data + "@" + getSession().getId());
+			}
+			else {
+				Server.this.record(data);
+			}
 		}
 		
 		@Override

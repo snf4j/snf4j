@@ -55,10 +55,11 @@ public class Client extends Server {
 
 	public StreamSession createSession() throws Exception {
 		if (ssl) {
-			initSession = new SSLSession(new Handler(), true);
+			initSession = useTestSession ? new TestOwnSSLSession(new Handler(), true) 
+					: new SSLSession(new Handler(), true);
 		}
 		else {
-			initSession = this.useTestSession ? new TestStreamSession(new Handler()) 
+			initSession = useTestSession ? new TestStreamSession(new Handler()) 
 					: new StreamSession(new Handler());
 		}
 		return initSession;
@@ -97,7 +98,8 @@ public class Client extends Server {
 		
 		if (registerConnectedSession) {
 			if (ssl) {
-				session = new SSLSession(new Handler(), true);
+				session = useTestSession ? new TestOwnSSLSession(new Handler(), true) 
+						: new SSLSession(new Handler(), true);
 			}
 			else {
 				session = useTestSession ? new StreamSession(new Handler()) 
@@ -111,7 +113,12 @@ public class Client extends Server {
 		else {
 			if (initSession == null) {
 				if (ssl) {
-					loop.register(sc, new SSLSession(new Handler(), true));
+					if (useTestSession) {
+						loop.register(sc, new TestOwnSSLSession(new Handler(), true));
+					}
+					else {
+						loop.register(sc, new SSLSession(new Handler(), true));
+					}
 				}
 				else {
 					if (useTestSession) {

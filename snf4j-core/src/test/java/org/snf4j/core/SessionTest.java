@@ -33,6 +33,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -1917,4 +1918,108 @@ public class SessionTest {
 		}
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
 	}
+	
+	private SocketChannel connect() throws IOException {
+		SocketChannel channel = SocketChannel.open();
+		channel.configureBlocking(true);
+		channel.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT)); 
+		return channel;
+	}
+	
+	Object getFromIntSession(InternalSession session, String name) throws Exception {
+		Field f = InternalSession.class.getDeclaredField(name);
+		
+		f.setAccessible(true);
+		return f.get(session);
+	}
+
+	Object getFromSession(StreamSession session, String name) throws Exception {
+		Field f = StreamSession.class.getDeclaredField(name);
+		
+		f.setAccessible(true);
+		return f.get(session);
+	}
+	
+	@Test
+	public void testGentleCloseWithDifferentPeerInteraction() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		SocketChannel channel;
+
+		//peer only shutdownOutput
+		channel = connect();
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		channel.shutdownOutput();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		channel.close();
+		
+		//peer only shutdownOutput, host with data to sent but write suspended
+ 	    channel = connect();
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		s.getSession().suspendWrite();
+		s.getSession().write(new byte[2]);
+		channel.shutdownOutput();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		channel.close();
+
+		//peer only shutdownOutput, host with data to sent
+ 	    channel = connect();
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		Object lock = getFromIntSession(s.getSession(), "writeLock");
+		SelectionKey key = (SelectionKey) getFromIntSession(s.getSession(), "key");
+		ByteBuffer[] bufs = (ByteBuffer[]) getFromSession((StreamSession)s.getSession(), "outBuffers");
+		
+		synchronized (lock) {
+			bufs[0].put(new byte[2]);
+			key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+			channel.shutdownOutput();
+		}
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", s.getRecordedData(true));
+		channel.close();
+		
+		//host gently closes but peer delays shutdown
+ 	    channel = connect();
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		s.getSession().close();
+		waitFor(1000);
+		assertEquals("", s.getRecordedData(true));
+		channel.shutdownOutput();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		channel.close();
+
+		//host gently closes but peer doesn't shutdown
+ 	    channel = connect();
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		s.getSession().close();
+		waitFor(TIMEOUT);
+		assertEquals("", s.getRecordedData(true));
+		s.getSession().quickClose();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		channel.close();
+
+		//host gently closes but peer doesn't shutdown, stop loop
+ 	    channel = connect();
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		s.getSession().close();
+		s.loop.stop();
+		assertFalse(s.loop.join(TIMEOUT));
+		s.loop.quickStop();
+		assertTrue(s.loop.join(TIMEOUT));
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		channel.close();
+		
+	}	
 }

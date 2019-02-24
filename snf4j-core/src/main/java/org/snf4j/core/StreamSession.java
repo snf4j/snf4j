@@ -337,7 +337,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 						this.isEOS = isEos;
 						if ((ops & SelectionKey.OP_WRITE) != 0) {
 							//To enable gentle close OP_READ must be set 
-							if ((ops & SelectionKey.OP_READ) == 0) {
+							if (isEos) {
+								key.interestOps(ops & ~SelectionKey.OP_READ);
+							} 
+							else if ((ops & SelectionKey.OP_READ) == 0) {
 								key.interestOps(ops | SelectionKey.OP_READ);
 								lazyWakeup();
 							}
