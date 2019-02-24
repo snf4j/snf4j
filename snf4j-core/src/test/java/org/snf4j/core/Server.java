@@ -33,6 +33,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.KeyStore;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -181,8 +182,8 @@ public class Server {
 	
 	public String getOrderedRecordedData(boolean clean) {
 		String s = getRecordedData(clean);
-		Map<String, StringBuilder> map = new HashMap<String, StringBuilder>();
-		List<String> ids = new ArrayList<String>();
+		Map<Integer, StringBuilder> map = new HashMap<Integer, StringBuilder>();
+		List<Integer> ids = new ArrayList<Integer>();
 		StringBuilder sb = new StringBuilder();
 		
 		int i;
@@ -194,7 +195,7 @@ public class Server {
 				sb.append(s.substring(0, i+1));
 			}
 			else {
-				String id = s.substring(i0, i);
+				Integer id = Integer.parseInt(s.substring(i0+1, i));
 				StringBuilder sb2 = map.get(id);
 				if (sb2 == null) {
 					sb2 = new StringBuilder();
@@ -208,8 +209,18 @@ public class Server {
 			}
 			s = s.substring(i+1);
 		}
-		for (i = 0; i<ids.size(); ++i) {
-			sb.append(map.get(ids.get(i)).toString());
+		
+		Integer[] sortedIds = new Integer[ids.size()];
+		Arrays.sort(ids.toArray(sortedIds));
+		
+		for (i = 1; i<=sortedIds.length; ++i) {
+			int origIndex = ids.indexOf(sortedIds[i-1]);
+			s = map.get(ids.get(origIndex)).toString();
+			++origIndex;
+			if (origIndex != i) {
+				s.replace("@"+origIndex+"|", "@" + i + "|");
+			}
+			sb.append(s);
 		}
 		return sb.toString();
 	}

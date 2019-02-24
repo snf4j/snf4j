@@ -343,6 +343,7 @@ public class SSLSessionTest {
 		s.getRecordedData("RDY|", true);
 		bufs = getBuffers((SSLSession)c.getSession(), "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP, "567").toBytes());
+		waitFor(200);
 		s.recordSessionId = true;
 		session1.close();
 		waitFor(500);
@@ -369,6 +370,7 @@ public class SSLSessionTest {
 		s.getRecordedData("RDY|", true);
 		bufs = getBuffers((SSLSession)c.getSession(), "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP, "567").toBytes());
+		waitFor(200);
 		s.recordSessionId = true;
 		session1.close();
 		waitFor(500);
@@ -395,6 +397,7 @@ public class SSLSessionTest {
 		s.getRecordedData("RDY|", true);
 		bufs = getBuffers((SSLSession)c.getSession(), "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP, "567").toBytes());
+		waitFor(200);
 		s.recordSessionId = true;
 		session1.close();
 		waitFor(500);
