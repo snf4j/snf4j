@@ -2,7 +2,7 @@
 <!--
  ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MIT License ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  ~ 
- ~ Copyright (c) 2017-2019 SNF4J contributors
+ ~ Copyright (c) 2019 SNF4J contributors
  ~ 
  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
  ~ of this software and associated documentation files (the "Software"), to deal
@@ -34,10 +34,10 @@
     <version>1.2.0-SNAPSHOT</version>
   </parent>
     
-  <artifactId>snf4j-core-slf4j</artifactId>
+  <artifactId>snf4j-core-log4j2</artifactId>
   <packaging>jar</packaging>
-  <name>SNF4J/Core/SLF4J</name>
-  <description>The SNF4J core logger binder for SLF4J api</description>
+  <name>SNF4J/Core/Log4j2</name>
+  <description>The SNF4J core logger binder for Log4j 2 api</description>
   <url>http://snf4j.org</url>
 
   <dependencies>
@@ -48,15 +48,15 @@
     </dependency>
 
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${version.slf4j.api}</version>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <version>${version.log4j2.api}</version>
     </dependency>
-
+  
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>${version.slf4j.simple}</version>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>${version.log4j2.core}</version>
     </dependency>
     
   </dependencies> 
