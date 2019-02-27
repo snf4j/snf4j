@@ -31,7 +31,7 @@
   <parent>
     <groupId>org.snf4j</groupId>
     <artifactId>snf4j-project</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.2.0</version>
   </parent>
     
   <artifactId>snf4j-example</artifactId>
