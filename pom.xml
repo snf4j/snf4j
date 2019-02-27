@@ -76,7 +76,7 @@
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     
-	<!-- jar OSGi versions -->
+    <!-- jar OSGi versions -->
     <slf4j.osgiVersion>1.7.1</slf4j.osgiVersion>
     <log4j2.osgiVersion>2.0.2</log4j2.osgiVersion>
     
@@ -302,10 +302,63 @@
                  </execution>
                </executions>
             </plugin>
+
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-javadoc-plugin</artifactId>
+              <version>${version.javadoc.plugin}</version>
+              <executions>
+                <execution>
+                  <id>attach-javadocs</id>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                </execution>
+              </executions>        
+              <configuration>
+                <aggregate>false</aggregate>
+                <stylesheet>java</stylesheet>
+                <links>
+                  <link>http://java.sun.com/j2se/1.5.0/docs/api</link>
+                </links>
+                <groups>
+                  <group>
+                    <title>SNF4J packages</title>
+                    <packages>org.snf4j:org.snf4j.*</packages>
+                  </group>
+                </groups>
+              </configuration>
+            </plugin>     
+
+            <plugin>
+              <artifactId>maven-source-plugin</artifactId> 
+              <version>${version.source.plugin}</version>
+              <executions>
+                <execution>
+                  <id>attach-sources</id>
+                  <goals>
+                    <goal>jar-no-fork</goal>
+                  </goals>
+                </execution>
+              </executions>
+              <configuration>
+                <archive>
+                  <manifestEntries>
+                    <Bundle-ManifestVersion>2</Bundle-ManifestVersion> 
+                    <Bundle-Name>${project.name}</Bundle-Name> 
+                    <Bundle-SymbolicName>${project.groupId}.${project.artifactId}.source</Bundle-SymbolicName> 
+                    <Bundle-Vendor>${project.organization.name}</Bundle-Vendor> 
+                    <Bundle-Version>${project.version}</Bundle-Version> 
+                    <Bundle-Description>${project.description}</Bundle-Description>
+                  </manifestEntries>
+                </archive>
+              </configuration>
+            </plugin>
+
           </plugins>
        </build>
     </profile>
-	
+
   </profiles>
 
 </project>
