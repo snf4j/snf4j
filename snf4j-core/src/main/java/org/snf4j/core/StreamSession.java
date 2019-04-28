@@ -367,6 +367,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 						closing = ClosingState.FINISHED;
 						key.channel().close();
 					}
+
+					if (!key.isValid()) {
+						loop.finishInvalidatedKey(key);
+					}
 				}
 			} catch (Exception e) {
 			}

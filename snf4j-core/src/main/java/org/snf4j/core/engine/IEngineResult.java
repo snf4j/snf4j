@@ -23,37 +23,48 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.handler;
+package org.snf4j.core.engine;
 
 /**
- * An <code>enum</code> that represents session incidents that may occur during processing
- * of I/O or protocol related operations.
+ * An <code>interface</code> encapsulating the result state produced by the 
+ * {@link IEngine} calls.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public enum SessionIncident {
 
-	/**
-	 * SSL/TLS connection closed by peer without sending close_notify. It may
-	 * indicate a possibility of an truncation attack.
-	 */
-	SSL_CLOSED_WITHOUT_CLOSE_NOTIFY("SSL/TLS close procedure not properly followed by peer for {}: {}"),
+public interface IEngineResult {
 	
 	/**
-	 * A connection closed by peer without sending proper close message.
+	 * Returns the number of bytes consumed from the input buffer.
+	 *
+	 * @return the number of bytes consumed.
 	 */
-	CLOSED_WITHOUT_CLOSE_MESSAGE("Close procedure not properly followed by peer for {}: {}");
-	
-	private String defaultMessage;
-	
-	private SessionIncident(String defaultMessage) {
-		this.defaultMessage = defaultMessage;
-	}
+	int bytesConsumed();
 	
 	/**
-	 * Gets the default warning message that will be logged when an implementation of {@link IHandler#incident}
-	 * method returns <code>false</code>.  
-	 * @return the default warning message
+	 * Returns the number of bytes written to the output buffer.
+	 *
+	 * @return the number of bytes produced
 	 */
-	public String defaultMessage() {
-		return defaultMessage;
-	}
+	int bytesProduced();
+	
+	/**
+	 * Gets the overall result of the {@link IEngine} calls.
+	 * 
+	 * @return the return value
+	 */
+	Status getStatus();
+	
+	/**
+	 * Gets the current handshake status produced by the {@link IEngine} call.
+	 * It should match the value returned by the
+	 * {@link IEngine#getHandshakeStatus()} method. The only exception to this
+	 * rule is when the call has just finished the ongoing handshake. In such
+	 * situation this method should return the {@link HandshakeStatus#FINISHED }
+	 * status which is forbidden for the {@link IEngine#getHandshakeStatus()}
+	 * method.
+	 * 
+	 * @return the handshake status
+	 */
+	HandshakeStatus getHandshakeStatus();
 }

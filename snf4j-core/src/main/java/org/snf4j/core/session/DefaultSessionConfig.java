@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.session;
 
+import java.security.NoSuchAlgorithmException;
+
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
@@ -61,6 +63,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	private int maxSSLApplicationBufferSizeRatio = 1;
 	
 	private int maxSSLNetworkBufferSizeRatio = 1;
+	
+	private boolean waitForInboundCloseMessage; 
 	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
@@ -220,8 +224,14 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * <p>
 	 * By default it returns value returned by <code>SSLContext.getDefault().createSSLEngine()</code>
 	 */
-	public SSLEngine createSSLEngine(boolean clientMode) throws Exception {
-		SSLEngine engine = SSLContext.getDefault().createSSLEngine();
+	@Override
+	public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+		SSLEngine engine;
+		try {
+			engine = SSLContext.getDefault().createSSLEngine();
+		} catch (NoSuchAlgorithmException e) {
+			throw new SSLEngineCreateException(e);
+		}
 		engine.setUseClientMode(clientMode);
 		return engine;
 	}
@@ -275,4 +285,32 @@ public class DefaultSessionConfig implements ISessionConfig {
 		return maxSSLNetworkBufferSizeRatio;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>false</code>
+	 */
+	public boolean waitForInboundCloseMessage() {
+		return waitForInboundCloseMessage;
+	}
+
+	/**
+	 * Configures if the framework should wait for the peer's corresponding
+	 * close message in situation when the closing was initiated by calling
+	 * the {@link org.snf4j.core.EngineStreamSession#close
+	 * EngineStreamSession.close()} or
+	 * {@link org.snf4j.core.EngineStreamSession#quickClose
+	 * EngineStreamSession.quickClose()} method.
+	 * 
+	 * @param waitForCloseMessage
+	 *            <code>true</code> to wait for the peer's corresponding close
+	 *            message.
+	 * @return this session config object
+	 * @see #waitForInboundCloseMessage()
+	 */
+	public DefaultSessionConfig setWaitForInboundCloseMessage(boolean waitForCloseMessage) {
+		waitForInboundCloseMessage = waitForCloseMessage;
+		return this;
+	}
+	
 }

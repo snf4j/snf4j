@@ -25,35 +25,33 @@
  */
 package org.snf4j.core.handler;
 
-/**
- * An <code>enum</code> that represents session incidents that may occur during processing
- * of I/O or protocol related operations.
- */
-public enum SessionIncident {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-	/**
-	 * SSL/TLS connection closed by peer without sending close_notify. It may
-	 * indicate a possibility of an truncation attack.
-	 */
-	SSL_CLOSED_WITHOUT_CLOSE_NOTIFY("SSL/TLS close procedure not properly followed by peer for {}: {}"),
-	
-	/**
-	 * A connection closed by peer without sending proper close message.
-	 */
-	CLOSED_WITHOUT_CLOSE_MESSAGE("Close procedure not properly followed by peer for {}: {}");
-	
-	private String defaultMessage;
-	
-	private SessionIncident(String defaultMessage) {
-		this.defaultMessage = defaultMessage;
-	}
-	
-	/**
-	 * Gets the default warning message that will be logged when an implementation of {@link IHandler#incident}
-	 * method returns <code>false</code>.  
-	 * @return the default warning message
-	 */
-	public String defaultMessage() {
-		return defaultMessage;
+import org.junit.Test;
+
+public class SessionIncidentExceptionTest {
+
+	@Test
+	public void testConstructor() {
+		SessionIncidentException e = new SessionIncidentException(SessionIncident.SSL_CLOSED_WITHOUT_CLOSE_NOTIFY); 
+		assertNull(e.getMessage());
+		assertEquals(SessionIncident.SSL_CLOSED_WITHOUT_CLOSE_NOTIFY, e.getIncident());
+		
+		e = new SessionIncidentException("Test1", SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE);
+		assertEquals("Test1", e.getMessage());
+		assertEquals(SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE, e.getIncident());
+
+		Exception cause = new Exception("Cause1");
+		e = new SessionIncidentException("Test2", cause, SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE);
+		assertEquals("Test2", e.getMessage());
+		assertEquals(SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE, e.getIncident());
+		assertTrue(cause == e.getCause());
+		
+		e = new SessionIncidentException(cause, SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE);
+		assertEquals(cause.toString(), e.getMessage());
+		assertEquals(SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE, e.getIncident());
+		assertTrue(cause == e.getCause());
 	}
 }

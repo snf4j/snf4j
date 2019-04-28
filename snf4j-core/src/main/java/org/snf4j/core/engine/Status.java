@@ -23,37 +23,39 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.handler;
+package org.snf4j.core.engine;
 
 /**
- * An <code>enum</code> that represents session incidents that may occur during processing
- * of I/O or protocol related operations.
+ * An <code>enum</code> describing the overall result of the wrap and 
+ * unwrap methods in an {@link IEngine} implementation.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public enum SessionIncident {
-
-	/**
-	 * SSL/TLS connection closed by peer without sending close_notify. It may
-	 * indicate a possibility of an truncation attack.
-	 */
-	SSL_CLOSED_WITHOUT_CLOSE_NOTIFY("SSL/TLS close procedure not properly followed by peer for {}: {}"),
+public enum Status {
+	
+	/** 
+	 * An {@link IEngine} implementation was not able to process the operation 
+	 * because there are not enough bytes available in the destination buffer 
+	 * to hold the result. 
+	 * */
+	BUFFER_OVERFLOW,
 	
 	/**
-	 * A connection closed by peer without sending proper close message.
+	 * An {@link IEngine} implementation was not able to unwrap the incoming data 
+	 * because there were not enough source bytes available to make a complete 
+	 * packet.
 	 */
-	CLOSED_WITHOUT_CLOSE_MESSAGE("Close procedure not properly followed by peer for {}: {}");
-	
-	private String defaultMessage;
-	
-	private SessionIncident(String defaultMessage) {
-		this.defaultMessage = defaultMessage;
-	}
+	BUFFER_UNDERFLOW,
 	
 	/**
-	 * Gets the default warning message that will be logged when an implementation of {@link IHandler#incident}
-	 * method returns <code>false</code>.  
-	 * @return the default warning message
+	 * The operation just closed this side of an {@link IEngine} implementation, or 
+	 * the operation could not be completed because it was already closed.
 	 */
-	public String defaultMessage() {
-		return defaultMessage;
-	}
+	CLOSED,
+	
+	/**
+	 * 	An {@link IEngine} implementation completed the operation, and is available 
+	 * to process similar calls.
+	 */
+	OK
 }

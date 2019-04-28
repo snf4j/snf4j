@@ -23,66 +23,53 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.factory;
+package org.snf4j.example.engine;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
-import javax.net.ssl.SSLEngine;
-
-import org.junit.Test;
-import org.snf4j.core.EngineSessionTest;
-import org.snf4j.core.EngineStreamSession;
-import org.snf4j.core.SSLSession;
+import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.StreamSession;
-import org.snf4j.core.handler.AbstractStreamHandler;
-import org.snf4j.core.handler.IStreamHandler;
 
-public class AbstractSessionFactoryTest {
+public class EngineClient {
+	static final String PREFIX = "org.snf4j.";
+	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
+	static final int PORT = Integer.getInteger(PREFIX+"Port", 8003);
+	static final int ENGINE = Integer.getInteger(PREFIX+"Engine", 2);
+	static final int OFFSET = Integer.getInteger(PREFIX+"Offset", 66);
 	
-	@Test
-	public void testCreate() throws Exception {
-		Factory f = new Factory();
+	public static void main(String[] args) throws Exception {
+		SelectorLoop loop = new SelectorLoop();
 		
-		SocketChannel channel = SocketChannel.open();
-		StreamSession s = f.create(channel);
-		assertNotNull(s);
-		assertFalse(s instanceof SSLSession);
-		
-		f = new Factory(false);
-		s = f.create(channel);
-		assertNotNull(s);
-		assertFalse(s instanceof SSLSession);
+		try {
+			loop.start();
+			
+			// Initialize the connection
+			SocketChannel channel = SocketChannel.open();
+			channel.configureBlocking(false);
+			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
+			
+			//Create the engine session
+			StreamSession session = new EngineSession(EngineFactory.create(ENGINE, OFFSET, true), new EngineClientHandler());
+			
+			// Register the channel
+			loop.register(channel, session).sync().getSession();
+			
+			// Confirm that the connection was successful
+			session.getReadyFuture().sync();
 
-		f = new Factory(true);
-		s = f.create(channel);
-		assertNotNull(s);
-		assertTrue(s instanceof SSLSession);
-		SSLEngine engine = EngineSessionTest.getSSLEngine((EngineStreamSession) s);
-		assertFalse(engine.getUseClientMode());
-		
-	}
-	
-	static class Factory extends AbstractSessionFactory {
+			session.write("Hello, World!".getBytes()).sync();
+			
+			session.quickClose();
 
-		Factory() {
-		}
-
-		Factory(boolean ssl) {
-			super(ssl);
+			session.getCloseFuture().sync();
 		}
 		
-		@Override
-		protected IStreamHandler createHandler(SocketChannel channel) {
-			return new AbstractStreamHandler() {
+		finally {
 
-				@Override
-				public void read(byte[] data) {
-				}
-			};
+			// Gently stop the loop
+			loop.stop();
 		}
 	}
 }

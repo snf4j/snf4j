@@ -237,10 +237,24 @@ public class SessionFuturesController {
 	 * 
 	 * @param expectedUnwrappedSize
 	 *            the expected unwrapped (before encryption) size of total bytes 
-	 *            sent by the future executor that completes this future
+	 *            sent by the future's executor that completes this future
 	 * @return a future associated with a write operation
 	 */
+	@Deprecated
 	public IFuture<Void> getSSLWriteFuture(long expectedUnwrappedSize) {
+		return new TwoThresholdFuture<Void>(sentFuture, expectedUnwrappedSize);
+	}
+
+	/**
+	 * Returns a future that can be used to wait for the completion of write
+	 * operations from engine driven sessions.
+	 * 
+	 * @param expectedUnwrappedSize
+	 *            the expected unwrapped size of total bytes sent by the 
+	 *            future's executor that completes this future
+	 * @return a future associated with a write operation
+	 */
+	public IFuture<Void> getEngineWriteFuture(long expectedUnwrappedSize) {
 		return new TwoThresholdFuture<Void>(sentFuture, expectedUnwrappedSize);
 	}
 	

@@ -25,18 +25,14 @@ T * -------------------------------- MIT License -------------------------------
  */
 package org.snf4j.core;
 
-import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
 
-import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
-import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
+import org.snf4j.core.session.SSLEngineCreateException;
 
 /**
- * The core implementation of the {@link org.snf4j.core.session.IStreamSession
- * IStreamSession} interface handling SSL/TLS connections.
+ * The stream-oriented session that handles SSL/TLS connections.
  * <p>
  * It uses {@link javax.net.ssl.SSLEngine SSLEngine} to handle secure protocols 
  * such as the Secure Sockets Layer (SSL) or IETF RFC 2246 "Transport Layer 
@@ -44,200 +40,42 @@ import org.snf4j.core.logger.LoggerFactory;
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class SSLSession extends StreamSession {
+
+public class SSLSession extends EngineStreamSession {
 
 	private final static ILogger LOGGER = LoggerFactory.getLogger(SSLSession.class);
 
-	private final InternalSSLHandler internal;
-	
-	public SSLSession(String name, IStreamHandler handler, boolean clientMode) throws Exception {
-		super(name, new InternalSSLHandler(handler, clientMode, LOGGER));
-		internal = (InternalSSLHandler) this.handler;
+	/**
+	 * Constructs the named SSL/TLS session associated with a handler.
+	 * 
+	 * @param name
+	 *            the name for this session, or <code>null</code> if the
+	 *            handler's name should be used for this session's name
+	 * @param handler
+	 *            the handler that should be associated with this session
+	 * @param clientMode
+	 *            <code>true</code> if the engine should start its handshaking
+	 *            in "client" mode
+	 * @throws SSLEngineCreateException
+	 *             when the SSL engine could not be created
+	 */
+	public SSLSession(String name, IStreamHandler handler, boolean clientMode) throws SSLEngineCreateException {
+		super(name, new InternalSSLEngine(handler.getConfig(), clientMode), handler , LOGGER);
 	}
 
-	public SSLSession(IStreamHandler handler, boolean clientMode) throws Exception {
-		super(new InternalSSLHandler(handler, clientMode, LOGGER));
-		internal = (InternalSSLHandler) this.handler;
+	/**
+	 * Constructs the SSL/TLS session associated with a handler.
+	 * 
+	 * @param handler
+	 *            the handler that should be associated with this session
+	 * @param clientMode
+	 *            <code>true</code> if the engine should start its handshaking
+	 *            in "client" mode
+	 * @throws SSLEngineCreateException
+	 *             when the SSL engine could not be created
+	 */
+	public SSLSession(IStreamHandler handler, boolean clientMode) throws SSLEngineCreateException {
+		super(new InternalSSLEngine(handler.getConfig(), clientMode), handler , LOGGER);
 	}
 	
-	@Override
-	public IStreamHandler getHandler() {
-		return internal.getHandler();
-	}	
-	
-	@Override
-	void exception(Throwable t) {
-		if (isValid(EventType.EXCEPTION_CAUGHT)) {
-			try {
-				internal.exception(t);
-				futuresController.exception(t);
-				super.quickClose();
-			}
-			catch (Exception e) {
-				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);
-				futuresController.exception(t);
-				super.quickClose();
-			}
-		}
-	}
-	
-	@Override
-	void event(SessionEvent event) {
-		super.superEvent(event);
-	}
-	
-	@Override
-	public IFuture<Void> write(byte[] data) {
-		if (data == null) {
-			throw new NullPointerException();
-		} else if (data.length == 0) {
-			return futuresController.getSuccessfulFuture();
-		}
-		checkKey(key);
-		if (closing == ClosingState.NONE) {
-			return internal.write(data, 0, data.length, true);
-		}
-		return futuresController.getCancelledFuture();
-	}
-	
-	@Override
-	public void writenf(byte[] data) {
-		if (data == null) {
-			throw new NullPointerException();
-		} else if (data.length > 0) {
-			checkKey(key);
-			if (closing == ClosingState.NONE) {
-				internal.write(data, 0, data.length, false);
-			}
-		}
-	}
-
-	@Override
-	public IFuture<Void> write(byte[] data, int offset, int length) {
-		if (data == null) {
-			throw new NullPointerException();
-		}
-		checkBounds(offset, length, data.length);
-		if (length == 0) {
-			return futuresController.getSuccessfulFuture();
-		}
-		checkKey(key);
-		if (closing == ClosingState.NONE) {
-			return internal.write(data, offset, length, true);
-		}
-		return futuresController.getCancelledFuture();
-	}
-
-	@Override
-	public void writenf(byte[] data, int offset, int length) {
-		if (data == null) {
-			throw new NullPointerException();
-		}
-		checkBounds(offset, length, data.length);
-		if (length > 0) {
-			checkKey(key);
-			if (closing == ClosingState.NONE) {
-				internal.write(data, offset, length, false);
-			}
-		}
-	}
-
-	@Override
-	public IFuture<Void> write(ByteBuffer data) {
-		if (data == null) {
-			throw new NullPointerException();
-		} else if (data.remaining() == 0) {
-			return futuresController.getSuccessfulFuture();
-		}
-		checkKey(key);
-		if (closing == ClosingState.NONE) {
-			return internal.write(data, data.remaining(), true);
-		}
-		return futuresController.getCancelledFuture();
-	}
-
-	@Override
-	public void writenf(ByteBuffer data) {
-		if (data == null) {
-			throw new NullPointerException();
-		} else if (data.remaining() > 0) {
-			checkKey(key);
-			if (closing == ClosingState.NONE) {
-				internal.write(data, data.remaining(), false);
-			}
-		}		
-	}
-	
-	@Override
-	public IFuture<Void> write(ByteBuffer data, int length) {
-		if (data == null) {
-			throw new NullPointerException();
-		} else if (data.remaining() < length) {
-			throw new IndexOutOfBoundsException();
-		} else if (length == 0) {
-			return futuresController.getSuccessfulFuture();
-		}
-		checkKey(key);
-		if (closing == ClosingState.NONE) {
-			return internal.write(data, length, true);
-		}
-		return futuresController.getCancelledFuture();
-	}
-
-	@Override
-	public void writenf(ByteBuffer data, int length) {
-		if (data == null) {
-			throw new NullPointerException();
-		} else if (data.remaining() < length) {
-			throw new IndexOutOfBoundsException();
-		} else if (length > 0) {
-			checkKey(key);
-			if (closing == ClosingState.NONE) {
-				internal.write(data, length, false);
-			}
-		}
-	}
-		
-	@Override
-	public void close() {
-		SelectionKey key = this.key;
-		
-		if (key != null && key.isValid()) {
-			internal.close();
-		}
-	}
-	
-	@Override
-	public void quickClose() {
-		SelectionKey key = this.key;
-		
-		if (key != null && key.isValid()) {
-			internal.quickClose();
-		}
-	}
-
-	void superQuickClose() {
-		super.quickClose();
-	}
-	
-	@Override
-	public void dirtyClose() {
-		SelectionKey key = this.key;
-		
-		if (key != null && key.isValid()) {
-			internal.dirtyClose();
-		}
-	}
-	
-	@Override
-	void preCreated() {
-		super.preCreated();
-		internal.preCreated();
-	}
-	
-	@Override
-	void postEnding() {
-		internal.postEnding();		
-		super.postEnding();
-	}
 }

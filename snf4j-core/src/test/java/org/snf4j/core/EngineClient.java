@@ -23,37 +23,36 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.handler;
+package org.snf4j.core;
 
-/**
- * An <code>enum</code> that represents session incidents that may occur during processing
- * of I/O or protocol related operations.
- */
-public enum SessionIncident {
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 
-	/**
-	 * SSL/TLS connection closed by peer without sending close_notify. It may
-	 * indicate a possibility of an truncation attack.
-	 */
-	SSL_CLOSED_WITHOUT_CLOSE_NOTIFY("SSL/TLS close procedure not properly followed by peer for {}: {}"),
+import org.snf4j.core.logger.ILogger;
+import org.snf4j.core.logger.LoggerFactory;
+
+public class EngineClient extends EngineServer {
+
+	private final static ILogger LOGGER = LoggerFactory.getLogger(EngineClient.class);
 	
-	/**
-	 * A connection closed by peer without sending proper close message.
-	 */
-	CLOSED_WITHOUT_CLOSE_MESSAGE("Close procedure not properly followed by peer for {}: {}");
-	
-	private String defaultMessage;
-	
-	private SessionIncident(String defaultMessage) {
-		this.defaultMessage = defaultMessage;
+	public EngineClient(int port, long timeout) {
+		super(port, timeout);
 	}
-	
-	/**
-	 * Gets the default warning message that will be logged when an implementation of {@link IHandler#incident}
-	 * method returns <code>false</code>.  
-	 * @return the default warning message
-	 */
-	public String defaultMessage() {
-		return defaultMessage;
-	}
+
+	@Override
+	public void start(TestEngine engine) throws Exception {
+		loop = new SelectorLoop();
+		
+		loop.start();
+
+		engine.setTrace(trace);
+			
+		SocketChannel channel = SocketChannel.open();
+		channel.configureBlocking(false);
+		channel.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
+			
+		session = (EngineStreamSession) loop.register(channel, new EngineStreamSession(engine, new EngineHandler(), LOGGER)).sync().getSession();
+		notify(sessionLock);
+	}	
 }

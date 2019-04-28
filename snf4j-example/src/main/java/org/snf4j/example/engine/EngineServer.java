@@ -23,66 +23,58 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.factory;
+package org.snf4j.example.engine;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
+import java.net.InetSocketAddress;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
-import javax.net.ssl.SSLEngine;
-
-import org.junit.Test;
-import org.snf4j.core.EngineSessionTest;
-import org.snf4j.core.EngineStreamSession;
-import org.snf4j.core.SSLSession;
+import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.StreamSession;
-import org.snf4j.core.handler.AbstractStreamHandler;
-import org.snf4j.core.handler.IStreamHandler;
+import org.snf4j.core.factory.IStreamSessionFactory;
 
-public class AbstractSessionFactoryTest {
-	
-	@Test
-	public void testCreate() throws Exception {
-		Factory f = new Factory();
-		
-		SocketChannel channel = SocketChannel.open();
-		StreamSession s = f.create(channel);
-		assertNotNull(s);
-		assertFalse(s instanceof SSLSession);
-		
-		f = new Factory(false);
-		s = f.create(channel);
-		assertNotNull(s);
-		assertFalse(s instanceof SSLSession);
+public class EngineServer {
+	static final String PREFIX = "org.snf4j.";
+	static final int PORT = Integer.getInteger(PREFIX+"Port", 8003);
+	static final int ENGINE = Integer.getInteger(PREFIX+"Engine", 2);
+	static final int OFFSET = Integer.getInteger(PREFIX+"Offset", 66);
 
-		f = new Factory(true);
-		s = f.create(channel);
-		assertNotNull(s);
-		assertTrue(s instanceof SSLSession);
-		SSLEngine engine = EngineSessionTest.getSSLEngine((EngineStreamSession) s);
-		assertFalse(engine.getUseClientMode());
-		
-	}
-	
-	static class Factory extends AbstractSessionFactory {
+	public static void main(String[] args) throws Exception {
+		SelectorLoop loop = new SelectorLoop();
 
-		Factory() {
-		}
-
-		Factory(boolean ssl) {
-			super(ssl);
-		}
+		try {
+			loop.start();
 		
-		@Override
-		protected IStreamHandler createHandler(SocketChannel channel) {
-			return new AbstractStreamHandler() {
+			// Initialize the listener
+			ServerSocketChannel channel = ServerSocketChannel.open();
+			channel.configureBlocking(false);
+			channel.socket().bind(new InetSocketAddress(PORT));
+			
+			// Register the listener
+			loop.register(channel, new IStreamSessionFactory() {
 
 				@Override
-				public void read(byte[] data) {
+				public StreamSession create(SocketChannel channel)
+						throws Exception {
+					return new EngineSession(EngineFactory.create(ENGINE, OFFSET, false), new EngineServerHandler());
 				}
-			};
+
+				@Override
+				public void registered(ServerSocketChannel channel) {
+				}
+
+				@Override
+				public void closed(ServerSocketChannel channel) {
+				}
+			});
+			
+			// Wait till the loop ends
+			loop.join();
+		}
+		finally {
+			
+			// Gently stop the loop
+			loop.stop();
 		}
 	}
 }

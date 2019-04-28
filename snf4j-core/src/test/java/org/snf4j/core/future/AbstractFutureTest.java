@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@ import org.snf4j.core.future.SessionFuturesController;
 
 public class AbstractFutureTest {
 	
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testToString() {
 		TestSession session = new TestSession("Session-1");
@@ -46,8 +47,14 @@ public class AbstractFutureTest {
 		assertEquals("Session-1-EventFuture[incomplete,event=CREATED]", futures.getCreateFuture().toString());
 		assertEquals("Session-1-ThresholdFuture[incomplete,threshold=100]", futures.getWriteFuture(100).toString());
 
-		ITwoThresholdFuture f = (ITwoThresholdFuture) futures.getSSLWriteFuture(100);
+		ITwoThresholdFuture f = (ITwoThresholdFuture) futures.getEngineWriteFuture(100);
 		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=-1]", f.toString());
 		f.setSecondThreshold(99);
-		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=99]", f.toString());	}
+		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=99]", f.toString());	
+		
+		f = (ITwoThresholdFuture) futures.getSSLWriteFuture(99);
+		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=99,secondThreshold=-1]", f.toString());
+		f.setSecondThreshold(98);
+		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=99,secondThreshold=98]", f.toString());	
+	}
 }
