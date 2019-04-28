@@ -92,9 +92,9 @@ public interface IHandler {
 	void event(DataEvent event, long length);
 	
 	/**
-	 * Called to notify about an exception caught during processing of I/O or SSL
-	 * operations. After returning form this method the associated session will 
-	 * be quickly closed. 
+	 * Called to notify about an exception caught during processing of I/O or
+	 * protocol related operations. After returning form this method the
+	 * associated session will be quickly closed.
 	 * 
 	 * @param t
 	 *            the exception caught
@@ -103,7 +103,7 @@ public interface IHandler {
 	
 	/**
 	 * Called to notify about an incident that occurred during processing of I/O
-	 * or SSL operations.
+	 * or protocol related operations.
 	 * 
 	 * @param incident
 	 *            an incident that occurred

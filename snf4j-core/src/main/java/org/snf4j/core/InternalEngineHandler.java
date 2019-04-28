@@ -28,12 +28,10 @@ package org.snf4j.core;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLEngineResult;
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
-import javax.net.ssl.SSLException;
-
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.engine.HandshakeStatus;
+import org.snf4j.core.engine.IEngine;
+import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.ITwoThresholdFuture;
@@ -41,6 +39,7 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
+import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.core.logger.ExceptionLogger;
 import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
@@ -48,7 +47,7 @@ import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.IStreamSession;
 
-class InternalSSLHandler implements IStreamHandler, Runnable {
+class InternalEngineHandler implements IStreamHandler, Runnable {
 
 	private final ILogger logger;
 	
@@ -56,11 +55,11 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 	
 	private final IStreamHandler handler;
 	
-	private final SSLEngine engine;
+	private final IEngine engine;
 	
 	private final IByteBufferAllocator allocator;
 	
-	private SSLSession session;
+	private EngineStreamSession session;
 	
 	private final Object writeLock = new Object();
 	
@@ -102,18 +101,18 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 	
 	boolean traceEnabled;
 	
-	InternalSSLHandler(IStreamHandler handler, boolean clientMode, ILogger logger) throws Exception {
+	public InternalEngineHandler(IEngine engine, IStreamHandler handler, ILogger logger) {
 		this.handler = handler;
 		this.logger = logger;
 		allocator = handler.getFactory().getAllocator();
-		engine = handler.getConfig().createSSLEngine(clientMode);
-		minAppBufferSize = engine.getSession().getApplicationBufferSize();
-		minNetBufferSize = engine.getSession().getPacketBufferSize();
-		maxAppBufferSize = minAppBufferSize * handler.getConfig().getMaxSSLApplicationBufferSizeRatio();
-		maxNetBufferSize = minNetBufferSize * handler.getConfig().getMaxSSLNetworkBufferSizeRatio();
+		this.engine = engine;
+		minAppBufferSize = engine.getMinApplicationBufferSize();
+		minNetBufferSize = engine.getMinNetworkBufferSize();
+		maxAppBufferSize = engine.getMaxApplicationBufferSize();
+		maxNetBufferSize = engine.getMaxNetworkBufferSize();
 	}
 
-	IStreamHandler getHandler() {
+	public IStreamHandler getHandler() {
 		return handler;
 	}
 	
@@ -132,9 +131,13 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 		traceEnabled = debugEnabled ? logger.isTraceEnabled() : false;
 		
 		do {
+			boolean wrapNeeded;
 			
 			if (closing != ClosingState.NONE) {
-				handleClosing();
+				wrapNeeded = handleClosing();
+			}
+			else {
+				wrapNeeded = false;
 			}
 			
 			if (status[0] == null) {
@@ -146,7 +149,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 				if (inNetBuffer.position() != 0) {
 					running |= unwrap(status);
 				}				
-				if (appCounter > netCounter || !isReady || closing == ClosingState.SENDING) {
+				if (appCounter > netCounter || !isReady || wrapNeeded) {
 					running |= wrap(status);
 				}
 				break;
@@ -184,7 +187,8 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 		} while (running);
 	}
 	
-	final void handleClosing() {
+	/** Return true if wrap needed */
+	final boolean handleClosing() {
 		ClosingState closing = this.closing;
 		
 		if (closing == ClosingState.FINISHING) {
@@ -194,9 +198,11 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 						outAppBuffers[i].clear();
 					}
 					engine.closeOutbound();
+					return true;
 				}
 			}
 		}
+		return closing == ClosingState.SENDING;
 	}
 	
 	final void handleClosed() {
@@ -210,11 +216,10 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 			try {
 				engine.closeInbound();
 			}
-			catch (SSLException e) {
+			catch (SessionIncidentException e) {
 				if (prevClosing == ClosingState.NONE && !session.wasException()) {
-					if (!session.incident(SessionIncident.SSL_CLOSED_WITHOUT_CLOSE_NOTIFY, e)) {
-						elogger.warn(logger, 
-								"SSL/TLS close procedure not properly followed by peer for {}: {}", session, e);
+					if (!session.incident(e.getIncident(), e)) {
+						elogger.warn(logger, e.getIncident().defaultMessage(), session, e);
 					}
 				}
 			}
@@ -231,14 +236,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 			logger.debug("Unwrapping started for {}", session);
 		}
 		
-		if (inNetBuffer.position() == 0) {
-			if (traceEnabled) {
-				logger.trace("No data to unwrap in {}", session);
-			}
-			return false;
-		}
-		
-		SSLEngineResult unwrapResult;
+		IEngineResult unwrapResult;
 		boolean repeat;
 		
 		do {
@@ -317,7 +315,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 			logger.debug("Wrapping started for {}", session);
 		}
 		
-		SSLEngineResult wrapResult;
+		IEngineResult wrapResult;
 		boolean repeat;
 		Exception ex = null;
 		
@@ -331,7 +329,8 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 				if (lastIndex > 0 || outAppBuffers[lastIndex].hasRemaining()) {
 					int consumed;
 					try {
-						wrapResult = engine.wrap(outAppBuffers, outNetBuffer);
+						wrapResult = lastIndex == 0 ? engine.wrap(outAppBuffers[0], outNetBuffer) 
+								                    : engine.wrap(outAppBuffers, outNetBuffer);
 						consumed = wrapResult.bytesConsumed();
 					} catch (Exception e) {
 						wrapResult = null;
@@ -408,6 +407,9 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 						logger.debug("Wrapping has been closed for {}", session);
 					}
 					flush();
+					if (handler.getConfig().waitForInboundCloseMessage() && !engine.isInboundDone()) {
+						return true;
+					}
 					session.close(true);
 					break;
 			}
@@ -475,7 +477,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 			outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, minAppBufferSize, data, offset, length, false);
 			appCounter += length;
 			if (needFuture) {
-				future = session.futuresController.getSSLWriteFuture(appCounter);
+				future = session.futuresController.getEngineWriteFuture(appCounter);
 				pendingFutures.add((ITwoThresholdFuture) future);
 			}
 			else {
@@ -499,7 +501,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 			outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, minAppBufferSize, data, 0, length, true);
 			appCounter += length;
 			if (needFuture) {
-				future = session.futuresController.getSSLWriteFuture(appCounter);
+				future = session.futuresController.getEngineWriteFuture(appCounter);
 				pendingFutures.add((ITwoThresholdFuture) future);
 			}
 			else {
@@ -547,8 +549,8 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 				closing = ClosingState.FINISHING;
 			}
 		}
+		session.superQuickClose();
 		if (stateChanged) {
-			session.superQuickClose();
 			session.loop.registerTask(this);
 		}
 	}
@@ -558,9 +560,11 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 		inAppBuffer = allocator.allocate(minAppBufferSize);
 		outNetBuffer = allocator.allocate(minNetBufferSize);
 		inNetBuffer = allocator.allocate(minNetBufferSize);
+		engine.init();
 	}
 	
 	void postEnding() {
+		engine.cleanup();
 		if (allocator.isReleasable()) {
 			for (int i=outAppBuffers.length-1;i>=0; --i) {
 				allocator.release(outAppBuffers[i]);
@@ -639,7 +643,7 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 	@Override
 	public void setSession(ISession session) {
 		handler.setSession(session);
-		this.session = (SSLSession) session;
+		this.session = (EngineStreamSession) session;
 	}
 
 	@Override
@@ -672,9 +676,9 @@ class InternalSSLHandler implements IStreamHandler, Runnable {
 		
 		private final Runnable delegate;
 		
-		private final InternalSSLHandler handler;
+		private final InternalEngineHandler handler;
 		
-		DelegatedTask(InternalSSLHandler handler, Runnable delegate) {
+		DelegatedTask(InternalEngineHandler handler, Runnable delegate) {
 			this.handler = handler;
 			this.delegate = delegate;
 		}

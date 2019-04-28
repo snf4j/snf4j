@@ -23,37 +23,52 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.handler;
+package org.snf4j.example.engine;
 
-/**
- * An <code>enum</code> that represents session incidents that may occur during processing
- * of I/O or protocol related operations.
- */
-public enum SessionIncident {
+import java.nio.ByteBuffer;
 
-	/**
-	 * SSL/TLS connection closed by peer without sending close_notify. It may
-	 * indicate a possibility of an truncation attack.
-	 */
-	SSL_CLOSED_WITHOUT_CLOSE_NOTIFY("SSL/TLS close procedure not properly followed by peer for {}: {}"),
+import org.snf4j.core.engine.IEngineResult;
+import org.snf4j.core.handler.SessionIncident;
+import org.snf4j.core.handler.SessionIncidentException;
+
+public class CloseableEngine extends BasicEngine {
+
+	private boolean closeReceived;
 	
-	/**
-	 * A connection closed by peer without sending proper close message.
-	 */
-	CLOSED_WITHOUT_CLOSE_MESSAGE("Close procedure not properly followed by peer for {}: {}");
-	
-	private String defaultMessage;
-	
-	private SessionIncident(String defaultMessage) {
-		this.defaultMessage = defaultMessage;
+	public CloseableEngine(int offset) {
+		super(offset);
 	}
 	
-	/**
-	 * Gets the default warning message that will be logged when an implementation of {@link IHandler#incident}
-	 * method returns <code>false</code>.  
-	 * @return the default warning message
-	 */
-	public String defaultMessage() {
-		return defaultMessage;
+	@Override
+	public void closeInbound() throws SessionIncidentException {
+		super.closeInbound();
+		if (!closeReceived) {
+			throw new SessionIncidentException("Closed procedure not followed by peer" , 
+					SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE);
+		}
 	}
+	
+	
+	protected boolean isClosingUnwrap(byte[] data) {
+		boolean isClosing = Packet.isClose(data);
+		
+		if (isClosing) {
+			closeReceived = true;
+		}
+		
+		return isClosing;
+	}
+	
+	@Override
+	protected IEngineResult closeWrap(ByteBuffer dst) {
+		int prevRemaining = dst.remaining();
+		
+		if (Packet.calculateMaxData(prevRemaining) < Packet.getCloseData().length) {
+			return Result.BUFFER_OVERFLOW_NEED_WRAP;
+		}
+		
+		dst.put(Packet.encode(offset, Packet.getCloseData()));
+		return Result.closed(prevRemaining - dst.remaining());
+	}
+	
 }

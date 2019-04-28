@@ -32,17 +32,18 @@ import static org.junit.Assert.assertTrue;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
-import javax.net.ssl.SSLEngineResult;
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.engine.EngineResult;
+import org.snf4j.core.engine.HandshakeStatus;
+import org.snf4j.core.engine.IEngine;
+import org.snf4j.core.engine.Status;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 
-public class InternalSSLHandlerTest {
+public class InternalEngineHandlerTest {
 
 	private final static ILogger LOGGER = LoggerFactory.getLogger(SSLSession.class);
 
@@ -59,7 +60,9 @@ public class InternalSSLHandlerTest {
 	
 	TestHandler handler = new TestHandler("Test");
 	
-	TestSSLEngine engine = new TestSSLEngine();
+	TestEngine engine = new TestEngine();
+	
+	TestSSLEngine sslEngine = new TestSSLEngine();
 	
 	TestSSLSession session = new TestSSLSession();
 	
@@ -67,10 +70,10 @@ public class InternalSSLHandlerTest {
 	@Before
 	public void before() {
 		s = c = null;
-		session.appBufferSize = APPBUFSIZE;
-		session.netBufferSize = NETBUFSIZE;
-		engine.session = session;
-		handler.engine = engine;
+		engine.appBufferSize = APPBUFSIZE;
+		engine.netBufferSize = NETBUFSIZE;
+		sslEngine.session = session;
+		handler.engine = sslEngine;
 		handler.maxAppBufRatio = APPBUFRATIO;
 		handler.maxNetBufRatio = NETBUFRATIO;
 	}
@@ -85,14 +88,14 @@ public class InternalSSLHandlerTest {
 		Thread.sleep(millis);
 	}
 	
-	ByteBuffer getBuffer(InternalSSLHandler handler, String name) throws Exception {
+	ByteBuffer getBuffer(InternalEngineHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer) field.get(handler);
 	}
 
-	ByteBuffer[] getBuffers(InternalSSLHandler handler, String name) throws Exception {
+	ByteBuffer[] getBuffers(InternalEngineHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
@@ -108,7 +111,7 @@ public class InternalSSLHandlerTest {
 	
 	@Test
 	public void testBuffers() throws Exception {
-		InternalSSLHandler h = new InternalSSLHandler(handler, true, LOGGER);
+		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
 
 		h.preCreated();
 		assertEquals(APPBUFSIZE, getBuffer(h, "inAppBuffer").capacity());
@@ -129,7 +132,7 @@ public class InternalSSLHandlerTest {
 		s.waitForSessionReady(TIMEOUT);
 		SSLSession session = (SSLSession) c.getSession(); 
 		
-		Handler h = new Handler(handler, true, LOGGER);
+		Handler h = new Handler(engine, handler, LOGGER);
 		h.setSession(session);
 		
 		set(h, "closing", ClosingState.SENDING);
@@ -161,12 +164,32 @@ public class InternalSSLHandlerTest {
 		waitFor(500);
 		assertEquals(3, h.runCounter);
 	
+		assertTrue(session.isOpen());
 		set(h, "closing", ClosingState.FINISHING);
 		h.dirtyClose();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
 		assertEquals(3, h.runCounter);
+
+		c = new Client(PORT, true);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		session = (SSLSession) c.getSession(); 
+		h.setSession(session);
+		assertTrue(session.isOpen());
 		set(h, "closing", ClosingState.FINISHED);
 		h.dirtyClose();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
 		assertEquals(3, h.runCounter);
+
+		c = new Client(PORT, true);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		session = (SSLSession) c.getSession(); 
+		h.setSession(session);
 		assertTrue(session.isOpen());
 		set(h, "closing", ClosingState.SENDING);
 		h.dirtyClose();
@@ -178,8 +201,8 @@ public class InternalSSLHandlerTest {
 	
 	@Test 
 	public void testSetAndGetSession() throws Exception {
-		InternalSSLHandler h = new InternalSSLHandler(handler, true, LOGGER);
-		InternalSSLHandler h2 = new InternalSSLHandler(handler, true, LOGGER);
+		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
+		InternalEngineHandler h2 = new InternalEngineHandler(engine, handler, LOGGER);
 		assertNull(h.getSession());
 		SSLSession session = new SSLSession(h, false);
 		assertTrue(session == h.getSession());
@@ -191,31 +214,31 @@ public class InternalSSLHandlerTest {
 	
 	@Test
 	public void testIgnoreRead() throws Exception {
-		InternalSSLHandler h = new InternalSSLHandler(handler, true, LOGGER);
+		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
 		HandshakeStatus[] status = new HandshakeStatus[1];
 		
 		h.preCreated();
 		h.setSession(new SSLSession(h, false));
 		
 		//10 bytes to unwrap, ready to read 0
-		engine.unwrapBytes = 10;
+		sslEngine.unwrapBytes = 10;
 		handler.availableBytes = 0;
 		ByteBuffer inNet = getBuffer(h, "inNetBuffer");
 		ByteBuffer inApp = getBuffer(h, "inAppBuffer");
 		assertEquals(0, inNet.position());
 		assertEquals(0, inApp.position());
 		inNet.put(ByteUtils.getBytes(15, 1));
-		engine.unwrapResult[0] = new SSLEngineResult(SSLEngineResult.Status.CLOSED,
-				SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING, 0, 0);
+		engine.unwrapResult = new EngineResult(Status.CLOSED,
+				HandshakeStatus.NOT_HANDSHAKING, 0, 0);
 		assertTrue(h.unwrap(status));
 		h.read(null);
 	}
 	
-	static class Handler extends InternalSSLHandler {
+	static class Handler extends InternalEngineHandler {
 		int runCounter;
 		
-		Handler(IStreamHandler handler, boolean clientMode, ILogger logger) throws Exception {
-			super(handler, clientMode, logger);
+		Handler(IEngine engine, IStreamHandler handler, ILogger logger) throws Exception {
+			super(engine, handler, logger);
 		}
 		
 		@Override

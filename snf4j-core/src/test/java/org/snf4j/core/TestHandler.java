@@ -39,6 +39,7 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.SSLEngineCreateException;
 
 public class TestHandler extends AbstractStreamHandler {
 	
@@ -87,7 +88,7 @@ public class TestHandler extends AbstractStreamHandler {
 	public ISessionConfig getConfig() {
 		DefaultSessionConfig config = new DefaultSessionConfig() {
 			@Override
-			public SSLEngine createSSLEngine(boolean clientMode) throws Exception {
+			public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
 				return engine;
 			}
 		};

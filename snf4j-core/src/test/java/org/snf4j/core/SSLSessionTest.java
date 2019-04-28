@@ -78,21 +78,21 @@ public class SSLSessionTest {
 		Thread.sleep(millis);
 	}
 	
-	ByteBuffer getBuffer(InternalSSLHandler handler, String name) throws Exception {
+	ByteBuffer getBuffer(InternalEngineHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer) field.get(handler);
 	}
 
-	ByteBuffer[] getBuffers(InternalSSLHandler handler, String name) throws Exception {
+	ByteBuffer[] getBuffers(InternalEngineHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer[]) field.get(handler);
 	}
 
-	void setBuffer(InternalSSLHandler handler, String name, ByteBuffer buf) throws Exception {
+	void setBuffer(InternalEngineHandler handler, String name, ByteBuffer buf) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
@@ -100,39 +100,42 @@ public class SSLSessionTest {
 	}
 
 	ByteBuffer getBuffer(SSLSession session, String name) throws Exception {
-		Field field = session.getClass().getDeclaredField("internal");
+		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffer((InternalSSLHandler) field.get(session), name);
+		return getBuffer((InternalEngineHandler) field.get(session), name);
 	}
 
 	ByteBuffer[] getBuffers(SSLSession session, String name) throws Exception {
-		Field field = session.getClass().getDeclaredField("internal");
+		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffers((InternalSSLHandler) field.get(session), name);
+		return getBuffers((InternalEngineHandler) field.get(session), name);
 	}
 
-	void setBuffer(SSLSession session, String name, ByteBuffer buf) throws Exception {
-		Field field = session.getClass().getDeclaredField("internal");
+	void setBuffer(EngineStreamSession session, String name, ByteBuffer buf) throws Exception {
+		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		setBuffer((InternalSSLHandler) field.get(session), name, buf);
+		setBuffer((InternalEngineHandler) field.get(session), name, buf);
 	}
 	
-	InternalSSLHandler getInternal(SSLSession session) throws Exception {
-		Field field = session.getClass().getDeclaredField("internal");
+	InternalEngineHandler getInternal(EngineStreamSession session) throws Exception {
+		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return (InternalSSLHandler) field.get(session);
+		return (InternalEngineHandler) field.get(session);
 	}
 
 	TestSSLEngine getSSLEngine(SSLSession session) throws Exception {
-		InternalSSLHandler internal = getInternal(session);
+		InternalEngineHandler internal = getInternal(session);
 		Field field = internal.getClass().getDeclaredField("engine");
 		
 		field.setAccessible(true);
-		return (TestSSLEngine) field.get(internal);
+		InternalSSLEngine engine = (InternalSSLEngine) field.get(internal);
+		field = InternalSSLEngine.class.getDeclaredField("engine");
+		field.setAccessible(true);
+		return (TestSSLEngine) field.get(engine);
 	}
 	
 	@Test
@@ -507,7 +510,7 @@ public class SSLSessionTest {
 		session.writenf(getBuffer(10,0), 5);
 		session.closing = ClosingState.NONE;
 
-		InternalSSLHandler internal = getInternal(session);
+		InternalEngineHandler internal = getInternal(session);
 		Field field = internal.getClass().getDeclaredField("closing");
 		field.setAccessible(true);
 		field.set(internal, ClosingState.SENDING);
@@ -1261,4 +1264,62 @@ public class SSLSessionTest {
 		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
 		
 	}	
+
+	@Test
+	public void testWaitForCloseMessage() throws Exception {
+		s = new Server(PORT, true);
+		s.start();
+
+		c = new Client(PORT, true);
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+		c.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+		c.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
+		
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+		c.getSession().quickClose();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
+
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+		c.getSession().dirtyClose();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+
+	}
 }

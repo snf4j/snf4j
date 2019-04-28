@@ -111,7 +111,7 @@ public interface ISessionConfig {
 	/**
 	 * Determines if the session object can own the data (i.e. byte arrays or byte
 	 * buffers) passed to the write and send methods. Setting this parameter to
-	 * <code>true</code> instructs the write and Send methods that the passed data 
+	 * <code>true</code> instructs the write and send methods that the passed data 
 	 * will be no longer used by the caller. In such situation the write and send 
 	 * methods may, if possible, eliminate not needed copy operations what can 
 	 * improve the performance.
@@ -129,16 +129,16 @@ public interface ISessionConfig {
 	EndingAction getEndingAction();
 	
 	/**
-	 * Creates a new SSLEngine for SSL session.
+	 * Creates a new SSLEngine for the SSL session.
 	 * 
 	 * @param clientMode
 	 *            <code>true</code> if the engine should start its handshaking
 	 *            in client mode
 	 * @return the SSLEngine object
-	 * @throws Exception
-	 *             when a SSL engine could not be created
+	 * @throws SSLEngineCreateException
+	 *             when the SSL engine could not be created
 	 */
-	SSLEngine createSSLEngine(boolean clientMode) throws Exception;
+	SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException;
 	
 	/**
 	 * Gets the ratio that is used to calculate the maximum size of the SSL
@@ -159,4 +159,23 @@ public interface ISessionConfig {
 	 * @see javax.net.ssl.SSLSession#getPacketBufferSize()
 	 */
 	int getMaxSSLNetworkBufferSizeRatio();
+	
+	/**
+	 * Determines if the framework should wait for the peer's corresponding
+	 * close message in situation when the closing was initiated by calling the
+	 * {@link org.snf4j.core.EngineStreamSession#close
+	 * EngineStreamSession.close()} or
+	 * {@link org.snf4j.core.EngineStreamSession#quickClose
+	 * EngineStreamSession.quickClose()} method.
+	 * <p>
+	 * NOTE: Setting this value to <code>true</code> may delay the closing of
+	 * the connection for an indefinite period of time. Usually it is not
+	 * required to wait for the close message (e.g. the TLS specification (RFC
+	 * 2246))
+	 * 
+	 * @return <code>true</code> to wait for the peer's corresponding close
+	 *         message.
+	 */
+	boolean waitForInboundCloseMessage();
+	
 }

@@ -61,6 +61,7 @@ import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.pool.ISelectorLoopPool;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.SSLEngineCreateException;
 
 public class Server {
 	
@@ -82,6 +83,7 @@ public class Server {
 	public volatile ServerSocketChannel closedSsc;
 	public volatile boolean useTestSession;
 	public volatile boolean recordSessionId;
+	public volatile boolean waitForCloseMessage;
 
 	public volatile int minInBufferCapacity = 1024;
 	public volatile int minOutBufferCapacity = 1024;
@@ -437,8 +439,13 @@ public class Server {
 		public ISessionConfig getConfig() {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
 				@Override
-				public SSLEngine createSSLEngine(boolean clientMode) throws Exception {
-					SSLEngine engine = getSSLContext().createSSLEngine();
+				public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+					SSLEngine engine;
+					try {
+						engine = getSSLContext().createSSLEngine();
+					} catch (Exception e) {
+						throw new SSLEngineCreateException(e);
+					}
 					engine.setUseClientMode(clientMode);
 					if (!clientMode) {
 						engine.setNeedClientAuth(true);
@@ -453,6 +460,7 @@ public class Server {
 			config.setEndingAction(endingAction);
 			config.setMaxSSLApplicationBufferSizeRatio(1);
 			config.setMaxSSLNetworkBufferSizeRatio(1);
+			config.setWaitForInboundCloseMessage(waitForCloseMessage);
 			return config;
 		}
 

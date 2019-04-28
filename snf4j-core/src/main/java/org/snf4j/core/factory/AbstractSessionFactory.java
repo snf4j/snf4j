@@ -54,8 +54,8 @@ public abstract class AbstractSessionFactory implements IStreamSessionFactory {
 	 * 
 	 * @param ssl
 	 *            the type of created sessions. <code>true</code> for SSL/TLS
-	 *            sessions using client mode and <code>false</code> for basic
-	 *            stream-oriented sessions.
+	 *            sessions handshaking in server mode and <code>false</code> for
+	 *            basic stream-oriented sessions.
 	 */
 	protected AbstractSessionFactory(boolean ssl) {
 		this.ssl = ssl;
@@ -73,7 +73,7 @@ public abstract class AbstractSessionFactory implements IStreamSessionFactory {
 	 */
 	@Override
 	public StreamSession create(SocketChannel channel) throws Exception {
-		return ssl ? new SSLSession(createHandler(channel), true) 
+		return ssl ? new SSLSession(createHandler(channel), false) 
 				: new StreamSession(createHandler(channel));
 	}
 	

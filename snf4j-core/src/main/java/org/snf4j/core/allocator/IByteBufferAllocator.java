@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -101,7 +101,7 @@ public interface IByteBufferAllocator {
 	 * an {@link IndexOutOfBoundsException}.
 	 * <p>
 	 * It is only used to manage the capacity of the input buffer associated
-	 * with the SSL stream-oriented sessions.
+	 * with the engine driven stream-oriented sessions.
 	 * 
 	 * @param buffer
 	 *            buffer in the write mode (i.e. not flipped yet)

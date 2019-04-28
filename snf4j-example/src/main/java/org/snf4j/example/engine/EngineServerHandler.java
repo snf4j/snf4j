@@ -23,37 +23,15 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.handler;
+package org.snf4j.example.engine;
 
-/**
- * An <code>enum</code> that represents session incidents that may occur during processing
- * of I/O or protocol related operations.
- */
-public enum SessionIncident {
+import org.snf4j.core.handler.AbstractStreamHandler;
 
-	/**
-	 * SSL/TLS connection closed by peer without sending close_notify. It may
-	 * indicate a possibility of an truncation attack.
-	 */
-	SSL_CLOSED_WITHOUT_CLOSE_NOTIFY("SSL/TLS close procedure not properly followed by peer for {}: {}"),
-	
-	/**
-	 * A connection closed by peer without sending proper close message.
-	 */
-	CLOSED_WITHOUT_CLOSE_MESSAGE("Close procedure not properly followed by peer for {}: {}");
-	
-	private String defaultMessage;
-	
-	private SessionIncident(String defaultMessage) {
-		this.defaultMessage = defaultMessage;
+public class EngineServerHandler extends AbstractStreamHandler {
+
+	@Override
+	public void read(byte[] data) {
+		System.out.print(new String(data));
 	}
-	
-	/**
-	 * Gets the default warning message that will be logged when an implementation of {@link IHandler#incident}
-	 * method returns <code>false</code>.  
-	 * @return the default warning message
-	 */
-	public String defaultMessage() {
-		return defaultMessage;
-	}
+
 }
