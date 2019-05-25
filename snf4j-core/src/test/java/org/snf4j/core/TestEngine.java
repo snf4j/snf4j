@@ -48,6 +48,8 @@ public class TestEngine implements IEngine {
 	EngineResult unwrapResult;
 	EngineResult wrapResult;
 	
+	boolean beginHandshakeException;
+	
 	final List<Record> records = new ArrayList<Record>();
 
 	final List<Runnable> tasks = new ArrayList<Runnable>();
@@ -119,6 +121,14 @@ public class TestEngine implements IEngine {
 	@Override
 	public void cleanup() {
 		trace("FIN");
+	}
+	
+	@Override
+	public void beginHandshake() throws Exception {
+		if (beginHandshakeException) {
+			throw new Exception();
+		}
+		trace("HAND");
 	}
 	
 	@Override

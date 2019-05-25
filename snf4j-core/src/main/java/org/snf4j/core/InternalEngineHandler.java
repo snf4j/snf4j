@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.engine.HandshakeStatus;
@@ -77,6 +78,10 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	/** Tells if any incoming data is ignored */ 
 	private boolean readIgnored;
 	
+	enum Handshake {NONE, REQUESTED, STARTED};
+	
+	private final AtomicReference<Handshake> handshake = new AtomicReference<Handshake>(Handshake.NONE); 
+	
 	private final ConcurrentLinkedQueue<ITwoThresholdFuture> pendingFutures = new ConcurrentLinkedQueue<ITwoThresholdFuture>();
 	
 	private ITwoThresholdFuture polledFuture;
@@ -112,8 +117,15 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		maxNetBufferSize = engine.getMaxNetworkBufferSize();
 	}
 
-	public IStreamHandler getHandler() {
+	IStreamHandler getHandler() {
 		return handler;
+	}
+	
+	void beginHandshake(boolean lazy) {
+		handshake.compareAndSet(Handshake.NONE, Handshake.REQUESTED);
+		if (!lazy) {
+			session.loop.registerTask(this);
+		}
 	}
 	
 	/** Method is always running in the same selector loop's thread */
@@ -122,6 +134,18 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	public void run() {
 		if (closing == ClosingState.FINISHED) {
 			return;
+		}
+		
+		if (handshake.compareAndSet(Handshake.REQUESTED, Handshake.STARTED)) {
+			if (closing == ClosingState.NONE) {
+				try {
+					engine.beginHandshake();
+				} catch (Exception e) {
+					elogger.error(logger, "Handshake initialization failed for {}: {}", session, e);
+					fireException(e);
+					return;
+				}
+			}
 		}
 		
 		boolean running = true;
@@ -174,6 +198,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 			}
 			
 			if (status[0] == HandshakeStatus.FINISHED) {
+				handshake.set(Handshake.NONE);
 				if (!isReady) {
 					if (debugEnabled) {
 						logger.debug("Initial handshaking is finished for {}", session);

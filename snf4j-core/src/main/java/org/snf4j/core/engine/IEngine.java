@@ -82,7 +82,7 @@ import org.snf4j.core.handler.SessionIncidentException;
  * safe however there are two concurrency issues to be aware of:
  * <ol>
  * <li>The methods returning minimum and maximum buffer sizes are the only ones
- * that are not fully controlled by the framework. However, each of them is
+ * that are not fully controlled by the SNF4J framework. However, each of them is
  * called only once by the constructor of the
  * {@link org.snf4j.core.EngineStreamSession EngineStreamSession} class. All
  * other methods from this interface are always executed in the same thread.
@@ -110,6 +110,26 @@ public interface IEngine {
 	 * SessionEvent.ENDING} is fully processed by the session handler).
 	 */
 	void cleanup();
+	
+	/**
+	 * Initiates handshaking on this {@link IEngine} implementation. This method
+	 * is not called by the SNF4J framework for a initial handshake, as the
+	 * initial handshake should be initiated by the <code>wrap()</code> and
+	 * <code>unwrap()</code> methods when they are called for the first time.
+	 * <p>
+	 * This method is never called by the SNF4J framework when another handshake
+	 * is still in progress on this engine. Any try to begin a new handshake
+	 * from an engine stream session will be silently ignored unless previously
+	 * started handshake is finished. The finishing is signaled by the
+	 * {@link org.snf4j.core.engine.HandshakeStatus#FINISHED
+	 * HandshakeStatus.FINISHED} status returned by the <code>wrap</code> or
+	 * <code>unwrap</code> method.
+	 * 
+	 * @throws Exception
+	 *             if a problem was encountered while signaling the beginning of
+	 *             a new handshake.
+	 */
+	void beginHandshake() throws Exception;
 	
 	/**
 	 * Returns whether {@link #wrap(ByteBuffer, ByteBuffer)} and

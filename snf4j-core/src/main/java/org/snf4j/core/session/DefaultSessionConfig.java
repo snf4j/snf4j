@@ -295,9 +295,9 @@ public class DefaultSessionConfig implements ISessionConfig {
 	}
 
 	/**
-	 * Configures if the framework should wait for the peer's corresponding
-	 * close message in situation when the closing was initiated by calling
-	 * the {@link org.snf4j.core.EngineStreamSession#close
+	 * Configures if the SNF4J framework should wait for the peer's
+	 * corresponding close message in situation when the closing was initiated
+	 * by calling the {@link org.snf4j.core.EngineStreamSession#close
 	 * EngineStreamSession.close()} or
 	 * {@link org.snf4j.core.EngineStreamSession#quickClose
 	 * EngineStreamSession.quickClose()} method.

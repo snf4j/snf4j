@@ -29,11 +29,13 @@ import static org.junit.Assert.*;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.net.ssl.SSLEngine;
 
 import org.junit.After;
 import org.junit.Test;
+import org.snf4j.core.InternalEngineHandler.Handshake;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 
@@ -121,6 +123,17 @@ public class EngineSessionTest {
 		
 		field.setAccessible(true);
 		return getBuffers((InternalEngineHandler) field.get(session), name);
+	}
+	
+	@SuppressWarnings("unchecked")
+	AtomicReference<Handshake> getHandshake(EngineStreamSession session) throws Exception {
+		Field field = EngineStreamSession.class.getDeclaredField("internal");
+		field.setAccessible(true);
+		Object internal = field.get(session);
+		
+		field = InternalEngineHandler.class.getDeclaredField("handshake");
+		field.setAccessible(true);
+		return (AtomicReference<Handshake>) field.get(internal);
 	}
 	
 	@Test
@@ -926,7 +939,6 @@ public class EngineSessionTest {
 		//closing message not required
 		TestEngine se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
 		TestEngine ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
-/*		
 		se.addRecord("W|NH|-|-|OK|F|");
 		ce.addRecord("W|NH|-|-|OK|F|");
 		
@@ -969,7 +981,6 @@ public class EngineSessionTest {
 		assertEquals("U3|W0|CL|EN|FIN|", s.getTrace(true));
 		c.stop();
 		s.stop();
-*/
 
 		//closing message required (initiator does not wait for closing message)
 		se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
@@ -1091,4 +1102,165 @@ public class EngineSessionTest {
 		s.stop();
 		
 	}	
+
+	@Test
+	public void testBeginHandshake() throws Exception {
+		
+		//lazy handshake before write, read and close
+		TestEngine se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		TestEngine ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce, true);
+		s.getTrace(true);
+		c.getTrace(true);
+
+		c.getSession().beginLazyHandshake();
+		s.getSession().beginLazyHandshake();
+		waitFor(500);
+		assertEquals("", c.getTrace(true));
+		assertEquals("", s.getTrace(true));
+		ce.addRecord("W|NH|123|456|OK|F|");
+		se.addRecord("U|NH|456|789|OK|F|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("HAND|W3|", c.getTrace(true));
+		assertEquals("HAND|U3|R789|", s.getTrace(true));
+		
+		AtomicReference<Handshake> handshake = getHandshake(c.getSession());
+		assertEquals(Handshake.NONE, handshake.get());
+		c.getSession().beginLazyHandshake();
+		waitFor(500);
+		assertEquals("", c.getTrace(true));
+		
+		ce.addRecord("W|NH|-|-|C|-|");
+		se.addRecord("W|NH|-|-|C|-|");
+		c.getSession().close();
+		
+		c.waitForFinish(TIMEOUT);
+		s.waitForFinish(TIMEOUT);
+		
+		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
+		c.stop();
+		s.stop();
+
+		//handshake before close
+		se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce, true);
+		s.getTrace(true);
+		c.getTrace(true);
+		
+		c.getSession().beginHandshake();
+		waitFor(100);
+		assertEquals("HAND|", c.getTrace(true));
+		
+		ce.addRecord("W|NH|-|-|C|-|");
+		se.addRecord("W|NH|-|-|C|-|");
+		c.getSession().close();
+		
+		c.waitForFinish(TIMEOUT);
+		s.waitForFinish(TIMEOUT);
+		
+		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
+		c.stop();
+		s.stop();
+
+		//handshake exception
+		se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce, true);
+		s.getTrace(true);
+		c.getTrace(true);
+		
+		ce.beginHandshakeException =true;
+		c.getSession().beginHandshake();
+
+		c.waitForFinish(TIMEOUT);
+		s.waitForFinish(TIMEOUT);
+		
+		assertEquals("EX|CI|CO|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
+		c.stop();
+		s.stop();
+		
+		//handshake immediately after lazy handshake
+		se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce, true);
+		s.getTrace(true);
+		c.getTrace(true);
+		
+		c.getSession().beginLazyHandshake();
+		waitFor(500);
+		assertEquals("", c.getTrace(true));
+		c.getSession().beginHandshake();
+		waitFor(100);
+		assertEquals("HAND|", c.getTrace(true));
+
+		ce.addRecord("W|NH|-|-|C|-|");
+		se.addRecord("W|NH|-|-|C|-|");
+		c.getSession().close();
+		
+		c.waitForFinish(TIMEOUT);
+		s.waitForFinish(TIMEOUT);
+		
+		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
+		c.stop();
+		s.stop();
+
+		//handshake when previous handshake in progress
+		se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce, true);
+		s.getTrace(true);
+		c.getTrace(true);
+		
+		c.getSession().beginHandshake();
+		waitFor(100);
+		assertEquals("HAND|", c.getTrace(true));
+		c.getSession().beginHandshake();
+		waitFor(500);
+		assertEquals("", c.getTrace(true));
+
+		ce.addRecord("W|NH|123|456|OK|F|");
+		se.addRecord("U|NH|456|789|OK|F|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("W3|", c.getTrace(true));
+		assertEquals("U3|R789|", s.getTrace(true));
+
+		c.getSession().beginHandshake();
+		waitFor(100);
+		assertEquals("HAND|", c.getTrace(true));
+		
+		ce.addRecord("W|NH|-|-|C|-|");
+		se.addRecord("W|NH|-|-|C|-|");
+		c.getSession().close();
+		
+		c.waitForFinish(TIMEOUT);
+		s.waitForFinish(TIMEOUT);
+		
+		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
+		c.stop();
+		s.stop();
+	
+	}
 }

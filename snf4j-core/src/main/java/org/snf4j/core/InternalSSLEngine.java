@@ -78,6 +78,11 @@ class InternalSSLEngine implements IEngine {
 	}
 	
 	@Override
+	public void beginHandshake() throws Exception {
+		engine.beginHandshake();
+	}
+	
+	@Override
 	public final boolean isOutboundDone() {
 		return engine.isOutboundDone();
 	}

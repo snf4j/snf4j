@@ -49,7 +49,11 @@ public abstract class AbstractEngine implements IEngine {
 	@Override
 	public void cleanup() {
 	}
-
+	
+	@Override
+	public void beginHandshake() throws Exception {
+	}
+	
 	@Override
 	public boolean isOutboundDone() {
 		return outboundDone != CloseType.NONE;

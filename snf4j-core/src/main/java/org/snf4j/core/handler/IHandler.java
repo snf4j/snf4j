@@ -112,7 +112,7 @@ public interface IHandler {
 	 *            an exception that is related with the incident or
 	 *            <code>null</code>
 	 * @return <code>true</code> to indicate that the incident was handled and
-	 *         no warning should be logged by the framework underneath.
+	 *         no warning should be logged by the SNF4J framework underneath.
 	 */
 	boolean incident(SessionIncident incident, Throwable t);
 	

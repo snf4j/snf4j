@@ -79,6 +79,38 @@ public class EngineStreamSession extends StreamSession {
 		internal = (InternalEngineHandler) this.handler;
 	}
 	
+	/**
+	 * Initiates handshaking (initial or renegotiation) on the protocol engine
+	 * driving this session. After calling this method the handshake will start
+	 * immediately.
+	 * <p>
+	 * This method is not needed for the initial handshake, as the <code>wrap</code> and 
+	 * <code>unwrap</code> methods of the protocol engine should initiate it if the 
+	 * handshaking has not already begun.
+	 * <p>
+	 * The operation is asynchronous.
+	 */
+	public void beginHandshake() {
+		internal.beginHandshake(false);
+	}
+
+	/**
+	 * Initiates lazy handshaking (initial or renegotiation) on the protocol
+	 * engine driving this session. After calling this method the handshake will
+	 * not start immediately. It will start when new data is received from a
+	 * remote peer or following methods are called: <code>write</code>,
+	 * <code>writenf</code>, <code>beginHandshake</code>.
+	 * <p>
+	 * This method is not needed for the initial handshake, as the
+	 * <code>wrap</code> and <code>unwrap</code> methods of the protocol engine
+	 * should initiate it if the handshaking has not already begun.
+	 * <p>
+	 * The operation is asynchronous.
+	 */
+	public void beginLazyHandshake() {
+		internal.beginHandshake(true);
+	}
+	
 	@Override
 	public IStreamHandler getHandler() {
 		return internal.getHandler();

@@ -1165,16 +1165,14 @@ public class SSLSessionTest {
 		assertEquals("DS|DR|ECHO_RESPONSE(1)|", c.getRecordedData(true));
 		assertEquals("DS|DR|ECHO(1)|DS|", s.getRecordedData(true));
 		
-		TestSSLEngine engine = getSSLEngine(session);
-		engine.beginHandshake();
+		session.beginHandshake();
 		
 		session.write(new Packet(PacketType.ECHO, "2").toBytes());
 		waitFor(500);
 		assertEquals("DS|DR|DR|DS|DR|DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
 		assertEquals("DR|DS|DR|DR|DS|DR|ECHO(2)|DS|", s.getRecordedData(true));
 
-		engine = getSSLEngine((SSLSession) s.getSession());
-		engine.beginHandshake();
+		((SSLSession) s.getSession()).beginLazyHandshake();
 		
 		session.write(new Packet(PacketType.ECHO, "3").toBytes());
 		waitFor(500);
