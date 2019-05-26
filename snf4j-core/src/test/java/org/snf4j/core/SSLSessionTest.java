@@ -942,6 +942,7 @@ public class SSLSessionTest {
 		assertEquals(0, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals(0, allocator.getSize());
 		assertEquals(6, allocator.getAllocatedCount());
 		assertEquals(6, allocator.getReleasedCount());
@@ -957,11 +958,13 @@ public class SSLSessionTest {
 		Arrays.fill(data, (byte)'A');
 		c.getSession().write(new Packet(PacketType.BIG_NOP, new String(data)).toBytes());
 		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
 		assertEquals(6, allocator.getSize());
 		assertEquals(7, allocator.getAllocatedCount());
 		assertEquals(1, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals(0, allocator.getSize());
 		assertEquals(7, allocator.getAllocatedCount());
 		assertEquals(7, allocator.getReleasedCount());
@@ -977,11 +980,13 @@ public class SSLSessionTest {
 		Arrays.fill(data, (byte)'A');
 		c.getSession().write(new Packet(PacketType.BIG_NOP, new String(data)).toBytes());
 		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
 		assertEquals(7, allocator.getSize());
 		assertEquals(7, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals(7, allocator.getSize());
 		assertEquals(7, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
