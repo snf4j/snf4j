@@ -136,6 +136,15 @@ public class EngineSessionTest {
 		return (AtomicReference<Handshake>) field.get(internal);
 	}
 	
+	private void assertOneTask(String expected, String value) {
+		int i = value.indexOf("GET_TASK|GET_TASK|");
+		assertTrue(i >= 0);
+		i = value.indexOf("|TASK|", i);
+		assertTrue(i >= 0);
+		value = value.substring(0, i) + value.substring(i+5);
+		assertEquals(expected,value);
+	}
+	
 	@Test
 	public void testNotHandshaking() throws Exception {
 		//initial state = NOT_HANDSHAKING
@@ -239,6 +248,10 @@ public class EngineSessionTest {
 		se.addRecord("U|NH|456|789|OK|-|");
 		c.getSession().write("123".getBytes()).sync(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
+		waitFor(500);
+
+		assertOneTask("INI|CR|OP|W0|RE|GET_TASK|GET_TASK|W3|", c.getTrace(true));
+		assertOneTask("INI|CR|OP|GET_TASK|GET_TASK|W0|RE|U3|R789|", s.getTrace(true));
 		
 		se.addRecord("W|NH|-|-|C|-|");
 		ce.addRecord("W|NH|-|-|C|-|");
@@ -247,8 +260,8 @@ public class EngineSessionTest {
 		c.waitForFinish(TIMEOUT);
 		s.waitForFinish(TIMEOUT);
 		
-		assertEquals("INI|CR|OP|W0|RE|TASK|W3|CO|W0|CL|EN|FIN|", c.getTrace(true));
-		assertEquals("INI|CR|OP|TASK|W0|RE|U3|R789|CI|CO|CL|EN|FIN|", s.getTrace(true));
+		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
 	}
 
 	@Test

@@ -1162,6 +1162,7 @@ public class SSLSessionTest {
 		session.write(new Packet(PacketType.ECHO, "1").toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(500);
 		assertEquals("DS|DR|ECHO_RESPONSE(1)|", c.getRecordedData(true));
 		assertEquals("DS|DR|ECHO(1)|DS|", s.getRecordedData(true));
 		

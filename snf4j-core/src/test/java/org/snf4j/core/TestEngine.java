@@ -181,6 +181,7 @@ public class TestEngine implements IEngine {
 
 	@Override
 	public Runnable getDelegatedTask() {
+		trace("GET_TASK");
 		if (tasks.isEmpty()) {
 			return null;
 		}
