@@ -31,10 +31,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.InternalEngineHandler.Handshake;
 import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
@@ -232,6 +234,32 @@ public class InternalEngineHandlerTest {
 				HandshakeStatus.NOT_HANDSHAKING, 0, 0);
 		assertTrue(h.unwrap(status));
 		h.read(null);
+	}
+	
+	@SuppressWarnings("unchecked")
+	AtomicReference<Handshake> getHandshake(InternalEngineHandler handler) throws Exception {
+		Field f = InternalEngineHandler.class.getDeclaredField("handshake");
+		
+		f.setAccessible(true);
+		return (AtomicReference<Handshake>) f.get(handler);
+	}
+	
+	@Test
+	public void testBeginHandshake() throws Exception {
+		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
+		
+		AtomicReference<Handshake> handshake = getHandshake(h);
+		assertEquals(Handshake.NONE, handshake.get());
+		h.beginHandshake(true);
+		assertEquals(Handshake.REQUESTED, handshake.get());
+		h.beginHandshake(true);
+		assertEquals(Handshake.REQUESTED, handshake.get());
+		handshake.set(Handshake.STARTED);
+		h.beginHandshake(true);
+		assertEquals(Handshake.STARTED, handshake.get());
+		handshake.set(Handshake.NONE);
+		h.beginHandshake(true);
+		assertEquals(Handshake.REQUESTED, handshake.get());
 	}
 	
 	static class Handler extends InternalEngineHandler {

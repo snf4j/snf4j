@@ -942,6 +942,7 @@ public class SSLSessionTest {
 		assertEquals(0, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals(0, allocator.getSize());
 		assertEquals(6, allocator.getAllocatedCount());
 		assertEquals(6, allocator.getReleasedCount());
@@ -957,11 +958,13 @@ public class SSLSessionTest {
 		Arrays.fill(data, (byte)'A');
 		c.getSession().write(new Packet(PacketType.BIG_NOP, new String(data)).toBytes());
 		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
 		assertEquals(6, allocator.getSize());
 		assertEquals(7, allocator.getAllocatedCount());
 		assertEquals(1, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals(0, allocator.getSize());
 		assertEquals(7, allocator.getAllocatedCount());
 		assertEquals(7, allocator.getReleasedCount());
@@ -977,11 +980,13 @@ public class SSLSessionTest {
 		Arrays.fill(data, (byte)'A');
 		c.getSession().write(new Packet(PacketType.BIG_NOP, new String(data)).toBytes());
 		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
 		assertEquals(7, allocator.getSize());
 		assertEquals(7, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals(7, allocator.getSize());
 		assertEquals(7, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
@@ -1162,19 +1167,18 @@ public class SSLSessionTest {
 		session.write(new Packet(PacketType.ECHO, "1").toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(500);
 		assertEquals("DS|DR|ECHO_RESPONSE(1)|", c.getRecordedData(true));
 		assertEquals("DS|DR|ECHO(1)|DS|", s.getRecordedData(true));
 		
-		TestSSLEngine engine = getSSLEngine(session);
-		engine.beginHandshake();
+		session.beginHandshake();
 		
 		session.write(new Packet(PacketType.ECHO, "2").toBytes());
 		waitFor(500);
 		assertEquals("DS|DR|DR|DS|DR|DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
 		assertEquals("DR|DS|DR|DR|DS|DR|ECHO(2)|DS|", s.getRecordedData(true));
 
-		engine = getSSLEngine((SSLSession) s.getSession());
-		engine.beginHandshake();
+		((SSLSession) s.getSession()).beginLazyHandshake();
 		
 		session.write(new Packet(PacketType.ECHO, "3").toBytes());
 		waitFor(500);

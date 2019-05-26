@@ -48,6 +48,8 @@ public class TestEngine implements IEngine {
 	EngineResult unwrapResult;
 	EngineResult wrapResult;
 	
+	boolean beginHandshakeException;
+	
 	final List<Record> records = new ArrayList<Record>();
 
 	final List<Runnable> tasks = new ArrayList<Runnable>();
@@ -122,6 +124,14 @@ public class TestEngine implements IEngine {
 	}
 	
 	@Override
+	public void beginHandshake() throws Exception {
+		if (beginHandshakeException) {
+			throw new Exception();
+		}
+		trace("HAND");
+	}
+	
+	@Override
 	public boolean isOutboundDone() {
 		return outboundDone;
 	}
@@ -171,6 +181,7 @@ public class TestEngine implements IEngine {
 
 	@Override
 	public Runnable getDelegatedTask() {
+		trace("GET_TASK");
 		if (tasks.isEmpty()) {
 			return null;
 		}

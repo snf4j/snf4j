@@ -161,7 +161,7 @@ public interface ISessionConfig {
 	int getMaxSSLNetworkBufferSizeRatio();
 	
 	/**
-	 * Determines if the framework should wait for the peer's corresponding
+	 * Determines if the SNF4J framework should wait for the peer's corresponding
 	 * close message in situation when the closing was initiated by calling the
 	 * {@link org.snf4j.core.EngineStreamSession#close
 	 * EngineStreamSession.close()} or
