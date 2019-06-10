@@ -67,13 +67,13 @@ public class EngineServer {
 	
 	public EngineStreamSession getSession() throws InterruptedException {
 		if (session == null) {
-			waitFor(sessionLock, timeout);
+			LockUtils.waitFor(sessionLock, timeout);
 		}
 		return session;
 	}
 	
 	public void waitForDataRead(long millis) throws InterruptedException {
-		waitFor(readLock, millis);
+		LockUtils.waitFor(readLock, millis);
 	}
 
 	public void resetDataRead() throws InterruptedException {
@@ -83,15 +83,15 @@ public class EngineServer {
 	}
 	
 	public void waitForSessionEnding(long millis) throws InterruptedException {
-		waitFor(sessionEndingLock, millis);
+		LockUtils.waitFor(sessionEndingLock, millis);
 	}
 
 	public void waitForSessionReady(long millis) throws InterruptedException {
-		waitFor(sessionReadyLock, millis);
+		LockUtils.waitFor(sessionReadyLock, millis);
 	}
 
 	public void waitForFinish(long millis) throws InterruptedException {
-		waitFor(sessionEndingLock, millis);
+		LockUtils.waitFor(sessionEndingLock, millis);
 		Thread.sleep(100);
 	}
 	
@@ -141,24 +141,6 @@ public class EngineServer {
 		return trace.get(clear);
 	}
 	
-	void waitFor(AtomicBoolean lock, long millis) throws InterruptedException {
-		synchronized (lock) {
-			if (!lock.get()) {
-				lock.wait(millis);
-			}
-			if (!lock.getAndSet(false)) {
-				throw new InterruptedException();
-			}
-		}
-	}
-	
-	void notify(AtomicBoolean lock) {
-		synchronized(lock) {
-			lock.set(true);
-			lock.notify();
-		}		
-	}
-	
 	class SessionStructureFactory implements ISessionStructureFactory {
 
 		@Override
@@ -183,15 +165,15 @@ public class EngineServer {
 			switch (event) {
 			case OPENED:
 				session = (EngineStreamSession) getSession();
-				EngineServer.this.notify(sessionLock);
+				LockUtils.notify(sessionLock);
 				break;
 				
 			case READY:
-				EngineServer.this.notify(sessionReadyLock);
+				LockUtils.notify(sessionReadyLock);
 				break;
 				
 			case ENDING:
-				EngineServer.this.notify(sessionEndingLock);
+				LockUtils.notify(sessionEndingLock);
 				break;
 				
 			}
@@ -200,7 +182,7 @@ public class EngineServer {
 		@Override
 		public void read(byte[] data) {
 			trace("R" + new String(data));
-			EngineServer.this.notify(readLock);
+			LockUtils.notify(readLock);
 		}
 
 		@Override

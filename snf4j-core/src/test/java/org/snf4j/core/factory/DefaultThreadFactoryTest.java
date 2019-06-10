@@ -23,36 +23,58 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.factory;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import static org.junit.Assert.*;
 
-import org.snf4j.core.logger.ILogger;
-import org.snf4j.core.logger.LoggerFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class EngineClient extends EngineServer {
+import org.junit.Test;
+import org.snf4j.core.LockUtils;
+import org.snf4j.core.factory.DefaultThreadFactory;
 
-	private final static ILogger LOGGER = LoggerFactory.getLogger(EngineClient.class);
+public class DefaultThreadFactoryTest {
 	
-	public EngineClient(int port, long timeout) {
-		super(port, timeout);
-	}
+	AtomicBoolean lock = new AtomicBoolean(false);
+	
+	volatile String threadName;
+	
+	class TestRunnable implements Runnable {
 
-	@Override
-	public void start(TestEngine engine) throws Exception {
-		loop = new SelectorLoop();
+		String name; 
 		
-		loop.start();
+		TestRunnable(String name) {
+			this.name = name;
+		}
+		
+		@Override
+		public void run() {
+			threadName = Thread.currentThread().getName();
+			LockUtils.notify(lock);
+		}
+		
+		@Override
+		public String toString() {
+			return name;
+		}
+	};
 
-		engine.setTrace(trace);
-			
-		SocketChannel channel = SocketChannel.open();
-		channel.configureBlocking(false);
-		channel.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
-			
-		session = (EngineStreamSession) loop.register(channel, new EngineStreamSession(engine, new EngineHandler(), LOGGER)).sync().getSession();
-		LockUtils.notify(sessionLock);
-	}	
+	@Test
+	public void testNewThread() throws InterruptedException {
+		Thread th1 = DefaultThreadFactory.DEFAULT.newThread(new TestRunnable("Task1"));
+		Thread th2 = DefaultThreadFactory.DEFAULT.newThread(new TestRunnable("Task2"));
+
+		assertNotNull(th1);
+		assertNotNull(th2);
+		assertFalse(th1 == th2);
+		assertEquals("Task1", th1.getName());
+		assertEquals("Task2", th2.getName());
+		
+		th1.start();
+		LockUtils.waitFor(lock, 2000);
+		assertEquals("Task1", threadName);
+		th2.start();
+		LockUtils.waitFor(lock, 2000);
+		assertEquals("Task2", threadName);
+	}
 }

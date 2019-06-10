@@ -25,34 +25,52 @@
  */
 package org.snf4j.core;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import static org.junit.Assert.*;
 
-import org.snf4j.core.logger.ILogger;
-import org.snf4j.core.logger.LoggerFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class EngineClient extends EngineServer {
+import org.junit.Test;
 
-	private final static ILogger LOGGER = LoggerFactory.getLogger(EngineClient.class);
+public class DefaultExecutorTest {
+
+	AtomicBoolean lock = new AtomicBoolean(false);
 	
-	public EngineClient(int port, long timeout) {
-		super(port, timeout);
-	}
+	volatile Thread thread;
+	
+	class TestRunnable implements Runnable {
 
-	@Override
-	public void start(TestEngine engine) throws Exception {
-		loop = new SelectorLoop();
+		String name; 
 		
-		loop.start();
+		TestRunnable(String name) {
+			this.name = name;
+		}
+		
+		@Override
+		public void run() {
+			thread = Thread.currentThread();
+			LockUtils.notify(lock);
+		}
+		
+		@Override
+		public String toString() {
+			return name;
+		}
+	};
 
-		engine.setTrace(trace);
-			
-		SocketChannel channel = SocketChannel.open();
-		channel.configureBlocking(false);
-		channel.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
-			
-		session = (EngineStreamSession) loop.register(channel, new EngineStreamSession(engine, new EngineHandler(), LOGGER)).sync().getSession();
-		LockUtils.notify(sessionLock);
-	}	
+	@Test
+	public void testExecute() throws InterruptedException {
+		DefaultExecutor.DEFAULT.execute(new TestRunnable("Test1"));
+		LockUtils.waitFor(lock, 2000);
+		Thread th1 = thread;
+		thread = null;
+		DefaultExecutor.DEFAULT.execute(new TestRunnable("Test2"));
+		LockUtils.waitFor(lock, 2000);
+		Thread th2 = thread;
+		
+		assertNotNull(th1);
+		assertNotNull(th2);
+		assertFalse(th1 == th2);
+		assertEquals("Test1", th1.getName());
+		assertEquals("Test2", th2.getName());
+	}
 }

@@ -38,6 +38,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -68,6 +69,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	volatile Thread thread;
 	
 	ThreadFactory threadFactory = DefaultThreadFactory.DEFAULT;
+	
+	volatile Executor executor = DefaultExecutor.DEFAULT;
 	
 	final ISelectorLoopStructureFactory factory;
 	
@@ -327,12 +330,20 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	}
 	
 	/**
-	 * Sets the thread factory used to create a thread for this selector loop. To take effect
-	 * it have to be set before execution of the <code>start</code> method. 
+	 * Sets the thread factory used to create a thread for this selector loop.
+	 * To take effect it have to be set before execution of the
+	 * <code>start</code> method.
 	 * 
-	 * @param threadFactory the current thread factory
+	 * @param threadFactory
+	 *            the new thread factory
+	 * @throws NullPointerException
+	 *             If the <code>threadFactory</code> argument is
+	 *             <code>null</code>
 	 */
 	public void setThreadFactory(ThreadFactory threadFactory) {
+		if (threadFactory == null) {
+			throw new NullPointerException(); 
+		}
 		this.threadFactory = threadFactory;
 	}
 	
@@ -343,6 +354,34 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 */
 	public ThreadFactory getThreadFactory() {
 		return threadFactory;
+	}
+
+	/**
+	 * Sets the executor that will be used to execute delegated tasks required
+	 * by engine driven sessions to complete operations that block, or may take
+	 * an extended period of time to complete.
+	 * 
+	 * @param executor
+	 *            the new executor
+	 * @throws NullPointerException
+	 *             If the <code>executor</code> argument is <code>null</code>
+	 */
+	public void setExecutor(Executor executor) {
+		if (executor == null) {
+			throw new NullPointerException(); 
+		}
+		this.executor = executor;
+	}
+	
+	/**
+	 * Returns the executor that is used to execute delegated tasks required by
+	 * engine driven sessions to complete operations that block, or may take an
+	 * extended period of time to complete.
+	 * 
+	 * @return the current executor
+	 */
+	public Executor getExecutor() {
+		return executor;
 	}
 	
 	/**

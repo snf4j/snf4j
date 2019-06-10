@@ -25,34 +25,26 @@
  */
 package org.snf4j.core;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.snf4j.core.logger.ILogger;
-import org.snf4j.core.logger.LoggerFactory;
+public class LockUtils {
 
-public class EngineClient extends EngineServer {
-
-	private final static ILogger LOGGER = LoggerFactory.getLogger(EngineClient.class);
+	public static void waitFor(AtomicBoolean lock, long millis) throws InterruptedException {
+		synchronized (lock) {
+			if (!lock.get()) {
+				lock.wait(millis);
+			}
+			if (!lock.getAndSet(false)) {
+				throw new InterruptedException();
+			}
+		}
+	}
 	
-	public EngineClient(int port, long timeout) {
-		super(port, timeout);
+	public static void notify(AtomicBoolean lock) {
+		synchronized(lock) {
+			lock.set(true);
+			lock.notify();
+		}		
 	}
 
-	@Override
-	public void start(TestEngine engine) throws Exception {
-		loop = new SelectorLoop();
-		
-		loop.start();
-
-		engine.setTrace(trace);
-			
-		SocketChannel channel = SocketChannel.open();
-		channel.configureBlocking(false);
-		channel.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
-			
-		session = (EngineStreamSession) loop.register(channel, new EngineStreamSession(engine, new EngineHandler(), LOGGER)).sync().getSession();
-		LockUtils.notify(sessionLock);
-	}	
 }

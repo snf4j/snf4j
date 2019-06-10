@@ -29,6 +29,8 @@ import static org.junit.Assert.*;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.net.ssl.SSLEngine;
@@ -38,6 +40,7 @@ import org.junit.Test;
 import org.snf4j.core.InternalEngineHandler.Handshake;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
+import org.snf4j.core.logger.LoggerFactory;
 
 public class EngineSessionTest {
 
@@ -1276,4 +1279,101 @@ public class EngineSessionTest {
 		s.stop();
 	
 	}
+	
+	static class TestExecutor implements Executor {
+
+		AtomicInteger count = new AtomicInteger();
+		
+		@Override
+		public void execute(Runnable command) {
+			count.incrementAndGet();
+			DefaultExecutor.DEFAULT.execute(command);
+		}
+	}
+	
+	@Test
+	public void testSetExecutor() throws Exception {
+		EngineStreamSession session = new EngineStreamSession(new TestEngine(HandshakeStatus.NOT_HANDSHAKING), 
+				new TestHandler("Handler"), 
+				LoggerFactory.getLogger(this.getClass()));
+	
+		Executor e1 = new Executor() {
+
+			@Override
+			public void execute(Runnable command) {
+			}
+			
+		};
+		
+		assertNull(session.getExecutor());
+		session.setExecutor(e1);
+		assertTrue(e1 == session.getExecutor());
+		session.setExecutor(DefaultExecutor.DEFAULT);
+		assertTrue(DefaultExecutor.DEFAULT == session.getExecutor());
+		session.setExecutor(null);
+		assertNull(session.getExecutor());
+		
+		TestEngine se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		TestEngine ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce, true);
+		s.getTrace(true);
+		c.getTrace(true);
+		
+		session = c.getSession();
+		assertTrue(DefaultExecutor.DEFAULT == session.getExecutor());
+		session.setExecutor(e1);
+		assertTrue(e1 == session.getExecutor());
+		session.setExecutor(null);
+		assertTrue(DefaultExecutor.DEFAULT == session.getExecutor());
+		
+		TestExecutor te1 = new TestExecutor();
+		TestExecutor te2 = new TestExecutor();
+		
+		assertEquals(0, te1.count.get());
+		assertEquals(0, te2.count.get());
+
+		//use executor from the loop 
+		session.setExecutor(null);
+		c.loop.setExecutor(te1);
+		ce.addTask();
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(500);
+		assertEquals(1, te1.count.get());
+		assertEquals(0, te2.count.get());
+
+		//use executor from the session 
+		session.setExecutor(te2);
+		ce.addTask();
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(500);
+		assertEquals(1, te1.count.get());
+		assertEquals(1, te2.count.get());
+
+		//exception from executor
+		c.getTrace(true);
+		s.getTrace(true);
+		te2.count = null;
+		ce.addTask();
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes());
+		
+		c.waitForFinish(TIMEOUT);
+		s.waitForFinish(TIMEOUT);
+		assertEquals("GET_TASK|EX|CI|CO|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
+		c.stop();
+		s.stop();
+		
+	}
+	
 }

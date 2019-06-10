@@ -189,9 +189,16 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 			case NEED_TASK:
 				Runnable task = engine.getDelegatedTask();
 				
-				while (task != null) {
-					session.loop.getThreadFactory().newThread(new DelegatedTask(this, task)).start();
-					task = engine.getDelegatedTask();
+				try {
+					while (task != null) {
+						session.getExecutor().execute(new DelegatedTask(this, task));
+						task = engine.getDelegatedTask();
+					}
+				}
+				catch (Exception e) {
+					elogger.error(logger, "Execution of delegated task failed for {}: {}", session, e);
+					fireException(e);
+					return;
 				}
 				running = false;
 				break;
