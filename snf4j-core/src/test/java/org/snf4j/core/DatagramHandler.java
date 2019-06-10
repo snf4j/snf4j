@@ -222,46 +222,28 @@ public class DatagramHandler {
 		session.write(packet.toBytes());
 	}
 
-	void waitFor(AtomicBoolean lock, long millis) throws InterruptedException {
-		synchronized (lock) {
-			if (!lock.get()) {
-				lock.wait(millis);
-			}
-			if (!lock.getAndSet(false)) {
-				throw new InterruptedException();
-			}
-		}
-	}
-	
-	void notify(AtomicBoolean lock) {
-		synchronized(lock) {
-			lock.set(true);
-			lock.notify();
-		}		
-	}
-	
 	public void waitForSessionOpen(long millis) throws InterruptedException {
-		waitFor(sessionOpenLock, millis);
+		LockUtils.waitFor(sessionOpenLock, millis);
 	}
 
 	public void waitForSessionReady(long millis) throws InterruptedException {
-		waitFor(sessionReadyLock, millis);
+		LockUtils.waitFor(sessionReadyLock, millis);
 	}
 
 	public void waitForSessionEnding(long millis) throws InterruptedException {
-		waitFor(sessionEndingLock, millis);
+		LockUtils.waitFor(sessionEndingLock, millis);
 	}
 
 	void waitForDataReceived(long millis) throws InterruptedException {
-		waitFor(dataReceivedLock, millis);
+		LockUtils.waitFor(dataReceivedLock, millis);
 	}
 
 	public void waitForDataRead(long millis) throws InterruptedException {
-		waitFor(dataReadLock, millis);
+		LockUtils.waitFor(dataReadLock, millis);
 	}
 	
 	public void waitForDataSent(long millis) throws InterruptedException {
-		waitFor(dataSentLock, millis);
+		LockUtils.waitFor(dataSentLock, millis);
 	}
 
 	class StructureFactory extends DefaultSessionStructureFactory {
@@ -371,7 +353,7 @@ public class DatagramHandler {
 			default:
 				break;
 			}
-			DatagramHandler.this.notify(dataReadLock);
+			LockUtils.notify(dataReadLock);
 		}
 		
 		private boolean event(EventType type) {
@@ -382,23 +364,23 @@ public class DatagramHandler {
 				break;
 				
 			case SESSION_OPENED:
-				DatagramHandler.this.notify(sessionOpenLock);
+				LockUtils.notify(sessionOpenLock);
 				break;
 
 			case SESSION_READY:
-				DatagramHandler.this.notify(sessionReadyLock);
+				LockUtils.notify(sessionReadyLock);
 				break;
 				
 			case SESSION_ENDING:
-				DatagramHandler.this.notify(sessionEndingLock);
+				LockUtils.notify(sessionEndingLock);
 				break;
 				
 			case DATA_RECEIVED:
-				DatagramHandler.this.notify(dataReceivedLock);
+				LockUtils.notify(dataReceivedLock);
 				break;
 				
 			case DATA_SENT:
-				DatagramHandler.this.notify(dataSentLock);
+				LockUtils.notify(dataSentLock);
 				break;
 				
 			default:

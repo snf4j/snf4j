@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
+import java.util.concurrent.Executor;
 
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.future.IFuture;
@@ -43,6 +44,8 @@ import org.snf4j.core.logger.ILogger;
 public class EngineStreamSession extends StreamSession {
 
 	private final InternalEngineHandler internal;
+	
+	private volatile Executor executor;
 	
 	/**
 	 * Constructs a named stream-oriented session associated with a protocol
@@ -77,6 +80,35 @@ public class EngineStreamSession extends StreamSession {
 	public EngineStreamSession(IEngine engine, IStreamHandler handler, ILogger logger) {
 		super(new InternalEngineHandler(engine, handler, logger));
 		internal = (InternalEngineHandler) this.handler;
+	}
+	
+	/**
+	 * Sets the executor that will be used to execute delegated tasks required
+	 * by this sessions to complete operations that block, or may take an
+	 * extended period of time to complete.
+	 * 
+	 * @param executor
+	 *            the new executor, or <code>null</code> to use the executor
+	 *            configured in the selector loop that handles this session.
+	 */
+	public void setExecutor(Executor executor) {
+		this.executor = executor;
+	}
+	
+	/**
+	 * Returns the executor that will be used to execute delegated tasks
+	 * required by this sessions to complete operations that block, or may take
+	 * an extended period of time to complete.
+	 * <p>
+	 * By default, this method returns the executor configured in the selector 
+	 * loop that handles this session, or <code>null</code>.
+	 * 
+	 * @return the current executor, or <code>null</code> if the executor is
+	 *         undefined (i.e. the session is not associated with the selector 
+	 *         loop and the executor is not set)
+	 */
+	public Executor getExecutor() {
+		return (executor == null && loop != null) ? loop.getExecutor() : executor;
 	}
 	
 	/**

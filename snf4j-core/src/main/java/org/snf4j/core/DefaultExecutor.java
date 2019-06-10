@@ -25,34 +25,37 @@
  */
 package org.snf4j.core;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import java.util.concurrent.Executor;
 
-import org.snf4j.core.logger.ILogger;
-import org.snf4j.core.logger.LoggerFactory;
+import org.snf4j.core.factory.DefaultThreadFactory;
 
-public class EngineClient extends EngineServer {
+/**
+ * Default implementation of the {@link java.util.concurrent.Executor} interface that is
+ * used by the API.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class DefaultExecutor implements Executor {
 
-	private final static ILogger LOGGER = LoggerFactory.getLogger(EngineClient.class);
+	/**
+	 * A constant holding the default executor.
+	 */
+	public final static DefaultExecutor DEFAULT = new DefaultExecutor();
 	
-	public EngineClient(int port, long timeout) {
-		super(port, timeout);
+	private DefaultExecutor() {
 	}
 
+	/**
+	 * Executes the given command in the following way:
+	 * 
+	 * <pre>
+	 * DefaultThreadFactory.DEFAULT.newThread(command).start()
+	 * </pre>
+	 * @see DefaultThreadFactory
+	 */
 	@Override
-	public void start(TestEngine engine) throws Exception {
-		loop = new SelectorLoop();
-		
-		loop.start();
+	public void execute(Runnable command) {
+		DefaultThreadFactory.DEFAULT.newThread(command).start();
+	}
 
-		engine.setTrace(trace);
-			
-		SocketChannel channel = SocketChannel.open();
-		channel.configureBlocking(false);
-		channel.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
-			
-		session = (EngineStreamSession) loop.register(channel, new EngineStreamSession(engine, new EngineHandler(), LOGGER)).sync().getSession();
-		LockUtils.notify(sessionLock);
-	}	
 }

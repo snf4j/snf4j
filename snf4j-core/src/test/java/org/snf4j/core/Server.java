@@ -327,46 +327,28 @@ public class Server {
 		}
 	}
 	
-	void waitFor(AtomicBoolean lock, long millis) throws InterruptedException {
-		synchronized (lock) {
-			if (!lock.get()) {
-				lock.wait(millis);
-			}
-			if (!lock.getAndSet(false)) {
-				throw new InterruptedException();
-			}
-		}
-	}
-	
-	void notify(AtomicBoolean lock) {
-		synchronized(lock) {
-			lock.set(true);
-			lock.notify();
-		}		
-	}
-	
 	public void waitForSessionOpen(long millis) throws InterruptedException {
-		waitFor(sessionOpenLock, millis);
+		LockUtils.waitFor(sessionOpenLock, millis);
 	}
 	
 	public void waitForSessionReady(long millis) throws InterruptedException {
-		waitFor(sessionReadyLock, millis);
+		LockUtils.waitFor(sessionReadyLock, millis);
 	}
 	
 	public void waitForSessionEnding(long millis) throws InterruptedException {
-		waitFor(sessionEndingLock, millis);
+		LockUtils.waitFor(sessionEndingLock, millis);
 	}
 
 	public void waitForDataReceived(long millis) throws InterruptedException {
-		waitFor(dataReceivedLock, millis);
+		LockUtils.waitFor(dataReceivedLock, millis);
 	}
 
 	public void waitForDataRead(long millis) throws InterruptedException {
-		waitFor(dataReadLock, millis);
+		LockUtils.waitFor(dataReadLock, millis);
 	}
 	
 	public void waitForDataSent(long millis) throws InterruptedException {
-		waitFor(dataSentLock, millis);
+		LockUtils.waitFor(dataSentLock, millis);
 	}
 	
 	class SessionFactory extends AbstractSessionFactory {
@@ -615,7 +597,7 @@ public class Server {
 			default:
 				break;
 			}
-			Server.this.notify(dataReadLock);
+			LockUtils.notify(dataReadLock);
 			
 			if (throwInRead) {
 				throw new NullPointerException();
@@ -630,23 +612,23 @@ public class Server {
 				break;
 				
 			case SESSION_OPENED:
-				Server.this.notify(sessionOpenLock);
+				LockUtils.notify(sessionOpenLock);
 				break;
 				
 			case SESSION_READY:
-				Server.this.notify(sessionReadyLock);
+				LockUtils.notify(sessionReadyLock);
 				break;
 				
 			case SESSION_ENDING:
-				Server.this.notify(sessionEndingLock);
+				LockUtils.notify(sessionEndingLock);
 				break;
 				
 			case DATA_RECEIVED:
-				Server.this.notify(dataReceivedLock);
+				LockUtils.notify(dataReceivedLock);
 				break;
 				
 			case DATA_SENT:
-				Server.this.notify(dataSentLock);
+				LockUtils.notify(dataSentLock);
 				break;
 				
 			default:

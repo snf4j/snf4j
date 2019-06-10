@@ -42,6 +42,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Random;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
 import org.junit.After;
@@ -725,6 +726,13 @@ public class StreamSelectorLoopTest {
 		};
 		SelectorLoop loop1 = new SelectorLoop();
 		
+		try {
+			loop1.setThreadFactory(null);
+			fail("Exception should be thrown");
+		}
+		catch (NullPointerException e) {
+		}
+		
 		assertTrue(DefaultThreadFactory.DEFAULT == loop1.getThreadFactory());
 		loop1.setThreadFactory(tf);
 		assertTrue(tf == loop1.getThreadFactory());
@@ -732,6 +740,30 @@ public class StreamSelectorLoopTest {
 		loop1.stop();
 		assertEquals("T", tf.toString());
 		loop1.join();
+	}
+
+	@Test
+	public void testSetExecutor() throws Exception {
+		Executor exe = new Executor() {
+
+			@Override
+			public void execute(Runnable arg0) {
+			}
+			
+		};
+		
+		SelectorLoop loop1 = new SelectorLoop();
+		
+		try {
+			loop1.setExecutor(null);
+			fail("Exception should be thrown");
+		}
+		catch (NullPointerException e) {
+		}
+		
+		assertTrue(DefaultExecutor.DEFAULT == loop1.getExecutor());
+		loop1.setExecutor(exe);
+		assertTrue(exe == loop1.getExecutor());
 	}
 	
 	@Test
