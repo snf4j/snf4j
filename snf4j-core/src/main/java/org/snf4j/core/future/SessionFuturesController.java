@@ -286,4 +286,13 @@ public class SessionFuturesController {
 	public IFuture<Void> getFailedFuture(Throwable cause) {
 		return new FailedFuture<Void>(session, cause);
 	}
+	
+	/**
+	 * Returns a future which can be represented by other delegate future.
+	 * 
+	 * @return a delegating future
+	 */
+	public IDelegatingFuture<Void> getDelegatingFuture() {
+		return new DelegatingBlockingFuture<Void>(session);
+	}
 }

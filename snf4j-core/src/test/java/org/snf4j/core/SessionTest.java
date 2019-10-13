@@ -1756,7 +1756,7 @@ public class SessionTest {
 		c = new Client(PORT);
 		c.throwInException = true;
 		c.start();
-		c.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT*2);
 		assertEquals("SCR|EXC|SEN|", c.getRecordedData(true));
 		assertEquals(1,c.throwInExceptionCount.get());
 		c.stop(TIMEOUT);

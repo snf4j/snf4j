@@ -1017,7 +1017,7 @@ public class StreamSelectorLoopTest {
 		c = new Client(PORT);
 		c.start();
 		
-		c.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT*2);
 		assertEquals("SCR|EXC|SEN|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
 	}
