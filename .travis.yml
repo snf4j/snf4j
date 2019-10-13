@@ -1,14 +1,12 @@
-sudo: true
+x`sudo: true
 
 language: java
 
 matrix:
   include:
-  - jdk: oraclejdk9
+  - jdk: openjdk9
     env: SKIP_COBERTURA=true SNF4J_SKIP_TEST_LOGGING=true
   - jdk: openjdk8
-    env: SKIP_COBERTURA=true SNF4J_SKIP_TEST_LOGGING=true
-  - jdk: oraclejdk8
     env: SNF4J_SKIP_TEST_LOGGING=true
     
 branches:
