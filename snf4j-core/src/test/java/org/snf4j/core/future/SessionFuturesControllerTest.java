@@ -27,6 +27,7 @@ package org.snf4j.core.future;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -41,6 +42,7 @@ import org.snf4j.core.Packet;
 import org.snf4j.core.PacketType;
 import org.snf4j.core.Server;
 import org.snf4j.core.StreamSession;
+import org.snf4j.core.TestSession;
 import org.snf4j.core.future.EventFuture;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SessionFuturesController;
@@ -943,5 +945,14 @@ public class SessionFuturesControllerTest {
 		assertEquals("SCR|SOP|RDY|DS|DR|DEADLOCK_RESPONSE(YES)|",c.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testGetDelegatingFuture() {
+		ISession session = new TestSession();
+		sf = new SessionFuturesController(session);
+		IDelegatingFuture<Void> future = sf.getDelegatingFuture();
+		assertNotNull(future);
+		assertTrue(future.getSession() == session);
 	}
 }

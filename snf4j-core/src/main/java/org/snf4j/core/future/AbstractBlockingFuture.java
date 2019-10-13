@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -224,57 +224,82 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 		}
 
 		checkDeadLock();
-		
-		FutureLock lock = getLock();
-		
-		synchronized (lock) {
-			lock.incWaiters();
-			try {
-				if (nanos == 0) {
-					while (!isDone()) {
-						try {
-							lock.wait();
+
+		boolean loopDone = false;
+
+		do {
+			FutureLock lock = getLock();
+
+			synchronized (lock) {
+				lock.incWaiters();
+				try {
+					if (nanos == 0) {
+						while (!isDone()) {
+							try {
+								lock.wait();
+							}
+							catch (InterruptedException e) {
+								if (interruptable) {
+									throw e;
+								}
+								else {
+									interrupted = true;
+								}
+							}
+							
+							//check if lock has changed
+							if (lock != getLock()) {
+								break;
+							}
 						}
-						catch (InterruptedException e) {
-							if (interruptable) {
-								throw e;
+					} else {
+						while (!isDone()) {
+							long delay = nanos - now;
+
+							if (delay <= 0) {
+								loopDone = true;
+								break;
 							}
-							else {
-								interrupted = true;
+
+							try {
+								lock.wait(delay / 1000000, (int) (delay % 1000000));
 							}
+							catch (InterruptedException e) {
+								if (interruptable) {
+									throw e;
+								}
+								else {
+									interrupted = true;
+								}
+							}
+
+							now = System.nanoTime() - base;
+
+							//check if lock has changed
+							if (lock != getLock()) {
+								break;
+							}
+							
 						}
 					}
-				} else {
-					while (!isDone()) {
-						long delay = nanos - now;
+				}
+				finally {
+					lock.decWaiters();
+					if (interrupted) {
+						boolean interrupt = isDone();
 						
-						if (delay <= 0) {
-							break;
+						if (loopDone) {
+							interrupt = true;
 						}
-						
-						try {
-							lock.wait(delay / 1000000, (int) (delay % 1000000));
+						if (interrupt) {
+							Thread.currentThread().interrupt();
 						}
-						catch (InterruptedException e) {
-							if (interruptable) {
-								throw e;
-							}
-							else {
-								interrupted = true;
-							}
-						}
-						
-						now = System.nanoTime() - base;
 					}
 				}
 			}
-			finally {
-				lock.decWaiters();
-				if (interrupted) {
-					Thread.currentThread().interrupt();
-				}
-			}
-		}
+		
+		} while (!isDone() && !loopDone);
+
 		return this;
 	}
 
