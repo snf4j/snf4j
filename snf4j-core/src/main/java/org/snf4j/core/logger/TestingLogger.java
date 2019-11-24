@@ -28,7 +28,10 @@ package org.snf4j.core.logger;
 import java.io.PrintStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import org.snf4j.core.Constants;
 
@@ -53,9 +56,33 @@ class TestingLogger implements ILogger {
 	
 	private final boolean skipLogging;
 	
+	private static List<String> recording;
+	
 	TestingLogger(String name) {
 		this.name = name;
 		skipLogging = "true".equalsIgnoreCase(System.getenv(SKIP_LOGGING_ENV));
+	}
+	
+	static void enableRecording() {
+		recording = Collections.synchronizedList(new ArrayList<String>());
+	}
+	
+	static void disableRecording() {
+		recording = null;
+	}
+	
+	static Object[] getRecording() {
+		List<String> recording = TestingLogger.recording; 
+		
+		return recording == null ? null : recording.toArray();
+	}
+	
+	static void record(int level, String msg) {
+		List<String> recording = TestingLogger.recording;
+		
+		if (recording != null) {
+			recording.add("["+levels[level]+"] " + msg);
+		}
 	}
 	
 	private void checkMessage(String msg, int argCount) {
@@ -106,6 +133,7 @@ class TestingLogger implements ILogger {
 	
 	private void log1(int level, String msg) {
 		checkMessage(msg, 0);
+		record(level, msg);
 		if (!skipLogging) {
 			log0(level, msg, null);
 		}
@@ -113,6 +141,7 @@ class TestingLogger implements ILogger {
 
 	private void log(int level, String msg, Object arg) {
 		checkMessage(msg, 1);
+		record(level, msg);
 		if (!skipLogging) {
 			log0(level, format(msg, new Object[] {arg}), null);
 		}
@@ -120,6 +149,7 @@ class TestingLogger implements ILogger {
 
 	private void log(int level, String msg, Object arg1, Object arg2) {
 		checkMessage(msg, 2);
+		record(level, msg);
 		if (!skipLogging) {
 			log0(level, format(msg, new Object[] {arg1, arg2}), null);
 		}
@@ -127,6 +157,7 @@ class TestingLogger implements ILogger {
 	
 	private void log(int level, String msg, Object... args) {
 		checkMessage(msg, args.length);
+		record(level, msg);
 		if (!skipLogging) {
 			log0(level, format(msg, args), null);
 		}

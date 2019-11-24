@@ -1015,6 +1015,13 @@ public class DatagramSessionTest {
 			session.writenf((ByteBuffer) null, 0); fail("Exception not thrown");
 		} catch (NullPointerException e) {}
 		try {
+			session.write((Object) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.writenf((Object) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+
+		try {
 			session.send(null, (ByteBuffer) null); fail("Exception not thrown");
 		} catch (NullPointerException e) {}
 		try {
@@ -1025,6 +1032,12 @@ public class DatagramSessionTest {
 		} catch (NullPointerException e) {}
 		try {
 			session.sendnf(null, (ByteBuffer) null, 0); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.send(null, (Object) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.sendnf(null, (Object) null); fail("Exception not thrown");
 		} catch (NullPointerException e) {}
 
 		assertTrue(session.write(new byte[0]).isSuccessful());

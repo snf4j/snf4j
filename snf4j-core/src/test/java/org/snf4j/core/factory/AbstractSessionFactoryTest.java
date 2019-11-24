@@ -51,6 +51,7 @@ public class AbstractSessionFactoryTest {
 		StreamSession s = f.create(channel);
 		assertNotNull(s);
 		assertFalse(s instanceof SSLSession);
+		f.exception(null, null);
 		
 		f = new Factory(false);
 		s = f.create(channel);

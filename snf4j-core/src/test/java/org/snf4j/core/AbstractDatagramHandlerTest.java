@@ -26,10 +26,12 @@
 package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.ISession;
 
 public class AbstractDatagramHandlerTest {
@@ -37,6 +39,10 @@ public class AbstractDatagramHandlerTest {
 	@Test
 	public void testSetSession() {
 		TestDatagramHandler h = new TestDatagramHandler();
+		
+		h.read(null, new Object());
+		h.read(new Object());
+		assertFalse(h.incident(SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE, new Exception()));
 		
 		try {
 			h.setSession(new TestSession());

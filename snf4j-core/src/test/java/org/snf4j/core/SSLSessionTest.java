@@ -37,6 +37,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
@@ -46,6 +47,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.handler.SessionIncident;
+import org.snf4j.core.logger.LoggerRecorder;
 import org.snf4j.core.session.IllegalSessionStateException;
 
 public class SSLSessionTest {
@@ -236,13 +239,16 @@ public class SSLSessionTest {
 		session = (SSLSession) c.getSession(); 
 		ByteBuffer[] bufs = getBuffers(session, "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP, "567").toBytes());
+		LoggerRecorder.enableRecording();
 		c.getSession().dirtyClose();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		// TODO why incident could occurred in closing session (need to better synchronize dirtyClose
+		List<String> recording = LoggerRecorder.disableRecording();
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
-
+		String warnMsg = "[ WARN] " + SessionIncident.SSL_CLOSED_WITHOUT_CLOSE_NOTIFY.defaultMessage();
+		assertTrue(recording.contains(warnMsg));
+		
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 
@@ -261,11 +267,14 @@ public class SSLSessionTest {
 		bufs = getBuffers(session, "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP, "567").toBytes());
 
+		LoggerRecorder.enableRecording();
 		c.dirtyStop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+		recording = LoggerRecorder.disableRecording();
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
+		assertFalse(recording.contains(warnMsg));
 	
 		session.dirtyClose();
 	}

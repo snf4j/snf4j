@@ -232,20 +232,6 @@ public class SessionFuturesController {
 	}
 	
 	/**
-	 * Returns a future that can be used to wait for the completion of a SSL write
-	 * operation.
-	 * 
-	 * @param expectedUnwrappedSize
-	 *            the expected unwrapped (before encryption) size of total bytes 
-	 *            sent by the future's executor that completes this future
-	 * @return a future associated with a write operation
-	 */
-	@Deprecated
-	public IFuture<Void> getSSLWriteFuture(long expectedUnwrappedSize) {
-		return new TwoThresholdFuture<Void>(sentFuture, expectedUnwrappedSize);
-	}
-
-	/**
 	 * Returns a future that can be used to wait for the completion of write
 	 * operations from engine driven sessions.
 	 * 

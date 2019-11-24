@@ -1065,7 +1065,7 @@ public class StreamSelectorLoopTest {
 		c1.stop(TIMEOUT);
 		c2.stop(TIMEOUT);
 	}
-	
+
 	@Test
 	public void testExceptionHandling() throws Exception {
 		s = new Server(PORT);
@@ -1077,6 +1077,16 @@ public class StreamSelectorLoopTest {
 		s.waitForSessionReady(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
+		//test fire exception with key with unexpected attachment
+		assertEquals("R|", s.getServerSocketLogs());
+		SelectionKey key = c.getSession().key;
+		Object attachment = key.attachment();
+		key.attach(new Integer(0));
+		s.loop.fireException(key, new Exception());
+		s.loop.fireException(key, null);
+		key.attach(attachment);
+		assertEquals("", s.getServerSocketLogs());
+		
 		c.write(new Packet(PacketType.ECHO));
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
@@ -1096,6 +1106,7 @@ public class StreamSelectorLoopTest {
 		s.stop(TIMEOUT);
 		
 		c.getSession().exception(new Exception());
+		
 	}
 
 	AbstractSessionFactory factory = new AbstractSessionFactory() {
@@ -1373,7 +1384,7 @@ public class StreamSelectorLoopTest {
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
-		assertEquals("C|",s.getServerSocketLogs());
+		assertEquals("X|C|",s.getServerSocketLogs());
 		waitFor(this.GET_SIZE_DELAY);
 		assertEquals(0, s.loop.getSize());
 		c.stop(TIMEOUT);
@@ -1404,7 +1415,7 @@ public class StreamSelectorLoopTest {
 			s.waitForSessionEnding(TIMEOUT);
 			assertEquals("SCL|SEN|", c.getRecordedData(true));
 			assertEquals("SCL|SEN|", s.getRecordedData(true));
-			assertEquals("C|",s.getServerSocketLogs());
+			assertEquals("X|C|",s.getServerSocketLogs());
 			assertTrue(s.loop.join(TIMEOUT));
 			c.stop(TIMEOUT);
 		}
@@ -1490,7 +1501,7 @@ public class StreamSelectorLoopTest {
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
-		assertEquals("C|",s.getServerSocketLogs());
+		assertEquals("X|C|",s.getServerSocketLogs());
 		waitFor(this.GET_SIZE_DELAY);
 		assertEquals(0, s.loop.getSize());
 		c.stop(TIMEOUT);
@@ -1526,7 +1537,7 @@ public class StreamSelectorLoopTest {
 			s.waitForSessionEnding(TIMEOUT);
 			assertEquals("SCL|SEN|", c.getRecordedData(true));
 			assertEquals("SCL|SEN|", s.getRecordedData(true));
-			assertEquals("C|",s.getServerSocketLogs());
+			assertEquals("X|C|",s.getServerSocketLogs());
 			assertTrue(s.loop.join(TIMEOUT));
 			c.stop(TIMEOUT);
 		}

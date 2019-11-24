@@ -28,6 +28,7 @@ package org.snf4j.core.session;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentMap;
 
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IHandler;
 
@@ -35,6 +36,8 @@ import org.snf4j.core.handler.IHandler;
  * A session which represents connection between end-points regardless of transport type. 
  * <p>
  * The implementations provided by the API are thread-safe.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public interface ISession {
 	
@@ -65,6 +68,14 @@ public interface ISession {
 	 * @return the configuration
 	 */
 	ISessionConfig getConfig();
+	
+	/**
+	 * Gets the codec pipeline that is associated with this session.
+	 * 
+	 * @return the codec pipeline or {@code null} if the session does not
+	 *         support it
+	 */
+	ICodecPipeline getCodecPipeline();
 	
 	/**
 	 * Gets the current state of this session.

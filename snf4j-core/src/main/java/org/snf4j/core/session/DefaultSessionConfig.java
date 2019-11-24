@@ -31,9 +31,12 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
 import org.snf4j.core.EndingAction;
+import org.snf4j.core.codec.ICodecExecutor;
 
 /**
  * Default configuration for the session.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public class DefaultSessionConfig implements ISessionConfig {
 
@@ -290,6 +293,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * <p>
 	 * The default value is <code>false</code>
 	 */
+	@Override
 	public boolean waitForInboundCloseMessage() {
 		return waitForInboundCloseMessage;
 	}
@@ -313,4 +317,13 @@ public class DefaultSessionConfig implements ISessionConfig {
 		return this;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>null</code>
+	 */
+	@Override
+	public ICodecExecutor createCodecExecutor() {
+		return null;
+	}
 }

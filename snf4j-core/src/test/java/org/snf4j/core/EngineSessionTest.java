@@ -825,6 +825,7 @@ public class EngineSessionTest {
 		assertCapacity(s.getSession(), 10, 10, 10);
 		
 		//buffer overflow failed
+		waitFor(100);
 		ByteBuffer inApp = getBuffer(s.getSession(), "inAppBuffer");
 		inApp.put("1".getBytes());
 		ce.addRecord("W|NH|123|456|OK|-|");

@@ -26,6 +26,7 @@
 package org.snf4j.core.logger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.PrintStream;
@@ -44,6 +45,7 @@ public class TestingLoggerTest {
 	public void before() {
 		original = System.err;
 		System.setErr(TestPrintStream.getInstance().getStream());
+		TestPrintStream.getInstance().getString();
 	}
 	
 	@After
@@ -65,6 +67,21 @@ public class TestingLoggerTest {
 		assertEquals(expectedMsg, msg);
 	}
 
+	@Test
+	public void testRecording() {
+		TestingLogger.disableRecording();
+		assertNull(TestingLogger.getRecording());
+		TestingLogger.enableRecording();
+		
+		ILogger l = new TestingLogger(this.getClass().getName());
+		l.trace("Message");
+		Object[] recording = TestingLogger.getRecording();
+		assertEquals(1, recording.length);
+		assertEquals("[TRACE] Message", recording[0]);
+		TestingLogger.disableRecording();
+		assertNull(TestingLogger.getRecording());
+	}
+	
 	@Test
 	public void testLog() throws Exception {
 		ILogger l = new TestingLogger(this.getClass().getName());

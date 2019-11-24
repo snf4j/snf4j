@@ -38,11 +38,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractDatagramHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 
@@ -59,6 +62,12 @@ public class DatagramHandler {
 	TestAllocator allocator;
 	boolean canOwnPasseData;
 	volatile boolean useTestSession;
+	DefaultCodecExecutor codecPipeline;
+	volatile boolean incident;
+	volatile boolean incidentRecordException;
+	volatile boolean incidentClose;
+	volatile boolean incidentQuickClose;
+	volatile boolean incidentDirtyClose;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
@@ -260,7 +269,12 @@ public class DatagramHandler {
 
 		@Override
 		public ISessionConfig getConfig() {
-			DefaultSessionConfig config = new DefaultSessionConfig();
+			DefaultSessionConfig config = new DefaultSessionConfig() {
+				@Override
+				public ICodecExecutor createCodecExecutor() {
+					return codecPipeline;
+				}
+			};
 			
 			config.setMinInBufferCapacity(1024);
 			config.setMinOutBufferCapacity(1024);
@@ -281,6 +295,48 @@ public class DatagramHandler {
 			read(null, datagram);
 		}
 
+		@Override
+		public void read(Object msg) {
+			read(null, msg);
+		}
+
+		void write(SocketAddress remoteAddress, Object msg) {
+			DatagramSession session = (DatagramSession) getSession();
+
+			if (remoteAddress == null) {
+				session.write(msg);
+			}
+			else {
+				session.send(remoteAddress, msg);
+			}
+		}
+		
+		@Override
+		public void read(SocketAddress remoteAddress, Object msg) {
+			if (remoteAddress == null) {
+				record("M("+msg.toString()+")");
+			}
+			else {
+				record("$M("+msg.toString()+")");
+			}
+			
+			if (msg instanceof Packet) {
+				Packet packet = (Packet)msg;
+				
+				switch (packet.type) {
+					case ECHO:
+						write(remoteAddress, new Packet(PacketType.ECHO_RESPONSE, packet.payload));
+						break;
+						
+					default:
+						break;
+				
+				}
+
+			}
+			LockUtils.notify(dataReadLock);
+		}
+		
 		void write(SocketAddress remoteAddress, byte[] datagram) {
 			DatagramSession session = (DatagramSession) getSession();
 
@@ -405,5 +461,29 @@ public class DatagramHandler {
 			event(EventType.EXCEPTION_CAUGHT);
 		}
 
+		@Override
+		public boolean incident(SessionIncident incident, Throwable t) {
+			if (incidentRecordException) {
+				record(incident.toString() + "(" + t.getMessage() +")");
+			}
+			else {
+				record(incident.toString());
+			}
+			if (incidentClose) {
+				getSession().close();
+				return true;
+			}
+			if (incidentQuickClose) {
+				getSession().quickClose();
+				return true;
+			}
+			if (incidentDirtyClose) {
+				getSession().dirtyClose();
+				return true;
+			}
+			
+			return DatagramHandler.this.incident;
+		}
+		
 	}
 }

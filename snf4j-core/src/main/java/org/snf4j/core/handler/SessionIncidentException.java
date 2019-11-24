@@ -28,6 +28,8 @@ package org.snf4j.core.handler;
 /**
  * Indicates some kind of incident detected while processing of I/O or protocol related 
  * operations.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public class SessionIncidentException extends Exception {
 

@@ -33,7 +33,6 @@ import org.snf4j.core.future.SessionFuturesController;
 
 public class AbstractFutureTest {
 	
-	@SuppressWarnings("deprecation")
 	@Test
 	public void testToString() {
 		TestSession session = new TestSession("Session-1");
@@ -52,9 +51,5 @@ public class AbstractFutureTest {
 		f.setSecondThreshold(99);
 		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=99]", f.toString());	
 		
-		f = (ITwoThresholdFuture) futures.getSSLWriteFuture(99);
-		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=99,secondThreshold=-1]", f.toString());
-		f.setSecondThreshold(98);
-		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=99,secondThreshold=98]", f.toString());	
 	}
 }

@@ -55,21 +55,32 @@ public interface IStreamSessionFactory {
 	StreamSession create(SocketChannel channel) throws Exception;
 	
 	/**
-	 * Notifies about registration of an listening channel. Once it is called
+	 * Notifies about registration of a listening channel. Once it is called
 	 * the associated selector loop is ready to accept new connections form the
 	 * channel.
 	 * 
 	 * @param channel
-	 *            an listening channel that has been registered
+	 *            the listening channel that has been registered
 	 */
 	void registered(ServerSocketChannel channel);
 	
 	/**
-	 * Notifies about closing and unregistering of an listening channel. It is
+	 * Notifies about closing and unregistering of a listening channel. It is
 	 * only called when the channel is closed by the associated selector loop.
 	 * 
 	 * @param channel
-	 *            an listening channel that has been closed
+	 *            the listening channel that has been closed
 	 */
 	void closed(ServerSocketChannel channel);
+	
+	/**
+	 * Notifies about an exception caught during processing of a listening
+	 * channel.
+	 * 
+	 * @param channel
+	 *            the listening channel for witch the exception was caught
+	 * @param exception
+	 *            the exception that was caught
+	 */
+	void exception(ServerSocketChannel channel, Throwable exception);
 }

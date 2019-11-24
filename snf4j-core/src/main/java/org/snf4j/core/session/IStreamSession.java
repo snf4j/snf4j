@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -183,4 +183,50 @@ public interface IStreamSession extends ISession {
 	 */
 	void writenf(ByteBuffer data, int length);	
 	
+	/**
+	 * Writes a message to the stream-oriented channel associated with this
+	 * session.
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method usually requires that the session has configured a codec
+	 * pipeline with at least one encoder that accepts the msg as the inbound
+	 * data. If a codec pipeline is not configured or no encoder accept the msg
+	 * object it still accepts messages that are of the <code>byte[]</code> or
+	 * {@link ByteBuffer} type.
+	 * 
+	 * @param msg
+	 *            the message to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @throws IllegalArgumentException
+	 *             if the <code>msg</code> is an unexpected object
+	 * @return the future associated with this write operation
+	 */
+	IFuture<Void> write(Object msg);
+	
+	/**
+	 * Writes a message to the stream-oriented channel associated with this
+	 * session.
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method usually requires that the session has configured a codec
+	 * pipeline with at least one encoder that accepts the msg as the inbound
+	 * data. If a codec pipeline is not configured or no encoder accept the msg
+	 * object it still accepts messages that are of the <code>byte[]</code> or
+	 * {@link ByteBuffer} type.
+	 * <p>
+	 * This method should be used whenever there will be no need to 
+	 * synchronize on a future object. This will save some resources and 
+	 * may improve performance.
+	 * 
+	 * @param msg
+	 *            the message to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @throws IllegalArgumentException
+	 *             if the <code>msg</code> is an unexpected object
+	 */
+	void writenf(Object msg);
 }

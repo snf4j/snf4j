@@ -122,6 +122,10 @@ public class EngineServer {
 			@Override
 			public void closed(ServerSocketChannel channel) {
 			}
+
+			@Override
+			public void exception(ServerSocketChannel channel, Throwable exception) {
+			}
 		}).sync(timeout);
 	}
 	

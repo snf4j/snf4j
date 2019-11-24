@@ -233,7 +233,31 @@ public class InternalEngineHandlerTest {
 		engine.unwrapResult = new EngineResult(Status.CLOSED,
 				HandshakeStatus.NOT_HANDSHAKING, 0, 0);
 		assertTrue(h.unwrap(status));
-		h.read(null);
+		h.read((byte[])null);
+		h.read((Object)null);
+
+	}
+	
+	@Test
+	public void testReadHandlerWithException() throws Exception {
+		s = new Server(PORT, true);
+		s.throwInRead = true;
+		c = new Client(PORT, true);
+		s.start();
+		c.start();
+
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO()|EXC|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
 	}
 	
 	@SuppressWarnings("unchecked")

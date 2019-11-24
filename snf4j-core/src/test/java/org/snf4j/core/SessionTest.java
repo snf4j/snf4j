@@ -681,6 +681,26 @@ public class SessionTest {
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(01)|", c.getRecordedData(true));
 		
+		data = new Packet(PacketType.ECHO, "0").toBytes();
+		session.write((Object)data).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(0)|", c.getRecordedData(true));
+		session.writenf((Object)data);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(0)|", c.getRecordedData(true));
+		
+		session.write((Object)ByteBuffer.wrap(data)).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(0)|", c.getRecordedData(true));
+		session.writenf((Object)ByteBuffer.wrap(data));
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(0)|", c.getRecordedData(true));
+		
+		
 		session.closing = ClosingState.SENDING;
 		assertFalse(session.write(new byte[3], 0, 1).isSuccessful());
 		assertFalse(session.write(new byte[3]).isSuccessful());
@@ -712,6 +732,11 @@ public class SessionTest {
 		}
 		catch (NullPointerException e) {}
 		try {
+			session.write((Object)null);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
 			session.writenf((byte[])null);
 			fail("Exception not thrown");
 		}
@@ -728,6 +753,11 @@ public class SessionTest {
 		catch (NullPointerException e) {}
 		try {
 			session.writenf((ByteBuffer)null, 0);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.writenf((Object)null);
 			fail("Exception not thrown");
 		}
 		catch (NullPointerException e) {}
@@ -762,6 +792,15 @@ public class SessionTest {
 		assertIllegalStateException(session, new byte[10], 0, 10);
 		assertIllegalStateException(session, new byte[10], 1, 9);
 		assertIllegalStateException(session, new byte[10], 0, 1);
+		
+		try {
+			session.write(new Integer(1)); fail();
+		}
+		catch (IllegalArgumentException e) {}
+		try {
+			session.writenf(new Integer(1)); fail();
+		}
+		catch (IllegalArgumentException e) {}
 	}
 	
 	@Test
@@ -1776,7 +1815,7 @@ public class SessionTest {
 		c.write(new Packet(PacketType.ECHO));
 		waitFor(500);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DR|ECHO()|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DR|ECHO()|EXC|SCL|SEN|", s.getRecordedData(true));
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);

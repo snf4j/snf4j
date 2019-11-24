@@ -50,9 +50,12 @@ import javax.net.ssl.TrustManagerFactory;
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.BlockingFutureOperationException;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.AbstractStreamHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IStreamHandler;
@@ -75,6 +78,7 @@ public class Server {
 	public long throughputCalcInterval = 1000;
 	public boolean directAllocator;
 	public TestAllocator allocator;
+	public DefaultCodecExecutor codecPipeline;
 	public ISelectorLoopPool pool;
 	public volatile EndingAction endingAction = EndingAction.DEFAULT;
 	public volatile StringBuilder serverSocketLogs = new StringBuilder();
@@ -85,10 +89,17 @@ public class Server {
 	public volatile boolean recordSessionId;
 	public volatile boolean waitForCloseMessage;
 
+	public volatile int availableCounter;
+	
 	public volatile int minInBufferCapacity = 1024;
 	public volatile int minOutBufferCapacity = 1024;
 	
+	public volatile boolean exceptionRecordException;
 	public volatile boolean incident;
+	public volatile boolean incidentRecordException;
+	public volatile boolean incidentClose;
+	public volatile boolean incidentQuickClose;
+	public volatile boolean incidentDirtyClose;
 	public volatile boolean throwInRead;
 	public volatile boolean throwInException;
 	public volatile boolean throwInIncident;
@@ -299,8 +310,8 @@ public class Server {
 		}
 	}
 	
-	public void write(Packet packet) {
-		session.write(packet.toBytes());
+	public IFuture<Void> write(Packet packet) {
+		return session.write(packet.toBytes());
 	}
 	
 	public void quickStop(long millis) throws InterruptedException {
@@ -382,6 +393,12 @@ public class Server {
 			serverSocketLogs.append("C|");
 		}
 
+		@Override
+		public void exception(ServerSocketChannel channel, Throwable t) {
+			closedSsc = channel; 
+			serverSocketLogs.append("X|");
+		}
+		
 	}
 	
 	class SessionStructureFactory implements ISessionStructureFactory {
@@ -434,6 +451,11 @@ public class Server {
 					}
 					return new TestSSLEngine(engine);
 				}
+				
+				@Override
+				public ICodecExecutor createCodecExecutor() {
+					return codecPipeline;
+				}
 			};
 			
 			config.setMinInBufferCapacity(minInBufferCapacity);
@@ -453,6 +475,7 @@ public class Server {
 
 		@Override
 		public int available(ByteBuffer buffer, boolean flipped) {
+			++availableCounter;
 			if (!directAllocator) throw new IllegalStateException();
 
 			ByteBuffer dupBuffer = buffer.duplicate();
@@ -469,6 +492,7 @@ public class Server {
 
 		@Override
 		public int available(byte[] buffer, int off, int len) {
+			++availableCounter;
 			if (directAllocator) throw new IllegalStateException();
 			return available0(buffer, off, len);
 		}
@@ -494,6 +518,27 @@ public class Server {
 					return bigPacket.remaining();
 				}
 			}
+		}
+		
+		@Override
+		public void read(Object msg) {
+			record("M("+msg.toString()+")");
+			
+			if (msg instanceof Packet) {
+				Packet packet = (Packet)msg;
+				
+				switch (packet.type) {
+					case ECHO:
+						getSession().write(new Packet(PacketType.ECHO_RESPONSE, packet.payload));
+						break;
+						
+					default:
+						break;
+				
+				}
+
+			}
+			LockUtils.notify(dataReadLock);
 		}
 		
 		@Override
@@ -656,6 +701,9 @@ public class Server {
 		@Override
 		public void exception(Throwable t) {
 			event(EventType.EXCEPTION_CAUGHT);
+			if (exceptionRecordException) {
+				record("(" + t.getMessage() + ")");
+			}
 			if (Server.this.throwInException) {
 				Server.this.throwInExceptionCount.incrementAndGet();
 				throw new IllegalArgumentException();
@@ -664,7 +712,25 @@ public class Server {
 		
 		@Override
 		public boolean incident(SessionIncident incident, Throwable t) {
-			record(incident.toString());
+			if (incidentRecordException) {
+				record(incident.toString() + "(" + t.getMessage() +")");
+			}
+			else {
+				record(incident.toString());
+			}
+			if (incidentClose) {
+				getSession().close();
+				return true;
+			}
+			if (incidentQuickClose) {
+				getSession().quickClose();
+				return true;
+			}
+			if (incidentDirtyClose) {
+				getSession().dirtyClose();
+				return true;
+			}
+			
 			if (Server.this.throwInIncident) {
 				throw new IllegalArgumentException();
 			}

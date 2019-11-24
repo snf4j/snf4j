@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,8 @@ import java.nio.channels.Selector;
 /**
  * A selector wrapping an original implementation of the abstract {@link java.nio.channels.Selector Selector} class.
  * This interface allows selectors that wrap the original implementation to be properly handled by the selector loop. 
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public interface IDelegatingSelector {
 

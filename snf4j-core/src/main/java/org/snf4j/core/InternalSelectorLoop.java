@@ -53,6 +53,7 @@ import org.snf4j.core.future.IFutureExecutor;
 import org.snf4j.core.future.RegisterFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.ExceptionLogger;
 import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
@@ -220,6 +221,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 					elogger.error(logger, "Failed to re-register channel {} to new selector during rebuilding process: {}" , toString(channel), e);
 					try {
 						if (attachment instanceof IStreamSessionFactory) {
+							fireException(key, e);
 							channel.close();
 							((IStreamSessionFactory)attachment).closed((ServerSocketChannel) channel);
 						}
@@ -575,7 +577,22 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 						catch (CancelledKeyException e) {
 							//Ignore
 						}
+						catch (PipelineDecodeException e) {
+							InternalSession session = e.getSession();
+							SessionIncident incident = SessionIncident.DECODING_PIPELINE_FAILURE;
+							
+							if (session instanceof StreamSession) {
+								elogger.error(logger, incident.defaultMessage(), session, e.getCause());
+								fireException(session, e.getCause());
+							}
+							else if (!session.incident(incident, e.getCause())) {
+								elogger.error(logger, incident.defaultMessage(), session, e.getCause());
+							}
+						}
 						catch (Exception e) {
+							if (key.isValid()) {
+								fireException(key, e);
+							}
 							key.cancel();
 							elogger.error(logger, "Processing of selected key for {} failed: {}", key.attachment(), e);
 						}
@@ -1077,6 +1094,17 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		session.event(event, length);
 		if (traceEnabled) {
 			logger.trace("Ending event {} for {}", event.type(), session);
+		}
+	}
+
+	final void fireException(final SelectionKey key, Throwable t) {
+		Object attachment = key.attachment();
+		
+		if (attachment instanceof InternalSession) {
+			fireException((InternalSession)attachment, t);
+		}
+		else if (attachment instanceof IStreamSessionFactory) {
+			((IStreamSessionFactory)attachment).exception((ServerSocketChannel) key.channel(), t);
 		}
 	}
 

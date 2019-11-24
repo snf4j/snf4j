@@ -75,4 +75,9 @@ public class Packet {
 		System.arraycopy(payload, 0, data, 3+off, payload.length);
 		return data;
 	}
+	
+	@Override
+	public String toString() {
+		return type + "[" + payload + "]";
+	}
 }

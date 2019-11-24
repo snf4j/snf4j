@@ -28,6 +28,7 @@ package org.snf4j.core;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentMap;
 
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.session.ISession;
@@ -69,7 +70,12 @@ public class TestSession implements ISession {
 	public ISessionConfig getConfig() {
 		return null;
 	}
-
+	
+	@Override
+	public ICodecPipeline getCodecPipeline() {
+		return null;
+	}
+	
 	@Override
 	public SessionState getState() {
 		return null;
