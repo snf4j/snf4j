@@ -102,4 +102,8 @@ public abstract class AbstractHandler implements IHandler {
 		return config;
 	}
 	
+	@Override
+	public void read(Object msg) {
+	}
+
 }

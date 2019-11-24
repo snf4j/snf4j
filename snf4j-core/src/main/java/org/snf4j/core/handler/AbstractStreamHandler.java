@@ -98,4 +98,5 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 	public int available(byte[] buffer, int off, int len) {
 		return len;
 	}
+	
 }

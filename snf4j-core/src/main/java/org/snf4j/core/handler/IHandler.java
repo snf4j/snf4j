@@ -72,6 +72,17 @@ public interface IHandler {
 	void read(byte[] data);
 	
 	/**
+	 * Called when a new message was read and decoded from the input buffer.
+	 * This method is called when the associated session is configured with a
+	 * codec pipeline in which the last decoder produces outbound object(s) of
+	 * type different than the {@code byte[]}.
+	 * 
+	 * @param msg
+	 *            the message that was read and decoded from the input buffer.
+	 */
+	void read(Object msg);
+	
+	/**
 	 * Called to notify about a change of the associated session state.
 	 * 
 	 * @param event
@@ -112,7 +123,8 @@ public interface IHandler {
 	 *            an exception that is related with the incident or
 	 *            <code>null</code>
 	 * @return <code>true</code> to indicate that the incident was handled and
-	 *         no warning should be logged by the SNF4J framework underneath.
+	 *         the default action should not be executed by the SNF4J framework 
+	 *         underneath.
 	 */
 	boolean incident(SessionIncident incident, Throwable t);
 	

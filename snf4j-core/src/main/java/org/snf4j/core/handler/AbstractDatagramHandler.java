@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.handler;
 
+import java.net.SocketAddress;
+
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.ISession;
 
@@ -76,4 +78,8 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 		return (IDatagramSession) super.getSession();
 	}
 	
+	@Override
+	public void read(SocketAddress remoteAddress, Object msg) {
+	}
+
 }

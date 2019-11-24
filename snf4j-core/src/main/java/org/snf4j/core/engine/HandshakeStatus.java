@@ -28,6 +28,8 @@ package org.snf4j.core.engine;
 /**
  * An <code>enum</code> describing the current handshaking state of an 
  * {@link IEngine} implementation.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public enum HandshakeStatus {
 	/**

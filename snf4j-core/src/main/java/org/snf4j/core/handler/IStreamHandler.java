@@ -25,8 +25,7 @@
  */
 package org.snf4j.core.handler;
 
-import java.nio.ByteBuffer;
-
+import org.snf4j.core.IStreamReader;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IStreamSession;
 
@@ -35,7 +34,7 @@ import org.snf4j.core.session.IStreamSession;
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public interface IStreamHandler extends IHandler {
+public interface IStreamHandler extends IHandler, IStreamReader {
 
 	/**
 	 * Set the stream-oriented session that will be associated with this handler.
@@ -58,47 +57,4 @@ public interface IStreamHandler extends IHandler {
 	@Override
 	IStreamSession getSession();
 	
-	/**
-	 * Determines how many bytes can be read from the input buffer after receiving new data
-	 * from the remote end. The specified number of bytes will be then passed as a byte 
-	 * array to the <code>read</code> method. This method is called only if the 
-	 * input buffer is not backed by an array. The type of the input buffer is specified
-	 * by the implementation of the {@link org.snf4j.core.factory.ISessionStructureFactory} returned by the 
-	 * <code>getFactory</code> method.
-	 * <p>The inner state of the passed buffer cannot be changed by this method.   
-	 * @param buffer the input buffer.
-	 * @param flipped specifies the current mode of the buffer
-	 * @return the number of bytes to read or 0 if the buffer has not enough data yet and the
-	 * reading should skipped.
-	 */
-	int available(ByteBuffer buffer, boolean flipped);
-	
-	/**
-	 * Determines how many bytes can be read from the input buffer after receiving new data
-	 * from the remote end. The specified number of bytes will be then passed as a byte 
-	 * array to the <code>read</code> method. This method is called only if the 
-	 * input buffer is backed by an array. The type of the input buffer is specified
-	 * by the implementation of the {@link org.snf4j.core.factory.ISessionStructureFactory} returned by the 
-	 * <code>getFactory</code> method.
-	 * <p>The content of the passed buffer cannot be changed by this method.   
-	 * @param buffer the array that backs the input buffer.
-	 * @param off the offset of the array
-	 * @param len the number of the bytes in the array 
-	 * @return number of bytes to read
-	 */
-	int available(byte[] buffer, int off, int len);
-	
-	/**
-	 * Called when new bytes were read from the input buffer. The number of
-	 * bytes in the passed array is determined by the value returned from the
-	 * <code>available</code> method that was called recently.	
-	 * <p>
-	 * The passed array can be safely stored or modified by this method as it
-	 * will not be used by the caller.
-	 * 
-	 * @param data
-	 *            bytes that was read from the input buffer.
-	 */
-	void read(byte[] data);
-
 }

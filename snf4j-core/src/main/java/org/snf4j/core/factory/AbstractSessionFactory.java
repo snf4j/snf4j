@@ -95,5 +95,9 @@ public abstract class AbstractSessionFactory implements IStreamSessionFactory {
 	@Override
 	public void closed(ServerSocketChannel channel) {
 	}
+
+	@Override
+	public void exception(ServerSocketChannel channel, Throwable exception) {
+	}
 	
 }

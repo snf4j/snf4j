@@ -28,19 +28,43 @@ package org.snf4j.core.handler;
 /**
  * An <code>enum</code> that represents session incidents that may occur during processing
  * of I/O or protocol related operations.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public enum SessionIncident {
 
 	/**
 	 * SSL/TLS connection closed by peer without sending close_notify. It may
 	 * indicate a possibility of an truncation attack.
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the WARN level. 
 	 */
 	SSL_CLOSED_WITHOUT_CLOSE_NOTIFY("SSL/TLS close procedure not properly followed by peer for {}: {}"),
 	
 	/**
 	 * A connection closed by peer without sending proper close message.
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the WARN level. 
 	 */
-	CLOSED_WITHOUT_CLOSE_MESSAGE("Close procedure not properly followed by peer for {}: {}");
+	CLOSED_WITHOUT_CLOSE_MESSAGE("Close procedure not properly followed by peer for {}: {}"),
+	
+	/**
+	 * A failure occurred while encoding data passed to write/send methods.
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the ERROR level. 
+	 */
+	ENCODING_PIPELINE_FAILURE("Encoding pipeline failed for {}: {}"),
+	
+	/**
+	 * A failure occurred while decoding data received from a remote peer. This
+	 * incident is only reported for the datagram-oriented sessions. 
+	 * <p>
+	 * NOTE: If such failure occurs while decoding data for the stream-oriented 
+	 * sessions then only an exception is reported. 
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the ERROR level. 
+	 */
+	DECODING_PIPELINE_FAILURE("Decoding pipeline failed for {}: {}");
 	
 	private String defaultMessage;
 	
@@ -49,9 +73,11 @@ public enum SessionIncident {
 	}
 	
 	/**
-	 * Gets the default warning message that will be logged when an implementation of {@link IHandler#incident}
-	 * method returns <code>false</code>.  
-	 * @return the default warning message
+	 * Gets the default warning or error message that will be logged when an
+	 * implementation of {@link IHandler#incident} method returns
+	 * <code>false</code>.
+	 * 
+	 * @return the default warning or error message
 	 */
 	public String defaultMessage() {
 		return defaultMessage;

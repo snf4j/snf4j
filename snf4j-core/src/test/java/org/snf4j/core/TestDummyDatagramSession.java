@@ -29,6 +29,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentMap;
 
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.IDatagramHandler;
@@ -59,7 +60,12 @@ public class TestDummyDatagramSession implements IDatagramSession {
 	public ISessionConfig getConfig() {
 		return null;
 	}
-
+	
+	@Override
+	public ICodecPipeline getCodecPipeline() {
+		return null;
+	}
+	
 	@Override
 	public SessionState getState() {
 		return null;
@@ -230,6 +236,15 @@ public class TestDummyDatagramSession implements IDatagramSession {
 	}
 
 	@Override
+	public IFuture<Void> write(Object msg) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void writenf(Object msg) {
+	}
+	
+	@Override
 	public void sendnf(SocketAddress remoteAddress, byte[] datagram) {
 	}
 
@@ -260,4 +275,12 @@ public class TestDummyDatagramSession implements IDatagramSession {
 	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
 	}
 
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, Object msg) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, Object msg) {
+	}
 }

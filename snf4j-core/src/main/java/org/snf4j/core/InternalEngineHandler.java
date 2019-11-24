@@ -297,7 +297,19 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 			switch (unwrapResult.getStatus()) {
 				case OK:
 					if (inAppBuffer.position() != 0) {
-						StreamSession.consumeBuffer(inAppBuffer, handler);
+						try {
+							StreamSession.consumeBuffer(inAppBuffer, session.codec != null ? session.codec : handler);
+						}
+						catch (PipelineDecodeException e) {
+							elogger.error(logger, SessionIncident.DECODING_PIPELINE_FAILURE.defaultMessage(), session, e.getCause());
+							fireException(e.getCause());
+							return false;
+						}
+						catch (Exception e) {
+							elogger.error(logger, "Reading from input application buffer failed for {}: {}", session, e);
+							fireException(e);
+							return false;
+						}
 					}
 					break;
 
@@ -636,6 +648,10 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		run();	
 	}
 
+	@Override
+	public void read(Object msg) {
+	}
+	
 	@Override
 	public void event(SessionEvent event) {
 		if (event == SessionEvent.CLOSED) {

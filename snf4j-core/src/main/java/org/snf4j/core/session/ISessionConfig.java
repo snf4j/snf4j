@@ -28,6 +28,7 @@ package org.snf4j.core.session;
 import javax.net.ssl.SSLEngine;
 
 import org.snf4j.core.EndingAction;
+import org.snf4j.core.codec.ICodecExecutor;
 
 /**
  * A configuration for associated session.
@@ -177,5 +178,14 @@ public interface ISessionConfig {
 	 *         message.
 	 */
 	boolean waitForInboundCloseMessage();
+	
+	/**
+	 * Creates a new codec executor that will be responsible for decoding and
+	 * encoding data read/received and written/send in the associated session.
+	 * 
+	 * @return the codec executor, or <code>null</code> if decoding and encoding
+	 *         is not required.
+	 */
+	ICodecExecutor createCodecExecutor();
 	
 }

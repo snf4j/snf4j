@@ -28,6 +28,7 @@ package org.snf4j.core.session;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import javax.net.ssl.SSLEngine;
@@ -51,6 +52,7 @@ public class DefaultSessionConfigTest {
 		assertEquals(1, c.getMaxSSLApplicationBufferSizeRatio());
 		assertEquals(1, c.getMaxSSLNetworkBufferSizeRatio());
 		assertFalse(c.waitForInboundCloseMessage());
+		assertNull(c.createCodecExecutor());
 
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)

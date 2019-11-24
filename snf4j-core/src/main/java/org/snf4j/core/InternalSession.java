@@ -32,6 +32,8 @@ import java.nio.channels.SelectionKey;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.codec.ICodecExecutor;
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.DataEvent;
@@ -103,6 +105,10 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	final SessionFuturesController futuresController = new SessionFuturesController(this);
 	
+	final CodecExecutorAdapter codec;
+
+	final boolean canOwnPassedData;
+
 	protected InternalSession(String name, IHandler handler, ILogger logger) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
@@ -116,10 +122,16 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		this.handler.setSession(this);
 		allocator = handler.getFactory().getAllocator();
 		config = handler.getConfig();
+		canOwnPassedData = config.canOwnDataPassedToWriteAndSendMethods();
 		
 		creationTime = System.currentTimeMillis();
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
+		
+		ICodecExecutor executor = config.createCodecExecutor();
+		codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
 	}
+	
+	abstract IEncodeTaskWriter getEncodeTaskWriter(); 
 	
 	void abortFutures(Throwable cause) {
 		futuresController.abort(cause);
@@ -194,6 +206,11 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	@Override
 	public ISessionConfig getConfig() {
 		return config;
+	}
+	
+	@Override
+	public ICodecPipeline getCodecPipeline() {
+		return codec != null ? codec.getExecutor().getPipeline() : null;
 	}
 	
 	@Override

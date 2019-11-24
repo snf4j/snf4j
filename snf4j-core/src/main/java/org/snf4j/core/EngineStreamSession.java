@@ -25,6 +25,7 @@ T * -------------------------------- MIT License -------------------------------
  */
 package org.snf4j.core;
 
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.util.concurrent.Executor;
@@ -80,6 +81,18 @@ public class EngineStreamSession extends StreamSession {
 	public EngineStreamSession(IEngine engine, IStreamHandler handler, ILogger logger) {
 		super(new InternalEngineHandler(engine, handler, logger));
 		internal = (InternalEngineHandler) this.handler;
+	}
+
+	@Override
+	IEncodeTaskWriter getEncodeTaskWriter() {
+		if (encodeTaskWriter == null) {
+			encodeTaskWriter = new EncodeTaskWriter();
+		}
+		return encodeTaskWriter;
+	}
+	
+	IStreamReader superCodec() {
+		return (IStreamReader) handler;
 	}
 	
 	/**
@@ -169,18 +182,25 @@ public class EngineStreamSession extends StreamSession {
 		super.superEvent(event);
 	}
 	
+	private final IFuture<Void> write0(byte[] data, int offset, int length, boolean needFuture) {
+		checkKey(key);
+		if (closing == ClosingState.NONE) {
+			return internal.write(data, offset, length, needFuture);
+		} 
+		return needFuture ? futuresController.getCancelledFuture() : null;
+	}
+	
 	@Override
-	public IFuture<Void> write(byte[] data) {
+	public IFuture<Void> write(byte[] data) { 
 		if (data == null) {
 			throw new NullPointerException();
 		} else if (data.length == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
-		checkKey(key);
-		if (closing == ClosingState.NONE) {
-			return internal.write(data, 0, data.length, true);
+		if (codec != null) {
+			return new EncodeTask(this, data).register();
 		}
-		return futuresController.getCancelledFuture();
+		return write0(data, 0, data.length, true);
 	}
 	
 	@Override
@@ -188,9 +208,11 @@ public class EngineStreamSession extends StreamSession {
 		if (data == null) {
 			throw new NullPointerException();
 		} else if (data.length > 0) {
-			checkKey(key);
-			if (closing == ClosingState.NONE) {
-				internal.write(data, 0, data.length, false);
+			if (codec != null) {
+				new EncodeTask(this, data).registernf();
+			}
+			else {
+				write0(data, 0, data.length, false);
 			}
 		}
 	}
@@ -204,11 +226,10 @@ public class EngineStreamSession extends StreamSession {
 		if (length == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
-		checkKey(key);
-		if (closing == ClosingState.NONE) {
-			return internal.write(data, offset, length, true);
+		if (codec != null) {
+			return new EncodeTask(this, data, offset, length).register();
 		}
-		return futuresController.getCancelledFuture();
+		return write0(data, offset, length, true);
 	}
 
 	@Override
@@ -218,13 +239,24 @@ public class EngineStreamSession extends StreamSession {
 		}
 		checkBounds(offset, length, data.length);
 		if (length > 0) {
-			checkKey(key);
-			if (closing == ClosingState.NONE) {
-				internal.write(data, offset, length, false);
+			if (codec != null) {
+				new EncodeTask(this, data, offset, length).registernf();
+			}
+			else {
+				write0(data, offset, length, false);
 			}
 		}
 	}
 
+	private final IFuture<Void> write0(ByteBuffer data, int length, boolean needFuture) {
+		checkKey(key);
+		if (closing == ClosingState.NONE) {
+			return internal.write(data, length, needFuture);
+		}
+		return needFuture ? futuresController.getCancelledFuture() : null;
+		
+	}
+	
 	@Override
 	public IFuture<Void> write(ByteBuffer data) {
 		if (data == null) {
@@ -232,11 +264,10 @@ public class EngineStreamSession extends StreamSession {
 		} else if (data.remaining() == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
-		checkKey(key);
-		if (closing == ClosingState.NONE) {
-			return internal.write(data, data.remaining(), true);
+		if (codec != null) {
+			return new EncodeTask(this, data).register();
 		}
-		return futuresController.getCancelledFuture();
+		return write0(data, data.remaining(), true);
 	}
 
 	@Override
@@ -244,9 +275,11 @@ public class EngineStreamSession extends StreamSession {
 		if (data == null) {
 			throw new NullPointerException();
 		} else if (data.remaining() > 0) {
-			checkKey(key);
-			if (closing == ClosingState.NONE) {
-				internal.write(data, data.remaining(), false);
+			if (codec != null) {
+				new EncodeTask(this, data).registernf();
+			}
+			else {
+				write0(data, data.remaining(), false);
 			}
 		}		
 	}
@@ -260,11 +293,10 @@ public class EngineStreamSession extends StreamSession {
 		} else if (length == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
-		checkKey(key);
-		if (closing == ClosingState.NONE) {
-			return internal.write(data, length, true);
+		if (codec != null) {
+			return new EncodeTask(this, data, length).register();
 		}
-		return futuresController.getCancelledFuture();
+		return write0(data, length, true);
 	}
 
 	@Override
@@ -274,9 +306,11 @@ public class EngineStreamSession extends StreamSession {
 		} else if (data.remaining() < length) {
 			throw new IndexOutOfBoundsException();
 		} else if (length > 0) {
-			checkKey(key);
-			if (closing == ClosingState.NONE) {
-				internal.write(data, length, false);
+			if (codec != null) {
+				new EncodeTask(this, data, length).registernf();
+			}
+			else {
+				write0(data, length, false);
 			}
 		}
 	}
@@ -322,5 +356,18 @@ public class EngineStreamSession extends StreamSession {
 	void postEnding() {
 		internal.postEnding();		
 		super.postEnding();
+	}
+	
+	private class EncodeTaskWriter implements IEncodeTaskWriter {
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture) {
+			return write0(buffer, buffer.remaining(), withFuture);
+		}
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture) {
+			return write0(bytes, 0, bytes.length, withFuture);
+		}
 	}
 }

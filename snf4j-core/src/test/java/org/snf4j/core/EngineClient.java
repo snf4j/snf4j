@@ -52,7 +52,7 @@ public class EngineClient extends EngineServer {
 		channel.configureBlocking(false);
 		channel.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
 			
-		session = (EngineStreamSession) loop.register(channel, new EngineStreamSession(engine, new EngineHandler(), LOGGER)).sync().getSession();
+		session = (EngineStreamSession) loop.register(channel, new EngineStreamSession(engine, new EngineHandler(), LOGGER)).sync(timeout).getSession();
 		LockUtils.notify(sessionLock);
 	}	
 }

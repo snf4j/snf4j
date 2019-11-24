@@ -27,6 +27,7 @@ package org.snf4j.core.handler;
 
 import java.net.SocketAddress;
 
+import org.snf4j.core.IDatagramReader;
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.ISession;
 
@@ -35,7 +36,7 @@ import org.snf4j.core.session.ISession;
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public interface IDatagramHandler extends IHandler {
+public interface IDatagramHandler extends IHandler, IDatagramReader {
 
 	/**
 	 * Sets the datagram-oriented session that will be associated with this handler.
@@ -59,32 +60,20 @@ public interface IDatagramHandler extends IHandler {
 	IDatagramSession getSession();
 	
 	/**
-	 * Called when a new datagram was received from the remote end. As the
-	 * remote end is not specified, the method is only called for sessions
-	 * created with a connected datagram channel.
+	 * Called when a new message was received and decoded from the remote end
+	 * that is specified by the given remote address. This method is called when
+	 * the associated session is configured with a codec pipeline in which the
+	 * last decoder produces outbound object(s) of type different than the
+	 * {@code byte[]}.
 	 * <p>
-	 * The passed array can be safely stored or modified by this method as it
-	 * will not be used by the caller.
-	 * 
-	 * @param datagram
-	 *            the datagram received from the remote end.
-	 */
-	@Override
-	void read(byte[] datagram);
-	
-	/**
-	 * Called when a new datagram was received from the remote end this is
-	 * specified by the given remote address. The method is only called for
-	 * sessions created with a disconnected datagram channel.
-	 * <p>
-	 * The passed array can be safely stored or modified by this method as it
-	 * will not be used by the caller.
+	 * The method is only called for sessions created with a disconnected
+	 * datagram channel.
 	 * 
 	 * @param remoteAddress
-	 *            address of the remote host that is the source of the datagram.
-	 * @param datagram
-	 *            the datagram received from the remote end.
+	 *            address of the remote host that is the source of the message.
+	 * @param msg
+	 *            the message received from the remote end.
 	 */
-	void read(SocketAddress remoteAddress, byte[] datagram);
-
+	void read(SocketAddress remoteAddress, Object msg);
+	
 }

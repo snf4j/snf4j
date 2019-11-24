@@ -69,6 +69,8 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	private final int minOutBufferCapacity;
 	
+	IEncodeTaskWriter encodeTaskWriter;
+	
 	/**
 	 * Constructs a named stream-oriented session associated with a handler.
 	 * 
@@ -85,6 +87,14 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		minOutBufferCapacity = config.getMinOutBufferCapacity();
 	}
 
+	@Override
+	IEncodeTaskWriter getEncodeTaskWriter() {
+		if (encodeTaskWriter == null) {
+			encodeTaskWriter = new EncodeTaskWriter();
+		}
+		return encodeTaskWriter;
+	}
+	
 	/**
 	 * Constructs a stream-oriented session associated with a handler. 
 	 * 
@@ -211,14 +221,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return write0(data, 0, data.remaining(), true);
 	}
 	
-	@Override
-	public IFuture<Void> write(byte[] data) {
-		if (data == null) {
-			throw new NullPointerException();
-		} else if (data.length == 0) {
-			return futuresController.getSuccessfulFuture();
-		}
-		
+	final IFuture<Void> write1(byte[] data) {
 		long futureExpectedLen = write0(data, 0, data.length, false);
 		
 		if (futureExpectedLen == -1) {
@@ -226,13 +229,40 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		}
 		return futuresController.getWriteFuture(futureExpectedLen);
 	}
+	
+	final IFuture<Void> write1(ByteBuffer data) {
+		long futureExpectedLen = write0(data, 0, data.remaining(), true);
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+	
+	@Override
+	public IFuture<Void> write(byte[] data) {
+		if (data == null) {
+			throw new NullPointerException();
+		} else if (data.length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+		if (codec != null) {
+			return new EncodeTask(this, data).register();
+		}
+		return write1(data);
+	}
 
 	@Override
 	public void writenf(byte[] data) {
 		if (data == null) {
 			throw new NullPointerException();
 		} else if (data.length > 0) {
-			write0(data, 0, data.length, false);
+			if (codec != null) {
+				new EncodeTask(this, data).registernf();
+			}
+			else {
+				write0(data, 0, data.length, false);
+			}
 		}
 	}
 	
@@ -244,6 +274,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		checkBounds(offset, length, data.length);
 		if (length == 0) {
 			return futuresController.getSuccessfulFuture();
+		}
+		if (codec != null) {
+			return new EncodeTask(this, data, offset, length).register();
 		}
 		
 		long futureExpectedLen = write0(data, offset, length, false);
@@ -261,7 +294,12 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		}
 		checkBounds(offset, length, data.length);
 		if (length > 0) {
-			write0(data, offset, length, false);
+			if (codec != null) {
+				new EncodeTask(this, data, offset, length).registernf();
+			}
+			else {
+				write0(data, offset, length, false);
+			}
 		}
 	}
 	
@@ -272,13 +310,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		} else if (data.remaining() == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
-
-		long futureExpectedLen = write0(data, 0, data.remaining(), true);
-		
-		if (futureExpectedLen == -1) {
-			return futuresController.getCancelledFuture();
+		if (codec != null) {
+			return new EncodeTask(this, data).register();
 		}
-		return futuresController.getWriteFuture(futureExpectedLen);
+		return write1(data);
 	}
 
 	@Override
@@ -286,7 +321,12 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		if (data == null) {
 			throw new NullPointerException();
 		} else if (data.remaining() > 0) {
-			write0(data, 0, data.remaining(), true);
+			if (codec != null) {
+				new EncodeTask(this, data).registernf();
+			}
+			else {
+				write0(data, 0, data.remaining(), true);
+			}
 		}
 	}
 
@@ -299,7 +339,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		} else if (length == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
-
+		if (codec != null) {
+			return new EncodeTask(this, data, length).register();
+		}
+		
 		long futureExpectedLen = write0(data, 0, length, true);
 		
 		if (futureExpectedLen == -1) {
@@ -315,7 +358,48 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		} else if (data.remaining() < length) {
 			throw new IndexOutOfBoundsException();
 		} else if (length > 0) {
-			write0(data, 0, length, true);
+			if (codec != null) {
+				new EncodeTask(this, data, length).registernf();
+			}
+			else {
+				write0(data, 0, length, true);
+			}
+		}
+	}
+	
+	@Override
+	public IFuture<Void> write(Object msg) {
+		if (msg == null) {
+			throw new NullPointerException();
+		}
+		if (codec != null) {
+			return new EncodeTask(this, msg).register();
+		}
+		if (msg.getClass() == byte[].class) {
+			return write((byte[])msg);
+		}
+		if (msg instanceof ByteBuffer) {
+			return write((ByteBuffer)msg);
+		}
+		throw new IllegalArgumentException("msg is an unexpected object");
+	}
+	
+	@Override
+	public void writenf(Object msg) {
+		if (msg == null) {
+			throw new NullPointerException();
+		}
+		if (codec != null) {
+			new EncodeTask(this, msg).registernf();
+		}
+		else if (msg.getClass() == byte[].class) {
+			writenf((byte[])msg);
+		}
+		else if (msg instanceof ByteBuffer) {
+			writenf((ByteBuffer)msg);
+		}
+		else {
+			throw new IllegalArgumentException("msg is an unexpected object");
 		}
 	}
 	
@@ -478,7 +562,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return outBuffers;
 	}
 
-	static void consumeBuffer(ByteBuffer inBuffer, IStreamHandler handler) {
+	static void consumeBuffer(ByteBuffer inBuffer, IStreamReader handler) {
 		boolean hasArray = inBuffer.hasArray();
 		int available;
 		byte[] array;
@@ -487,7 +571,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		if (hasArray) {
 			array = inBuffer.array();
 			arrayOff = inBuffer.arrayOffset();
-			available = ((IStreamHandler)handler).available(array, arrayOff, inBuffer.position());
+			available = handler.available(array, arrayOff, inBuffer.position());
 		}
 		else {
 			array = null;
@@ -502,23 +586,27 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			inBuffer.get(data);
 			handler.read(data);
 			
-			if (hasArray) {
-				while ((available = handler.available(array, arrayOff + inBuffer.position(), inBuffer.remaining())) > 0) {
-					data = new byte[available];
-					inBuffer.get(data);
-					handler.read(data);
-				}
-			}
-			else {
-				while ((available = handler.available(inBuffer, true)) > 0) {
-					data = new byte[available];
-					inBuffer.get(data);
-					handler.read(data);
-				}
-			}
-
 			if (inBuffer.hasRemaining()) {
-				inBuffer.compact();
+				if (hasArray) {
+					while ((available = handler.available(array, arrayOff + inBuffer.position(), inBuffer.remaining())) > 0) {
+						data = new byte[available];
+						inBuffer.get(data);
+						handler.read(data);
+					}
+				}
+				else {
+					while ((available = handler.available(inBuffer, true)) > 0) {
+						data = new byte[available];
+						inBuffer.get(data);
+						handler.read(data);
+					}
+				}
+				if (inBuffer.hasRemaining()) {
+					inBuffer.compact();
+				}
+				else {
+					inBuffer.clear();
+				}
 			}
 			else {
 				inBuffer.clear();
@@ -530,9 +618,13 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	 * Informs that input buffer has new data that may be ready to consume.
 	 */
 	void consumeInBuffer() {
-		consumeBuffer(inBuffer, (IStreamHandler) this.handler);
+		consumeBuffer(inBuffer, superCodec());
 	}
 
+	IStreamReader superCodec() {
+		return codec != null ? codec : (IStreamReader) this.handler;
+	}
+	
 	/**
 	 * Handles closing operation being in progress. It should be executed only
 	 * when the output buffers have no more data after compacting. It should be executed inside 
@@ -589,4 +681,26 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		Socket socket = getSocket();
 		return socket != null ? socket.getRemoteSocketAddress() : null;
 	}
+	
+	private class EncodeTaskWriter implements IEncodeTaskWriter {
+
+		@Override
+		public final IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture) {
+			if (withFuture) {
+				return write1(buffer);
+			}
+			write0(buffer);
+			return null;
+		}
+
+		@Override
+		public final IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture) {
+			if (withFuture) {
+				return write1(bytes);
+			}
+			write0(bytes, 0, bytes.length, false);
+			return null;
+		}
+		
+	};
 }

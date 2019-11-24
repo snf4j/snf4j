@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,8 @@ package org.snf4j.core.session;
 /**
  * Unchecked exception thrown when an attempt is made to perform an operation
  * when a session is in an illegal state. 
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public class IllegalSessionStateException extends IllegalStateException {
 
