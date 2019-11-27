@@ -42,6 +42,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
@@ -52,6 +53,7 @@ import org.junit.Test;
 import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.TestLogger;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
@@ -648,12 +650,12 @@ public class StreamSelectorLoopTest {
 		@Override
 		public void run() {
 			if (loop != null) {
-				loop.registerTask(new Task("L"+text, exception));
+				loop.execute(new Task("L"+text, exception));
 			}
 			else {
 				if (exception) {
 					taskResult.append("E");
-					throw new NullPointerException();
+					throw new NullPointerException("Task");
 				}
 				synchronized (taskResult) {
 					taskResult.append(text);
@@ -664,47 +666,72 @@ public class StreamSelectorLoopTest {
 	}
 	
 	@Test
-	public void testRegisterTask() throws Exception {
+	public void testExecute() throws Exception {
 		
 		//register task before start
 		SelectorLoop loop = new SelectorLoop();
-		loop.registerTask(new Task("T1", false));
+		IFuture<Void> f = loop.execute(new Task("T1", false));
 		waitFor(500);
 		assertEquals("", taskResult.toString());
+		assertFalse(f.isDone());
 		loop.start();
-		waitFor(50);
+		f.sync(50);
+		assertTrue(f.isSuccessful());
 		assertEquals("T1", taskResult.toString());
 		loop.stop();
 		loop.join(1000);
 		
 		//register 2 tasks before start
 		loop = new SelectorLoop();
-		loop.registerTask(new Task("T2", false));
-		loop.registerTask(new Task("T0", true));
-		loop.registerTask(new Task("T3", false));
+		loop.executenf(new Task("T2", false));
+		f = loop.execute(new Task("T0", true));
+		loop.execute(new Task("T3", false));
 		loop.start();
+		try {
+			f.sync(50); fail();
+		}
+		catch (ExecutionException e) {
+		}
+		assertEquals("Task", f.cause().getMessage());
+		assertTrue(f.isFailed());
 		waitFor(50);
+		
 		assertEquals("T1T2ET3", taskResult.toString());
 		
 		//register task after start
-		loop.registerTask(new Task("T4", false));
-		loop.registerTask(new Task("T5", false, loop));
-		waitFor(50);
+		loop.executenf(new Task("T4", false));
+		f = loop.execute(new Task("T5", false, loop));
+		f.sync(50);
 		assertEquals("T1T2ET3T4LT5", taskResult.toString());
 		
 		//register task after stop
 		loop.stop();
 		loop.join();
 		try {
-			loop.registerTask(new Task("T6", false));
+			loop.execute(new Task("T6", false));
+			fail("exception should be thrown");
+		}
+		catch (SelectorLoopStoppingException e) {
+		}
+		try {
+			loop.executenf(new Task("T6", false));
 			fail("exception should be thrown");
 		}
 		catch (SelectorLoopStoppingException e) {
 		}
 		
-		//register task from loop
-		loop = new SelectorLoop();
-		
+		try {
+			loop.execute(null);
+			fail("exception should be thrown");
+		}
+		catch (IllegalArgumentException e) {
+		}
+		try {
+			loop.executenf(null);
+			fail("exception should be thrown");
+		}
+		catch (IllegalArgumentException e) {
+		}
 		
 	}
 	

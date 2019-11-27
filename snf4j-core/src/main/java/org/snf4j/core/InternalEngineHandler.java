@@ -124,7 +124,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	void beginHandshake(boolean lazy) {
 		handshake.compareAndSet(Handshake.NONE, Handshake.REQUESTED);
 		if (!lazy) {
-			session.loop.registerTask(this);
+			session.loop.executenf(this);
 		}
 	}
 	
@@ -528,7 +528,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 				future = null;
 			}
 		}
-		session.loop.registerTask(this);
+		session.loop.executenf(this);
 		return future;
 	}	
 
@@ -552,7 +552,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 				future = null;
 			}
 		}
-		session.loop.registerTask(this);
+		session.loop.executenf(this);
 		return future;
 	}	
 	
@@ -566,7 +566,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 			}
 		}
 		if (stateChanged) {
-			session.loop.registerTask(this);
+			session.loop.executenf(this);
 		}
 	}
 	
@@ -580,7 +580,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 			}
 		}		
 		if (stateChanged) {
-			session.loop.registerTask(this);
+			session.loop.executenf(this);
 		}
 	}
 	
@@ -595,7 +595,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		}
 		session.superQuickClose();
 		if (stateChanged) {
-			session.loop.registerTask(this);
+			session.loop.executenf(this);
 		}
 	}
 	
@@ -734,7 +734,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		@Override
 		public void run() {
 			delegate.run();
-			handler.session.loop.registerTask(handler);
+			handler.session.loop.executenf(handler);
 		}
 	}
 }

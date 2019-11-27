@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,22 +28,52 @@ package org.snf4j.core.future;
 import org.snf4j.core.session.ISession;
 
 /**
- * A future that represents the result of the asynchronous register methods of selector loops.
+ * A future that represents the result of a asynchronous task.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class RegisterFuture<V> extends TaskFuture<V> {
+public class TaskFuture<V> extends AbstractBlockingFuture<V> {
 
 	/**
-	 * Constructs a register future associated with a session.
+	 * Constructs a task future associated with a session.
 	 * 
 	 * @param session
 	 *            the session this future is associated with, or
 	 *            <code>null</code> if this future is not associated with any
 	 *            session
 	 */
-	public RegisterFuture(ISession session) {
+	public TaskFuture(ISession session) {
 		super(session);
 	}
 
+	/**
+	 * Marks this future as successful and notifies all threads waiting for this
+	 * future to be completed.
+	 */
+	public void success() {
+		if (setState(FutureState.SUCCESSFUL)) {
+			notifyWaiters();
+		}
+	}	
+	
+	/**
+	 * Aborts this future and notifies all threads waiting for this future to be
+	 * completed.
+	 * 
+	 * @param cause
+	 *            the cause of the failure, or <code>null</code> if this future
+	 *            should be cancelled
+	 * 
+	 */
+	public void abort(Throwable cause) {
+		if (cause != null) {
+			if (setState(FutureState.FAILED)) {
+				this.cause = cause;
+				notifyWaiters();
+			}
+		}
+		else if (setState(FutureState.CANCELLED)) {
+			notifyWaiters();
+		}
+	}	
 }
