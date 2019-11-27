@@ -51,6 +51,7 @@ import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.IFutureExecutor;
 import org.snf4j.core.future.RegisterFuture;
+import org.snf4j.core.future.TaskFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
@@ -113,7 +114,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 
 	private final ConcurrentLinkedQueue<PendingRegistration> registrations = new ConcurrentLinkedQueue<PendingRegistration>();
 	
-	private final ConcurrentLinkedQueue<Runnable> tasks = new ConcurrentLinkedQueue<Runnable>();
+	private final ConcurrentLinkedQueue<Task> tasks = new ConcurrentLinkedQueue<Task>();
 
 	private final Object registrationLock = new Object();
 	
@@ -721,7 +722,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	}
 	
 	private final void handleTasks() {
-		Runnable task;
+		Task task;
 		inTask = true;
 		while((task = tasks.poll()) != null) {
 			handleTask(task);
@@ -729,12 +730,20 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		inTask = false;
 	}
 	
-	private final void handleTask(Runnable task) {
+	private final void handleTask(Task task) {
+		TaskFuture<Void> future = task.future;
+		
 		try {
-			task.run();
+			task.task.run();
+			if (future != null) {
+				future.success();
+			}
 		}
 		catch (Exception e) {
 			elogger.error(logger, "Unexpected exception thrown during task execution: {}", e);
+			if (future != null) {
+				future.abort(e);
+			}
 		}
 	}
 	
@@ -941,14 +950,57 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	}
 
 	/**
-	 * Register a task that should be executed in the selector-loop's thread
+	 * Executes a task in the selector-loop's thread. This operation is
+	 * asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize
+	 * on a future associated with the specified task. This will save some
+	 * resources and may improve performance.
 	 * 
 	 * @param task
 	 *            task to be executed in the selector-loop's thread
 	 * @throws SelectorLoopStoppingException
 	 *             if selector loop is in the process of stopping
-	 */	
-	void registerTask(Runnable task) {
+	 * @throws IllegalArgumentException
+	 *             if {@code task} is null
+	 */
+	public void executenf(Runnable task) {
+		if (task == null) {
+			throw new IllegalArgumentException("task is null");
+		}
+		
+		Task task0 = new Task();
+		
+		task0.task = task;
+		execute0(task0);
+	}
+
+	/**
+	 * Executes a task in the selector-loop's thread. This operation is
+	 * asynchronous.
+	 * 
+	 * @param task
+	 *            task to be executed in the selector-loop's thread
+	 * @throws SelectorLoopStoppingException
+	 *             if selector loop is in the process of stopping
+	 * @throws IllegalArgumentException
+	 *             if {@code task} is null
+	 * @return the future associated with the specified task
+	 */
+	public IFuture<Void> execute(Runnable task) {
+		if (task == null) {
+			throw new IllegalArgumentException("task is null");
+		}
+		
+		Task task0 = new Task();
+		
+		task0.task = task;
+		task0.future = new TaskFuture<Void>(null);
+		execute0(task0);
+		return task0.future;
+	}
+	
+	private final void execute0(Task task) {
 		synchronized (registrationLock) {
 			//make sure not to register while stopping
 			if (ending) {
@@ -958,6 +1010,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		}		
 		wakeup();
 	}
+	
 	
 	/**
 	 * Returns a string representation of a channel object. It is provided to
@@ -1155,6 +1208,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		int ops;
 		Object attachment;
 		RegisterFuture<Void> future;
+	}
+	
+	static final class Task {
+		Runnable task;
+		TaskFuture<Void> future;
 	}
 	
 	class Loop implements Runnable {
