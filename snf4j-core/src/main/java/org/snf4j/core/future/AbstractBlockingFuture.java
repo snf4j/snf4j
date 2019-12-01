@@ -235,6 +235,12 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 				try {
 					if (nanos == 0) {
 						while (!isDone()) {
+							
+							//check if lock has changed
+							if (lock != getLock()) {
+								break;
+							}
+							
 							try {
 								lock.wait();
 							}
@@ -246,11 +252,6 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 									interrupted = true;
 								}
 							}
-							
-							//check if lock has changed
-							if (lock != getLock()) {
-								break;
-							}
 						}
 					} else {
 						while (!isDone()) {
@@ -258,6 +259,11 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 
 							if (delay <= 0) {
 								loopDone = true;
+								break;
+							}
+
+							//check if lock has changed
+							if (lock != getLock()) {
 								break;
 							}
 
@@ -274,12 +280,6 @@ abstract class AbstractBlockingFuture<V> extends AbstractFuture<V> {
 							}
 
 							now = System.nanoTime() - base;
-
-							//check if lock has changed
-							if (lock != getLock()) {
-								break;
-							}
-							
 						}
 					}
 				}
