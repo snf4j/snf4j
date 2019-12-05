@@ -25,10 +25,24 @@
  */
 package org.snf4j.longevity;
 
+import java.util.concurrent.ExecutionException;
+
+import org.snf4j.core.future.IFuture;
+
 public class Longevity {
 	public static void main(String[] args) throws Exception {
 		Utils.createListener(false).sync();
 		Utils.createListener(true).sync();
-		Utils.createSession(true).getCloseFuture().sync();
+		IFuture<Void> f = null;
+		
+		try {
+			f = Utils.createSession(true).getCloseFuture();
+			f.sync();
+		}
+		catch (ExecutionException e) {
+			if (f.getSession().isOpen() || !f.getSession().getAttributes().containsKey(ClientHandler.NO_CONNECTION_KEY)) {
+				throw e;
+			}
+		}
 	}
 }

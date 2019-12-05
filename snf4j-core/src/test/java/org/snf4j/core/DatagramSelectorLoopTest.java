@@ -226,13 +226,13 @@ public class DatagramSelectorLoopTest {
 	@Test
 	public void testCloseStoppedAndEmpty() throws Exception {
 		SelectorLoop loop1 = new SelectorLoop();
-		SelectorLoop loop2 = new SelectorLoop("Name");
+		SelectorLoop loop2 = new SelectorLoop("name");
 		
 		assertEquals(loop1.getId()+1, loop2.getId());
-		assertEquals("SelectorLoop-"+loop1.getId(), loop1.toString());
-		assertEquals("SelectorLoop-Name", loop2.toString());
-		assertEquals("SelectorLoop-"+loop1.getId(), loop1.getName());
-		assertEquals("Name", loop2.getName());
+		assertEquals("selector-loop-"+loop1.getId(), loop1.toString());
+		assertEquals("selector-loop-name", loop2.toString());
+		assertEquals("selector-loop-"+loop1.getId(), loop1.getName());
+		assertEquals("name", loop2.getName());
 		assertTrue(loop1.isStopped());
 		assertTrue(loop2.isStopped());
 		assertFalse(!loop1.isOpen());

@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.After;
 import org.junit.Before;
@@ -559,6 +560,32 @@ public class SessionTest {
 		key1.channel().close();
 		key2.channel().close();
 		key1.selector().close();
+	}
+	
+	@Test
+	public void testAttributes() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		
+		s.start();
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		assertNotNull(c.getSession().getAttributes());
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+
+		ConcurrentHashMap<Object, Object> attributes = new ConcurrentHashMap<Object, Object>();
+		c = new Client(PORT);
+		c.attributes = attributes;
+		c.start();
+		c.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionOpen(TIMEOUT);
+		assertTrue(c.getSession().getAttributes() == attributes);
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
 	}
 	
 	@Test

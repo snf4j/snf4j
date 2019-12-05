@@ -32,11 +32,14 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.snf4j.core.SSLSession;
 import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.session.ISession;
 
 public class Utils implements Config {
@@ -54,15 +57,20 @@ public class Utils implements Config {
 	
 	static List<ISession> sessions = new ArrayList<ISession>();
 	
+	static ExecutorService pool = Executors.newFixedThreadPool(10);
+	
 	static {
 		for (int i=0; i<100; ++i) {
-			freePorts.add(i+7000);
+			freePorts.add(i+FIRST_PORT);
 		}
 		
 		for (int i=0; i<10; ++i) {
 			try {
 				SelectorLoop loop = new SelectorLoop();
 
+				if (i % 2 == 0) {
+					loop.setPool(new DefaultSelectorLoopPool(5));
+				}
 				loop.start();
 				loops.add(loop);
 			}
@@ -118,6 +126,10 @@ public class Utils implements Config {
 				port = ports.get(random.nextInt(ports.size()));
 			}
 			
+			if (randomBoolean(NO_CONNECTION_RATIO)) {
+				port = FIRST_PORT-1;
+			}
+			
 			SocketChannel channel = SocketChannel.open();
 			channel.configureBlocking(false);
 			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), port));
@@ -126,9 +138,15 @@ public class Utils implements Config {
 
 			if (ssl) {
 				s = new SSLSession(new ClientHandler(), true);
+				if (!randomBoolean(DEFAULT_EXECUTOR_RATIO)) {
+					((SSLSession)s).setExecutor(pool);
+				}
 			}
 			else {
 				s = new StreamSession(new ClientHandler());
+			}
+			if (port < FIRST_PORT) {
+				s.getAttributes().put(ClientHandler.NO_CONNECTION_KEY, "");
 			}
 			
 			SelectorLoop loop = loops.get(random.nextInt(loops.size()));

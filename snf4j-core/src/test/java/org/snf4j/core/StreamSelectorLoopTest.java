@@ -494,13 +494,13 @@ public class StreamSelectorLoopTest {
 	@Test
 	public void testCloseStoppedAndEmpty() throws Exception {
 		SelectorLoop loop1 = new SelectorLoop();
-		SelectorLoop loop2 = new SelectorLoop("Name2");
+		SelectorLoop loop2 = new SelectorLoop("name2");
 		
 		assertEquals(loop1.getId()+1, loop2.getId());
-		assertEquals("SelectorLoop-"+loop1.getId(), loop1.toString());
-		assertEquals("SelectorLoop-Name2", loop2.toString());
-		assertEquals("SelectorLoop-"+loop1.getId(), loop1.getName());
-		assertEquals("Name2", loop2.getName());
+		assertEquals("selector-loop-"+loop1.getId(), loop1.toString());
+		assertEquals("selector-loop-name2", loop2.toString());
+		assertEquals("selector-loop-"+loop1.getId(), loop1.getName());
+		assertEquals("name2", loop2.getName());
 		assertTrue(loop1.isStopped());
 		assertTrue(loop2.isStopped());
 		assertFalse(!loop1.isOpen());

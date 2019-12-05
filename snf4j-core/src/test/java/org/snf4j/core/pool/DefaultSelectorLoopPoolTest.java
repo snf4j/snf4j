@@ -126,8 +126,8 @@ public class DefaultSelectorLoopPoolTest {
 		assertEquals(10, pool.getCapacity());
 		assertEquals(0, pool.getSize());
 		assertEquals(0, pool.getPool().length);
-		assertEquals("SelectorPool-" + pool.getId(), pool.getName());
-		assertEquals("SelectorPool-" + pool.getId(), pool.toString());
+		assertEquals("selector-pool-" + pool.getId(), pool.getName());
+		assertEquals("selector-pool-" + pool.getId(), pool.toString());
 		pool.getLoop(null);
 		assertEquals(1, pool.getSize());
 		assertEquals(1, pool.getPool().length);
@@ -135,7 +135,7 @@ public class DefaultSelectorLoopPoolTest {
 		assertEquals(1, pool.getSize());
 		assertEquals(1, pool.getPool().length);
 		assertEquals(pool.getPool()[0].getId(), pool.getPool()[0].getId());
-		assertEquals("SelectorPool-" + pool.getId() + "-1", pool.getPool()[0].getName());
+		assertEquals("selector-pool-" + pool.getId() + "-1", pool.getPool()[0].getName());
 		pool.quickStop();
 		assertTrue(pool.join(TIMEOUT));
 		
@@ -160,7 +160,7 @@ public class DefaultSelectorLoopPoolTest {
 		c.write(new Packet(PacketType.GET_THREAD));
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|GET_THREAD_RESPONSE(SelectorLoop-"+pool.getPool()[0].getName()+")|", c.getRecordedData(true));
+		assertEquals("DS|DR|GET_THREAD_RESPONSE(selector-loop-"+pool.getPool()[0].getName()+")|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 
@@ -178,7 +178,7 @@ public class DefaultSelectorLoopPoolTest {
 		c.write(new Packet(PacketType.GET_THREAD));
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|GET_THREAD_RESPONSE(SelectorLoop-Pool-1)|", c.getRecordedData(true));
+		assertEquals("DS|DR|GET_THREAD_RESPONSE(selector-loop-Pool-1)|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 

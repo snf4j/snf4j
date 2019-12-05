@@ -50,10 +50,18 @@ public class SessionConfig extends DefaultSessionConfig {
 			KeyStore ts = KeyStore.getInstance("JKS");
 			char[] password = "password".toCharArray();
 
-			File file = new File(SessionConfig.class.getClassLoader().getResource("keystore.jks").getFile());
+			try {
+				File file = new File(SessionConfig.class.getClassLoader().getResource("keystore.jks").getFile());
 
-			ks.load(new FileInputStream(file), password);
-			ts.load(new FileInputStream(file), password);
+				if (file != null) {
+					ks.load(new FileInputStream(file), password);
+					ts.load(new FileInputStream(file), password);
+				}
+			}
+			catch (Exception e) {
+				ks.load(SessionConfig.class.getClassLoader().getResourceAsStream("keystore.jks"), password);
+				ts.load(SessionConfig.class.getClassLoader().getResourceAsStream("keystore.jks"), password);
+			}
 
 			KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
 			kmf.init(ks, password);

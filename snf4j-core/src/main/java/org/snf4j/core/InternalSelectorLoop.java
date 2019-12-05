@@ -137,7 +137,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 *             selector loop could not be opened
 	 */
 	InternalSelectorLoop(String name, ILogger logger, ISelectorLoopStructureFactory factory) throws IOException {
-		super("SelectorLoop-", nextId.incrementAndGet(), name);
+		super("selector-loop-", nextId.incrementAndGet(), name);
 		this.logger = logger;
 		this.factory = factory == null ? DefaultSelectorLoopStructureFactory.DEFAULT : factory;
 		selector = this.factory.openSelector();
@@ -734,7 +734,13 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		TaskFuture<Void> future = task.future;
 		
 		try {
+			if (traceEnabled) {
+				logger.trace("Starting execution of task {}", task.task);
+			}
 			task.task.run();
+			if (traceEnabled) {
+				logger.trace("Finished execution of task {}", task.task);
+			}
 			if (future != null) {
 				future.success();
 			}

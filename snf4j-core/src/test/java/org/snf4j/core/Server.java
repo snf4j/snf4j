@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -78,6 +79,8 @@ public class Server {
 	public long throughputCalcInterval = 1000;
 	public boolean directAllocator;
 	public TestAllocator allocator;
+	public ConcurrentMap<Object, Object> attributes;
+	public Executor executor;
 	public DefaultCodecExecutor codecPipeline;
 	public ISelectorLoopPool pool;
 	public volatile EndingAction endingAction = EndingAction.DEFAULT;
@@ -414,7 +417,12 @@ public class Server {
 
 		@Override
 		public ConcurrentMap<Object, Object> getAttributes() {
-			return null;
+			return attributes;
+		}
+
+		@Override
+		public Executor getExecutor() {
+			return executor;
 		}
 		
 	}

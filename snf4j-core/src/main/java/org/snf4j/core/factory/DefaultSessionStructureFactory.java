@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 package org.snf4j.core.factory;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -66,6 +67,15 @@ public class DefaultSessionStructureFactory implements ISessionStructureFactory 
 	 */
 	@Override
 	public ConcurrentMap<Object, Object> getAttributes() {
+		return null;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @return <code>null</code>, so the default executor should be used by the session
+	 */
+	@Override
+	public Executor getExecutor() {
 		return null;
 	}
 

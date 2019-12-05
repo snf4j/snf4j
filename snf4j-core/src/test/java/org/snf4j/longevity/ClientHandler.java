@@ -29,6 +29,8 @@ import org.snf4j.core.handler.SessionEvent;
 
 public class ClientHandler extends AbstractHandler {
 
+	final static String NO_CONNECTION_KEY = "NoConnectionKey";
+	
 	@Override
 	public void read(byte[] data) {
 		read(new Packet(data));
@@ -54,4 +56,12 @@ public class ClientHandler extends AbstractHandler {
 		}
 	}
 	
+	@Override
+	public void exception(Throwable t) {
+		if (!getSession().isOpen() && getSession().getAttributes().containsKey(NO_CONNECTION_KEY)) {
+			Statistics.incNotConnected();
+			return;
+		}
+		super.exception(t);
+	}
 }

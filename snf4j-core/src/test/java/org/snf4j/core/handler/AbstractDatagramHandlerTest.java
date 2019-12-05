@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,11 @@ package org.snf4j.core.handler;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.snf4j.core.allocator.DefaultAllocator;
+import org.snf4j.core.factory.DefaultSessionStructureFactory;
 
 public class AbstractDatagramHandlerTest {
 	
@@ -39,5 +42,9 @@ public class AbstractDatagramHandlerTest {
 		
 		assertNull(h.getName());
 		assertEquals("HandlerName", h2.getName());
+		assertTrue(DefaultSessionStructureFactory.DEFAULT == h.getFactory());
+		assertNull(h.getFactory().getExecutor());
+		assertNull(h.getFactory().getAttributes());
+		assertTrue(DefaultAllocator.DEFAULT == h.getFactory().getAllocator());
 	}
 }

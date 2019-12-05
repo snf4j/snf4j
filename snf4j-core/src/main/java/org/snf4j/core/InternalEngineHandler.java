@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -50,6 +51,8 @@ import org.snf4j.core.session.IStreamSession;
 
 class InternalEngineHandler implements IStreamHandler, Runnable {
 
+	private final static AtomicLong nextDelegatedTaskId = new AtomicLong(0); 
+	
 	private final ILogger logger;
 	
 	private final IExceptionLogger elogger = ExceptionLogger.getInstance();
@@ -191,7 +194,10 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 				
 				try {
 					while (task != null) {
-						session.getExecutor().execute(new DelegatedTask(this, task));
+						if (traceEnabled) {
+							logger.trace("Starting execution of delegated task {} for {}" , task, session);
+						}
+						session.getExecutor().execute(new DelegatedTask(task, traceEnabled));
 						task = engine.getDelegatedTask();
 					}
 				}
@@ -264,8 +270,8 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	
 	/** Returns false when the processing loop need to be broken */
 	boolean unwrap(HandshakeStatus[] status) {
-		if (debugEnabled) {
-			logger.debug("Unwrapping started for {}", session);
+		if (traceEnabled) {
+			logger.trace("Unwrapping started for {}", session);
 		}
 		
 		IEngineResult unwrapResult;
@@ -355,8 +361,8 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	/** Returns false when the processing loop need to be broken */
 	@SuppressWarnings("incomplete-switch")
 	boolean wrap(HandshakeStatus[] status) {
-		if (debugEnabled) {
-			logger.debug("Wrapping started for {}", session);
+		if (traceEnabled) {
+			logger.trace("Wrapping started for {}", session);
 		}
 		
 		IEngineResult wrapResult;
@@ -720,21 +726,64 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		return maxLen;
 	}
 
-	private static class DelegatedTask implements Runnable {
+	@Override
+	public String toString() {
+		return getClass().getName() + "[session=" + session + "]";
+	}
+
+	private class FailureTask implements Runnable {
+		private final Exception e;
+		
+		FailureTask(Exception e) {
+			this.e = e;
+		}
+		
+		@Override
+		public void run() {
+			fireException(e);
+			return;
+		}
+
+		@Override
+		public String toString() {
+			return getClass().getName() + "[session=" + session + "]";
+		}
+	}
+	
+	private class DelegatedTask implements Runnable {
+		
+		private final long id;
 		
 		private final Runnable delegate;
 		
-		private final InternalEngineHandler handler;
+		private final boolean trace;
 		
-		DelegatedTask(InternalEngineHandler handler, Runnable delegate) {
-			this.handler = handler;
+		DelegatedTask(Runnable delegate, boolean trace) {
 			this.delegate = delegate;
+			this.trace = trace;
+			id = nextDelegatedTaskId.incrementAndGet();
 		}
 
 		@Override
 		public void run() {
-			delegate.run();
-			handler.session.loop.executenf(handler);
+			try {
+				delegate.run();
+			}
+			catch (Exception e) {
+				elogger.error(logger, "Execution of delegated task {} failed for {}: {}" , delegate, session, e);
+				session.loop.executenf(new FailureTask(e));
+				return;
+			}
+			
+			if (trace) {
+				logger.trace("Finished execution of delegated task {} for {}" , delegate, session);
+			}
+			session.loop.executenf(InternalEngineHandler.this);
+		}
+		
+		@Override
+		public String toString() {
+			return "engine-delegated-task-" + id;
 		}
 	}
 }

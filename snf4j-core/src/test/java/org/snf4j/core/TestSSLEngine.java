@@ -50,6 +50,8 @@ public class TestSSLEngine extends SSLEngine {
 	SSLException unwrapException;
 	SSLException wrapException;
 
+	volatile int delegatedTaskCounter = 1;
+	RuntimeException delegatedTaskException;
 	
 	public TestSSLEngine(SSLEngine engine) {
 		this.engine = engine;
@@ -106,6 +108,22 @@ public class TestSSLEngine extends SSLEngine {
 	@Override
 	public Runnable getDelegatedTask() {
 		if (engine != null) {
+			if (delegatedTaskException != null) {
+				if (delegatedTaskCounter > 0) {
+					delegatedTaskCounter--;
+					return new Runnable() {
+
+						@Override
+						public void run() {
+							throw delegatedTaskException;
+						}
+						
+					};
+				}
+				else {
+					return null;
+				}
+			}
 			return engine.getDelegatedTask();
 		}
 		return null;
