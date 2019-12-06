@@ -60,6 +60,8 @@ public class Statistics {
 	
 	static AtomicInteger totalIncidents = new AtomicInteger(0);
 	
+	static AtomicInteger totalNotConnected = new AtomicInteger(0);
+	
 	static AtomicLong longestSession = new AtomicLong(0);
 	
 	static AtomicLong total = new AtomicLong(0);
@@ -101,6 +103,10 @@ public class Statistics {
 	
 	static void incIncidents() {
 		totalIncidents.incrementAndGet();
+	}
+	
+	static void incNotConnected() {
+		totalNotConnected.incrementAndGet();
 	}
 	
 	static void updateLongestSession(long l) {
@@ -183,6 +189,7 @@ public class Statistics {
 				"(" + printBytes(nopPackets.get()) +")" +
 				"\tbytes: " + printBytes(totalBytes.get()) +
 				"\terr: " + totalExceptions.get() +
+				"(" + printBytes(totalNotConnected.get()) + ")" +
 				"\tinc: " + totalIncidents.get() +
 				"\tmax: " + printTime(longestSession.get()) +
 				"\tspeed: " +printBytes(avgTotalBytes.get()*1000 / (avgTotalTime.get()+1)) + "/s" + 

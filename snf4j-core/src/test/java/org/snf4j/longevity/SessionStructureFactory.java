@@ -26,6 +26,7 @@
 package org.snf4j.longevity;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -40,6 +41,11 @@ public class SessionStructureFactory implements ISessionStructureFactory {
 
 	@Override
 	public ConcurrentMap<Object, Object> getAttributes() {
+		return null;
+	}
+
+	@Override
+	public Executor getExecutor() {
 		return null;
 	}
 

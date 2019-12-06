@@ -57,6 +57,8 @@ class EncodeTask implements Runnable {
 	
 	SocketAddress remoteAddress;
 	
+	final int length;
+	
 	private final void init(final byte[] bytes) {
 		if (session.canOwnPassedData) {
 			this.bytes = bytes;
@@ -78,11 +80,13 @@ class EncodeTask implements Runnable {
 	
 	EncodeTask(InternalSession session, byte[] bytes) {
 		this.session = session;
+		this.length = bytes.length;
 		init(bytes);
 	}
 	
 	EncodeTask(InternalSession session, byte[] bytes, int offset, int length) {
 		this.session = session;
+		this.length = length;
 		if (session.canOwnPassedData) {
 			this.buffer = ByteBuffer.wrap(bytes, offset, length);
 		}
@@ -94,11 +98,13 @@ class EncodeTask implements Runnable {
 	
 	EncodeTask(InternalSession session, ByteBuffer buffer) {
 		this.session = session;
+		this.length = buffer.remaining();
 		init(buffer);
 	}
 
 	EncodeTask(InternalSession session, ByteBuffer buffer, int length) {
 		this.session = session;
+		this.length = length;
 		if (session.canOwnPassedData && length == buffer.remaining()) {
 			this.buffer = buffer;
 		}
@@ -110,6 +116,7 @@ class EncodeTask implements Runnable {
 
 	EncodeTask(InternalSession session, Object msg) {
 		this.session = session;
+		this.length = -1;
 		if (msg.getClass() == byte[].class) {
 			init((byte[])msg);
 		}
@@ -237,4 +244,28 @@ class EncodeTask implements Runnable {
 		}
 	}
 	
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(50);
+		
+		sb.append(getClass().getName());
+		sb.append("[session=");
+		sb.append(session);
+		if (length == -1) {
+			sb.append(" message");
+		}
+		else {
+			sb.append(" length=");
+			sb.append(length);
+		}
+		if (future != null) {
+			sb.append(" future");
+		}
+		if (remoteAddress != null) {
+			sb.append(" remote=");
+			sb.append(remoteAddress.toString());
+		}
+		sb.append(']');
+		return sb.toString();
+	}
 }

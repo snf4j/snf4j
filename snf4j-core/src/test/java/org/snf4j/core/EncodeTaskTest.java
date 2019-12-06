@@ -38,6 +38,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.codec.IEncoder;
+import org.snf4j.core.future.IDelegatingFuture;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SuccessfulFuture;
 import org.snf4j.core.handler.SessionIncident;
@@ -128,6 +129,7 @@ public class EncodeTaskTest {
 		s.waitForSessionReady(TIMEOUT);
 		
 		StreamSession session = c.getSession();
+		String prefix = "org.snf4j.core.EncodeTask[session=" + session;
 		
 		//constructor 1
 		setCanOwnPassedData(session, false);
@@ -150,6 +152,7 @@ public class EncodeTaskTest {
 		assertEquals("XBC", new String(task.bytes));
 		bytes[0] = 'Y';
 		assertEquals("YBC", new String(task.bytes));
+		assertEquals(prefix + " length=3]", task.toString());
 		
 		//constructor 2
 		setCanOwnPassedData(session, false);
@@ -172,6 +175,7 @@ public class EncodeTaskTest {
 		assertEquals("XBC", getString(task.buffer));
 		bytes[1] = 'Y';
 		assertEquals("YBC", getString(task.buffer));
+		assertEquals(prefix + " length=3]", task.toString());
 		
 		//constructor 3
 		setCanOwnPassedData(session, false);
@@ -196,6 +200,7 @@ public class EncodeTaskTest {
 		assertEquals("XBC", getString(task.buffer));
 		buffer.get();
 		assertEquals("BC", getString(task.buffer));
+		assertEquals(prefix + " length=3]", task.toString());
 		
 		//constructor 4
 		setCanOwnPassedData(session, false);
@@ -229,6 +234,7 @@ public class EncodeTaskTest {
 		assertEquals("YBCD", getString(task.buffer));
 		buffer.get();
 		assertEquals("BCD", getString(task.buffer));
+		assertEquals(prefix + " length=4]", task.toString());
 		
 		//constructor 5
 		String text = "ABCD";
@@ -250,10 +256,34 @@ public class EncodeTaskTest {
 		assertNull(task.msg);
 		assertEquals("ABCD", getString(task.buffer));
 		assertTrue(task.session == session);
+		assertEquals(prefix + " message]", task.toString());
+		
+		task.future = new Future();
+		assertEquals(prefix + " message future]", task.toString());
+		task.remoteAddress = session.getRemoteAddress();
+		assertEquals(prefix + " message future remote=" + session.getRemoteAddress()+"]", task.toString());
+		task.future = null;
+		assertEquals(prefix + " message remote=" + session.getRemoteAddress()+"]", task.toString());
+		Field f = EncodeTask.class.getDeclaredField("session");
+		f.setAccessible(true);
+		f.set(task, null);
+		assertEquals("org.snf4j.core.EncodeTask[session=null message remote="+session.getRemoteAddress()+"]", task.toString());
 		
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+	}
+	
+	static class Future extends SuccessfulFuture<Void> implements IDelegatingFuture<Void> {
+
+		public Future() {
+			super(null);
+		}
+
+		@Override
+		public void setDelegate(IFuture<Void> delegate) {
+		}
+		
 	}
 	
 	@Test

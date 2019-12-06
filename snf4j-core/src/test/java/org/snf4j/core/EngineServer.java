@@ -29,6 +29,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.snf4j.core.allocator.DefaultAllocator;
@@ -155,6 +156,11 @@ public class EngineServer {
 
 		@Override
 		public ConcurrentMap<Object, Object> getAttributes() {
+			return null;
+		}
+
+		@Override
+		public Executor getExecutor() {
 			return null;
 		}
 		

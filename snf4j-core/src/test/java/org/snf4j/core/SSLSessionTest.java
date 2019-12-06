@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -38,6 +39,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
@@ -165,6 +168,52 @@ public class SSLSessionTest {
 		
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|SOP|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+	}
+	
+	@Test
+	public void testExecutor() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		s.start();
+		c.start();
+
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertTrue(c.loop.getExecutor() == ((SSLSession)c.getSession()).getExecutor());
+		assertTrue(c.loop.getExecutor() == DefaultExecutor.DEFAULT);
+		SSLSession session = new SSLSession("name", c.getSession().getHandler(), true);
+		assertNull(session.getExecutor());
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		
+		
+		ExecutorService pool1 = Executors.newFixedThreadPool(2);
+		ExecutorService pool2 = Executors.newFixedThreadPool(2);
+		try {
+			c = new Client(PORT, true);
+			c.executor = pool1;
+			c.start();
+
+			c.waitForSessionReady(TIMEOUT);
+			s.waitForSessionReady(TIMEOUT);
+			assertTrue(pool1 == ((SSLSession)c.getSession()).getExecutor());
+			assertTrue(c.loop.getExecutor() == DefaultExecutor.DEFAULT);
+			session = new SSLSession("name", c.getSession().getHandler(), true);
+			assertTrue(pool1 == session.getExecutor());
+			c.loop.setExecutor(pool2);
+			assertTrue(c.loop.getExecutor() == pool2);
+			assertTrue(pool1 == ((SSLSession)c.getSession()).getExecutor());
+			((SSLSession)c.getSession()).setExecutor(null);
+			assertTrue(pool2 == ((SSLSession)c.getSession()).getExecutor());
+			c.stop(TIMEOUT);
+			c.waitForSessionEnding(TIMEOUT);
+			s.waitForSessionEnding(TIMEOUT);
+		}
+		finally {
+			pool1.shutdownNow();
+			pool2.shutdownNow();
+		}
 	}
 	
 	@Test 
@@ -1001,6 +1050,32 @@ public class SSLSessionTest {
 		assertEquals(0, allocator.getReleasedCount());
 		
 		s.stop(TIMEOUT);
+	}
+
+	@Test
+	public void testDelegatedTaskException() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.useTestSession = true;
+		c.exceptionRecordException = true;
+		
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+		
+		TestSSLEngine engine = getSSLEngine((SSLSession) c.getSession());
+		engine.delegatedTaskCounter = 1;
+		engine.delegatedTaskException = new NullPointerException("E1");
+		
+		((SSLSession) c.getSession()).beginHandshake();
+		
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|DR|EXC|(E1)|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 	}
 	
 	@Test

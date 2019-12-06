@@ -27,6 +27,8 @@ package org.snf4j.longevity;
 
 public interface Config {
 	
+	static final int FIRST_PORT = 7000;
+	
 	static final int MAX_SESSIONS = 101;
 	
 	static final int MAX_PACKETS_IN_SESSION = 1000;
@@ -50,6 +52,10 @@ public interface Config {
 	static final int SYNC_WITH_TIMEOUT_RATIO = 50;
 	
 	static final int CODEC_EXECUTOR_RATIO = 50;
+
+	static final int DEFAULT_EXECUTOR_RATIO = 50;
+	
+	static final int NO_CONNECTION_RATIO = 0;
 	
 	static final String HOST = "127.0.0.1";
 

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2019 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -89,7 +89,7 @@ public class DefaultSelectorLoopPool extends IdentifiableObject implements ISele
 	 *            or <code>null</code> if default factory should be used
 	 */
 	public DefaultSelectorLoopPool(String name, int capacity, ThreadFactory threadFactory, ISelectorLoopStructureFactory selectorFactory) {
-		super("SelectorPool-", nextId.incrementAndGet(), name);
+		super("selector-pool-", nextId.incrementAndGet(), name);
 		this.threadFactory = threadFactory != null ? threadFactory : DefaultThreadFactory.DEFAULT;
 		this.selectorFactory = selectorFactory != null ? selectorFactory: DefaultSelectorLoopStructureFactory.DEFAULT;
 		pool = new SelectorLoop[capacity];

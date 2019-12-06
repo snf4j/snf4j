@@ -205,9 +205,12 @@ public class InternalEngineHandlerTest {
 	public void testSetAndGetSession() throws Exception {
 		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
 		InternalEngineHandler h2 = new InternalEngineHandler(engine, handler, LOGGER);
+		String prefix = "org.snf4j.core.InternalEngineHandler[session=";
 		assertNull(h.getSession());
+		assertEquals(prefix+"null]", h.toString());
 		SSLSession session = new SSLSession(h, false);
 		assertTrue(session == h.getSession());
+		assertEquals(prefix+session+"]", h.toString());
 		
 		session = new SSLSession(h2, false);
 		h.setSession(session);

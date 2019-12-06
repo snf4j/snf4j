@@ -27,6 +27,8 @@ package org.snf4j.longevity;
 
 import java.nio.channels.SocketChannel;
 
+import org.snf4j.core.SSLSession;
+import org.snf4j.core.StreamSession;
 import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.handler.IStreamHandler;
 
@@ -34,6 +36,18 @@ public class SessionFactory extends AbstractSessionFactory {
 
 	protected SessionFactory(boolean ssl) {
 		super(ssl);
+	}
+	
+	@Override
+	public StreamSession create(SocketChannel channel) throws Exception {
+		StreamSession s = super.create(channel);
+		
+		if (s instanceof SSLSession) {
+			if (!Utils.randomBoolean(Config.DEFAULT_EXECUTOR_RATIO)) {
+				((SSLSession)s).setExecutor(Utils.pool);
+			}
+		}
+		return s;
 	}
 	
 	@Override

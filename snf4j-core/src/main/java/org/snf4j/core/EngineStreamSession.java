@@ -65,6 +65,7 @@ public class EngineStreamSession extends StreamSession {
 	public EngineStreamSession(String name, IEngine engine, IStreamHandler handler, ILogger logger) {
 		super(name, new InternalEngineHandler(engine, handler, logger));
 		internal = (InternalEngineHandler) this.handler;
+		executor = handler.getFactory().getExecutor();
 	}
 
 	/**
@@ -81,6 +82,7 @@ public class EngineStreamSession extends StreamSession {
 	public EngineStreamSession(IEngine engine, IStreamHandler handler, ILogger logger) {
 		super(new InternalEngineHandler(engine, handler, logger));
 		internal = (InternalEngineHandler) this.handler;
+		executor = handler.getFactory().getExecutor();
 	}
 
 	@Override
@@ -97,7 +99,7 @@ public class EngineStreamSession extends StreamSession {
 	
 	/**
 	 * Sets the executor that will be used to execute delegated tasks required
-	 * by this sessions to complete operations that block, or may take an
+	 * by this session to complete operations that block, or may take an
 	 * extended period of time to complete.
 	 * 
 	 * @param executor
@@ -110,7 +112,7 @@ public class EngineStreamSession extends StreamSession {
 	
 	/**
 	 * Returns the executor that will be used to execute delegated tasks
-	 * required by this sessions to complete operations that block, or may take
+	 * required by this session to complete operations that block, or may take
 	 * an extended period of time to complete.
 	 * <p>
 	 * By default, this method returns the executor configured in the selector 
