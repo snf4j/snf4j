@@ -2,9 +2,11 @@ Implementation-Title: snf4j-example
 Bundle-ManifestVersion: 2
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: org.snf4j.example.discarding;version=${parsedVersion.osgiVersion},
+  org.snf4j.example.engine;version=${parsedVersion.osgiVersion},
   org.snf4j.example.chat;version=${parsedVersion.osgiVersion}
 Import-Package: org.snf4j.core;version=${parsedVersion.osgiVersion},
   org.snf4j.core.allocator;version=${parsedVersion.osgiVersion},
+  org.snf4j.core.codec;version=${parsedVersion.osgiVersion},
   org.snf4j.core.engine;version=${parsedVersion.osgiVersion},
   org.snf4j.core.factory;version=${parsedVersion.osgiVersion},
   org.snf4j.core.future;version=${parsedVersion.osgiVersion},
