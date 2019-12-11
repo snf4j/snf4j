@@ -33,12 +33,18 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.codec.CompoundDecoder;
+import org.snf4j.core.codec.CompoundEncoder;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.IDecoder;
+import org.snf4j.core.codec.IEncoder;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IllegalSessionStateException;
 
 public class SessionCodecTest {
@@ -52,6 +58,19 @@ public class SessionCodecTest {
 	boolean directAllocator;
 	
 	TestCodec codec;
+
+	StringBuilder trace = new StringBuilder();
+	
+	synchronized void trace(String s) {
+		trace.append(s);
+		trace.append('|');
+	}
+	
+	synchronized String getTrace() {
+		String s = trace.toString();
+		trace.setLength(0);
+		return s;
+	}
 	
 	@Before
 	public void before() {
@@ -421,6 +440,35 @@ public class SessionCodecTest {
 	}
 
 	@Test
+	public void testWithCompoundCodec() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		p.getPipeline().add("1", new CompoundBPD(codec.BPD(),codec.PBD(),codec.BPD()));
+		p.getPipeline().add("2", new CompoundPBE(codec.PBE(),codec.BPE(),codec.PBE()));
+		startWithCodec(p);
+		Packet packet = new Packet(PacketType.ECHO, "ABC");
+		StreamSession session = c.getSession();
+		session.write(packet);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|M(ECHO_RESPONSE[ABCeed])|", c.getRecordedData(true));
+		stop();
+
+		p = new DefaultCodecExecutor();
+		p.getPipeline().add("1", new CompoundBPD(new BVD(),codec.BPD(),new PVD(),codec.PBD(),new BVD(),codec.BPD(),new PVD()));
+		p.getPipeline().add("2", new CompoundPBE(new PVE(),codec.PBE(),new BVE(),codec.BPE(),new PVE(),codec.PBE(),new BVE()));
+		startWithCodec(p);
+		packet = new Packet(PacketType.ECHO, "ABC");
+		session = c.getSession();
+		session.write(packet);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|M(ECHO_RESPONSE[ABCeed])|", c.getRecordedData(true));
+		assertEquals("PVE|BVE|PVE|BVE|BVD|PVD|BVD|PVD|", getTrace());
+		stop();
+	
+	}
+	
+	@Test
 	public void testWriteReadMessage() throws Exception {
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", codec.BasePD());
@@ -650,4 +698,65 @@ public class SessionCodecTest {
 		codec.encodeDirtyClose = false;
 		
 	}	
+	
+	class BVD implements IDecoder<byte[],Void> {
+		@Override public Class<byte[]> getInboundType() {return byte[].class;}
+		@Override public Class<Void> getOutboundType() {return Void.class;}
+		@Override public void decode(ISession session, byte[] data, List<Void> out)	throws Exception {trace("BVD");}
+	}
+
+	class PVD implements IDecoder<Packet,Void> {
+		@Override public Class<Packet> getInboundType() {return Packet.class;}
+		@Override public Class<Void> getOutboundType() {return Void.class;}
+		@Override public void decode(ISession session, Packet data, List<Void> out)	throws Exception {trace("PVD");}
+	}
+
+	class BVE implements IEncoder<byte[],Void> {
+		@Override public Class<byte[]> getInboundType() {return byte[].class;}
+		@Override public Class<Void> getOutboundType() {return Void.class;}
+		@Override public void encode(ISession session, byte[] data, List<Void> out)	throws Exception {trace("BVE");}
+	}
+
+	class PVE implements IEncoder<Packet,Void> {
+		@Override public Class<Packet> getInboundType() {return Packet.class;}
+		@Override public Class<Void> getOutboundType() {return Void.class;}
+		@Override public void encode(ISession session, Packet data, List<Void> out)	throws Exception {trace("PVE");}
+	}
+	
+	class CompoundBPD extends CompoundDecoder<byte[],Packet> {
+
+		CompoundBPD(IDecoder<?,?>... decoders) {
+			super(decoders);
+		}
+		
+		@Override
+		public Class<byte[]> getInboundType() {
+			return byte[].class;
+		}
+
+		@Override
+		public Class<Packet> getOutboundType() {
+			return Packet.class;
+		}
+		
+	}
+	
+	class CompoundPBE extends CompoundEncoder<Packet,byte[]> {
+
+		CompoundPBE(IEncoder<?,?>... encoders) {
+			super(encoders);
+		}
+		
+		@Override
+		public Class<Packet> getInboundType() {
+			return Packet.class;
+		}
+
+		@Override
+		public Class<byte[]> getOutboundType() {
+			return byte[].class;
+		}
+		
+	}
+	
 }
