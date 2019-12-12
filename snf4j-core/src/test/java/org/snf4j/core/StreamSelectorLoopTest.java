@@ -65,6 +65,8 @@ public class StreamSelectorLoopTest {
 	final int PORT_MIN = 8888;
 	final int PORT_MAX = 9999;
 	
+	static final String CLIENT_RDY_TAIL = SSLSessionTest.CLIENT_RDY_TAIL;
+	
 	Server s;
 	Client c, c1, c2, c3, c4;
 	
@@ -105,7 +107,7 @@ public class StreamSelectorLoopTest {
 		
 		loop.stop();
 		assertFalse(loop.join(TIMEOUT));
-		assertEquals("", c.getRecordedData(true));
+		assertEquals("", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|", s.getRecordedData(true));
 		loop.quickStop();
 		assertFalse(loop.join(TIMEOUT));
@@ -153,7 +155,7 @@ public class StreamSelectorLoopTest {
 
 		loop.stop();
 		assertFalse(loop.join(TIMEOUT));
-		assertEquals("", c.getRecordedData(true));
+		assertEquals("", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|", s.getRecordedData(true));
 		loop.quickStop();
 		assertTrue(loop.join(TIMEOUT));
@@ -180,7 +182,7 @@ public class StreamSelectorLoopTest {
 
 		loop.stop();
 		assertFalse(loop.join(TIMEOUT));
-		assertEquals("", c.getRecordedData(true));
+		assertEquals("", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|", s.getRecordedData(true));
 		loop.dirtyStop();
 		assertTrue(loop.join(TIMEOUT));

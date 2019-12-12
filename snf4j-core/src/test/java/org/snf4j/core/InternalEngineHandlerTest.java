@@ -55,6 +55,8 @@ public class InternalEngineHandlerTest {
 	Server s;
 	Client c;
 
+	static final String CLIENT_RDY_TAIL = SSLSessionTest.CLIENT_RDY_TAIL;
+	
 	private final static int APPBUFSIZE = 100;
 	private final static int NETBUFSIZE = 200;
 	private final static int APPBUFRATIO = 2;
@@ -67,7 +69,6 @@ public class InternalEngineHandlerTest {
 	TestSSLEngine sslEngine = new TestSSLEngine();
 	
 	TestSSLSession session = new TestSSLSession();
-	
 	
 	@Before
 	public void before() {
@@ -256,7 +257,7 @@ public class InternalEngineHandlerTest {
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|ECHO()|EXC|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);

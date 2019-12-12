@@ -403,7 +403,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 					}
 				}
 				else {
-					if (closing == ClosingState.SENDING) {
+					if (closing == ClosingState.SENDING || engine.isInboundDone()) {
 						closing = ClosingState.FINISHING;
 						engine.closeOutbound();
 					}

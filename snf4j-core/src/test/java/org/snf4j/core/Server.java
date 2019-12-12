@@ -252,6 +252,21 @@ public class Server {
 		}
 		return s;
 	}
+	
+	public String trimRecordedData(String prefix) {
+		String s;
+		
+		synchronized(recorder) {
+			s = recorder.toString();
+			recorder.setLength(0);
+		}
+		if (prefix != null && prefix.length() > 0) {
+			if (s.startsWith(prefix)) {
+				s = s.substring(prefix.length());
+			}
+		}
+		return s;
+	}
 
 	public String getRecordedData(String limit, boolean clear) {
 		String s;
@@ -708,7 +723,14 @@ public class Server {
 
 		@Override
 		public void exception(Throwable t) {
-			event(EventType.EXCEPTION_CAUGHT);
+			//on Windows this exception may be thrown when data is sent
+			//while closing connection
+			if ("An established connection was aborted by the software in your host machine".equals(t.getMessage())) {
+				event(EventType.DATA_SENT);
+			}
+			else {
+				event(EventType.EXCEPTION_CAUGHT);
+			}
 			if (exceptionRecordException) {
 				record("(" + t.getMessage() + ")");
 			}

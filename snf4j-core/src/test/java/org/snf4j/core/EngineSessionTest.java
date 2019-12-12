@@ -995,7 +995,7 @@ public class EngineSessionTest {
 		s.waitForFinish(TIMEOUT);
 		
 		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
-		assertEquals("U3|W0|CL|EN|FIN|", s.getTrace(true));
+		assertEquals("U3|CO|W0|CL|EN|FIN|", s.getTrace(true));
 		c.stop();
 		s.stop();
 
@@ -1020,7 +1020,7 @@ public class EngineSessionTest {
 		s.waitForFinish(TIMEOUT);
 		
 		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
-		assertEquals("U3|W0|CL|EN|FIN|", s.getTrace(true));
+		assertEquals("U3|CO|W0|CL|EN|FIN|", s.getTrace(true));
 		c.stop();
 		s.stop();
 		
@@ -1049,7 +1049,7 @@ public class EngineSessionTest {
 		s.getSession().resumeRead();
 		s.waitForFinish(TIMEOUT);
 		
-		assertEquals("U3|W0|CL|EN|FIN|", s.getTrace(true));
+		assertEquals("U3|CO|W0|CL|EN|FIN|", s.getTrace(true));
 		c.stop();
 		s.stop();
 
@@ -1081,7 +1081,7 @@ public class EngineSessionTest {
 		s.waitForFinish(TIMEOUT);
 		
 		assertEquals("CO|W0|U3|CL|EN|FIN|", c.getTrace(true));
-		assertEquals("U3|W0|CL|EN|FIN|", s.getTrace(true));
+		assertEquals("U3|CO|W0|CL|EN|FIN|", s.getTrace(true));
 		c.stop();
 		s.stop();
 
@@ -1114,7 +1114,7 @@ public class EngineSessionTest {
 		
 		s.waitForFinish(TIMEOUT);
 		
-		assertEquals("U3|W0|CL|EN|FIN|", s.getTrace(true));
+		assertEquals("U3|CO|W0|CL|EN|FIN|", s.getTrace(true));
 		c.stop();
 		s.stop();
 		

@@ -51,7 +51,27 @@ public class TestSSLEngine extends SSLEngine {
 	SSLException wrapException;
 
 	volatile int delegatedTaskCounter = 1;
+	volatile int needTaskCounter = 0;
 	RuntimeException delegatedTaskException;
+	
+	StringBuilder trace = new StringBuilder();
+	
+	void trace(String s) {
+		synchronized (trace) {
+			trace.append(s);
+			trace.append('|');
+		}
+	}
+	
+	String getTrace() {
+		String s;
+		
+		synchronized (trace) {
+			s = trace.toString();
+			trace.setLength(0);
+		}
+		return s;
+	}
 	
 	public TestSSLEngine(SSLEngine engine) {
 		this.engine = engine;
@@ -87,6 +107,7 @@ public class TestSSLEngine extends SSLEngine {
 	@Override
 	public void beginHandshake() throws SSLException {
 		if (engine != null) {
+			trace("BH");
 			engine.beginHandshake();
 		}
 	}
@@ -156,6 +177,10 @@ public class TestSSLEngine extends SSLEngine {
 	@Override
 	public HandshakeStatus getHandshakeStatus() {
 		if (engine != null) {
+			if (needTaskCounter > 0) {
+				--needTaskCounter;
+				return HandshakeStatus.NEED_TASK;
+			}
 			return engine.getHandshakeStatus();
 		}
 		return null;
@@ -276,7 +301,11 @@ public class TestSSLEngine extends SSLEngine {
 		SSLEngineResult result = this.getUnwrapResult();
 		if (result == null) {
 			if (engine != null) {
-				return engine.unwrap(src, dsts, offset, length);
+				result = engine.unwrap(src, dsts, offset, length);
+				if (result.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.FINISHED) {
+					trace("UHF");
+				}
+				return result;
 			}
 
 			byte[] data = new byte[unwrapBytes == -1 ? src.remaining() : unwrapBytes];
@@ -295,12 +324,18 @@ public class TestSSLEngine extends SSLEngine {
 	public SSLEngineResult wrap(ByteBuffer[] srcs, int offset, int length,
 			ByteBuffer dst) throws SSLException {
 		if (wrapException != null) {
-			throw wrapException;
+			SSLException e = wrapException;
+			wrapException = null;
+			throw e;
 		}
 		SSLEngineResult result = this.getWrapResult();
 		if (result == null) {
 			if (engine != null) {
-				return engine.wrap(srcs, offset, length, dst);
+				result = engine.wrap(srcs, offset, length, dst);
+				if (result.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.FINISHED) {
+					trace("WHF");
+				}
+				return result;
 			}
 		}
 		return result;
