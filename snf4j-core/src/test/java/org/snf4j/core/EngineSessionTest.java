@@ -864,7 +864,8 @@ public class EngineSessionTest {
 		assertEquals("U3|R789|", s.getTrace(true));
 		assertCapacity(c.getSession(), 10, 10, 10);
 		assertCapacity(s.getSession(), 10, 10, 10);
-
+		waitFor(100);
+		
 		//app size = min size
 		ce.addRecord("W|NH|1122334455|6677889900|OK|-|");
 		se.addRecord("U|NH|6677889900|1234567890|OK|-|");
@@ -874,6 +875,7 @@ public class EngineSessionTest {
 		assertEquals("U10|R1234567890|", s.getTrace(true));
 		assertCapacity(c.getSession(), 10, 10, 10);
 		assertCapacity(s.getSession(), 10, 10, 10);
+		waitFor(100);
 		
 		//buffer overflow successful
 		ByteBuffer inApp = getBuffer(s.getSession(), "inAppBuffer");

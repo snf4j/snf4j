@@ -27,14 +27,19 @@ package org.snf4j.core;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -73,6 +78,8 @@ public class Server {
 	public int port;
 	public boolean ssl;
 	public StreamSession session;
+	public volatile SocketAddress sessionLocal;
+	public volatile SocketAddress sessionRemote;
 	public StreamSession initSession;
 	public ThreadFactory threadFactory;
 	public ISelectorLoopController controller;
@@ -124,6 +131,8 @@ public class Server {
 
 	static volatile SSLContext sslContext = null; 
 	
+	static final LinkedList<Server> lastServers = new LinkedList<Server>();
+	
 	static {
 		eventMapping.put(EventType.SESSION_CREATED, "SCR");
 		eventMapping.put(EventType.SESSION_OPENED, "SOP");
@@ -164,11 +173,32 @@ public class Server {
 	
 	public Server(int port) {
 		this.port = port;
+		lastServers.add(this);
+		if (lastServers.size() > 10) {
+			lastServers.removeFirst();
+		}
 	}
 
 	public Server(int port, boolean ssl) {
 		this.port = port;
 		this.ssl = ssl;
+		lastServers.add(this);
+		if (lastServers.size() > 10) {
+			lastServers.removeFirst();
+		}
+	}
+	
+	public Server findRemote() {
+		for (Iterator<Server> i=lastServers.iterator(); i.hasNext();) {
+			Server s = i.next();
+			
+			if (s.sessionRemote != null && s.sessionLocal != null) {
+				if (s.sessionRemote.equals(sessionLocal) && s.sessionLocal.equals(sessionRemote)) {
+					return s;
+				}
+			}
+		}
+		return null;
 	}
 	
 	public String getServerSocketLogs() {
@@ -681,6 +711,8 @@ public class Server {
 				
 			case SESSION_OPENED:
 				LockUtils.notify(sessionOpenLock);
+				sessionLocal = session.getLocalAddress();
+				sessionRemote = session.getRemoteAddress();
 				break;
 				
 			case SESSION_READY:
@@ -723,14 +755,20 @@ public class Server {
 
 		@Override
 		public void exception(Throwable t) {
-			//on Windows this exception may be thrown when data is sent
-			//while closing connection
-			if ("An established connection was aborted by the software in your host machine".equals(t.getMessage())) {
-				event(EventType.DATA_SENT);
+			EventType type = EventType.EXCEPTION_CAUGHT;
+			Server remote = findRemote();
+			
+			if (t instanceof IOException) {
+				if (remote != null && remote.getSession() != null) {
+					SelectableChannel ch = remote.getSession().channel;
+
+					if (!ch.isOpen()) {
+						type = EventType.DATA_SENT;
+						System.out.println("[INFO] EXCEPTION_CAUGHT event replaced by DATA_SENT: " + t);
+					}
+				}
 			}
-			else {
-				event(EventType.EXCEPTION_CAUGHT);
-			}
+			event(type);
 			if (exceptionRecordException) {
 				record("(" + t.getMessage() + ")");
 			}
