@@ -704,6 +704,7 @@ public class StreamSelectorLoopTest {
 		loop.executenf(new Task("T4", false));
 		f = loop.execute(new Task("T5", false, loop));
 		f.sync(50);
+		waitFor(100);
 		assertEquals("T1T2ET3T4LT5", taskResult.toString());
 		
 		//register task after stop
