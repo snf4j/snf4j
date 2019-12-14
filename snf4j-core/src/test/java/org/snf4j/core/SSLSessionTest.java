@@ -1058,6 +1058,9 @@ public class SSLSessionTest {
 		c.allocator = allocator;
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
+		
+		waitFor(100);
+		
 		data = new byte[20000];
 		Arrays.fill(data, (byte)'A');
 		c.getSession().write(new Packet(PacketType.BIG_NOP, new String(data)).toBytes());

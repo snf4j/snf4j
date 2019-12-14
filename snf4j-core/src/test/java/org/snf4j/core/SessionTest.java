@@ -1971,6 +1971,8 @@ public class SessionTest {
 		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
 
+		waitFor(100);
+		
 		((TestStreamSession)s.getSession()).getInBufferException = true;
 		c.write(new Packet(PacketType.NOP));
 		c.waitForSessionEnding(TIMEOUT);
