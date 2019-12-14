@@ -73,7 +73,6 @@ import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
 
 public class Server {
-	
 	public SelectorLoop loop;
 	public int port;
 	public boolean ssl;
@@ -98,6 +97,7 @@ public class Server {
 	public volatile boolean useTestSession;
 	public volatile boolean recordSessionId;
 	public volatile boolean waitForCloseMessage;
+	public volatile boolean dontReplaceException;
 
 	public volatile int availableCounter;
 	
@@ -756,15 +756,18 @@ public class Server {
 		@Override
 		public void exception(Throwable t) {
 			EventType type = EventType.EXCEPTION_CAUGHT;
-			Server remote = findRemote();
-			
-			if (t instanceof IOException) {
-				if (remote != null && remote.getSession() != null) {
-					SelectableChannel ch = remote.getSession().channel;
 
-					if (!ch.isOpen()) {
-						type = EventType.DATA_SENT;
-						System.out.println("[INFO] EXCEPTION_CAUGHT event replaced by DATA_SENT: " + t);
+			if (!dontReplaceException) {
+				Server remote = findRemote();
+
+				if (t instanceof IOException) {
+					if (remote != null && remote.getSession() != null) {
+						SelectableChannel ch = remote.getSession().channel;
+
+						if (!ch.isOpen()) {
+							type = EventType.DATA_SENT;
+							System.out.println("[INFO] EXCEPTION_CAUGHT event replaced by DATA_SENT: " + t);
+						}
 					}
 				}
 			}

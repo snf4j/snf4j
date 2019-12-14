@@ -1963,6 +1963,7 @@ public class SessionTest {
 		s.useTestSession = true;
 		c = new Client(PORT);
 		c.useTestSession = true;
+		c.dontReplaceException = true;
 		
 		s.start();
 		c.start();
