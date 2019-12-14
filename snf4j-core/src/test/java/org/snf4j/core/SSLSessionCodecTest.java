@@ -47,6 +47,8 @@ public class SSLSessionCodecTest {
 	Server s;
 	Client c;
 	
+	static final String CLIENT_RDY_TAIL = SSLSessionTest.CLIENT_RDY_TAIL;
+	
 	boolean directAllocator;
 	
 	TestCodec codec;
@@ -114,7 +116,7 @@ public class SSLSessionCodecTest {
 		session.resumeWrite();
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertTrue(future.isSuccessful());
 		session.writenf(packet.toBytes());
 		s.waitForDataSent(TIMEOUT);
@@ -222,7 +224,7 @@ public class SSLSessionCodecTest {
 		session.write(packet.toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCe2d)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCe2d)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertTrue(future.isSuccessful());
 		session.writenf(ByteBuffer.wrap(packet.toBytes()));
 		s.waitForDataSent(TIMEOUT);
@@ -242,7 +244,7 @@ public class SSLSessionCodecTest {
 		IFuture<Void> future = session.write(packet.toBytes());
 		future.await(TIMEOUT);
 		waitFor(100);
-		assertEquals("ENCODING_PIPELINE_FAILURE(E1)|", c.getRecordedData(true));
+		assertEquals("ENCODING_PIPELINE_FAILURE(E1)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertTrue(future.isFailed());
 		assertTrue(future.cause() == codec.encodeException);
 		codec.encodeException = null;
@@ -270,7 +272,7 @@ public class SSLSessionCodecTest {
 		future = session.write(packet.toBytes());
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("ENCODING_PIPELINE_FAILURE(E3)|DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("ENCODING_PIPELINE_FAILURE(E3)|DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 
@@ -283,7 +285,7 @@ public class SSLSessionCodecTest {
 		future = session.write(packet.toBytes());
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("ENCODING_PIPELINE_FAILURE(E4)|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("ENCODING_PIPELINE_FAILURE(E4)|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);	
 	}	
@@ -300,7 +302,7 @@ public class SSLSessionCodecTest {
 		c.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
-		assertEquals("DS|DR|EXC|(E1)|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|EXC|(E1)|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 	}
 	
 	@Test
@@ -314,7 +316,7 @@ public class SSLSessionCodecTest {
 		session.write(packet).sync(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|M(ECHO_RESPONSE[ABCe])|", c.getRecordedData(true));
+		assertEquals("DS|DR|M(ECHO_RESPONSE[ABCe])|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		stop();
 
 		p = new DefaultCodecExecutor();
@@ -327,7 +329,7 @@ public class SSLSessionCodecTest {
 		session.write(packet).sync(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|M(ECHO_RESPONSE[ABCe])|M(ECHO_RESPONSE[ABCe])|", c.getRecordedData(true));
+		assertEquals("DS|DR|M(ECHO_RESPONSE[ABCe])|M(ECHO_RESPONSE[ABCe])|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		stop();
 
 		startWithCodec(new DefaultCodecExecutor());
@@ -337,7 +339,7 @@ public class SSLSessionCodecTest {
 		assertTrue(session.write(new Integer(0)).await(TIMEOUT).isCancelled());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABC)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABC)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals(1, c.availableCounter);
 		stop();
 	}
@@ -352,7 +354,7 @@ public class SSLSessionCodecTest {
 		session.write(packet.toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABC)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABC)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals(1, c.availableCounter);
 		stop();
 		
@@ -368,7 +370,7 @@ public class SSLSessionCodecTest {
 		session.write(packet.toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals(0, c.availableCounter);
 		stop();
 	
@@ -380,7 +382,7 @@ public class SSLSessionCodecTest {
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataReceived(TIMEOUT);
 		waitFor(100);
-		assertEquals("DS|DR|", c.getRecordedData(true));
+		assertEquals("DS|DR|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		stop();
 		codec.discardingDecode = false;
 		
@@ -392,7 +394,7 @@ public class SSLSessionCodecTest {
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		waitFor(100);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|ECHO_RESPONSE(ABCed)|ECHO_RESPONSE(ABCed)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|ECHO_RESPONSE(ABCed)|ECHO_RESPONSE(ABCed)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		stop();
 		codec.duplicatingDecode = false;
 		
@@ -403,7 +405,7 @@ public class SSLSessionCodecTest {
 		session.write(packet.toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		stop();
 
 		//direct buffer without decoder
@@ -413,7 +415,7 @@ public class SSLSessionCodecTest {
 		session.write(packet.toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABC)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABC)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals(1, c.availableCounter);
 		stop();
 		
@@ -429,7 +431,7 @@ public class SSLSessionCodecTest {
 		session.write(packet.toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals(0, c.availableCounter);
 		CodecExecutorAdapter adapter = new CodecExecutorAdapter(p, session); 
 		ByteBuffer buffer = ByteBuffer.allocate(10);
@@ -452,7 +454,7 @@ public class SSLSessionCodecTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|ECHO(ABCe)|DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		codec.decodeClose = false;
@@ -465,7 +467,7 @@ public class SSLSessionCodecTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|ECHO(ABCe)|DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		codec.decodeQuickClose = false;
@@ -478,7 +480,7 @@ public class SSLSessionCodecTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|ECHO(ABCe)|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		codec.decodeDirtyClose = false;
@@ -494,7 +496,7 @@ public class SSLSessionCodecTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		codec.encodeClose = false;
@@ -508,7 +510,7 @@ public class SSLSessionCodecTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		codec.encodeQuickClose = false;
@@ -523,7 +525,7 @@ public class SSLSessionCodecTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		codec.encodeDirtyClose = false;

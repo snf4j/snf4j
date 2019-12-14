@@ -27,14 +27,19 @@ package org.snf4j.core;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -68,11 +73,12 @@ import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
 
 public class Server {
-	
 	public SelectorLoop loop;
 	public int port;
 	public boolean ssl;
 	public StreamSession session;
+	public volatile SocketAddress sessionLocal;
+	public volatile SocketAddress sessionRemote;
 	public StreamSession initSession;
 	public ThreadFactory threadFactory;
 	public ISelectorLoopController controller;
@@ -91,6 +97,7 @@ public class Server {
 	public volatile boolean useTestSession;
 	public volatile boolean recordSessionId;
 	public volatile boolean waitForCloseMessage;
+	public volatile boolean dontReplaceException;
 
 	public volatile int availableCounter;
 	
@@ -123,6 +130,8 @@ public class Server {
 	static Map<EventType, String> eventMapping = new HashMap<EventType, String>();
 
 	static volatile SSLContext sslContext = null; 
+	
+	static final LinkedList<Server> lastServers = new LinkedList<Server>();
 	
 	static {
 		eventMapping.put(EventType.SESSION_CREATED, "SCR");
@@ -164,11 +173,32 @@ public class Server {
 	
 	public Server(int port) {
 		this.port = port;
+		lastServers.add(this);
+		if (lastServers.size() > 10) {
+			lastServers.removeFirst();
+		}
 	}
 
 	public Server(int port, boolean ssl) {
 		this.port = port;
 		this.ssl = ssl;
+		lastServers.add(this);
+		if (lastServers.size() > 10) {
+			lastServers.removeFirst();
+		}
+	}
+	
+	public Server findRemote() {
+		for (Iterator<Server> i=lastServers.iterator(); i.hasNext();) {
+			Server s = i.next();
+			
+			if (s.sessionRemote != null && s.sessionLocal != null) {
+				if (s.sessionRemote.equals(sessionLocal) && s.sessionLocal.equals(sessionRemote)) {
+					return s;
+				}
+			}
+		}
+		return null;
 	}
 	
 	public String getServerSocketLogs() {
@@ -248,6 +278,21 @@ public class Server {
 			s = recorder.toString();
 			if (clear) {
 				recorder.setLength(0);
+			}
+		}
+		return s;
+	}
+	
+	public String trimRecordedData(String prefix) {
+		String s;
+		
+		synchronized(recorder) {
+			s = recorder.toString();
+			recorder.setLength(0);
+		}
+		if (prefix != null && prefix.length() > 0) {
+			if (s.startsWith(prefix)) {
+				s = s.substring(prefix.length());
 			}
 		}
 		return s;
@@ -666,6 +711,8 @@ public class Server {
 				
 			case SESSION_OPENED:
 				LockUtils.notify(sessionOpenLock);
+				sessionLocal = session.getLocalAddress();
+				sessionRemote = session.getRemoteAddress();
 				break;
 				
 			case SESSION_READY:
@@ -708,7 +755,23 @@ public class Server {
 
 		@Override
 		public void exception(Throwable t) {
-			event(EventType.EXCEPTION_CAUGHT);
+			EventType type = EventType.EXCEPTION_CAUGHT;
+
+			if (!dontReplaceException) {
+				Server remote = findRemote();
+
+				if (t instanceof IOException) {
+					if (remote != null && remote.getSession() != null) {
+						SelectableChannel ch = remote.getSession().channel;
+
+						if (!ch.isOpen()) {
+							type = EventType.DATA_SENT;
+							System.out.println("[INFO] EXCEPTION_CAUGHT event replaced by DATA_SENT: " + t);
+						}
+					}
+				}
+			}
+			event(type);
 			if (exceptionRecordException) {
 				record("(" + t.getMessage() + ")");
 			}

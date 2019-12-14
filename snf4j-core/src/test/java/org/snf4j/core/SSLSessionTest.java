@@ -61,6 +61,23 @@ public class SSLSessionTest {
 	Server s;
 	Client c;
 	
+	static final String CLIENT_RDY_TAIL;
+	static final boolean TLS1_3;
+	
+	static {
+		double version = Double.parseDouble(System.getProperty("java.specification.version"));
+		
+		//as of java 11 the SSLEngine works in different way
+		if (version >= 11.0) {
+			CLIENT_RDY_TAIL = "DR|";
+			TLS1_3 = true;
+		}
+		else {
+			CLIENT_RDY_TAIL = "";
+			TLS1_3 = false;
+		}
+	}
+	
 	@Before
 	public void before() {
 		s = c = null;
@@ -238,7 +255,7 @@ public class SSLSessionTest {
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|NOP(567)|DS|SCL|SEN|", s.getRecordedData(true));
 		
 		c.stop(TIMEOUT);
@@ -261,7 +278,7 @@ public class SSLSessionTest {
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|NOP(567)|DS|SCL|SEN|", s.getRecordedData(true));
 		
 		//close already closed session
@@ -293,7 +310,7 @@ public class SSLSessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		List<String> recording = LoggerRecorder.disableRecording();
-		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		String warnMsg = "[ WARN] " + SessionIncident.SSL_CLOSED_WITHOUT_CLOSE_NOTIFY.defaultMessage();
 		assertTrue(recording.contains(warnMsg));
@@ -321,7 +338,7 @@ public class SSLSessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		recording = LoggerRecorder.disableRecording();
-		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		assertFalse(recording.contains(warnMsg));
 	
@@ -351,7 +368,7 @@ public class SSLSessionTest {
 		c.getSession().quickClose();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
@@ -374,7 +391,7 @@ public class SSLSessionTest {
 		c.quickStop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
 	
 		session.quickClose();
@@ -507,7 +524,7 @@ public class SSLSessionTest {
 		SSLSession session = (SSLSession) c.getSession();
 		session.write(new Packet(PacketType.ECHO, "1234").toBytes());
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE(1234)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(1234)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		session.writenf(new Packet(PacketType.ECHO, "134").toBytes());
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(134)|", c.getRecordedData(true));
@@ -716,7 +733,7 @@ public class SSLSessionTest {
 		session.write(new Packet(PacketType.NOP, "1234").toBytes());
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|EXC|SCL|SEN|", s.getRecordedData(true));
 		
 		c.stop(TIMEOUT);
@@ -746,7 +763,7 @@ public class SSLSessionTest {
 		session.write(new Packet(PacketType.NOP, "1234").toBytes());
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("EXC|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		
 		c.stop(TIMEOUT);
@@ -776,7 +793,7 @@ public class SSLSessionTest {
 		session.write(new Packet(PacketType.ECHO, "1234").toBytes());
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|ECHO(1234)|EXC|SCL|SEN|", s.getRecordedData(true));
 		
 		c.stop(TIMEOUT);
@@ -804,7 +821,7 @@ public class SSLSessionTest {
 		session.close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|NOP(1234)|DS|SCL|SEN|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
@@ -832,8 +849,8 @@ public class SSLSessionTest {
 		session.close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DS|DR|NOP(1234)|DS|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertEquals("DS|DR|NOP(1234)|DS|SCL|SEN|", s.trimRecordedData(CLIENT_RDY_TAIL));
 
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);		
@@ -851,6 +868,8 @@ public class SSLSessionTest {
 		c.getRecordedData(true);
 		s.getRecordedData("RDY|", true);
 		
+		waitFor(100);
+		
 		ByteBuffer buf = getBuffer((SSLSession) s.getSession(), "inNetBuffer");
 		ByteBuffer buf2 = ByteBuffer.allocate(buf.position());
 		buf.flip();
@@ -863,7 +882,7 @@ public class SSLSessionTest {
 		
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|NOP(1234)|DS|SCL|SEN|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
@@ -882,6 +901,8 @@ public class SSLSessionTest {
 		c.getRecordedData(true);
 		s.getRecordedData("RDY|", true);
 
+		waitFor(100);
+		
 		buf = getBuffer((SSLSession) c.getSession(), "inNetBuffer");
 		buf2 = ByteBuffer.allocate(buf.position());
 		buf.flip();
@@ -894,7 +915,7 @@ public class SSLSessionTest {
 		
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|EXC|SCL|SEN|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
@@ -1012,6 +1033,9 @@ public class SSLSessionTest {
 		c.allocator = allocator;
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
+		
+		waitFor(100);
+		
 		byte[] data = new byte[20000];
 		Arrays.fill(data, (byte)'A');
 		c.getSession().write(new Packet(PacketType.BIG_NOP, new String(data)).toBytes());
@@ -1034,6 +1058,9 @@ public class SSLSessionTest {
 		c.allocator = allocator;
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
+		
+		waitFor(100);
+		
 		data = new byte[20000];
 		Arrays.fill(data, (byte)'A');
 		c.getSession().write(new Packet(PacketType.BIG_NOP, new String(data)).toBytes());
@@ -1065,17 +1092,21 @@ public class SSLSessionTest {
 		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData("RDY|", true);
+
+		waitFor(100);
 		
 		TestSSLEngine engine = getSSLEngine((SSLSession) c.getSession());
+		engine.needTaskCounter = 1;
 		engine.delegatedTaskCounter = 1;
 		engine.delegatedTaskException = new NullPointerException("E1");
+
 		
-		((SSLSession) c.getSession()).beginHandshake();
+		c.write(new Packet(PacketType.NOP));
 		
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|DR|DR|EXC|(E1)|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DS|DR|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("EXC|(E1)|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 	}
 	
 	@Test
@@ -1095,7 +1126,7 @@ public class SSLSessionTest {
 		c.write(new Packet(PacketType.NOP, ""));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("EXC|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 		
@@ -1111,7 +1142,7 @@ public class SSLSessionTest {
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("EXC|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 
@@ -1128,7 +1159,7 @@ public class SSLSessionTest {
 		c.write(new Packet(PacketType.NOP, ""));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("EXC|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 		
@@ -1152,7 +1183,7 @@ public class SSLSessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|EXC|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 	}
 	
 	@Test
@@ -1174,7 +1205,7 @@ public class SSLSessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|EXC|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 	}
 	
 	void resumeWithDelay(final SSLSession session, final long delay) {
@@ -1252,22 +1283,44 @@ public class SSLSessionTest {
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		waitFor(500);
-		assertEquals("DS|DR|ECHO_RESPONSE(1)|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(1)|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|ECHO(1)|DS|", s.getRecordedData(true));
+		TestSSLEngine sengine = getSSLEngine((SSLSession) s.getSession());
+		TestSSLEngine cengine = getSSLEngine((SSLSession) c.getSession());
+		assertEquals("WHF|", sengine.getTrace());
+		assertEquals(TLS1_3 ? "WHF|UHF|" : "UHF|", cengine.getTrace());
 		
 		session.beginHandshake();
 		
 		session.write(new Packet(PacketType.ECHO, "2").toBytes());
 		waitFor(500);
-		assertEquals("DS|DR|DR|DS|DR|DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
-		assertEquals("DR|DS|DR|DR|DS|DR|ECHO(2)|DS|", s.getRecordedData(true));
+		
+		assertEquals("WHF|", sengine.getTrace());
+		assertEquals(TLS1_3 ? "BH|WHF|UHF|" : "BH|UHF|", cengine.getTrace());
+		if (TLS1_3) {
+			assertEquals("DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
+			assertEquals("DR|ECHO(2)|DS|", s.getRecordedData(true));
+		}
+		else {
+			assertEquals("DS|DR|DR|DS|DR|DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
+			assertEquals("DR|DS|DR|DR|DS|DR|ECHO(2)|DS|", s.getRecordedData(true));
+		}
 
 		((SSLSession) s.getSession()).beginLazyHandshake();
 		
 		session.write(new Packet(PacketType.ECHO, "3").toBytes());
 		waitFor(500);
-		assertEquals("DS|DR|DS|DR|DR|DS|DR|ECHO_RESPONSE(3)|", c.getRecordedData(true));
-		assertEquals("DR|ECHO(3)|DS|DR|DS|DR|DR|DS|", s.getRecordedData(true));
+
+		assertEquals(TLS1_3 ? "BH|WHF|UHF|" : "BH|WHF|", sengine.getTrace());
+		assertEquals(TLS1_3 ? "WHF|" : "UHF|", cengine.getTrace());
+		if (TLS1_3) {
+			assertEquals("DS|DR|ECHO_RESPONSE(3)|DS|", c.getRecordedData(true));
+			assertEquals("DR|ECHO(3)|DS|DR|", s.getRecordedData(true));
+		}
+		else {
+			assertEquals("DS|DR|DS|DR|DR|DS|DR|ECHO_RESPONSE(3)|", c.getRecordedData(true));
+			assertEquals("DR|ECHO(3)|DS|DR|DS|DR|DR|DS|", s.getRecordedData(true));
+		}
 
 		session.write(new Packet(PacketType.ECHO, "4").toBytes());
 		waitFor(500);
@@ -1328,7 +1381,7 @@ public class SSLSessionTest {
 		
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("", c.getRecordedData(true));
+		assertEquals("", c.trimRecordedData(CLIENT_RDY_TAIL));
 		
 		c.waitForSessionEnding(4500);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
@@ -1349,7 +1402,7 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		
 	}	
 
@@ -1368,7 +1421,7 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		
 		c = new Client(PORT, true);
 		c.waitForCloseMessage = true;
@@ -1381,7 +1434,7 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		
 		c = new Client(PORT, true);
 		c.waitForCloseMessage = true;
@@ -1394,7 +1447,7 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 
 		c = new Client(PORT, true);
 		c.waitForCloseMessage = true;
@@ -1407,7 +1460,7 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 
 	}
 }
