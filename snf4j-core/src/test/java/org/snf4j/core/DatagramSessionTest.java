@@ -144,6 +144,8 @@ public class DatagramSessionTest {
 		assertEquals("DS|50;"+s.getSession().getLocalAddress()+"|", c.getRecordedData(true));
 		assertEquals("", s.getRecordedData(true));
 
+		s.recordDataEventDetails = false;
+		c.recordDataEventDetails = false;
 		c.throwInEvent = true;
 		c.getSession().event(s.getSession().getLocalAddress(), DataEvent.SENT, 50);
 		assertEquals("DS|", c.getRecordedData(true));

@@ -704,8 +704,11 @@ public class Server {
 			}
 		}
 
-		private boolean event(EventType type) {
+		private boolean event(EventType type, long length) {
 			record(eventMapping.get(type));
+			if (recordDataEventDetails && length != -1) {
+				record(""+length);
+			}
 			switch (type) {
 			case SESSION_CREATED:
 				session = (StreamSession) getSession();
@@ -747,15 +750,12 @@ public class Server {
 
 		@Override
 		public void event(SessionEvent event) {
-			event(event.type());
+			event(event.type(), -1);
 		}
 
 		@Override
 		public void event(DataEvent event, long length) {
-			event(event.type());
-			if (recordDataEventDetails) {
-				record(""+length);
-			}
+			event(event.type(), length);
 		}
 
 		@Override
@@ -776,7 +776,7 @@ public class Server {
 					}
 				}
 			}
-			event(type);
+			event(type, -1);
 			if (exceptionRecordException) {
 				record("(" + t.getMessage() + ")");
 			}

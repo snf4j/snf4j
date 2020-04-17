@@ -342,9 +342,9 @@ public class DatagramServerHandlerTest {
 		IFuture<Void> f = superSession.write(nop()).await(TIMEOUT);
 		assertTrue(f.isFailed());
 		assertTrue(f.cause().getClass() == NotYetConnectedException.class);
+		s.waitForSessionEnding(TIMEOUT);
 		assertEquals(SessionState.CLOSING, session.getState());
 		assertEquals(SessionState.CLOSING, superSession.getState());
-		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
 		
 		s = new DatagramHandler(PORT);

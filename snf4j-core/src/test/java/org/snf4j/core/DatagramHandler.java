@@ -494,8 +494,17 @@ public class DatagramHandler {
 			}
 		}
 		
-		private boolean event(EventType type) {
+		private boolean event(EventType type, long length, SocketAddress remoteAddress, boolean ignoreAddress) {
 			record(eventMapping.get(type));
+			if (recordDataEventDetails && length != -1) {
+				if (ignoreAddress) {
+					record("" + length);
+				}
+				else {
+					record("" + length + ";" + remoteAddress);
+				}
+			}
+
 			switch (type) {
 			case SESSION_CREATED:
 				session = (DatagramSession) getSession();
@@ -536,28 +545,22 @@ public class DatagramHandler {
 
 		@Override
 		public void event(SessionEvent event) {
-			event(event.type());
+			event(event.type(), -1, null, true);
 		}
 
 		@Override
 		public void event(SocketAddress remoteAddress, DataEvent event, long length) {
-			event(event.type());
-			if (recordDataEventDetails) {
-				record("" + length + ";" + remoteAddress);
-			}
+			event(event.type(), length, remoteAddress, false);
 		}
 		
 		@Override
 		public void event(DataEvent event, long length) {
-			event(event.type());
-			if (recordDataEventDetails) {
-				record("" + length);
-			}
+			event(event.type(), length, null, true);
 		}
 
 		@Override
 		public void exception(Throwable t) {
-			event(EventType.EXCEPTION_CAUGHT);
+			event(EventType.EXCEPTION_CAUGHT, -1, null, true);
 			if (exceptionClose) {
 				record("close");
 				getSession().close();
