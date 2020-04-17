@@ -292,6 +292,7 @@ public class DatagramServerSessionTest {
 		session.resumeWrite();
 		assertFalse(session.isWriteSuspended());
 		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
 		assertEquals("DS|", s.getRecordedData(true));
 		assertEquals("DR|NOP()|", c.getRecordedData(true));
 	}

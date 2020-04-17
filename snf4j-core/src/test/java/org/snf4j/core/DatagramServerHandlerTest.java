@@ -585,6 +585,7 @@ public class DatagramServerHandlerTest {
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
+		waitFor(100);
 		
 		s.throwInRead = true;
 		c.getSession().write(nop());
@@ -608,6 +609,7 @@ public class DatagramServerHandlerTest {
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|M(NOP[])|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
+		waitFor(100);
 		
 		s.throwInRead = true;
 		c.getSession().write(nop());
