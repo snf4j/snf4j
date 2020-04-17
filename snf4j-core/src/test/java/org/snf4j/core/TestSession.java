@@ -33,6 +33,7 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.IStreamSession;
 import org.snf4j.core.session.SessionState;
 
 public class TestSession implements ISession {
@@ -66,6 +67,11 @@ public class TestSession implements ISession {
 		return null;
 	}
 
+	@Override
+	public IStreamSession getParent() {
+		return null;
+	}
+	
 	@Override
 	public ISessionConfig getConfig() {
 		return null;

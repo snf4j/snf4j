@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ILogger;
@@ -57,7 +58,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	private ByteBuffer inBuffer;
 	
-	ConcurrentLinkedQueue<DatagramRecord> outQueue = new ConcurrentLinkedQueue<DatagramRecord>();
+	private ConcurrentLinkedQueue<DatagramRecord> outQueue;
 
 	/** Number of bytes in the queue */
 	private long outQueueSize;
@@ -69,7 +70,14 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	private final boolean ignorePossiblyIncomplete;
 	
 	private IEncodeTaskWriter encodeTaskWriter;
-	
+
+	DatagramSession(String name, IDatagramHandler handler, boolean noCodec) {
+		super(name, handler, LOGGER, noCodec);
+		minInBufferCapacity = config.getMinInBufferCapacity();
+		maxInBufferCapacity = config.getMaxInBufferCapacity();
+		ignorePossiblyIncomplete = config.ignorePossiblyIncompleteDatagrams();
+	}
+
 	/**
 	 * Constructs a named datagram-oriented session associated with a handler.
 	 * 
@@ -80,10 +88,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	 *            the handler that should be associated with this session
 	 */	
 	public DatagramSession(String name, IDatagramHandler handler) {
-		super(name, handler, LOGGER);
-		minInBufferCapacity = config.getMinInBufferCapacity();
-		maxInBufferCapacity = config.getMaxInBufferCapacity();
-		ignorePossiblyIncomplete = config.ignorePossiblyIncompleteDatagrams();
+		this(name, handler, false);
 	}
 
 	IEncodeTaskWriter getEncodeTaskWriter() {
@@ -111,10 +116,27 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		}
 		return null;
 	}
+
+	void event(SocketAddress remoteAddress, DataEvent event, long length) {
+		if (isValid(event.type())) {
+			futuresController.event(event, length);
+			try {
+				getHandler().event(remoteAddress, event, length);
+			}
+			catch (Exception e) {
+				elogger.error(logger, "Failed event {} for {}: {}", event, this, e);
+			}
+		}
+	}
 	
 	@Override
 	public IDatagramHandler getHandler() {
 		return (IDatagramHandler) handler;
+	}
+	
+	@Override
+	public IDatagramSession getParent() {
+		return null;
 	}
 	
 	@Override
@@ -539,6 +561,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	@Override
 	void preCreated() {
 		inBuffer = allocator.allocate(minInBufferCapacity);
+		outQueue = new ConcurrentLinkedQueue<DatagramRecord>();
 	}
 	
 	@Override

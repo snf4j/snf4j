@@ -109,7 +109,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 
 	final boolean canOwnPassedData;
 
-	protected InternalSession(String name, IHandler handler, ILogger logger) {
+	protected InternalSession(String name, IHandler handler, ILogger logger, boolean noCodec) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
 				name != null ? name : (handler != null ? handler.getName() : null),
@@ -127,8 +127,17 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		creationTime = System.currentTimeMillis();
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
 		
-		ICodecExecutor executor = config.createCodecExecutor();
-		codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
+		if (noCodec) {
+			codec = null;
+		}
+		else {
+			ICodecExecutor executor = config.createCodecExecutor();
+			codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
+		}
+	}
+	
+	protected InternalSession(String name, IHandler handler, ILogger logger) {
+		this(name, handler, logger, false);
 	}
 	
 	abstract IEncodeTaskWriter getEncodeTaskWriter(); 

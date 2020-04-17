@@ -110,6 +110,11 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return (IStreamHandler) handler;
 	}
 
+	@Override
+	public IStreamSession getParent() {
+		return null;
+	}
+	
 	static ByteBuffer[] compactBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, int minOutBufferCapacity) {
 		int lastIndex = outBuffers.length - 1;
 		

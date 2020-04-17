@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -536,7 +536,7 @@ public class DatagramSessionCodecTest {
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		waitFor(100);
-		assertEquals("DR|$ECHO(ABCd)|$ECHO(ABCd)|$ECHO(ABCd)|DS|", s.getRecordedData(true));
+		assertEquals("DR|$ECHO(ABCd)|$ECHO(ABCd)|$ECHO(ABCd)|DS|DS|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE(ABCde)|DR|ECHO_RESPONSE(ABCde)|DR|ECHO_RESPONSE(ABCde)|", c.getRecordedData(true));
 		stop();
 		codec.duplicatingDecode = false;
@@ -765,7 +765,7 @@ public class DatagramSessionCodecTest {
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		waitFor(100);
-		assertEquals("DR|$M(ECHO[ABC])|$M(ECHO[ABC])|DS|", s.getRecordedData(true));
+		assertEquals("DR|$M(ECHO[ABC])|$M(ECHO[ABC])|DS|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE(ABCe)|DR|ECHO_RESPONSE(ABCe)|", c.getRecordedData(true));
 		stop();
 		

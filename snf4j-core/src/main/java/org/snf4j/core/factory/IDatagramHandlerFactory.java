@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +23,30 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.handler;
+package org.snf4j.core.factory;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import java.net.SocketAddress;
 
-import org.junit.Test;
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.handler.IDatagramHandler;
+import org.snf4j.core.DatagramServerHandler;
 
-public class AbstractDatagramHandlerTest {
+/**
+ * Factory used to create a datagram handler that will be associated with 
+ * a datagram-oriented session created by {@link DatagramServerHandler}.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public interface IDatagramHandlerFactory {
 	
-	@Test
-	public void testAll() {
-		TestDatagramHandler h = new TestDatagramHandler();
-		TestDatagramHandler h2 = new TestDatagramHandler("HandlerName");
-		
-		assertNull(h.getName());
-		assertEquals("HandlerName", h2.getName());
-		assertTrue(DefaultSessionStructureFactory.DEFAULT == h.getFactory());
-		assertNull(h.getFactory().getExecutor());
-		assertNull(h.getFactory().getAttributes());
-		assertTrue(DefaultAllocator.DEFAULT == h.getFactory().getAllocator());
-		h.event(null, null, -1);
-	}
+	/**
+	 * Creates a datagram handler that will be associated with a
+	 * datagram-oriented session created by {@link DatagramServerHandler} after
+	 * receiving first data from a remote host.
+	 * 
+	 * @param remoteAddress
+	 *            the address of the remote host.
+	 * @return the handler or {@code null} if the creation of the session should be
+	 *         silently skipped.
+	 */
+	IDatagramHandler create(SocketAddress remoteAddress);
 }

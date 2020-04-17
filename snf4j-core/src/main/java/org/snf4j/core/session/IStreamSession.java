@@ -45,6 +45,9 @@ public interface IStreamSession extends ISession {
 	@Override
 	IStreamHandler getHandler();
 
+	@Override
+	IStreamSession getParent();
+	
 	/**
 	 * Writes <code>data.length</code> bytes from the specified byte array
 	 * to the stream-oriented channel associated with this session. 

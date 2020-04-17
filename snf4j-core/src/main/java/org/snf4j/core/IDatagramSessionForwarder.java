@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +23,14 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.handler;
+package org.snf4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import java.net.SocketAddress;
 
-import org.junit.Test;
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.factory.DefaultSessionStructureFactory;
-
-public class AbstractDatagramHandlerTest {
+interface IDatagramSessionForwarder {
 	
-	@Test
-	public void testAll() {
-		TestDatagramHandler h = new TestDatagramHandler();
-		TestDatagramHandler h2 = new TestDatagramHandler("HandlerName");
-		
-		assertNull(h.getName());
-		assertEquals("HandlerName", h2.getName());
-		assertTrue(DefaultSessionStructureFactory.DEFAULT == h.getFactory());
-		assertNull(h.getFactory().getExecutor());
-		assertNull(h.getFactory().getAttributes());
-		assertTrue(DefaultAllocator.DEFAULT == h.getFactory().getAllocator());
-		h.event(null, null, -1);
-	}
+	void incReadBytes(long bytes, long currentTime, SocketAddress remoteAddress);
+	
+	void incWrittenBytes(long bytes, long currentTime, SocketAddress remoteAddress);
+	
 }

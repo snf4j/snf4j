@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -126,6 +126,8 @@ public class Server {
 	AtomicBoolean dataSentLock = new AtomicBoolean(false);
 
 	StringBuilder recorder = new StringBuilder();
+	
+	boolean recordDataEventDetails;
 	
 	static Map<EventType, String> eventMapping = new HashMap<EventType, String>();
 
@@ -702,8 +704,11 @@ public class Server {
 			}
 		}
 
-		private boolean event(EventType type) {
+		private boolean event(EventType type, long length) {
 			record(eventMapping.get(type));
+			if (recordDataEventDetails && length != -1) {
+				record(""+length);
+			}
 			switch (type) {
 			case SESSION_CREATED:
 				session = (StreamSession) getSession();
@@ -745,12 +750,12 @@ public class Server {
 
 		@Override
 		public void event(SessionEvent event) {
-			event(event.type());
+			event(event.type(), -1);
 		}
 
 		@Override
 		public void event(DataEvent event, long length) {
-			event(event.type());
+			event(event.type(), length);
 		}
 
 		@Override
@@ -771,7 +776,7 @@ public class Server {
 					}
 				}
 			}
-			event(type);
+			event(type, -1);
 			if (exceptionRecordException) {
 				record("(" + t.getMessage() + ")");
 			}

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -137,6 +137,7 @@ public class SessionTest {
 		catch (IllegalArgumentException e) {
 		}
 		StreamSession s = new StreamSession(handler);
+		assertNull(s.getParent());
 		s.preCreated();
 		assertTrue(handler.getSession() == s);
 		assertTrue(s.getHandler() == handler);
@@ -2091,4 +2092,37 @@ public class SessionTest {
 		channel.close();
 		
 	}	
+	
+	@Test
+	public void testDataEventDetails() throws Exception {
+		s = new Server(PORT);
+		s.recordDataEventDetails = true;
+		c = new Client(PORT);
+		c.recordDataEventDetails = true;
+		
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		Packet p = new Packet(PacketType.NOP);
+		int pLen = p.toBytes().length;
+		
+		c.getSession().write(p.toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		
+		assertEquals("DS|"+pLen+"|", c.getRecordedData(true));
+		assertEquals("DR|"+pLen+"|NOP()|", s.getRecordedData(true));
+		
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+
+	}
+
 }
