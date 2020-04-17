@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,19 +32,25 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.NotYetConnectedException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.DatagramSession.DatagramRecord;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.future.IFuture;
+import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
@@ -83,6 +89,7 @@ public class DatagramSessionTest {
 	@Test
 	public void testGetAddress() throws Exception {
 		DatagramSession session = new DatagramSession(handler);
+		assertNull(session.getParent());
 
 		assertTrue(handler == session.getHandler());
 		
@@ -116,6 +123,53 @@ public class DatagramSessionTest {
 	}
 	
 	@Test
+	public void testEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.recordDataEventDetails = true;
+		c = new DatagramHandler(PORT);
+		c.recordDataEventDetails = true;
+		s.startServer();
+		c.startClient();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		s.getSession().send(c.getSession().getLocalAddress(), new Packet(PacketType.NOP).toBytes()).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|3|NOP()|", c.getRecordedData(true));
+		assertEquals("DS|3;" + c.getSession().getLocalAddress() +"|", s.getRecordedData(true));
+		
+		c.getSession().event(s.getSession().getLocalAddress(), DataEvent.SENT, 50);
+		assertEquals("DS|50;"+s.getSession().getLocalAddress()+"|", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+
+		c.throwInEvent = true;
+		c.getSession().event(s.getSession().getLocalAddress(), DataEvent.SENT, 50);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		assertEquals(1, c.throwInEventCount.get());
+		
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+	
+		c.getSession().event(s.getSession().getLocalAddress(), DataEvent.SENT, 50);
+		assertEquals("", c.getRecordedData(true));
+		assertEquals(3, c.throwInEventCount.get());
+		
+		c=null;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private ConcurrentLinkedQueue<DatagramRecord> getQueue(DatagramSession session) throws Exception {
+		Field f = DatagramSession.class.getDeclaredField("outQueue");
+		
+		f.setAccessible(true);
+		return (ConcurrentLinkedQueue<DatagramRecord>) f.get(session);
+	}
+	
+	@Test
 	public void testWrite() throws Exception {
 		DatagramSession session = new DatagramSession(handler);
 
@@ -126,7 +180,7 @@ public class DatagramSessionTest {
 			assertEquals(SessionState.OPENING, e.getIllegalState());
 		}
 		
-		assertTrue(session.outQueue.isEmpty());
+		assertNull(getQueue(session));
 		
 		s = new DatagramHandler(PORT);
 		c = new DatagramHandler(PORT);
@@ -162,7 +216,7 @@ public class DatagramSessionTest {
 			assertEquals(SessionState.CLOSING, e.getIllegalState());
 		}
 		
-		assertTrue(c.getSession().outQueue.isEmpty());
+		assertTrue(getQueue(c.getSession()).isEmpty());
 		waitFor(2000);
 		assertEquals("", c.getRecordedData(true));
 	}
@@ -1529,4 +1583,82 @@ public class DatagramSessionTest {
 		
 	}
 
+	@Test
+	public void testDataEventDetails() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.recordDataEventDetails = true;
+		s.startServer();
+		c = new DatagramHandler(PORT); 
+		c.recordDataEventDetails = true;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		Packet p = new Packet(PacketType.NOP);
+		int pLen = p.toBytes().length;
+		c.write(p);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DS|"+pLen+"|", c.getRecordedData(true));
+		assertEquals("DR|"+pLen+";"+c.getSession().getLocalAddress()+"|$NOP()|", s.getRecordedData(true));
+
+		p = new Packet(PacketType.NOP,"1");
+		pLen = p.toBytes().length;
+		s.getSession().send(c.getSession().getLocalAddress(),p.toBytes());
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|"+pLen+"|NOP(1)|", c.getRecordedData(true));
+		assertEquals("DS|"+pLen+";"+c.getSession().getLocalAddress()+"|", s.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+	}
+	
+	@Test
+	public void testWriteWhenChannelIsNotConnected() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		IFuture<Void> f = s.getSession().write(new byte[1]);
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		assertTrue(f.isDone());
+		assertTrue(f.cause().getClass() == NotYetConnectedException.class);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
+		s = null;
+	}	
+	
+	@Test
+	public void testSendWhenChannelIsConnected() throws Exception {
+		s = new DatagramHandler(PORT);
+		DatagramHandler s2 = new DatagramHandler(PORT+1);
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		s2.startServer();
+		c.startClient();
+		
+		s.waitForSessionReady(TIMEOUT);
+		s2.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		
+		s.getRecordedData(true);
+		s2.getRecordedData(true);
+		c.write(new Packet(PacketType.NOP));
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("", s2.getRecordedData(true));
+		assertEquals("DR|$NOP()|", s.getRecordedData(true));
+		
+		c.getSession().send(s2.getSession().getLocalAddress(), new Packet(PacketType.NOP, "1").toBytes());
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("", s2.getRecordedData(true));
+		assertEquals("DR|$NOP(1)|", s.getRecordedData(true));
+		s2.stop(TIMEOUT);
+	}
 }

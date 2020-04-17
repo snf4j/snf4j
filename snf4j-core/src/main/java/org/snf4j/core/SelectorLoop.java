@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.NotYetConnectedException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
@@ -599,6 +600,16 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 	}
 	
+	final void fireEvent(final DatagramSession session, DataEvent event, long length, SocketAddress remoteAddress) {
+		if (traceEnabled) {
+			logger.trace("Firing event {} for {}", event.type(), session);
+		}
+		session.event(remoteAddress, event, length);
+		if (traceEnabled) {
+			logger.trace("Ending event {} for {}", event.type(), session);
+		}
+	}
+	
 	private final void handleReading(final DatagramSession session, final SelectionKey key) {
 		int bytes;
 		
@@ -643,13 +654,20 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 			session.calculateThroughput(currentTime, false);
 			session.incReadBytes(bytes, currentTime);
-			fireEvent(session, DataEvent.RECEIVED, bytes);
+			if (remoteAddress != null) {
+				fireEvent(session, DataEvent.RECEIVED, bytes, remoteAddress);
+			}
+			else {
+				fireEvent(session, DataEvent.RECEIVED, bytes);
+				
+			}
 			session.consumeInBuffer(remoteAddress);
 		}
 	}
 	
 	private final void handleWriting(final DatagramSession session, final SelectionKey key) {
 		long totalBytes = 0;
+		long leftBytes = 0;
 		int bytes;
 		Exception exception = null;
 		
@@ -673,8 +691,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 					bytes = channel.send(record.buffer, record.address);
 				}
 				else {
-					logger.error("No remote address for not connected channel in {}", session);
-					bytes = 0;
+					throw new NotYetConnectedException();
 				}
 				
 				if (bytes == length) {
@@ -686,6 +703,12 @@ public class SelectorLoop extends InternalSelectorLoop {
 					if (record.release) {
 						session.release(record.buffer);
 					}
+					if (record.address != null) {
+						fireEvent(session, DataEvent.SENT, bytes, record.address);
+					}
+					else {
+						leftBytes += bytes;
+					}
 				}
 				else {
 					break;
@@ -695,7 +718,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 			synchronized (session.getWriteLock()) {
 				if (totalBytes > 0) {
 					long currentTime = System.currentTimeMillis();
-
+					
 					session.calculateThroughput(currentTime, false);
 					session.incWrittenBytes(totalBytes, currentTime);
 					session.consumedBytes(totalBytes);
@@ -710,8 +733,8 @@ public class SelectorLoop extends InternalSelectorLoop {
 			exception = e;
 		}
 
-		if (totalBytes > 0) {
-			fireEvent(session, DataEvent.SENT, totalBytes);
+		if (leftBytes > 0) {
+			fireEvent(session, DataEvent.SENT, leftBytes);
 		}
 		
 		if (exception != null) {

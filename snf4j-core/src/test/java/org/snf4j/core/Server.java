@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -126,6 +126,8 @@ public class Server {
 	AtomicBoolean dataSentLock = new AtomicBoolean(false);
 
 	StringBuilder recorder = new StringBuilder();
+	
+	boolean recordDataEventDetails;
 	
 	static Map<EventType, String> eventMapping = new HashMap<EventType, String>();
 
@@ -751,6 +753,9 @@ public class Server {
 		@Override
 		public void event(DataEvent event, long length) {
 			event(event.type());
+			if (recordDataEventDetails) {
+				record(""+length);
+			}
 		}
 
 		@Override

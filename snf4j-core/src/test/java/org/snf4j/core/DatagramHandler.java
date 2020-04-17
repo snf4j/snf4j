@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -41,9 +42,11 @@ import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.factory.IDatagramHandlerFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractDatagramHandler;
 import org.snf4j.core.handler.DataEvent;
+import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
@@ -58,6 +61,7 @@ public class DatagramHandler {
 	long throughputCalcInterval = 1000;
 	boolean ignorePossiblyIncomplete = true;
 	volatile EndingAction endingAction = EndingAction.DEFAULT;
+	volatile boolean createNullHandler;
 	boolean directAllocator;
 	TestAllocator allocator;
 	boolean canOwnPasseData;
@@ -68,6 +72,14 @@ public class DatagramHandler {
 	volatile boolean incidentClose;
 	volatile boolean incidentQuickClose;
 	volatile boolean incidentDirtyClose;
+	volatile boolean exceptionClose;
+
+	public volatile boolean throwInEvent;
+	public final AtomicInteger throwInEventCount = new AtomicInteger();
+	public volatile boolean throwInRead;
+	public final AtomicInteger throwInReadCount = new AtomicInteger();
+	public volatile boolean throwInSuperRead;
+	public final AtomicInteger throwInSuperReadCount = new AtomicInteger();
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
@@ -78,9 +90,14 @@ public class DatagramHandler {
 
 	StringBuilder recorder = new StringBuilder();
 	
+	boolean recordDataEventDetails;
+	
 	DatagramSession initSession;
 
 	static Map<EventType, String> eventMapping = new HashMap<EventType, String>();
+
+	IDatagramHandlerFactory factory;
+	boolean useDatagramServerHandler;
 	
 	static {
 		eventMapping.put(EventType.SESSION_CREATED, "SCR");
@@ -163,6 +180,27 @@ public class DatagramHandler {
 			loop.start();
 		}
 		
+		IDatagramHandler handler;
+		if (useDatagramServerHandler) {
+			if (factory != null) {
+				handler = new ServerHandler(factory);
+			}
+			else {
+				handler = new ServerHandler(new IDatagramHandlerFactory() {
+					
+					@Override
+					public IDatagramHandler create(
+							SocketAddress remoteAddress) {
+						return createNullHandler ? null : new Handler();
+					}
+				},
+				new Handler().getConfig());
+			}
+		}
+		else {
+			handler = new Handler();
+		}
+		
 		DatagramChannel dc = DatagramChannel.open();
 		dc.configureBlocking(false);
 		if (connected) {
@@ -179,10 +217,10 @@ public class DatagramHandler {
 			else {
 				if (initSession == null) {
 					if (useTestSession) {
-						loop.register(dc, new TestDatagramSession(new Handler()));
+						session = (DatagramSession) loop.register(dc, new TestDatagramSession(handler)).getSession();
 					}
 					else {
-						loop.register(dc, new Handler());
+						session = (DatagramSession) loop.register(dc, new DatagramSession(handler)).getSession();
 					}
 				}
 				else {
@@ -201,8 +239,8 @@ public class DatagramHandler {
 				loop.register(dc, session);
 			}
 			else {
-				loop.register(dc, useTestSession ? new TestDatagramSession(new Handler()) 
-						: new DatagramSession(new Handler()));
+				session = (DatagramSession) loop.register(dc, useTestSession ? new TestDatagramSession(handler) 
+						: new DatagramSession(handler)).getSession();
 			}
 		}
 
@@ -263,6 +301,39 @@ public class DatagramHandler {
 			}
 			return new DefaultAllocator(directAllocator);
 		}
+	}
+	
+	class ServerHandler extends DatagramServerHandler {
+		public ServerHandler(IDatagramHandlerFactory handlerFactory) {
+			super(handlerFactory);
+		}
+		
+		public ServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config) {
+			super(handlerFactory, config, null);
+		}
+		
+		public ServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config, ISessionStructureFactory factory) {
+			super(handlerFactory, config, factory);
+		}
+		
+		@Override
+		public void read(SocketAddress remoteAddress, byte[] datagram) {
+			if (throwInSuperRead) {
+				throwInSuperReadCount.incrementAndGet();
+				throw new NullPointerException();
+			}
+			super.read(remoteAddress, datagram);
+		}
+		
+		@Override
+		public void read(SocketAddress remoteAddress, Object datagram) {
+			if (throwInSuperRead) {
+				throwInSuperReadCount.addAndGet(100);
+				throw new NullPointerException();
+			}
+			super.read(remoteAddress, datagram);
+		}
+		
 	}
 	
 	class Handler extends AbstractDatagramHandler {
@@ -335,6 +406,12 @@ public class DatagramHandler {
 
 			}
 			LockUtils.notify(dataReadLock);
+			
+			if(throwInRead) {
+				throwInReadCount.incrementAndGet();
+				throw new NullPointerException();
+			}
+			
 		}
 		
 		void write(SocketAddress remoteAddress, byte[] datagram) {
@@ -410,6 +487,11 @@ public class DatagramHandler {
 				break;
 			}
 			LockUtils.notify(dataReadLock);
+			
+			if(throwInRead) {
+				throwInReadCount.incrementAndGet();
+				throw new NullPointerException();
+			}
 		}
 		
 		private boolean event(EventType type) {
@@ -443,6 +525,12 @@ public class DatagramHandler {
 				break;
 
 			}
+			
+			if (throwInEvent) {
+				throwInEventCount.incrementAndGet();
+				throw new NullPointerException();
+			}
+			
 			return false;
 		}
 
@@ -452,13 +540,28 @@ public class DatagramHandler {
 		}
 
 		@Override
+		public void event(SocketAddress remoteAddress, DataEvent event, long length) {
+			event(event.type());
+			if (recordDataEventDetails) {
+				record("" + length + ";" + remoteAddress);
+			}
+		}
+		
+		@Override
 		public void event(DataEvent event, long length) {
 			event(event.type());
+			if (recordDataEventDetails) {
+				record("" + length);
+			}
 		}
 
 		@Override
 		public void exception(Throwable t) {
 			event(EventType.EXCEPTION_CAUGHT);
+			if (exceptionClose) {
+				record("close");
+				getSession().close();
+			}
 		}
 
 		@Override

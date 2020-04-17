@@ -285,4 +285,14 @@ public interface ISession {
 	 */
 	IFuture<Void> getEndFuture();
 	
+	/**
+	 * Gets the parent session.
+	 * <p>
+	 * Some sessions may not implement its own I/O functionalities and use their parent's 
+	 * ones instead.
+	 * 
+	 * @return the parent session or {@code null} if it does not exist.
+	 */
+	ISession getParent();
+	
 }

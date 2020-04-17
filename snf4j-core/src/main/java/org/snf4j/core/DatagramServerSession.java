@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,265 +27,228 @@ package org.snf4j.core;
 
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.IFuture;
-import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.IDatagramSession;
-import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SessionState;
 
-public class TestDummyDatagramSession implements IDatagramSession {
+class DatagramServerSession extends DatagramSession {
+
+	private final DatagramSession delegate;
 	
-	SessionFuturesController futures = new SessionFuturesController(this);
+	private final SocketAddress remoteAddress;
 	
-	@Override
-	public long getId() {
-		return 0;
+	private AtomicBoolean closing = new AtomicBoolean(false);
+	
+	DatagramServerSession(DatagramSession delegate, SocketAddress remoteAddress, IDatagramHandler handler) {
+		super(null, handler, true);
+		this.delegate = delegate;
+		this.remoteAddress = remoteAddress;
 	}
 
-	@Override
-	public String getName() {
-		return null;
+	void setClosing() {
+		closing.set(true);
 	}
-
-	@Override
-	public IDatagramHandler getHandler() {
-		return null;
-	}
-
+	
 	@Override
 	public IDatagramSession getParent() {
-		return null;
-	}
-	
-	@Override
-	public ISessionConfig getConfig() {
-		return null;
-	}
-	
-	@Override
-	public ICodecPipeline getCodecPipeline() {
-		return null;
+		return delegate;
 	}
 	
 	@Override
 	public SessionState getState() {
-		return null;
+		if (closing.get()) {
+			return SessionState.CLOSING;
+		}
+		return super.getState();
 	}
 
+	private void close0() {
+		if (!closing.get()) {
+			if (delegate.loop.inLoop()) {
+				new ClosingTask().run();
+			} 
+			else {
+				delegate.loop.executenf(new ClosingTask());
+			}
+		}
+	}
+	
 	@Override
-	public boolean isOpen() {
-		return false;
+	void preCreated() {
 	}
-
+	
 	@Override
-	public IFuture<Void> write(byte[] data) {
-		return futures.getCancelledFuture();
+	void postEnding() {
 	}
-
+	
 	@Override
 	public void close() {
+		close0();
 	}
 
 	@Override
 	public void quickClose() {
+		close0();
 	}
 
 	@Override
 	public void dirtyClose() {
-	}
-
-	@Override
-	public ConcurrentMap<Object, Object> getAttributes() {
-		return null;
+		close0();
 	}
 
 	@Override
 	public SocketAddress getLocalAddress() {
-		return null;
+		return delegate.getLocalAddress();
 	}
 
 	@Override
 	public SocketAddress getRemoteAddress() {
-		return null;
+		return remoteAddress == null ? delegate.getRemoteAddress() : remoteAddress;
 	}
 
 	@Override
 	public void suspendRead() {
+		delegate.suspendRead();
 	}
 
 	@Override
 	public void suspendWrite() {
+		delegate.suspendWrite();
 	}
 
 	@Override
 	public void resumeRead() {
+		delegate.resumeRead();
 	}
 
 	@Override
 	public void resumeWrite() {
+		delegate.resumeWrite();
 	}
 
 	@Override
 	public boolean isReadSuspended() {
-		return false;
+		return delegate.isReadSuspended();
 	}
 
 	@Override
 	public boolean isWriteSuspended() {
-		return false;
+		return delegate.isWriteSuspended();
 	}
 
 	@Override
-	public long getReadBytes() {
-		return 0;
-	}
-
-	@Override
-	public long getWrittenBytes() {
-		return 0;
-	}
-
-	@Override
-	public double getReadBytesThroughput() {
-		return 0;
-	}
-
-	@Override
-	public double getWrittenBytesThroughput() {
-		return 0;
-	}
-
-	@Override
-	public long getCreationTime() {
-		return 0;
-	}
-
-	@Override
-	public long getLastIoTime() {
-		return 0;
-	}
-
-	@Override
-	public long getLastReadTime() {
-		return 0;
-	}
-
-	@Override
-	public long getLastWriteTime() {
-		return 0;
-	}
-
-	@Override
-	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram) {
-		return futures.getCancelledFuture();
-	}
-
-	@Override
-	public IFuture<Void> getCreateFuture() {
-		return futures.getCancelledFuture();
-	}
-
-	@Override
-	public IFuture<Void> getOpenFuture() {
-		return futures.getCancelledFuture();
-	}
-
-	@Override
-	public IFuture<Void> getReadyFuture() {
-		return futures.getCancelledFuture();
-	}
-
-	@Override
-	public IFuture<Void> getCloseFuture() {
-		return futures.getCancelledFuture();
-	}
-
-	@Override
-	public IFuture<Void> getEndFuture() {
-		return futures.getCancelledFuture();
+	public IFuture<Void> write(byte[] datagram) {
+		return delegate.send(remoteAddress, datagram);
 	}
 
 	@Override
 	public void writenf(byte[] datagram) {
+		delegate.sendnf(remoteAddress, datagram);
 	}
 
 	@Override
 	public IFuture<Void> write(byte[] datagram, int offset, int length) {
-		return futures.getCancelledFuture();
+		return delegate.send(remoteAddress, datagram, offset, length);
 	}
 
 	@Override
 	public void writenf(byte[] datagram, int offset, int length) {
+		delegate.sendnf(remoteAddress, datagram, offset, length);		
 	}
 
 	@Override
 	public IFuture<Void> write(ByteBuffer datagram) {
-		return futures.getCancelledFuture();
+		return delegate.send(remoteAddress, datagram);
 	}
 
 	@Override
 	public void writenf(ByteBuffer datagram) {
+		delegate.sendnf(remoteAddress, datagram);
 	}
 
 	@Override
 	public IFuture<Void> write(ByteBuffer datagram, int length) {
-		return futures.getCancelledFuture();
+		return delegate.send(remoteAddress, datagram, length);
 	}
 
 	@Override
 	public void writenf(ByteBuffer datagram, int length) {
+		delegate.sendnf(remoteAddress, datagram, length);
 	}
 
 	@Override
 	public IFuture<Void> write(Object msg) {
-		return futures.getCancelledFuture();
+		return delegate.send(remoteAddress, msg);
 	}
 
 	@Override
 	public void writenf(Object msg) {
+		delegate.sendnf(remoteAddress, msg);		
 	}
-	
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram) {
+		return delegate.send(remoteAddress, datagram);
+	}
+
 	@Override
 	public void sendnf(SocketAddress remoteAddress, byte[] datagram) {
+		delegate.sendnf(remoteAddress, datagram);		
 	}
 
 	@Override
-	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram, int offset, int length) {
-		return futures.getCancelledFuture();
+	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram,
+			int offset, int length) {
+		return delegate.send(remoteAddress, datagram, offset, length);
 	}
 
 	@Override
-	public void sendnf(SocketAddress remoteAddress, byte[] datagram, int offset, int length) {
+	public void sendnf(SocketAddress remoteAddress, byte[] datagram,
+			int offset, int length) {
+		delegate.sendnf(remoteAddress, datagram, offset, length);
 	}
 
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram) {
-		return futures.getCancelledFuture();
+		return delegate.send(remoteAddress, datagram);
 	}
 
 	@Override
 	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram) {
+		delegate.sendnf(remoteAddress, datagram);	
 	}
 
 	@Override
-	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
-		return futures.getCancelledFuture();
+	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram,
+			int length) {
+		return delegate.send(remoteAddress, datagram, length);
 	}
 
 	@Override
-	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
+	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram,
+			int length) {
+		delegate.sendnf(remoteAddress, datagram, length);	
 	}
 
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, Object msg) {
-		return futures.getCancelledFuture();
+		return delegate.send(remoteAddress, msg);
 	}
 
 	@Override
 	public void sendnf(SocketAddress remoteAddress, Object msg) {
+		delegate.sendnf(remoteAddress, msg);		
+	}
+
+	private class ClosingTask implements Runnable {
+
+		@Override
+		public void run() {
+			((DatagramServerHandler)delegate.getHandler()).closeSession(remoteAddress);
+		}
+		
 	}
 }

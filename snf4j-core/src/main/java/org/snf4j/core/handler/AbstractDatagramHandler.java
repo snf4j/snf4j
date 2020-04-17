@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -81,5 +81,8 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 	@Override
 	public void read(SocketAddress remoteAddress, Object msg) {
 	}
-
+	
+	@Override
+	public void event(SocketAddress remoteAddress, DataEvent event, long length) {
+	}
 }

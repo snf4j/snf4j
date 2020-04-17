@@ -46,7 +46,9 @@ public interface IDatagramSession extends ISession {
 	@Override
 	IDatagramHandler getHandler();
 
-
+	@Override
+	IDatagramSession getParent();
+	
 	/**
 	 * Writes a <code>datagram.length</code> byte datagram from the specified
 	 * byte array to the datagram-oriented channel associated with this session. 
