@@ -770,10 +770,10 @@ public class DatagramServerHandlerTest {
 		waitFor(100);
 		assertFalse(session1 == session2);
 		assertFalse(session1.isOpen());
-		assertTrue(session2.isOpen());
-		assertTrue(getDelegate(session2).isOpen());
 		assertEquals("DR|NOP()|EXC|close|SCL|SEN|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
+		assertTrue(getDelegate(session2).isOpen());
+		assertTrue(session2.isOpen());
 		
 	}	
 	
