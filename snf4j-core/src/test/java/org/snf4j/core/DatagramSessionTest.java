@@ -1600,6 +1600,7 @@ public class DatagramSessionTest {
 		int pLen = p.toBytes().length;
 		c.write(p);
 		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
 		assertEquals("DS|"+pLen+"|", c.getRecordedData(true));
 		assertEquals("DR|"+pLen+";"+c.getSession().getLocalAddress()+"|$NOP()|", s.getRecordedData(true));
 
@@ -1607,6 +1608,7 @@ public class DatagramSessionTest {
 		pLen = p.toBytes().length;
 		s.getSession().send(c.getSession().getLocalAddress(),p.toBytes());
 		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
 		assertEquals("DR|"+pLen+"|NOP(1)|", c.getRecordedData(true));
 		assertEquals("DS|"+pLen+";"+c.getSession().getLocalAddress()+"|", s.getRecordedData(true));
 		

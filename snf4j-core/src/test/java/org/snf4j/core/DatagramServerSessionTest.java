@@ -159,10 +159,12 @@ public class DatagramServerSessionTest {
 		
 		c.getSession().write(new Packet(PacketType.NOP).toBytes());
 		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		c2.getSession().write(new Packet(PacketType.NOP).toBytes());
 		s.waitForDataRead(TIMEOUT);
+		c2.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c2.getRecordedData(true));
 		DatagramSession session = s.getSession();

@@ -422,6 +422,7 @@ public class DatagramServerHandlerTest {
 
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
 		assertEquals("SCR|SOP|RDY|DS|", c.getRecordedData(true));
 		DatagramSession s1 = s.getSession();
@@ -433,6 +434,7 @@ public class DatagramServerHandlerTest {
 		c2.waitForSessionReady(TIMEOUT);
 		c2.getSession().write(nop("1"));
 		s.waitForDataRead(TIMEOUT);
+		c2.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|NOP(1)|", s.getRecordedData(true));
 		assertEquals("SCR|SOP|RDY|DS|", c2.getRecordedData(true));
 		DatagramSession s2 = s.getSession();
@@ -460,6 +462,7 @@ public class DatagramServerHandlerTest {
 		
 		s2.send(c.getSession().getLocalAddress(), nop("4"));
 		c.waitForDataRead(TIMEOUT);
+		waitFor(100);
 		assertEquals("DS|", s.getRecordedData(true));
 		assertEquals("DR|NOP(4)|", c.getRecordedData(true));
 		assertSessionBytes(s1, 7, 3, 15, 9);

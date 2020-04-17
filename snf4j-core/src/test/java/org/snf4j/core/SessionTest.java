@@ -2112,6 +2112,7 @@ public class SessionTest {
 		
 		c.getSession().write(p.toBytes());
 		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
 		
 		assertEquals("DS|"+pLen+"|", c.getRecordedData(true));
 		assertEquals("DR|"+pLen+"|NOP()|", s.getRecordedData(true));
