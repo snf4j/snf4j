@@ -768,6 +768,7 @@ public class DatagramServerHandlerTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(100);
+		assertFalse(session1 == session2);
 		assertFalse(session1.isOpen());
 		assertTrue(session2.isOpen());
 		assertTrue(getDelegate(session2).isOpen());

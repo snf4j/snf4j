@@ -55,7 +55,7 @@ import org.snf4j.core.session.ISessionConfig;
 public class DatagramHandler {
 	SelectorLoop loop;
 	int port;
-	DatagramSession session;
+	volatile DatagramSession session;
 	ThreadFactory threadFactory;
 	boolean registerConnectedSession;
 	long throughputCalcInterval = 1000;

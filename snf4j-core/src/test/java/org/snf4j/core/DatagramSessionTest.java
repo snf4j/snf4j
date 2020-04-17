@@ -155,7 +155,8 @@ public class DatagramSessionTest {
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
-	
+		waitFor(100);
+		
 		c.getSession().event(s.getSession().getLocalAddress(), DataEvent.SENT, 50);
 		assertEquals("", c.getRecordedData(true));
 		assertEquals(3, c.throwInEventCount.get());
