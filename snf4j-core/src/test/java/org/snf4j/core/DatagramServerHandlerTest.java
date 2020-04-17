@@ -761,6 +761,7 @@ public class DatagramServerHandlerTest {
 		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c2.getRecordedData(true));
 		session2 = s.getSession();
+		waitFor(100);
 		
 		s.exceptionClose = true;
 		s.throwInRead = true;
