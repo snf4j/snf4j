@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,35 +23,21 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.longevity;
+package org.snf4j.example.heartbeat;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
+import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.ICodecExecutor;
+import org.snf4j.core.session.DefaultSessionConfig;
 
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.factory.ISessionStructureFactory;
-import org.snf4j.core.timer.ITimer;
-
-public class SessionStructureFactory implements ISessionStructureFactory {
-
+public class SessionConfig extends DefaultSessionConfig {
+	
 	@Override
-	public IByteBufferAllocator getAllocator() {
-		return new DefaultAllocator(Utils.randomBoolean(Config.DIRECT_ALLOCATOR_RATIO));
+	public ICodecExecutor createCodecExecutor() {
+		DefaultCodecExecutor executor = new DefaultCodecExecutor();
+		
+		executor.getPipeline().add("DECODER", new PacketDecoder());
+		executor.getPipeline().add("ENCODER", new PacketEncoder());
+		return executor;
 	}
 
-	@Override
-	public ConcurrentMap<Object, Object> getAttributes() {
-		return null;
-	}
-
-	@Override
-	public Executor getExecutor() {
-		return null;
-	}
-
-	@Override
-	public ITimer getTimer() {
-		return null;
-	}
 }

@@ -47,6 +47,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.After;
 import org.junit.Before;
@@ -56,8 +57,12 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
+import org.snf4j.core.session.UnsupportedSessionTimer;
+import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.ITimerTask;
 
 public class SessionTest {
 	long TIMEOUT = 2000;
@@ -2125,4 +2130,156 @@ public class SessionTest {
 
 	}
 
+	final AtomicBoolean expired = new AtomicBoolean(false);
+
+	static class Task implements Runnable {
+		String name;
+		
+		Task(String name) {
+			this.name = name;
+		}
+
+		@Override
+		public void run() {
+		}
+		
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+	
+	@Test
+	public void testTimer() throws Exception {
+		DefaultTimer timer = new DefaultTimer();
+		s = new Server(PORT);
+		s.timer = timer;
+		c = new Client(PORT);
+	
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		ISessionTimer stimer = c.getSession().getTimer();
+		assertTrue(stimer == UnsupportedSessionTimer.INSTANCE);
+		assertFalse(stimer.isSupported());
+		try {
+			stimer.scheduleEvent("1", 10);
+			fail();
+		}
+		catch (UnsupportedOperationException e) {}
+		try {
+			stimer.scheduleTask((Runnable)null, 10, false);
+			fail();
+		}
+		catch (UnsupportedOperationException e) {}
+		try {
+			stimer.scheduleEvent("1", 10, 10);
+			fail();
+		}
+		catch (UnsupportedOperationException e) {}
+		try {
+			stimer.scheduleTask((Runnable)null, 10, 10, false);
+			fail();
+		}
+		catch (UnsupportedOperationException e) {}
+		
+		
+		stimer = s.getSession().getTimer();
+		assertTrue(stimer instanceof InternalSessionTimer);
+		assertTrue(stimer.isSupported());
+		
+		stimer.scheduleEvent("t1", 100);
+		waitFor(80);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(25);
+		assertEquals("TIM;t1|", s.getRecordedData(true));
+		stimer.scheduleEvent("t2", 10).cancelTask();
+		waitFor(20);
+		assertEquals("", s.getRecordedData(true));
+		ITimerTask task = stimer.scheduleEvent("t3", 10, 10);
+		waitFor(8);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(4);
+		assertEquals("TIM;t3|", s.getRecordedData(true));
+		waitFor(20);
+		assertEquals("TIM;t3|TIM;t3|", s.getRecordedData(true));
+		task.cancelTask();
+		waitFor(100);
+		assertEquals("", s.getRecordedData(true));
+
+		stimer.scheduleTask(new Task("task1"), 100, true);
+		waitFor(80);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(25);
+		assertEquals("TIM;task1|", s.getRecordedData(true));
+		stimer.scheduleTask(new Task("task2"), 10, true).cancelTask();
+		waitFor(20);
+		assertEquals("", s.getRecordedData(true));
+		task = stimer.scheduleTask(new Task("task3"), 10, 10, true);
+		waitFor(8);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(4);
+		assertEquals("TIM;task3|", s.getRecordedData(true));
+		waitFor(20);
+		assertEquals("TIM;task3|TIM;task3|", s.getRecordedData(true));
+		task.cancelTask();
+		waitFor(100);
+		assertEquals("", s.getRecordedData(true));
+		
+		Runnable expiredTask = new Runnable() {
+
+			@Override
+			public void run() {
+				expired.set(true);		
+			}
+		};
+		
+		expired.set(false);
+		stimer.scheduleTask(expiredTask, 100, false);
+		waitFor(80);
+		assertFalse(expired.get());
+		waitFor(25);
+		assertTrue(expired.get());
+		assertEquals("", s.getRecordedData(true));
+		expired.set(false);
+		stimer.scheduleTask(expiredTask, 10, false).cancelTask();
+		waitFor(20);
+		assertFalse(expired.get());
+		task = stimer.scheduleTask(expiredTask, 10, 10, false);
+		waitFor(8);
+		assertFalse(expired.get());
+		waitFor(4);
+		assertTrue(expired.get());
+		expired.set(false);
+		waitFor(10);
+		assertTrue(expired.get());
+		task.cancelTask();
+		expired.set(false);
+		waitFor(100);
+		assertFalse(expired.get());
+		
+		s.throwInTimer = true;
+		stimer.scheduleEvent("e1", 10);
+		waitFor(20);
+		assertEquals(1, s.throwInTimerCount.get());
+		assertEquals("TIM;e1|", s.getRecordedData(true));
+		stimer.scheduleTask(new Task("t1"), 10, true);
+		waitFor(20);
+		assertEquals(2, s.throwInTimerCount.get());
+		assertEquals("TIM;t1|", s.getRecordedData(true));
+		
+		c.getSession().write(new Packet(PacketType.NOP, "123").toBytes());
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(123)|", s.getRecordedData(true));
+		
+		timer.cancel();
+		
+		stimer = new InternalSessionTimer(c.getSession(), null);
+		assertFalse(stimer.isSupported());
+	}
+	
 }

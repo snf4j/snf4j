@@ -51,6 +51,7 @@ import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.timer.ITimer;
 
 public class DatagramHandler {
 	SelectorLoop loop;
@@ -64,6 +65,7 @@ public class DatagramHandler {
 	volatile boolean createNullHandler;
 	boolean directAllocator;
 	TestAllocator allocator;
+	ITimer timer;
 	boolean canOwnPasseData;
 	volatile boolean useTestSession;
 	DefaultCodecExecutor codecPipeline;
@@ -91,6 +93,7 @@ public class DatagramHandler {
 	StringBuilder recorder = new StringBuilder();
 	
 	boolean recordDataEventDetails;
+	boolean recordSessionNameInTimer;
 	
 	DatagramSession initSession;
 
@@ -300,6 +303,11 @@ public class DatagramHandler {
 				return allocator;
 			}
 			return new DefaultAllocator(directAllocator);
+		}
+		
+		@Override
+		public ITimer getTimer() {
+			return timer;
 		}
 	}
 	
@@ -589,6 +597,16 @@ public class DatagramHandler {
 			}
 			
 			return DatagramHandler.this.incident;
+		}
+		
+		@Override
+		public void timer(Object event) {
+			if (recordSessionNameInTimer) {
+				record("TIM;" + event + ";" + getSession().getName());
+			}
+			else {
+				record("TIM;" + event);
+			}
 		}
 		
 	}

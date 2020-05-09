@@ -38,6 +38,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.timer.DefaultTimer;
 
 public class DatagramServerSessionTest {
 
@@ -456,5 +457,40 @@ public class DatagramServerSessionTest {
 		assertNull(session.getCodecPipeline());
 		session.preCreated();
 		session.postEnding();
+	}
+	
+	@Test
+	public void testTimer() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.timer = new DefaultTimer();
+		c = new DatagramHandler(PORT);
+		c2 = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.recordSessionNameInTimer = true;
+		s.startServer();
+		c.startClient();
+		c2.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c2.waitForSessionReady(TIMEOUT);
+		
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		DatagramSession session1 = s.getSession();
+		
+		c2.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		DatagramSession session2 = s.getSession();
+		s.getRecordedData(true);
+		
+		session1.getTimer().scheduleEvent("t1", 10);
+		waitFor(8);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(4);
+		assertEquals("TIM;t1;"+session1.getName()+"|", s.getRecordedData(true));
+		session2.getTimer().scheduleEvent("t2", 10);
+		waitFor(8);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(4);
+		assertEquals("TIM;t2;"+session2.getName()+"|", s.getRecordedData(true));
 	}
 }

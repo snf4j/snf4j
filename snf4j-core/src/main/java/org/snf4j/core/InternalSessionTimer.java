@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,35 +23,42 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.longevity;
+package org.snf4j.core;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
-
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.timer.ITimer;
+import org.snf4j.core.timer.ITimerTask;
 
-public class SessionStructureFactory implements ISessionStructureFactory {
-
-	@Override
-	public IByteBufferAllocator getAllocator() {
-		return new DefaultAllocator(Utils.randomBoolean(Config.DIRECT_ALLOCATOR_RATIO));
+class InternalSessionTimer extends AbstractSessionTimer {
+	
+	private final ITimer timer;
+	
+	InternalSessionTimer(InternalSession session, ITimer timer) {
+		super(session);
+		this.timer = timer;
 	}
-
+	
 	@Override
-	public ConcurrentMap<Object, Object> getAttributes() {
-		return null;
+	public boolean isSupported() {
+		return timer != null;
 	}
-
+	
 	@Override
-	public Executor getExecutor() {
-		return null;
+	public ITimerTask scheduleTask(Runnable task, long delay, boolean inHandler) {
+		return timer.schedule(inHandler ? wrapTask(task) : task, delay);
 	}
-
+	
 	@Override
-	public ITimer getTimer() {
-		return null;
+	public ITimerTask scheduleEvent(Object event, long delay) {
+		return timer.schedule(wrapEvent(event), delay);
+	}
+	
+	@Override
+	public ITimerTask scheduleTask(Runnable task, long delay, long period, boolean inHandler) {
+		return timer.schedule(inHandler ? wrapTask(task) : task, delay, period);
+	}
+	
+	@Override
+	public ITimerTask scheduleEvent(Object event, long delay, long period) {
+		return timer.schedule(wrapEvent(event), delay, period);
 	}
 }

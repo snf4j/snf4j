@@ -52,6 +52,7 @@ import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.SessionState;
+import org.snf4j.core.timer.ITimer;
 
 public class DatagramServerHandlerTest {
 	
@@ -150,6 +151,12 @@ public class DatagramServerHandlerTest {
 			public Executor getExecutor() {
 				return null;
 			}
+			
+			@Override
+			public ITimer getTimer() {
+				return null;
+			}
+			
 		};
 		DefaultSessionConfig c = new DefaultSessionConfig();
 		
@@ -300,6 +307,7 @@ public class DatagramServerHandlerTest {
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
+		waitFor(10);
 		DatagramServerSession session = (DatagramServerSession) s.getSession();
 		assertTrue(superSession == getDelegate(session));
 		assertEquals(3, superSession.getReadBytes());
@@ -314,6 +322,7 @@ public class DatagramServerHandlerTest {
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DR|NOP(1d)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
+		waitFor(10);
 		assertEquals(7, superSession.getReadBytes());
 		assertEquals(7, session.getReadBytes());
 		assertEquals(0, superSession.getWrittenBytes());
@@ -324,6 +333,7 @@ public class DatagramServerHandlerTest {
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DS|", s.getRecordedData(true));
 		assertEquals("DR|NOP(12e)|", c.getRecordedData(true));
+		waitFor(10);
 		assertEquals(7, superSession.getReadBytes());
 		assertEquals(7, session.getReadBytes());
 		assertEquals(6, superSession.getWrittenBytes());
@@ -334,6 +344,7 @@ public class DatagramServerHandlerTest {
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DS|", s.getRecordedData(true));
 		assertEquals("DR|NOP(1e)|", c.getRecordedData(true));
+		waitFor(10);
 		assertEquals(7, superSession.getReadBytes());
 		assertEquals(7, session.getReadBytes());
 		assertEquals(11, superSession.getWrittenBytes());
@@ -376,6 +387,7 @@ public class DatagramServerHandlerTest {
 		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertFalse(session == s.getSession());
+		waitFor(10);
 		session = (DatagramServerSession) s.getSession();
 		assertEquals(3, session.getReadBytes());
 		assertEquals(6, superSession.getReadBytes());
@@ -829,6 +841,11 @@ public class DatagramServerHandlerTest {
 	
 	@Test
 	public void testIncidentReturnedValue() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+
 		DatagramServerHandler h = new DatagramServerHandler(new IDatagramHandlerFactory() {
 
 			@Override
@@ -846,9 +863,9 @@ public class DatagramServerHandlerTest {
 		SocketAddress a2 = new InetSocketAddress(1002);
 		SocketAddress a3 = new InetSocketAddress(1003);
 		
-		DatagramServerSession s1 = new DatagramServerSession(null, a1, new Handler(false));
-		DatagramServerSession s2 = new DatagramServerSession(null, a2, new Handler(false));
-		DatagramServerSession s3 = new DatagramServerSession(null, a3, new Handler(true));
+		DatagramServerSession s1 = new DatagramServerSession(s.getSession(), a1, new Handler(false));
+		DatagramServerSession s2 = new DatagramServerSession(s.getSession(), a2, new Handler(false));
+		DatagramServerSession s3 = new DatagramServerSession(s.getSession(), a3, new Handler(true));
 		
 		assertFalse(h.incident(null, null));
 

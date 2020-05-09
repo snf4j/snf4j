@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,35 +23,38 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.longevity;
+package org.snf4j.core.timer;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
+import org.snf4j.core.session.ISessionTimer;
 
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.factory.ISessionStructureFactory;
-import org.snf4j.core.timer.ITimer;
-
-public class SessionStructureFactory implements ISessionStructureFactory {
-
-	@Override
-	public IByteBufferAllocator getAllocator() {
-		return new DefaultAllocator(Utils.randomBoolean(Config.DIRECT_ALLOCATOR_RATIO));
-	}
-
-	@Override
-	public ConcurrentMap<Object, Object> getAttributes() {
-		return null;
-	}
-
-	@Override
-	public Executor getExecutor() {
-		return null;
-	}
-
-	@Override
-	public ITimer getTimer() {
-		return null;
-	}
+/**
+ * A timer that can be used by the default implementation of
+ * {@link ISessionTimer} to provide the scheduling functionality.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public interface ITimer {
+	
+	/**
+	 * Schedules the specified task for execution after the specified delay.
+	 * 
+	 * @param task
+	 *            the task to be scheduled for execution
+	 * @param delay
+	 *            the delay in milliseconds
+	 */
+	ITimerTask schedule(Runnable task, long delay);
+	
+	/**
+	 * Schedules the specified task for repeated execution with the specified
+	 * initial delay.
+	 * 
+	 * @param task
+	 *            the task to be scheduled for execution
+	 * @param delay
+	 *            the delay in milliseconds
+	 * @param period
+	 *            time in milliseconds between successive task executions
+	 */
+	ITimerTask schedule(Runnable task, long delay, long period);
 }

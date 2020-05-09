@@ -3,7 +3,8 @@ Bundle-ManifestVersion: 2
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: org.snf4j.example.discarding;version=${parsedVersion.osgiVersion},
   org.snf4j.example.engine;version=${parsedVersion.osgiVersion},
-  org.snf4j.example.chat;version=${parsedVersion.osgiVersion}
+  org.snf4j.example.chat;version=${parsedVersion.osgiVersion},
+  org.snf4j.example.heartbeat;version=${parsedVersion.osgiVersion}
 Import-Package: org.snf4j.core;version=${parsedVersion.osgiVersion},
   org.snf4j.core.allocator;version=${parsedVersion.osgiVersion},
   org.snf4j.core.codec;version=${parsedVersion.osgiVersion},
@@ -13,5 +14,6 @@ Import-Package: org.snf4j.core;version=${parsedVersion.osgiVersion},
   org.snf4j.core.handler;version=${parsedVersion.osgiVersion},
   org.snf4j.core.logger;version=${parsedVersion.osgiVersion},
   org.snf4j.core.session;version=${parsedVersion.osgiVersion},
-  org.snf4j.core.pool;version=${parsedVersion.osgiVersion}
+  org.snf4j.core.pool;version=${parsedVersion.osgiVersion},
+  org.snf4j.core.timer;version=${parsedVersion.osgiVersion}
 Fragment-Host: snf4j.core

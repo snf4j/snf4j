@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,8 +46,11 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.AbstractSession;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
+import org.snf4j.core.session.UnsupportedSessionTimer;
+import org.snf4j.core.timer.ITimer;
 
 abstract class InternalSession extends AbstractSession implements ISession {
 	
@@ -108,6 +111,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	final CodecExecutorAdapter codec;
 
 	final boolean canOwnPassedData;
+	
+	private final ISessionTimer timer; 
 
 	protected InternalSession(String name, IHandler handler, ILogger logger, boolean noCodec) {
 		super("Session-", 
@@ -133,6 +138,14 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		else {
 			ICodecExecutor executor = config.createCodecExecutor();
 			codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
+		}
+		
+		ITimer timer = handler.getFactory().getTimer();
+		if (timer == null) {
+			this.timer = UnsupportedSessionTimer.INSTANCE;
+		}
+		else {
+			this.timer = new InternalSessionTimer(InternalSession.this, timer);
 		}
 	}
 	
@@ -488,6 +501,11 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		return lastWriteTime;
 	}
 	
+	@Override
+	public ISessionTimer getTimer() {
+		return timer;
+	}
+	
 	final boolean wasException() {
 		return (eventBits & EventType.EXCEPTION_CAUGHT.bitMask()) != 0;
 	}
@@ -514,6 +532,24 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			catch (Exception e) {
 				elogger.error(logger, "Failed event {} for {}: {}", event, this, e);
 			}
+		}
+	}
+	
+	void timer(Object event) {
+		try {
+			handler.timer(event);
+		}
+		catch (Exception e) {
+			elogger.error(logger, "Failed timer event for {}: {}", this, e);
+		}
+	}
+	
+	void timer(Runnable task) {
+		try {
+			handler.timer(task);
+		}
+		catch (Exception e) {
+			elogger.error(logger, "Failed timer task for {}: {}", this, e);
 		}
 	}
 	

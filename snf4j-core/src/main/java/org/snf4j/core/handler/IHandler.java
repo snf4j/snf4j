@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -127,6 +127,25 @@ public interface IHandler {
 	 *         underneath.
 	 */
 	boolean incident(SessionIncident incident, Throwable t);
+	
+	/**
+	 * Called to notify about an expiration of the timer identified by the
+	 * specified event object.
+	 * 
+	 * @param event
+	 *            the event object that identifies the timer
+	 */
+	void timer(Object event);
+	
+	/**
+	 * Called to notify about an expiration of the timer associated with the
+	 * specified task. The passed task object has not been executed yet and it
+	 * is up to the handler's implementation to execute it or not.
+	 * 
+	 * @param task
+	 *            the task to execute
+	 */
+	void timer(Runnable task);
 	
 	/**
 	 * Returns the factory object that will be used to configure the internal

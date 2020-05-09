@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,35 +23,29 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.longevity;
+package org.snf4j.example.heartbeat;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
+import java.util.List;
 
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.factory.ISessionStructureFactory;
-import org.snf4j.core.timer.ITimer;
+import org.snf4j.core.codec.IEncoder;
+import org.snf4j.core.session.ISession;
 
-public class SessionStructureFactory implements ISessionStructureFactory {
+public class PacketEncoder implements IEncoder<Packet, byte[]>{
 
 	@Override
-	public IByteBufferAllocator getAllocator() {
-		return new DefaultAllocator(Utils.randomBoolean(Config.DIRECT_ALLOCATOR_RATIO));
+	public Class<Packet> getInboundType() {
+		return Packet.class;
 	}
 
 	@Override
-	public ConcurrentMap<Object, Object> getAttributes() {
-		return null;
+	public Class<byte[]> getOutboundType() {
+		return byte[].class;
 	}
 
 	@Override
-	public Executor getExecutor() {
-		return null;
+	public void encode(ISession session, Packet data, List<byte[]> out)
+			throws Exception {
+		out.add(data.toBytes());
 	}
 
-	@Override
-	public ITimer getTimer() {
-		return null;
-	}
 }

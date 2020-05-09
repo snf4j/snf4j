@@ -54,6 +54,8 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
+import org.snf4j.core.session.UnsupportedSessionTimer;
+import org.snf4j.core.timer.DefaultTimer;
 
 public class DatagramSessionTest {
 	long TIMEOUT = 2000;
@@ -1665,5 +1667,28 @@ public class DatagramSessionTest {
 		assertEquals("", s2.getRecordedData(true));
 		assertEquals("DR|$NOP(1)|", s.getRecordedData(true));
 		s2.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testTimer() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.timer = new DefaultTimer();
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		c.startClient();
+		
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		
+		assertTrue(c.getSession().getTimer() == UnsupportedSessionTimer.INSTANCE);
+		s.getSession().getTimer().scheduleEvent("t1", 10);
+		waitFor(8);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(4);
+		assertEquals("TIM;t1|", s.getRecordedData(true));
+		
+		((DefaultTimer)s.timer).cancel();
 	}
 }

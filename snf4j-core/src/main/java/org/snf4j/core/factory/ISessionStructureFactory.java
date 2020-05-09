@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.timer.ITimer;
 
 /**
  * Factory used to configure the internal structure of the created session
@@ -62,4 +63,13 @@ public interface ISessionStructureFactory {
 	 *         default executor
 	 */
 	Executor getExecutor();
+	
+	/**
+	 * Returns a timer implementation that will be used by the session timer to
+	 * schedule events and tasks.
+	 * 
+	 * @return a timer, or {@code null} if the session time shouldn't be
+	 *         supported by the session.
+	 */
+	ITimer getTimer();
 }

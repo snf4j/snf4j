@@ -71,6 +71,7 @@ import org.snf4j.core.pool.ISelectorLoopPool;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
+import org.snf4j.core.timer.ITimer;
 
 public class Server {
 	public SelectorLoop loop;
@@ -85,6 +86,7 @@ public class Server {
 	public long throughputCalcInterval = 1000;
 	public boolean directAllocator;
 	public TestAllocator allocator;
+	public ITimer timer;
 	public ConcurrentMap<Object, Object> attributes;
 	public Executor executor;
 	public DefaultCodecExecutor codecPipeline;
@@ -115,8 +117,10 @@ public class Server {
 	public volatile boolean throwInIncident;
 	public volatile boolean throwInEvent;
 	public volatile boolean throwInCreateSession;
+	public volatile boolean throwInTimer;
 	public final AtomicInteger throwInEventCount = new AtomicInteger();
 	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
+	public final AtomicInteger throwInTimerCount = new AtomicInteger();
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
@@ -125,6 +129,8 @@ public class Server {
 	AtomicBoolean dataReadLock = new AtomicBoolean(false);
 	AtomicBoolean dataSentLock = new AtomicBoolean(false);
 
+	EventType closeInEvent;
+	
 	StringBuilder recorder = new StringBuilder();
 	
 	boolean recordDataEventDetails;
@@ -472,6 +478,11 @@ public class Server {
 			return executor;
 		}
 		
+		@Override
+		public ITimer getTimer() {
+			return timer;
+		}
+		
 	}
 	
 	class Handler extends AbstractStreamHandler {
@@ -741,6 +752,10 @@ public class Server {
 
 			}
 			
+			if (closeInEvent == type) {
+				getSession().close();
+			}
+			
 			if (Server.this.throwInEvent) {
 				throwInEventCount.incrementAndGet();
 				throw new NullPointerException();
@@ -811,6 +826,26 @@ public class Server {
 				throw new IllegalArgumentException();
 			}
 			return Server.this.incident;
+		}
+		
+		@Override
+		public void timer(Object event) {
+			record("TIM;" + event);
+			
+			if (throwInTimer) {
+				throwInTimerCount.incrementAndGet();
+				throw new IllegalArgumentException();
+			}
+		}
+		
+		@Override
+		public void timer(Runnable task) {
+			record("TIM;" + task);
+			
+			if (throwInTimer) {
+				throwInTimerCount.incrementAndGet();
+				throw new IllegalArgumentException();
+			}
 		}
 		
 	}
