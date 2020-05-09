@@ -275,6 +275,7 @@ public class InternalEngineHandlerTest {
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
+		waitFor(100);
 		
 		s.getRecordedData(true);
 		s.getSession().getTimer().scheduleEvent("1", 10);
