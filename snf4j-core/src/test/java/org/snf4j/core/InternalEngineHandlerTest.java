@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,6 +44,7 @@ import org.snf4j.core.engine.Status;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
+import org.snf4j.core.timer.DefaultTimer;
 
 public class InternalEngineHandlerTest {
 
@@ -262,6 +263,47 @@ public class InternalEngineHandlerTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
+	}
+	
+	@Test
+	public void testTimer() throws Exception {
+		s = new Server(PORT, true);
+		s.throwInRead = true;
+		s.timer = new DefaultTimer();
+		c = new Client(PORT, true);
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		s.getRecordedData(true);
+		s.getSession().getTimer().scheduleEvent("1", 10);
+		waitFor(5);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(6);
+		assertEquals("TIM;1|", s.getRecordedData(true));
+		
+		Runnable task = new Runnable() {
+
+			@Override
+			public void run() {
+			}
+
+			@Override
+			public String toString() {
+				return "t1";	
+			}
+		};
+		
+		s.getSession().getTimer().scheduleTask(task, 10, true);
+		waitFor(5);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(6);
+		assertEquals("TIM;t1|", s.getRecordedData(true));
+		
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
 	}
 	
 	@SuppressWarnings("unchecked")

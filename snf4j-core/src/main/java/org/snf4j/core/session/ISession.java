@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -294,5 +294,12 @@ public interface ISession {
 	 * @return the parent session or {@code null} if it does not exist.
 	 */
 	ISession getParent();
+	
+	/**
+	 * Gets the session timer associated with this session.
+	 * 
+	 * @return the session timer
+	 */
+	ISessionTimer getTimer();
 	
 }

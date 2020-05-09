@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,35 +23,24 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.longevity;
+package org.snf4j.example.heartbeat;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
+import java.util.Arrays;
 
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.factory.ISessionStructureFactory;
-import org.snf4j.core.timer.ITimer;
-
-public class SessionStructureFactory implements ISessionStructureFactory {
-
-	@Override
-	public IByteBufferAllocator getAllocator() {
-		return new DefaultAllocator(Utils.randomBoolean(Config.DIRECT_ALLOCATOR_RATIO));
+public class Packet {
+	
+	final static byte[] BYTES = "HEARTBEAT".getBytes();
+	
+	final static Packet INSTANCE = new Packet();
+	
+	private Packet() {
 	}
-
-	@Override
-	public ConcurrentMap<Object, Object> getAttributes() {
-		return null;
+	
+	public static Packet parse(byte[] bytes) {
+		return Arrays.equals(BYTES, bytes) ? INSTANCE : null;
 	}
-
-	@Override
-	public Executor getExecutor() {
-		return null;
-	}
-
-	@Override
-	public ITimer getTimer() {
-		return null;
+	
+	public byte[] toBytes() {
+		return BYTES;
 	}
 }

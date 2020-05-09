@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -684,6 +684,16 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		return handler.incident(incident, t);
 	}
 
+	@Override
+	public void timer(Object event) {
+		handler.timer(event);
+	}
+	
+	@Override
+	public void timer(Runnable task) {
+		handler.timer(task);
+	}
+	
 	@Override
 	public ISessionStructureFactory getFactory() {
 		return handler.getFactory();

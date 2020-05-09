@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,8 @@ public class AbstractHandlerTest {
 		assertNull(h.getName());
 		assertNull(h.getSession());
 		h.exception(null);
+		h.timer((Object)null);
+		h.timer((Runnable)null);
 		assertTrue(DefaultSessionStructureFactory.DEFAULT == h.getFactory());
 		assertTrue(h.getConfig() instanceof DefaultSessionConfig);
 		assertTrue(h.getConfig() == h.getConfig());

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,7 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.timer.ITimer;
 
 public class EngineServer {
 
@@ -164,6 +165,10 @@ public class EngineServer {
 			return null;
 		}
 		
+		@Override
+		public ITimer getTimer() {
+			return null;
+		}
 	}
 	
 	public class EngineHandler extends AbstractStreamHandler {

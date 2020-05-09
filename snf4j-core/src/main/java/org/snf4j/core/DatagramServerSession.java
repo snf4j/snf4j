@@ -46,6 +46,7 @@ class DatagramServerSession extends DatagramSession {
 		super(null, handler, true);
 		this.delegate = delegate;
 		this.remoteAddress = remoteAddress;
+		setLoop(delegate.loop);
 	}
 
 	void setClosing() {

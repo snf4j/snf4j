@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@ import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.core.session.SessionState;
 
 public class TestDummyDatagramSession implements IDatagramSession {
@@ -179,6 +180,11 @@ public class TestDummyDatagramSession implements IDatagramSession {
 		return 0;
 	}
 
+	@Override
+	public ISessionTimer getTimer() {
+		return null;
+	}
+	
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram) {
 		return futures.getCancelledFuture();

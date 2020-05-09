@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -746,7 +746,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			}
 		}
 		catch (Exception e) {
-			elogger.error(logger, "Unexpected exception thrown during task execution: {}", e);
+			elogger.error(logger, "Unexpected exception thrown during execution of task {}: {}", task.task, e);
 			if (future != null) {
 				future.abort(e);
 			}
@@ -1090,11 +1090,13 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		}
 		return null;
 	}
-	final void fireCreatedEvent(final InternalSession session, SelectableChannel channel) {
+	
+	final boolean fireCreatedEvent(final InternalSession session, SelectableChannel channel) {
 		session.setChannel(channel);
 		session.setLoop(this);
 		session.preCreated();
 		fireEvent(session, SessionEvent.CREATED);
+		return channel.isOpen();
 	}
 	
 	final void fireEndingEvent(final InternalSession session, boolean skipCloseWhenEmpty) {
