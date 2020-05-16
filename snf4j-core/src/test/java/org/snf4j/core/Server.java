@@ -130,6 +130,7 @@ public class Server {
 	AtomicBoolean dataSentLock = new AtomicBoolean(false);
 
 	EventType closeInEvent;
+	StoppingType closeType = StoppingType.GENTLE;
 	
 	StringBuilder recorder = new StringBuilder();
 	
@@ -753,7 +754,17 @@ public class Server {
 			}
 			
 			if (closeInEvent == type) {
-				getSession().close();
+				switch (closeType) {
+				case GENTLE:
+					getSession().close();
+					break;
+				case QUICK:
+					getSession().quickClose();
+					break;
+				case DIRTY:
+					getSession().dirtyClose();
+					break;
+				}
 			}
 			
 			if (Server.this.throwInEvent) {

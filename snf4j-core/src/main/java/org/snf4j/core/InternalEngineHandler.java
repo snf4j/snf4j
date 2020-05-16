@@ -75,8 +75,8 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	/** Counts total application bytes that needed wrapping */
 	private volatile long appCounter;
 	
-	/** Tells if the initial handshaking is finished */
-	private boolean isReady;
+	/** Tells if the initial handshaking is pending */
+	private boolean isReadyPending = true;
 	
 	/** Tells if any incoming data is ignored */ 
 	private boolean readIgnored;
@@ -176,7 +176,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 				if (inNetBuffer.position() != 0) {
 					running |= unwrap(status);
 				}				
-				if (appCounter > netCounter || !isReady || wrapNeeded) {
+				if (appCounter > netCounter || isReadyPending || wrapNeeded) {
 					running |= wrap(status);
 				}
 				break;
@@ -212,11 +212,11 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 			
 			if (status[0] == HandshakeStatus.FINISHED) {
 				handshake.set(Handshake.NONE);
-				if (!isReady) {
+				if (isReadyPending) {
 					if (debugEnabled) {
 						logger.debug("Initial handshaking is finished for {}", session);
 					}
-					isReady = true;
+					isReadyPending = false;
 					fireReady();
 				}
 				status[0] = null;
@@ -239,6 +239,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 					return true;
 				}
 			}
+			isReadyPending = false;
 		}
 		return closing == ClosingState.SENDING;
 	}

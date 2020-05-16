@@ -1,7 +1,7 @@
 /*
 T * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -320,6 +320,7 @@ public class EngineStreamSession extends StreamSession {
 	@Override
 	public void close() {
 		SelectionKey key = this.key;
+		closeCalled.set(true);
 		
 		if (key != null && key.isValid()) {
 			internal.close();
@@ -329,6 +330,7 @@ public class EngineStreamSession extends StreamSession {
 	@Override
 	public void quickClose() {
 		SelectionKey key = this.key;
+		closeCalled.set(true);
 		
 		if (key != null && key.isValid()) {
 			internal.quickClose();
@@ -342,6 +344,7 @@ public class EngineStreamSession extends StreamSession {
 	@Override
 	public void dirtyClose() {
 		SelectionKey key = this.key;
+		closeCalled.set(true);
 		
 		if (key != null && key.isValid()) {
 			internal.dirtyClose();

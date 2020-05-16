@@ -40,7 +40,7 @@ class DatagramServerSession extends DatagramSession {
 	
 	private final SocketAddress remoteAddress;
 	
-	private AtomicBoolean closing = new AtomicBoolean(false);
+	private AtomicBoolean isClosing = new AtomicBoolean(false);
 	
 	DatagramServerSession(DatagramSession delegate, SocketAddress remoteAddress, IDatagramHandler handler) {
 		super(null, handler, true);
@@ -49,8 +49,11 @@ class DatagramServerSession extends DatagramSession {
 		setLoop(delegate.loop);
 	}
 
-	void setClosing() {
-		closing.set(true);
+	void closingFinished() {
+		isClosing.set(true);
+		synchronized (writeLock) {
+			closing = ClosingState.FINISHED;
+		}
 	}
 	
 	@Override
@@ -60,20 +63,25 @@ class DatagramServerSession extends DatagramSession {
 	
 	@Override
 	public SessionState getState() {
-		if (closing.get()) {
+		if (isClosing.get()) {
 			return SessionState.CLOSING;
 		}
 		return super.getState();
 	}
 
 	private void close0() {
-		if (!closing.get()) {
-			if (delegate.loop.inLoop()) {
-				new ClosingTask().run();
-			} 
-			else {
-				delegate.loop.executenf(new ClosingTask());
+		closeCalled.set(true);
+		synchronized (writeLock) {
+			if (closing != ClosingState.NONE) {
+				return;
 			}
+			closing = ClosingState.FINISHING;
+		}
+		if (delegate.loop.inLoop()) {
+			new ClosingTask().run();
+		} 
+		else {
+			delegate.loop.executenf(new ClosingTask());
 		}
 	}
 	

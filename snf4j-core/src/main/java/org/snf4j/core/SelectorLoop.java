@@ -335,16 +335,25 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 		}
 		
-		fireCreatedEvent(session, channel);
-		session.setSelectionKey(key);
-		if (debugEnabled) {
-			logger.debug("Channel {} associated with {}", toString(channel), session);
+		if (fireCreatedEvent(session, channel)) {
+			session.setSelectionKey(key);
+			if (debugEnabled) {
+				logger.debug("Channel {} associated with {}", toString(channel), session);
+			}
+			fireEvent(session, SessionEvent.OPENED);
+			if (session.closeCalled.get()) {
+				session.closeAndFinish(channel);
+				fireEvent(session, SessionEvent.CLOSED);
+				fireEndingEvent(session, false);
+			}
 		}
-		fireEvent(session, SessionEvent.OPENED);
+		else {
+			fireEndingEvent(session, false);
+		}
 	}
 
 	@Override
-	void handleSelectedKey(SelectionKey key) {
+	SelectionKey handleSelectedKey(SelectionKey key) {
 		Object attachment = key.attachment();
 		
 		if (attachment instanceof StreamSession) {
@@ -371,8 +380,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 		}
 		else if (key.isAcceptable()) {
-			handleAccepting((IStreamSessionFactory)key.attachment(), key);
+			return handleAccepting((IStreamSessionFactory)key.attachment(), key);
 		}
+		return key;
 	}
 	
 	@Override
@@ -389,9 +399,8 @@ public class SelectorLoop extends InternalSelectorLoop {
 		return parentPool != null;
 	}
 	
-	private final void handleAccepting(final IStreamSessionFactory factory, final SelectionKey key) {
+	private final SelectionKey handleAccepting(final IStreamSessionFactory factory, final SelectionKey key) {
 		SocketChannel channel = null;
-		boolean opened = false;
 
 		if (debugEnabled) {
 			logger.debug("Accepting from channel {}", toString(key.channel()));
@@ -422,6 +431,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		
 		if (channel != null) {
 			StreamSession session = null; 
+			SelectionKey acceptedKey = null;
 			
 			try {
 				session = factory.create(channel);
@@ -432,12 +442,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 						logger.debug("Moving registration of channel {} to other selector loop {}", toString(channel), loop);
 					}
 					loop.register(channel, SelectionKey.OP_READ, session);
-					return;
+					return key;
 				}
-				else {
-					session.setSelectionKey(channel.register(getUnderlyingSelector(selector), SelectionKey.OP_READ, session));
-				}
-				opened = true;
+				acceptedKey = channel.register(getUnderlyingSelector(selector), SelectionKey.OP_READ, session);
 			}
 			catch (Exception e) {
 				if (session == null) {
@@ -448,19 +455,25 @@ public class SelectorLoop extends InternalSelectorLoop {
 					catch (Exception ex) {
 						//Ignore
 					}
-					return;
+					return key;
 				}
 				elogger.error(logger, "Unable to register channel {} with selector: {}", toString(channel), e);
 				fireCreatedEvent(session, channel);
 				fireException(session, e);
 			}
 			
-			if (opened) {
-				fireCreatedEvent(session, channel);
-				if (debugEnabled) {
-					logger.debug("Channel {} is associated with {}", toString(channel), session);
+			if (acceptedKey != null) {
+				if (fireCreatedEvent(session, channel)) {
+					if (debugEnabled) {
+						logger.debug("Channel {} is associated with {}", toString(channel), session);
+					}
+					session.setSelectionKey(acceptedKey);
+					fireEvent(session, SessionEvent.OPENED);
+					return acceptedKey;
 				}
-				fireEvent(session, SessionEvent.OPENED);
+				else {
+					fireEndingEvent(session, false);
+				}
 			}
 			else {
 				try {
@@ -474,6 +487,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				}
 			}
 		}
+		return key;
 	}
 	
 	private final void handleConnecting(final StreamSession session, final SelectionKey key) {
@@ -481,22 +495,21 @@ public class SelectorLoop extends InternalSelectorLoop {
 			logger.debug("Finishing connection of channel {}", toString(key.channel()));
 		}
 
-		fireCreatedEvent(session, key.channel());
-		boolean finished;
+		boolean finished = false;
 		
-		try {
-			if (controller.processConnection((SocketChannel)key.channel())) {
-				finished = ((SocketChannel)key.channel()).finishConnect();
+		if (fireCreatedEvent(session, key.channel())) {
+			try {
+				if (controller.processConnection((SocketChannel)key.channel())) {
+					finished = ((SocketChannel)key.channel()).finishConnect();
+				}
+				else {
+					key.channel().close();
+				}
 			}
-			else {
-				key.channel().close();
-				finished = false;
+			catch (Exception e) {
+				elogWarnOrError(logger, "Finishing connection of channel {} failed: {}", toString(key.channel()), e);
+				fireException(session, e);
 			}
-		}
-		catch (Exception e) {
-			elogWarnOrError(logger, "Finishing connection of channel {} failed: {}", toString(key.channel()), e);
-			fireException(session, e);
-			finished = false;
 		}
 		
 		if (finished) {

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,6 +55,7 @@ import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.TestLogger;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
 
@@ -1650,6 +1651,26 @@ public class StreamSelectorLoopTest {
 		
 		s.loop.handleRegisteredKey(null, channel, session);
 		assertEquals("SESSION_CREATED|SESSION_ENDING|", handler.getEvents());
+		assertEquals(ClosingState.FINISHED, session.closing);
+	
+		//register closed channel and close in create
+		channel = SocketChannel.open();
+		channel.close();
+		handler = new TestHandler("handler");
+		handler.closeInEvent = EventType.SESSION_CREATED;
+		handler.events = new StringBuilder();
+		session = new StreamSession(handler);
+		try {
+			s.loop.register(channel, session);
+			fail("exception not thrown");
+		}
+		catch (ClosedChannelException e) {
+		}
+		assertEquals("", handler.getEvents());
+		
+		s.loop.handleRegisteredKey(null, channel, session);
+		assertEquals("SESSION_CREATED|SESSION_ENDING|", handler.getEvents());
+		assertEquals(ClosingState.FINISHED, session.closing);
 		
     }
     

@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -61,6 +62,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	private final static AtomicLong nextId = new AtomicLong(0);
 		
 	volatile ClosingState closing = ClosingState.NONE;
+	
+	final AtomicBoolean closeCalled = new AtomicBoolean(false);
 	
 	private volatile long readBytes;
 	
@@ -596,6 +599,17 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	void close(SelectableChannel channel) throws IOException {
 		channel.close();
+	}
+	
+	void closeAndFinish(SelectableChannel channel) {
+		synchronized (writeLock) {
+			closing = ClosingState.FINISHED;
+			try {
+				close(channel);
+			} catch (IOException e) {
+				//Ignore
+			}
+		}
 	}
 
     static void checkBounds(int offset, int length, int size) {

@@ -89,6 +89,9 @@ public class DatagramHandler {
 	AtomicBoolean dataReceivedLock = new AtomicBoolean(false);
 	AtomicBoolean dataReadLock = new AtomicBoolean(false);
 	AtomicBoolean dataSentLock = new AtomicBoolean(false);
+	
+	EventType closeInEvent;
+	StoppingType closeType = StoppingType.GENTLE;
 
 	StringBuilder recorder = new StringBuilder();
 	
@@ -543,6 +546,20 @@ public class DatagramHandler {
 
 			}
 			
+			if (closeInEvent == type) {
+				switch (closeType) {
+				case GENTLE:
+					getSession().close();
+					break;
+				case QUICK:
+					getSession().quickClose();
+					break;
+				case DIRTY:
+					getSession().dirtyClose();
+					break;
+				}
+			}
+		
 			if (throwInEvent) {
 				throwInEventCount.incrementAndGet();
 				throw new NullPointerException();
