@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -410,6 +410,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	@Override
 	public void close() {
+		closeCalled.set(true);
 		close(false);
 	}
 	
@@ -472,6 +473,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	@Override
 	public void quickClose() {
 		SelectionKey key = this.key;
+		closeCalled.set(true);
 		
 		if (key != null && key.isValid()) {
 			try {
@@ -508,7 +510,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	@Override
 	void event(SessionEvent event) {
 		super.event(event);
-		if (event == SessionEvent.OPENED) {
+		if (event == SessionEvent.OPENED && !closeCalled.get()) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Firing event {} for {}", EventType.SESSION_READY, this);
 			}

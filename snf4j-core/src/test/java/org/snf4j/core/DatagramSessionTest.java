@@ -1691,4 +1691,102 @@ public class DatagramSessionTest {
 		
 		((DefaultTimer)s.timer).cancel();
 	}
+	
+	private void testCloseInSessionCreatedEvent(StoppingType type) throws Exception{
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.closeInEvent = EventType.SESSION_CREATED;
+		c.closeType = type;
+		c.startClient();
+		waitFor(100);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals("SCR|SEN|", c.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.closeInEvent = EventType.SESSION_CREATED;
+		s.closeType = type;
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.startClient();
+		waitFor(100);
+		assertEquals("SCR|SEN|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		c.stop(TIMEOUT);
+	}	
+	
+	@Test
+	public void testCloseInSessionCreatedEvent() throws Exception{
+		testCloseInSessionCreatedEvent(StoppingType.GENTLE);
+		testCloseInSessionCreatedEvent(StoppingType.QUICK);
+		testCloseInSessionCreatedEvent(StoppingType.DIRTY);
+	}	
+
+	private void testCloseInSessionOpenedEvent(StoppingType type) throws Exception{
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.closeInEvent = EventType.SESSION_OPENED;
+		c.closeType = type;
+		c.startClient();
+		waitFor(100);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|SCL|SEN|", c.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.closeInEvent = EventType.SESSION_OPENED;
+		s.closeType = type;
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.startClient();
+		waitFor(100);
+		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		c.stop(TIMEOUT);
+	}	
+	
+	@Test
+	public void testCloseInSessionOpenedEvent() throws Exception{
+		testCloseInSessionOpenedEvent(StoppingType.GENTLE);
+		testCloseInSessionOpenedEvent(StoppingType.QUICK);
+		testCloseInSessionOpenedEvent(StoppingType.DIRTY);
+	}	
+	
+	private void testCloseInSessionClosedOrEndingEvent(StoppingType type, EventType event) throws Exception{
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.closeInEvent = event;
+		c.closeType = type;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getSession().close();
+		waitFor(100);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testCloseInSessionClosedEvent() throws Exception {
+		testCloseInSessionClosedOrEndingEvent(StoppingType.GENTLE, EventType.SESSION_CLOSED);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.QUICK, EventType.SESSION_CLOSED);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.DIRTY, EventType.SESSION_CLOSED);
+	}
+	
+	@Test
+	public void testCloseInSessionEndingEvent() throws Exception {
+		testCloseInSessionClosedOrEndingEvent(StoppingType.GENTLE, EventType.SESSION_ENDING);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.QUICK, EventType.SESSION_ENDING);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.DIRTY, EventType.SESSION_ENDING);
+	}
+
 }

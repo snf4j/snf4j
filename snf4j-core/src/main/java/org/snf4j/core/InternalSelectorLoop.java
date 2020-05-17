@@ -569,11 +569,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 					Iterator<SelectionKey> i = keys.iterator();
 					
 					for (;;) {
-						final SelectionKey key = i.next();
+						SelectionKey key = i.next();
 						i.remove();
 						
 						try {
-							handleSelectedKey(key);
+							key = handleSelectedKey(key);
 						}
 						catch (CancelledKeyException e) {
 							//Ignore
@@ -1096,6 +1096,9 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		session.setLoop(this);
 		session.preCreated();
 		fireEvent(session, SessionEvent.CREATED);
+		if (session.closeCalled.get() || !channel.isOpen()) {
+			session.closeAndFinish(channel);
+		}
 		return channel.isOpen();
 	}
 	
@@ -1187,10 +1190,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			InternalSession session = (InternalSession) key.attachment();
 
 			try {
-				if (key.channel() instanceof DatagramChannel) {
-					((DatagramChannel)key.channel()).disconnect();
-				}
-				key.channel().close();
+				session.close(key.channel());
 			}
 			finally {
 				fireEvent(session, SessionEvent.CLOSED);
@@ -1205,7 +1205,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	
 	abstract void handleRegisteredKey(SelectionKey key, SelectableChannel channel, InternalSession session);
 	
-	abstract void handleSelectedKey(SelectionKey key);
+	abstract SelectionKey handleSelectedKey(SelectionKey key);
 	
 	abstract void notifyAboutLoopSizeChange(int newSize, int prevSize);
 	

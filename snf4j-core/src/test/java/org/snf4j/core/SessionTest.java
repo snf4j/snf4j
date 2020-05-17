@@ -55,6 +55,7 @@ import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.ISessionTimer;
@@ -1673,6 +1674,7 @@ public class SessionTest {
 			
 			EventType t = getEventType(splitted[i]);
 
+			s.closeCalled.set(false);
 			fireEvent(s, t);
 			if (t == EventType.SESSION_OPENED) {
 				assertEquals(t.toString()+"|"+EventType.SESSION_READY+"|", h.getEvents());
@@ -2280,6 +2282,159 @@ public class SessionTest {
 		
 		stimer = new InternalSessionTimer(c.getSession(), null);
 		assertFalse(stimer.isSupported());
+	}
+	
+	private void testCloseInSessionCreatedEvent(StoppingType type) throws Exception{
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.closeInEvent = EventType.SESSION_CREATED;
+		c.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT);
+		c = new Client(PORT);
+		s.closeInEvent = EventType.SESSION_CREATED;
+		s.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT);
+		s.closeInEvent = EventType.SESSION_CREATED;
+		s.closeType = type;
+		TestSelectorPool pool = new TestSelectorPool();
+		s.start();
+		s.getSelectLoop().setPool(pool);
+		pool.getException = true;
+
+		c = new Client(PORT);
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|EXC|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testCloseInSessionCreatedEvent() throws Exception{
+		testCloseInSessionCreatedEvent(StoppingType.GENTLE);
+		testCloseInSessionCreatedEvent(StoppingType.QUICK);
+		testCloseInSessionCreatedEvent(StoppingType.DIRTY);
+	}
+
+	private void testCloseInSessionOpenedEvent(StoppingType type)
+			throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.closeInEvent = EventType.SESSION_OPENED;
+		c.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT);
+		c = new Client(PORT);
+		s.closeInEvent = EventType.SESSION_OPENED;
+		s.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT);
+		c = new Client(PORT);
+		s.closeInEvent = EventType.SESSION_OPENED;
+		s.closeType = type;
+		s.start();
+		s.getSelectLoop().setPool(new DefaultSelectorLoopPool(2));
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testCloseInSessionOpenedEvent() throws Exception {
+		testCloseInSessionOpenedEvent(StoppingType.GENTLE);
+		testCloseInSessionOpenedEvent(StoppingType.QUICK);
+		testCloseInSessionOpenedEvent(StoppingType.DIRTY);
+	}
+
+	private void testCloseInSessionClosedOrEndingEvent(StoppingType type, EventType event) throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.closeInEvent = event;
+		c.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+		c.stop(TIMEOUT);
+		
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.closeInEvent = event;
+		c.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+		c.stop(TIMEOUT);
+		
+	}
+	
+	@Test
+	public void testCloseInSessionClosedEvent() throws Exception {
+		testCloseInSessionClosedOrEndingEvent(StoppingType.GENTLE, EventType.SESSION_CLOSED);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.QUICK, EventType.SESSION_CLOSED);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.DIRTY, EventType.SESSION_CLOSED);
+	}
+	
+	@Test
+	public void testCloseInSessionEndingEvent() throws Exception {
+		testCloseInSessionClosedOrEndingEvent(StoppingType.GENTLE, EventType.SESSION_ENDING);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.QUICK, EventType.SESSION_ENDING);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.DIRTY, EventType.SESSION_ENDING);
 	}
 	
 }

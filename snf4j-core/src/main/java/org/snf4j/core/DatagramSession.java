@@ -467,6 +467,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	@Override
 	public void close() {
 		SelectionKey key = this.key;
+		closeCalled.set(true);
 		
 		if (key != null && key.isValid()) {
 			try {
@@ -494,6 +495,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	@Override
 	public void quickClose() {
 		SelectionKey key = this.key;
+		closeCalled.set(true);
 
 		if (key != null && key.isValid()) {
 			try {
@@ -529,7 +531,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	@Override
 	void event(SessionEvent event) {
 		super.event(event);
-		if (event == SessionEvent.OPENED) {
+		if (event == SessionEvent.OPENED && !closeCalled.get()) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Firing event {} for {}", EventType.SESSION_READY, this);
 			}

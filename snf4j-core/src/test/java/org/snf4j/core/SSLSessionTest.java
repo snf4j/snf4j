@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -52,6 +52,7 @@ import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.LoggerRecorder;
+import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.session.IllegalSessionStateException;
 
 public class SSLSessionTest {
@@ -1463,4 +1464,246 @@ public class SSLSessionTest {
 		assertEquals("SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 
 	}
+
+	private void testCloseInSessionCreatedEvent(StoppingType type) throws Exception{
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.closeInEvent = EventType.SESSION_CREATED;
+		c.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SEN|", c.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		s.closeInEvent = EventType.SESSION_CREATED;
+		s.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT, true);
+		s.closeInEvent = EventType.SESSION_CREATED;
+		s.closeType = type;
+		TestSelectorPool pool = new TestSelectorPool();
+		s.start();
+		s.getSelectLoop().setPool(pool);
+		pool.getException = true;
+
+		c = new Client(PORT, true);
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+	}	
+	
+	@Test
+	public void testCloseInSessionCreatedEvent() throws Exception{
+		testCloseInSessionCreatedEvent(StoppingType.GENTLE);
+		testCloseInSessionCreatedEvent(StoppingType.QUICK);
+		testCloseInSessionCreatedEvent(StoppingType.DIRTY);
+	}	
+
+	public void testCloseInSessionOpenedEvent(StoppingType type) throws Exception {
+		s = new Server(PORT,true);
+		c = new Client(PORT,true);
+		c.closeInEvent = EventType.SESSION_OPENED;
+		c.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionOpen(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		c.getRecordedData("SOP|", true);
+		assertEquals("SCL|SEN|", filterDSDR(c.getRecordedData(true)));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+		
+		s = new Server(PORT,true);
+		c = new Client(PORT,true);
+		s.closeInEvent = EventType.SESSION_OPENED;
+		s.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.getRecordedData("SOP|", true);
+		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT,true);
+		c = new Client(PORT,true);
+		s.closeInEvent = EventType.SESSION_OPENED;
+		s.closeType = type;
+		s.start();
+		s.getSelectLoop().setPool(new DefaultSelectorLoopPool(2));
+		c.start();
+		s.waitForSessionOpen(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.getRecordedData("SOP|", true);
+		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+		
+	}	
+	
+	@Test
+	public void testCloseInSessionOpenedEvent() throws Exception {
+		testCloseInSessionOpenedEvent(StoppingType.GENTLE);
+		testCloseInSessionOpenedEvent(StoppingType.QUICK);
+		testCloseInSessionOpenedEvent(StoppingType.DIRTY);
+	}	
+	
+	public void testCloseInSessionReadyEvent(StoppingType type) throws Exception {
+		s = new Server(PORT,true);
+		c = new Client(PORT,true);
+		c.closeInEvent = EventType.SESSION_READY;
+		c.closeType = type;
+		s.start();
+		c.start();
+		waitFor(100);
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		c.getRecordedData("RDY|", true);
+		s.getRecordedData("RDY|", true);
+		if (type == StoppingType.DIRTY) {
+			assertEquals("SCL|SEN|", c.getRecordedData(true));
+		}
+		else {
+			assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		}
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+		
+		s = new Server(PORT,true);
+		c = new Client(PORT,true);
+		s.closeInEvent = EventType.SESSION_READY;
+		s.closeType = type;
+		s.start();
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.getRecordedData("RDY|", true);
+		if (type == StoppingType.DIRTY) {
+			assertEquals("SCL|SEN|", s.getRecordedData(true));
+		}
+		else {
+			assertEquals("DS|SCL|SEN|", s.getRecordedData(true));
+		}
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+	
+		s = new Server(PORT,true);
+		c = new Client(PORT,true);
+		s.closeInEvent = EventType.SESSION_READY;
+		s.closeType = type;
+		s.start();
+		s.getSelectLoop().setPool(new DefaultSelectorLoopPool(2));
+		c.start();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.getRecordedData("RDY|", true);
+		if (type == StoppingType.DIRTY) {
+			assertEquals("SCL|SEN|", s.getRecordedData(true));
+		}
+		else {
+			assertEquals("DS|SCL|SEN|", s.getRecordedData(true));
+		}
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+		s.stop(TIMEOUT);
+		
+	}	
+	
+	@Test
+	public void testCloseInSessionReadyEvent() throws Exception {
+		testCloseInSessionReadyEvent(StoppingType.GENTLE);
+		testCloseInSessionReadyEvent(StoppingType.QUICK);
+		testCloseInSessionReadyEvent(StoppingType.DIRTY);
+	}	
+	
+	String filterDSDR(String s) {
+		while (true) {
+			if (s.startsWith("DS|") || s.startsWith("DR|")) {
+				s = s.substring(3);
+			}
+			else {
+				return s;
+			}
+		}
+	}
+	
+	private void testCloseInSessionClosedOrEndingEvent(StoppingType type, EventType event) throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		if (event != null) {
+			c.closeInEvent = event;
+			c.closeType = type;
+		}
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		c.getRecordedData("RDY|", true);
+		s.getRecordedData("RDY|", true);
+		assertEquals("SCL|SEN|", filterDSDR(c.getRecordedData(true)));
+		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+		c.stop(TIMEOUT);
+		
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		if (event != null) {
+			c.closeInEvent = event;
+			c.closeType = type;
+		}
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		c.getRecordedData("RDY|", true);
+		s.getRecordedData("RDY|", true);
+		assertEquals("SCL|SEN|", filterDSDR(c.getRecordedData(true)));
+		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)));
+		assertEquals(ClosingState.FINISHED, c.getSession().closing);
+		s.stop(TIMEOUT);
+		c.stop(TIMEOUT);
+		
+	}
+	
+	@Test
+	public void testCloseInSessionClosedEvent() throws Exception {
+		testCloseInSessionClosedOrEndingEvent(StoppingType.GENTLE, null);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.GENTLE, EventType.SESSION_CLOSED);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.QUICK, EventType.SESSION_CLOSED);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.DIRTY, EventType.SESSION_CLOSED);
+	}
+	
+	@Test
+	public void testCloseInSessionEndingEvent() throws Exception {
+		testCloseInSessionClosedOrEndingEvent(StoppingType.GENTLE, null);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.GENTLE, EventType.SESSION_ENDING);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.QUICK, EventType.SESSION_ENDING);
+		testCloseInSessionClosedOrEndingEvent(StoppingType.DIRTY, EventType.SESSION_ENDING);
+	}
+	
 }

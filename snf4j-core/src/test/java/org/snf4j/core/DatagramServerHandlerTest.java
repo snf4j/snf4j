@@ -883,6 +883,101 @@ public class DatagramServerHandlerTest {
 		
 	}
 	
+	@Test
+	public void testCloseInSessionCreatedEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.closeInEvent = EventType.SESSION_CREATED;
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		c.getSession().write(nop());
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("SCR|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+	}
+
+	@Test
+	public void testCloseInSessionOpenedEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.closeInEvent = EventType.SESSION_OPENED;
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		c.getSession().write(nop());
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+	}
+
+	@Test
+	public void testCloseInSessionReadyEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.closeInEvent = EventType.SESSION_READY;
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		c.getSession().write(nop());
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+	}
+	
+	@Test
+	public void testCloseInSessionCloseEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.closeInEvent = EventType.SESSION_CLOSED;
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		s.getSession().close();
+		waitFor(100);
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP()|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+	}
+	
+	@Test
+	public void testCloseInSessionEndingEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.closeInEvent = EventType.SESSION_ENDING;
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		s.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP()|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+	}
+	
 	class Handler extends AbstractDatagramHandler {
 		boolean incidentResult;
 		

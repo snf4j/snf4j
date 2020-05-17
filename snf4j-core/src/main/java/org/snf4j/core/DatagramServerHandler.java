@@ -285,14 +285,23 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		if (handler != null) {
 			session = new DatagramServerSession((DatagramSession) getSession(), remoteAddress, handler);
 			fireEvent(session, SessionEvent.CREATED);
+			if (session.closeCalled.get()) {
+				session.closingFinished();
+				fireEvent(session, SessionEvent.ENDING);
+				return null;
+			}
 			session.setSelectionKey(((DatagramSession) getSession()).key);
 			fireEvent(session, SessionEvent.OPENED);
+			if (session.closeCalled.get()) {
+				closeSession(session);
+				return null;
+			}
 		}
 		return session;
 	}
 	
 	void closeSession(DatagramSession session) {
-		((DatagramServerSession)session).setClosing();
+		((DatagramServerSession)session).closingFinished();
 		fireEvent(session, SessionEvent.CLOSED);
 		fireEvent(session, SessionEvent.ENDING);
 	}
