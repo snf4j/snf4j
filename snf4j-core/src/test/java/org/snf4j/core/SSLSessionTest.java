@@ -1522,8 +1522,10 @@ public class SSLSessionTest {
 		s.start();
 		c.start();
 		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionOpen(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|SCL|SEN|", c.getRecordedData(true));
+		c.getRecordedData("SOP|", true);
+		assertEquals("SCL|SEN|", filterDSDR(c.getRecordedData(true)));
 		assertEquals(ClosingState.FINISHED, c.getSession().closing);
 		s.stop(TIMEOUT);
 		
@@ -1533,9 +1535,11 @@ public class SSLSessionTest {
 		s.closeType = type;
 		s.start();
 		c.start();
+		s.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		s.getRecordedData("SOP|", true);
+		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
 		s.stop(TIMEOUT);
 
@@ -1546,9 +1550,11 @@ public class SSLSessionTest {
 		s.start();
 		s.getSelectLoop().setPool(new DefaultSelectorLoopPool(2));
 		c.start();
+		s.waitForSessionOpen(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		s.getRecordedData("SOP|", true);
+		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
 		s.stop(TIMEOUT);
 		
