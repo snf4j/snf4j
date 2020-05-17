@@ -236,6 +236,13 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 						outAppBuffers[i].clear();
 					}
 					engine.closeOutbound();
+					if (isReadyPending) {
+						try {
+							engine.closeInbound();
+						} catch (SessionIncidentException e) {
+							// Ignore
+						}
+					}
 					return true;
 				}
 			}
