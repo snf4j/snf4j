@@ -1472,12 +1472,9 @@ public class SSLSessionTest {
 		c.closeType = type;
 		s.start();
 		c.start();
-		waitFor(100);
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|SEN|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|",
-				s.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, c.getSession().closing);
 		s.stop(TIMEOUT);
 
@@ -1489,8 +1486,6 @@ public class SSLSessionTest {
 		c.start();
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|",
-				c.getRecordedData(true));
 		assertEquals("SCR|SEN|", s.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
 		s.stop(TIMEOUT);
@@ -1507,8 +1502,6 @@ public class SSLSessionTest {
 		c.start();
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|",
-				c.getRecordedData(true));
 		assertEquals("SCR|EXC|SEN|", s.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
 		s.stop(TIMEOUT);
@@ -1528,11 +1521,9 @@ public class SSLSessionTest {
 		c.closeType = type;
 		s.start();
 		c.start();
-		waitFor(100);
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|SOP|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, c.getSession().closing);
 		s.stop(TIMEOUT);
 		
@@ -1544,7 +1535,6 @@ public class SSLSessionTest {
 		c.start();
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
 		s.stop(TIMEOUT);
@@ -1558,7 +1548,6 @@ public class SSLSessionTest {
 		c.start();
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
 		s.stop(TIMEOUT);
