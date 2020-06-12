@@ -45,7 +45,7 @@ public class AbstractFutureTest {
 		assertEquals("Session-1-EventFuture[incomplete,event=CREATED]", futures.getCreateFuture().toString());
 		assertEquals("Session-1-ThresholdFuture[incomplete,threshold=100]", futures.getWriteFuture(100).toString());
 
-		ITwoThresholdFuture f = (ITwoThresholdFuture) futures.getEngineWriteFuture(100);
+		ITwoThresholdFuture<Void> f = futures.getEngineWriteFuture(100);
 		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=-1]", f.toString());
 		f.setSecondThreshold(99);
 		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=99]", f.toString());	

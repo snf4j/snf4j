@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ import static org.junit.Assert.fail;
 
 public class DelegatedFutureTest {
 
-	private DelegatingBlockingFuture<Void> future;
+	private DelegatingBlockingFuture<Void> future, future2;
 	DataFuture<Void> dataFuture;
 	ThresholdFuture<Void> delegateFuture;
 	SessionFuturesController futureController;
@@ -47,6 +47,7 @@ public class DelegatedFutureTest {
 	private void initFutures() {
 		futureController = new SessionFuturesController(null);
 		future = new DelegatingBlockingFuture<Void>(new TestSession());
+		future2 = new DelegatingBlockingFuture<Void>(new TestSession());
 		dataFuture = new DataFuture<Void>(new TestSession());
 		delegateFuture = new ThresholdFuture<Void>(dataFuture, 100);
 	}
@@ -186,6 +187,58 @@ public class DelegatedFutureTest {
 	}
 
 	@Test
+	public void testAwaitDelegatedInDelegated() throws Exception {
+		
+		//not in wait before set
+		initFutures();
+		future2.setDelegate(future);
+		future.setDelegate(delegateFuture);
+		setSuccessful(dataFuture, 300);
+		long t = System.currentTimeMillis();
+		future2.await();
+		assertTime(300, t);
+
+		//in wait before set
+		initFutures();
+		future.setDelegate(delegateFuture);
+		setDelegate(future2, future, 100);
+		setSuccessful(dataFuture, 400);
+		t = System.currentTimeMillis();
+		future2.await();
+		assertTime(400, t);
+
+		//not in wait before set and interrupted
+		initFutures();
+		future2.setDelegate(future);
+		future.setDelegate(delegateFuture);
+		setSuccessful(dataFuture, 600);
+		interrupt(Thread.currentThread(), 200);
+		t = System.currentTimeMillis();
+		try {
+			future2.await();
+			fail("not interrupted");
+		}
+		catch (InterruptedException e) {
+		}
+		assertTime(200, t);
+
+		//in wait before set and interrupted
+		initFutures();
+		future.setDelegate(delegateFuture);
+		setDelegate(future2, future, 100);
+		interrupt(Thread.currentThread(), 200);
+		setSuccessful(dataFuture, 600);
+		t = System.currentTimeMillis();
+		try {
+			future2.await();
+			fail("not interrupted");
+		}
+		catch (InterruptedException e) {
+		}
+		assertTime(200, t);
+	}
+	
+	@Test
 	public void testAwaitForCompletedFutures() throws Exception {
 		
 		//successful
@@ -260,6 +313,91 @@ public class DelegatedFutureTest {
 		future.await();
 		assertTime(110, t);
 		assertFuture(future, "DF", cause);
+	}
+
+	@Test
+	public void testAwaitForCompletedFuturesDelegatedInDelegated() throws Exception {
+		
+		//successful
+		initFutures();
+		future2.setDelegate(future);
+		setDelegate(future, futureController.getSuccessfulFuture(), 100);
+		long t = System.currentTimeMillis();
+		future2.await();
+		assertTime(100, t);
+		assertFuture(future2, "DS", null);
+		
+		//cancelled
+		initFutures();
+		future2.setDelegate(future);
+		setDelegate(future, futureController.getCancelledFuture(), 100);
+		t = System.currentTimeMillis();
+		future2.await();
+		assertTime(100, t);
+		assertFuture(future2, "DC", null);
+
+		//failed
+		initFutures();
+		Exception cause = new Exception();
+		future2.setDelegate(future);
+		setDelegate(future, futureController.getFailedFuture(cause), 100);
+		t = System.currentTimeMillis();
+		future2.await();
+		assertTime(100, t);
+		assertFuture(future2, "DF", cause);
+		
+		//data written
+		initFutures();
+		future2.setDelegate(future);
+		dataFuture.add(100);
+		assertFuture(delegateFuture, "DS", null);
+		setDelegate(future, delegateFuture, 100);
+		t = System.currentTimeMillis();
+		future2.await();
+		assertTime(100, t);
+		assertFuture(future2, "DS", null);
+		
+		//data canceled
+		initFutures();
+		future2.setDelegate(future);
+		dataFuture.cancel();
+		assertFuture(delegateFuture, "DC", null);
+		setDelegate(future, delegateFuture, 100);
+		t = System.currentTimeMillis();
+		future2.await();
+		assertTime(100, t);
+		assertFuture(future2, "DC", null);
+
+		//data canceled after set
+		initFutures();
+		future2.setDelegate(future);
+		future.setDelegate(delegateFuture);
+		setCancelled(dataFuture, 110);
+		t = System.currentTimeMillis();
+		future2.await();
+		assertTime(110, t);
+		assertFuture(future2, "DC", null);
+		
+		//data failed
+		initFutures();
+		future2.setDelegate(future);
+		dataFuture.failure(cause);
+		assertFuture(delegateFuture, "DF", cause);
+		setDelegate(future, delegateFuture, 100);
+		t = System.currentTimeMillis();
+		future2.await();
+		assertTime(100, t);
+		assertFuture(future2, "DF", cause);
+
+		//data failed after set
+		initFutures();
+		future2.setDelegate(future);
+		future.setDelegate(delegateFuture);
+		setFailed(dataFuture, cause, 110);
+		t = System.currentTimeMillis();
+		future2.await();
+		assertTime(110, t);
+		assertFuture(future2, "DF", cause);
 	}
 	
 	@Test
