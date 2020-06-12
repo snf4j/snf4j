@@ -55,7 +55,6 @@ import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
-import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.TestLogger;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
 

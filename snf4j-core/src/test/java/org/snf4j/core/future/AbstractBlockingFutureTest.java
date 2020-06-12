@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,6 @@ import java.util.concurrent.TimeoutException;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.TestSession;
-import org.snf4j.core.future.IFuture;
-import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.SessionEvent;
 
 public class AbstractBlockingFutureTest {

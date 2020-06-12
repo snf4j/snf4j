@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,9 +43,6 @@ import org.snf4j.core.PacketType;
 import org.snf4j.core.Server;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.TestSession;
-import org.snf4j.core.future.EventFuture;
-import org.snf4j.core.future.IFuture;
-import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
