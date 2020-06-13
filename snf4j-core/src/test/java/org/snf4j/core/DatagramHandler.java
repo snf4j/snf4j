@@ -69,6 +69,7 @@ public class DatagramHandler {
 	boolean canOwnPasseData;
 	volatile boolean useTestSession;
 	DefaultCodecExecutor codecPipeline;
+	DefaultCodecExecutor codecPipeline2;
 	volatile boolean incident;
 	volatile boolean incidentRecordException;
 	volatile boolean incidentClose;
@@ -200,7 +201,7 @@ public class DatagramHandler {
 						return createNullHandler ? null : new Handler();
 					}
 				},
-				new Handler().getConfig());
+				new Handler(true).getConfig());
 			}
 		}
 		else {
@@ -348,13 +349,20 @@ public class DatagramHandler {
 	}
 	
 	class Handler extends AbstractDatagramHandler {
+		boolean codec2;
+		
+		Handler() {}
+		Handler(boolean codec2) { this.codec2 = codec2; } 
 
 		@Override
 		public ISessionConfig getConfig() {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
 				@Override
 				public ICodecExecutor createCodecExecutor() {
-					return codecPipeline;
+					if (!codec2) {
+						return codecPipeline;
+					}
+					return codecPipeline2;
 				}
 			};
 			

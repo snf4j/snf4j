@@ -27,15 +27,17 @@ package org.snf4j.core.allocator;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestAllocator extends DefaultAllocator {
 	
-	final List<ByteBuffer> buffers = new ArrayList<ByteBuffer>();
+	final List<ByteBuffer> buffers = Collections.synchronizedList(new ArrayList<ByteBuffer>());
 	
-	final List<ByteBuffer> released = new ArrayList<ByteBuffer>();
+	final List<ByteBuffer> released = Collections.synchronizedList(new ArrayList<ByteBuffer>());
 	
-	volatile int allocated;
+	final AtomicInteger allocated = new AtomicInteger(0);
 	
 	final boolean releasable;
 	
@@ -64,7 +66,7 @@ public class TestAllocator extends DefaultAllocator {
 	}
 
 	public int getAllocatedCount() {
-		return allocated;
+		return allocated.get();
 	}
 	
 	@Override
@@ -78,7 +80,7 @@ public class TestAllocator extends DefaultAllocator {
 	public ByteBuffer allocate(int capacity) {
 		ByteBuffer b = super.allocate(capacity);
 		buffers.add(b);
-		++allocated;
+		allocated.incrementAndGet();
 		return b;
 	}	
 	

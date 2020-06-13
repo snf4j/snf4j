@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -268,6 +268,22 @@ public class EncodeTaskTest {
 		f.setAccessible(true);
 		f.set(task, null);
 		assertEquals("org.snf4j.core.EncodeTask[session=null message remote="+session.getRemoteAddress()+"]", task.toString());
+		
+		byte[] b = new byte[11];
+		task = EncodeTask.simple(session, b);
+		assertTrue(session == task.session);
+		assertTrue(b == task.bytes);
+		assertEquals(11, task.length);
+		assertNull(task.msg);
+		assertNull(task.buffer);
+
+		ByteBuffer bb = ByteBuffer.wrap(b);
+		task = EncodeTask.simple(session, bb);
+		assertTrue(session == task.session);
+		assertTrue(bb == task.buffer);
+		assertEquals(11, task.length);
+		assertNull(task.msg);
+		assertNull(task.bytes);
 		
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);

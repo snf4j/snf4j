@@ -813,6 +813,7 @@ public class DatagramSessionTest {
 		session.suspendRead();
 		session.suspendWrite();
 		c.write(new Packet(PacketType.NOP));
+		waitFor(100);
 		session.key.interestOps(session.key.interestOps() | SelectionKey.OP_WRITE);
 		session.close();
 		session.loop.selector.wakeup(); //need to wake up as we set OP_WRITE in illegal way
@@ -1432,6 +1433,10 @@ public class DatagramSessionTest {
 		}
 		catch (IllegalSessionStateException e) {}
 
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		s.waitForSessionReady(TIMEOUT);
+		
 		//start and stop, releasing
 		c = new DatagramHandler(PORT);
 		allocator = new TestAllocator(false, true);
@@ -1546,6 +1551,7 @@ public class DatagramSessionTest {
 		assertEquals(1, allocator.getAllocatedCount());
 		assertEquals(1, allocator.getReleasedCount());
 		
+		s.stop(TIMEOUT);
 	}
 
 	@Test

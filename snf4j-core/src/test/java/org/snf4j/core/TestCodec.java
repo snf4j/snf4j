@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,12 +51,16 @@ public class TestCodec {
 	volatile boolean encodeQuickClose;
 	volatile boolean encodeDirtyClose;
 	volatile boolean encodeFakeClosing;
+	
+	volatile boolean sessionId;
 
 	IDecoder<?,?> PPD() { return new PPD(); }
 	IDecoder<?,?> PBD() { return new PBD(); }
+	IDecoder<?,?> PBD_D() { return new PBD('D'); }
 	IBaseDecoder<?> BasePD() { return new BasePD(); }
 	IDecoder<?,?> BPD() { return new BPD(); }
 	IEncoder<?,?> PBE() { return new PBE(); }
+	IEncoder<?,?> PBE_E() { return new PBE('E'); }
 	IEncoder<?,?> PBBE() { return new PBBE(); }
 	IEncoder<?,?> BPE() { return new BPE(); }
 	
@@ -70,10 +74,13 @@ public class TestCodec {
 	}
 
 	class PBD implements IDecoder<Packet, byte[]> {
+		char type = 'd';
+		PBD() {}
+		PBD(char type) {this.type = type;}
 		@Override public Class<Packet> getInboundType() {return Packet.class;}
 		@Override public Class<byte[]> getOutboundType() {return byte[].class;}
 		@Override public void decode(ISession session, Packet data, List<byte[]> out)throws Exception {
-			data.payload = data.payload + "d";
+			data.payload = data.payload + type + (sessionId ? "["+session.getId()+"]" : "");
 			if (!discardingDecode) {
 				out.add(data.toBytes());
 			}
@@ -127,10 +134,13 @@ public class TestCodec {
 	}
 
 	class PBE implements IEncoder<Packet, byte[]> {
+		char type = 'e';
+		PBE() {};
+		PBE(char type) {this.type = type;}
 		@Override public Class<Packet> getInboundType() {return Packet.class;}
 		@Override public Class<byte[]> getOutboundType() {return byte[].class;}
 		@Override public void encode(ISession session, Packet data, List<byte[]> out)throws Exception {
-			data.payload = data.payload + "e";
+			data.payload = data.payload + type + (sessionId ? "["+session.getId()+"]" : "");
 			out.add(data.toBytes());
 			if (encodeException != null) {
 				throw encodeException;

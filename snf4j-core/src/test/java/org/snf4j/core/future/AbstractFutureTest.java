@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,6 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 import org.snf4j.core.TestSession;
-import org.snf4j.core.future.SessionFuturesController;
 
 public class AbstractFutureTest {
 	
@@ -46,7 +45,7 @@ public class AbstractFutureTest {
 		assertEquals("Session-1-EventFuture[incomplete,event=CREATED]", futures.getCreateFuture().toString());
 		assertEquals("Session-1-ThresholdFuture[incomplete,threshold=100]", futures.getWriteFuture(100).toString());
 
-		ITwoThresholdFuture f = (ITwoThresholdFuture) futures.getEngineWriteFuture(100);
+		ITwoThresholdFuture<Void> f = futures.getEngineWriteFuture(100);
 		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=-1]", f.toString());
 		f.setSecondThreshold(99);
 		assertEquals("Session-1-TwoThresholdFuture[incomplete,firstThreshold=100,secondThreshold=99]", f.toString());	

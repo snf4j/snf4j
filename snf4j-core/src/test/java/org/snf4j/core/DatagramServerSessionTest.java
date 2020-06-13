@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -49,6 +50,9 @@ public class DatagramServerSessionTest {
 	DatagramHandler c2;
 	DatagramHandler s;
 	
+	TestCodec codec;
+	TestCodec codec2;
+	
 	@Before
 	public void before() {
 		s = c = c2 = null;
@@ -66,10 +70,18 @@ public class DatagramServerSessionTest {
 	}
 
 	private DefaultCodecExecutor codec() {
-		TestCodec codec = new TestCodec();
+		codec = new TestCodec();
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
 		p.getPipeline().add("3", codec.PBE());
 		p.getPipeline().add("4", codec.BPE());
+		return p;
+	}
+	
+	private DefaultCodecExecutor codec2() {
+		codec2 = new TestCodec();
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		p.getPipeline().add("3", codec2.PBE_E());
+		p.getPipeline().add("4", codec2.BPE());
 		return p;
 	}
 	
@@ -94,6 +106,138 @@ public class DatagramServerSessionTest {
 		c = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
 		s.codecPipeline = codec();
+		s.codecPipeline2 = codec2();
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		
+		DatagramSession session = c.getSession();
+		session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		assertEquals("DS|", c.getRecordedData(true));
+		session = s.getSession();
+		assertTrue(session instanceof DatagramServerSession);
+
+		codec.sessionId = true;
+		codec2.sessionId = true;
+		session.write(new Packet(PacketType.NOP, "1").toBytes()).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		long ide = s.getSession().getId();
+		long idE = s.getSession().getParent().getId();
+		assertEquals("DR|NOP(1e["+ide+"]E["+idE+"])|", c.getRecordedData(true));
+		session.writenf(new Packet(PacketType.NOP, "2").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(2e["+ide+"]E["+idE+"])|", c.getRecordedData(true));
+		codec.sessionId = false;
+		codec2.sessionId = false;
+		
+		session.write(new Packet(PacketType.NOP, "12").toBytes(3, 5), 3, 5).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(12eE)|", c.getRecordedData(true));
+		session.writenf(new Packet(PacketType.NOP, "23").toBytes(3, 5), 3, 5);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(23eE)|", c.getRecordedData(true));
+	
+		session.write(ByteBuffer.wrap(new Packet(PacketType.NOP).toBytes())).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(eE)|", c.getRecordedData(true));
+		session.writenf(ByteBuffer.wrap(new Packet(PacketType.NOP, "1").toBytes()));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1eE)|", c.getRecordedData(true));
+
+		session.write(ByteBuffer.wrap(new Packet(PacketType.NOP).toBytes(0,5)), 3).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(eE)|", c.getRecordedData(true));
+		session.writenf(ByteBuffer.wrap(new Packet(PacketType.NOP, "2").toBytes(0,6)), 4);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(2eE)|", c.getRecordedData(true));
+	
+		session.write(new Packet(PacketType.NOP)).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(eE)|", c.getRecordedData(true));
+		session.writenf(new Packet(PacketType.NOP, "3"));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(3eE)|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline = codec();
+		s.startServer();
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		c.getRecordedData(true);
+		s.getSession().write(new Packet(PacketType.NOP, "1").toBytes()).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1e)|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline2 = codec2();
+		s.startServer();
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		c.getRecordedData(true);
+		s.getSession().write(new Packet(PacketType.NOP, "1").toBytes()).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1E)|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline = codec();
+		s.codecPipeline.getPipeline().replace("3", "3", codec.PBBE());
+		s.startServer();
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		c.getRecordedData(true);
+		s.getSession().write(ByteBuffer.wrap(new Packet(PacketType.NOP, "1").toBytes())).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1e2)|", c.getRecordedData(true));
+		s.getSession().writenf(new Packet(PacketType.NOP, "1").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1e2)|", c.getRecordedData(true));
+		
+		session = (DatagramSession) s.getSession().getParent();
+		session.closing = ClosingState.FINISHING;
+		assertTrue(session.simpleSend(null, new byte[1], true).isCancelled());
+		assertTrue(session.simpleSend(null, ByteBuffer.wrap(new byte[1]), true).isCancelled());
+		session.closing = ClosingState.NONE;
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline = codec();
+		s.codecPipeline.getPipeline().replace("3", "3", codec.PBBE());
+		s.codecPipeline2 = codec();
+		s.codecPipeline2.getPipeline().replace("3", "3", codec.PBBE());
+		s.startServer();
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		c.getRecordedData(true);
+		s.getSession().write(ByteBuffer.wrap(new Packet(PacketType.NOP, "1").toBytes())).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1e2e2)|", c.getRecordedData(true));
+		s.getSession().writenf(new Packet(PacketType.NOP, "1").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1e2e2)|", c.getRecordedData(true));
+		
+	}
+
+	@Test
+	public void testWriteNoCodec() throws Exception {
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline2 = codec2();
 		s.startServer();
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
@@ -110,38 +254,41 @@ public class DatagramServerSessionTest {
 
 		session.write(new Packet(PacketType.NOP, "1").toBytes()).sync(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(1e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1E)|", c.getRecordedData(true));
 		session.writenf(new Packet(PacketType.NOP, "2").toBytes());
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(2e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(2E)|", c.getRecordedData(true));
 		
 		session.write(new Packet(PacketType.NOP, "12").toBytes(3, 5), 3, 5).sync(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(12e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(12E)|", c.getRecordedData(true));
 		session.writenf(new Packet(PacketType.NOP, "23").toBytes(3, 5), 3, 5);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(23e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(23E)|", c.getRecordedData(true));
 	
 		session.write(ByteBuffer.wrap(new Packet(PacketType.NOP).toBytes())).sync(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(E)|", c.getRecordedData(true));
 		session.writenf(ByteBuffer.wrap(new Packet(PacketType.NOP, "1").toBytes()));
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(1e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1E)|", c.getRecordedData(true));
 
 		session.write(ByteBuffer.wrap(new Packet(PacketType.NOP).toBytes(0,5)), 3).sync(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(E)|", c.getRecordedData(true));
 		session.writenf(ByteBuffer.wrap(new Packet(PacketType.NOP, "2").toBytes(0,6)), 4);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(2e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(2E)|", c.getRecordedData(true));
 	
 		session.write(new Packet(PacketType.NOP)).sync(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(E)|", c.getRecordedData(true));
 		session.writenf(new Packet(PacketType.NOP, "3"));
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(3e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(3E)|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
+		
+		
 	}
 	
 	@Test
@@ -207,6 +354,71 @@ public class DatagramServerSessionTest {
 		session.sendnf(addr, new Packet(PacketType.NOP, "3"));
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(3e)|", c.getRecordedData(true));
+	}	
+	
+	@Test
+	public void testSendNoCodec() throws Exception {
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		c2 = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline2 = codec2();
+		s.startServer();
+		c.startClient();
+		c2.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c2.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", c2.getRecordedData(true));
+		
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		assertEquals("DS|", c.getRecordedData(true));
+		c2.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c2.waitForDataSent(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		assertEquals("DS|", c2.getRecordedData(true));
+		DatagramSession session = s.getSession();
+		assertTrue(session instanceof DatagramServerSession);
+		SocketAddress addr = c.getSession().getLocalAddress();
+		
+		session.send(addr, new Packet(PacketType.NOP, "1").toBytes()).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1E)|", c.getRecordedData(true));
+		session.sendnf(addr, new Packet(PacketType.NOP, "2").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(2E)|", c.getRecordedData(true));
+	
+		session.send(addr, new Packet(PacketType.NOP, "12").toBytes(3, 5), 3, 5).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(12E)|", c.getRecordedData(true));
+		session.sendnf(addr, new Packet(PacketType.NOP, "23").toBytes(3, 5), 3, 5);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(23E)|", c.getRecordedData(true));
+	
+		session.send(addr, ByteBuffer.wrap(new Packet(PacketType.NOP).toBytes())).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(E)|", c.getRecordedData(true));
+		session.sendnf(addr, ByteBuffer.wrap(new Packet(PacketType.NOP, "1").toBytes()));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1E)|", c.getRecordedData(true));
+
+		session.send(addr, ByteBuffer.wrap(new Packet(PacketType.NOP).toBytes(0,5)), 3).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(E)|", c.getRecordedData(true));
+		session.sendnf(addr, ByteBuffer.wrap(new Packet(PacketType.NOP, "2").toBytes(0,6)), 4);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(2E)|", c.getRecordedData(true));
+	
+		session.send(addr, new Packet(PacketType.NOP)).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(E)|", c.getRecordedData(true));
+		session.sendnf(addr, new Packet(PacketType.NOP, "3"));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(3E)|", c.getRecordedData(true));
 		
 	}	
 	
@@ -454,9 +666,36 @@ public class DatagramServerSessionTest {
 		assertTrue(getDelegate(session) == session.getParent());
 		assertEquals("org.snf4j.core.DatagramHandler$Handler", session.getHandler().getClass().getName());
 		assertTrue(session.getConfig().getClass() == session.getHandler().getConfig().getClass());
-		assertNull(session.getCodecPipeline());
+		assertNotNull(session.getCodecPipeline());
+		assertNull(session.getParent().getCodecPipeline());
 		session.preCreated();
 		session.postEnding();
+		s.stop(TIMEOUT);
+
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline2 = codec2();
+		s.startServer();
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		session = s.getSession();
+		assertNull(session.getCodecPipeline());
+		assertNotNull(session.getParent().getCodecPipeline());
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline2 = codec2();
+		s.codecPipeline = codec();
+		s.startServer();
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		session = s.getSession();
+		assertNotNull(session.getCodecPipeline());
+		assertNotNull(session.getParent().getCodecPipeline());
+		assertFalse(session.getCodecPipeline() == session.getParent().getCodecPipeline());
+		
+		
 	}
 	
 	@Test

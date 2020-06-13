@@ -85,9 +85,9 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	
 	private final AtomicReference<Handshake> handshake = new AtomicReference<Handshake>(Handshake.NONE); 
 	
-	private final ConcurrentLinkedQueue<ITwoThresholdFuture> pendingFutures = new ConcurrentLinkedQueue<ITwoThresholdFuture>();
+	private final ConcurrentLinkedQueue<ITwoThresholdFuture<Void>> pendingFutures = new ConcurrentLinkedQueue<ITwoThresholdFuture<Void>>();
 	
-	private ITwoThresholdFuture polledFuture;
+	private ITwoThresholdFuture<Void> polledFuture;
 	
 	private final int minAppBufferSize;
 	
@@ -523,7 +523,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	}
 	
 	IFuture<Void> write(byte[] data, int offset, int length, boolean needFuture) {
-		IFuture<Void> future;
+		ITwoThresholdFuture<Void> future;
 		
 		synchronized (writeLock) {
 			if (closing != ClosingState.NONE) {
@@ -536,7 +536,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 			appCounter += length;
 			if (needFuture) {
 				future = session.futuresController.getEngineWriteFuture(appCounter);
-				pendingFutures.add((ITwoThresholdFuture) future);
+				pendingFutures.add(future);
 			}
 			else {
 				future = null;
@@ -547,7 +547,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 	}	
 
 	IFuture<Void> write(ByteBuffer data, int length, boolean needFuture) {
-		IFuture<Void> future;
+		ITwoThresholdFuture<Void> future;
 		
 		synchronized (writeLock) {
 			if (closing != ClosingState.NONE) {
@@ -560,7 +560,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 			appCounter += length;
 			if (needFuture) {
 				future = session.futuresController.getEngineWriteFuture(appCounter);
-				pendingFutures.add((ITwoThresholdFuture) future);
+				pendingFutures.add(future);
 			}
 			else {
 				future = null;

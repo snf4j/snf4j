@@ -62,7 +62,8 @@ public class DatagramServerHandlerTest {
 	DatagramHandler c, c2;
 	DatagramHandler s;
 	
-	TestCodec codec;	
+	TestCodec codec;
+	TestCodec codec2;
 	
 	@Before
 	public void before() {
@@ -185,12 +186,23 @@ public class DatagramServerHandlerTest {
 		return p;
 	}
 	
+	private DefaultCodecExecutor codec2() {
+		codec2 = new TestCodec();
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		p.getPipeline().add("1", codec2.BasePD());
+		p.getPipeline().add("2", codec2.PBD_D());
+		p.getPipeline().add("3", codec2.PBE());
+		p.getPipeline().add("4", codec2.BPE());
+		return p;
+	}	
+	
 	@Test
 	public void testSessionWithConnectedChannel() throws Exception {
 		s = new DatagramHandler(PORT);
 		c = new DatagramHandler(PORT);
 		c.useDatagramServerHandler = true;
 		c.codecPipeline = codec();
+		c.codecPipeline2 = codec2();
 		s.startServer();
 		c.startClient();
 		s.waitForSessionReady(TIMEOUT);
@@ -199,55 +211,70 @@ public class DatagramServerHandlerTest {
 		DatagramSession superSession = c.getSession();
 		superSession.write(nop());
 		s.waitForDataRead(TIMEOUT);
-		c.waitForDataSent(TIMEOUT);
+		waitFor(100);
 		assertEquals("DR|$NOP(e)|", s.getRecordedData(true));
-		assertEquals("SCR|SOP|RDY|DS|", c.getRecordedData(true));
+		assertEquals("", c.getRecordedData(true));
+		s.getSession().send(c.getSession().getLocalAddress(), nop());
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", c.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
+		DatagramServerSession session = (DatagramServerSession) c.getSession();
+		assertEquals(3, session.getReadBytes());
+		assertEquals(3, superSession.getReadBytes());
+		assertEquals(0, session.getWrittenBytes());
+		assertEquals(4, superSession.getWrittenBytes());
 		
+		codec.sessionId = true;
+		codec2.sessionId = true;
+		long idD = c.getSession().getParent().getId();
+		long idd = c.getSession().getId();
 		SocketAddress addr = c.getSession().getLocalAddress();
 		assertEquals(c.getSession().getRemoteAddress(), superSession.getRemoteAddress());
 		s.getSession().send(addr, nop());
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
-		assertEquals("DR|NOP(d)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(D["+idD+"]d["+idd+"])|", c.getRecordedData(true));
 		assertEquals("DS|", s.getRecordedData(true));
-		DatagramServerSession session = (DatagramServerSession) c.getSession();
 		assertTrue(superSession == getDelegate(session));
-		assertEquals(3, session.getReadBytes());
-		assertEquals(3, superSession.getReadBytes());
+		assertEquals(6, session.getReadBytes());
+		assertEquals(6, superSession.getReadBytes());
 		assertNull(getAddress(session));
 		assertTrue(superSession.getHandler() instanceof DatagramServerHandler);
 		assertEquals("org.snf4j.core.DatagramHandler$Handler", session.getHandler().getClass().getName());
+		codec.sessionId = false;
+		codec2.sessionId = false;
 		
 		s.getSession().send(addr, nop("1"));
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
-		assertEquals("DR|NOP(1d)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1Dd)|", c.getRecordedData(true));
 		assertEquals("DS|", s.getRecordedData(true));
 		assertTrue(session == c.getSession());
-		assertEquals(7, session.getReadBytes());
-		assertEquals(7, superSession.getReadBytes());
-		assertEquals(4, session.getWrittenBytes());
+		assertEquals(10, session.getReadBytes());
+		assertEquals(10, superSession.getReadBytes());
+		assertEquals(0, session.getWrittenBytes());
 		assertEquals(4, superSession.getWrittenBytes());
 		
 		session.write(nop("12")).sync(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
-		assertEquals("DR|$NOP(12e)|", s.getRecordedData(true));
+		assertEquals("DR|$NOP(12ee)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
-		assertEquals(7, session.getReadBytes());
-		assertEquals(7, superSession.getReadBytes());
-		assertEquals(10, session.getWrittenBytes());
-		assertEquals(10, superSession.getWrittenBytes());
+		assertEquals(10, session.getReadBytes());
+		assertEquals(10, superSession.getReadBytes());
+		assertEquals(7, session.getWrittenBytes());
+		assertEquals(11, superSession.getWrittenBytes());
 		
 		superSession.write(nop("123")).sync(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DR|$NOP(123e)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
-		assertEquals(7, session.getReadBytes());
-		assertEquals(7, superSession.getReadBytes());
-		assertEquals(17, session.getWrittenBytes());
-		assertEquals(17, superSession.getWrittenBytes());
+		assertEquals(10, session.getReadBytes());
+		assertEquals(10, superSession.getReadBytes());
+		assertEquals(14, session.getWrittenBytes());
+		assertEquals(18, superSession.getWrittenBytes());
 		
 		assertEquals(SessionState.OPEN, session.getState());
 		session.close();
@@ -259,14 +286,14 @@ public class DatagramServerHandlerTest {
 		s.getSession().send(addr, nop());
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", c.getRecordedData(true));
 		assertEquals("DS|", s.getRecordedData(true));
 		assertFalse(session == c.getSession());
 		session = (DatagramServerSession) c.getSession();
 		assertEquals(3, session.getReadBytes());
-		assertEquals(10, superSession.getReadBytes());
+		assertEquals(13, superSession.getReadBytes());
 		assertEquals(0, session.getWrittenBytes());
-		assertEquals(17, superSession.getWrittenBytes());
+		assertEquals(18, superSession.getWrittenBytes());
 		
 		superSession.getCodecPipeline().remove("2");
 		s.getSession().send(addr, new Packet(PacketType.NOP, "5").toBytes()).sync(TIMEOUT);
@@ -275,9 +302,9 @@ public class DatagramServerHandlerTest {
 		assertEquals("DR|M(NOP[5])|", c.getRecordedData(true));
 		assertEquals("DS|", s.getRecordedData(true));
 		assertEquals(7, session.getReadBytes());
-		assertEquals(14, superSession.getReadBytes());
+		assertEquals(17, superSession.getReadBytes());
 		assertEquals(0, session.getWrittenBytes());
-		assertEquals(17, superSession.getWrittenBytes());
+		assertEquals(18, superSession.getWrittenBytes());
 		
 		assertEquals(SessionState.OPEN, session.getState());
 		assertEquals(SessionState.OPEN, superSession.getState());
@@ -291,10 +318,47 @@ public class DatagramServerHandlerTest {
 	}
 	
 	@Test
+	public void testReadWithDecoders() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline = codec();
+		s.codecPipeline2 = codec2();
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", s.getRecordedData(true));
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline = codec();
+		s.startServer();
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		s.stop(TIMEOUT);
+
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline2 = codec2();
+		s.startServer();
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP(D)|", s.getRecordedData(true));
+	}
+	
+	@Test
 	public void testSessionWithNotConnectedChannel() throws Exception {
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
 		s.codecPipeline = codec();
+		s.codecPipeline2 = codec2();
 		c = new DatagramHandler(PORT);
 		s.startServer();
 		c.startClient();
@@ -302,10 +366,14 @@ public class DatagramServerHandlerTest {
 		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
 		DatagramSession superSession = s.getSession();
 		
+		codec.sessionId = true;
+		codec2.sessionId = true;
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		long idD = s.getSession().getParent().getId();
+		long idd = s.getSession().getId();
+		assertEquals("SCR|SOP|RDY|DR|NOP(D["+idD+"]d["+idd+"])|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		waitFor(10);
 		DatagramServerSession session = (DatagramServerSession) s.getSession();
@@ -316,11 +384,13 @@ public class DatagramServerHandlerTest {
 		assertEquals(0, session.getWrittenBytes());
 		assertEquals(c.getSession().getLocalAddress(), getAddress(session));
 		assertEquals(session.getRemoteAddress(), c.getSession().getLocalAddress());
+		codec.sessionId = false;
+		codec2.sessionId = false;
 		
 		c.getSession().write(nop("1"));
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
-		assertEquals("DR|NOP(1d)|", s.getRecordedData(true));
+		assertEquals("DR|NOP(1Dd)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		waitFor(10);
 		assertEquals(7, superSession.getReadBytes());
@@ -332,12 +402,12 @@ public class DatagramServerHandlerTest {
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DS|", s.getRecordedData(true));
-		assertEquals("DR|NOP(12e)|", c.getRecordedData(true));
+		assertEquals("DR|NOP(12ee)|", c.getRecordedData(true));
 		waitFor(10);
 		assertEquals(7, superSession.getReadBytes());
 		assertEquals(7, session.getReadBytes());
-		assertEquals(6, superSession.getWrittenBytes());
-		assertEquals(6, session.getWrittenBytes());
+		assertEquals(7, superSession.getWrittenBytes());
+		assertEquals(7, session.getWrittenBytes());
 		
 		superSession.send(c.getSession().getLocalAddress(), nop("1"));
 		c.waitForDataRead(TIMEOUT);
@@ -347,8 +417,8 @@ public class DatagramServerHandlerTest {
 		waitFor(10);
 		assertEquals(7, superSession.getReadBytes());
 		assertEquals(7, session.getReadBytes());
-		assertEquals(11, superSession.getWrittenBytes());
-		assertEquals(11, session.getWrittenBytes());
+		assertEquals(12, superSession.getWrittenBytes());
+		assertEquals(12, session.getWrittenBytes());
 		
 		IFuture<Void> f = superSession.write(nop()).await(TIMEOUT);
 		assertTrue(f.isFailed());
@@ -361,12 +431,13 @@ public class DatagramServerHandlerTest {
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
 		s.codecPipeline = codec();
+		s.codecPipeline2 = codec2();
 		s.startServer();
 		superSession = s.getSession();
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		session = (DatagramServerSession) s.getSession();
 		assertEquals(3, session.getReadBytes());
@@ -384,7 +455,7 @@ public class DatagramServerHandlerTest {
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertFalse(session == s.getSession());
 		waitFor(10);
@@ -548,6 +619,7 @@ public class DatagramServerHandlerTest {
 		s.useDatagramServerHandler = true;
 		s.createNullHandler = true;
 		s.codecPipeline = codec();
+		s.codecPipeline2 = s.codecPipeline;
 		s.startServer();
 		s.getSession().getCodecPipeline().remove("2");
 	
@@ -681,24 +753,25 @@ public class DatagramServerHandlerTest {
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
 		s.codecPipeline = codec();
+		s.codecPipeline2 = codec2();
 		s.startServer();
 
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		session1 = s.getSession();
 
 		c2.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c2.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", s.getRecordedData(true));
 		assertEquals("DS|", c2.getRecordedData(true));
 		session2 = s.getSession();
 
 		s.throwInSuperRead = true;
-		s.codecPipeline.getPipeline().remove("2");
+		s.codecPipeline2.getPipeline().remove("2");
 		c.getSession().write(nop());
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
@@ -797,6 +870,7 @@ public class DatagramServerHandlerTest {
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
 		s.codecPipeline = codec();
+		s.codecPipeline2 = codec2();
 		c = new DatagramHandler(PORT);
 		c2 = new DatagramHandler(PORT);
 		s.startServer();
@@ -810,17 +884,17 @@ public class DatagramServerHandlerTest {
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		DatagramSession session1 = s.getSession();
 		
 		c2.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c2.waitForDataSent(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", s.getRecordedData(true));
 		assertEquals("DS|", c2.getRecordedData(true));
 	
-		codec.decodeException = new Exception("E1");
+		codec2.decodeException = new Exception("E1");
 		c.getSession().write(nop());
 		s.waitForDataReceived(TIMEOUT);
 		waitFor(100);
@@ -829,8 +903,8 @@ public class DatagramServerHandlerTest {
 		assertTrue(session1.isOpen());
 		assertTrue(getDelegate(session1).isOpen());
 		
-		codec.decodeException = null;
-		codec.encodeException = new Exception("E2");
+		codec2.decodeException = null;
+		codec2.encodeException = new Exception("E2");
 		session1.write(nop());
 		waitFor(100);
 		assertEquals("ENCODING_PIPELINE_FAILURE|ENCODING_PIPELINE_FAILURE|", s.getRecordedData(true));

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,7 +57,7 @@ class EncodeTask implements Runnable {
 	
 	SocketAddress remoteAddress;
 	
-	final int length;
+	int length;
 	
 	private final void init(final byte[] bytes) {
 		if (session.canOwnPassedData) {
@@ -76,6 +76,26 @@ class EncodeTask implements Runnable {
 			bytes = new byte[buffer.remaining()];
 			buffer.get(bytes);
 		}
+	}
+	
+	static EncodeTask simple(InternalSession session, byte[] bytes) {
+		EncodeTask task = new EncodeTask(session);
+		
+		task.bytes = bytes;
+		task.length = bytes.length;
+		return task;
+	}
+	
+	static EncodeTask simple(InternalSession session, ByteBuffer buffer) {
+		EncodeTask task = new EncodeTask(session);
+		
+		task.buffer = buffer;
+		task.length = buffer.remaining();
+		return task;
+	}
+	
+	private EncodeTask(InternalSession session) {
+		this.session = session;
 	}
 	
 	EncodeTask(InternalSession session, byte[] bytes) {
