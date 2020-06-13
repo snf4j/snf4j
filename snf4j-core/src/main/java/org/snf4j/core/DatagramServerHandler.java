@@ -142,7 +142,7 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		
 		if (session != null) {
 			try {
-				session.getHandler().read(datagram);
+				session.superCodec().read(datagram);
 			}
 			catch (Exception e) {
 				fireException(session, e);
@@ -183,7 +183,9 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		long currentTime;
 		
 		if (session == null) {
-			session = createSession(remoteAddress == NULL_ADDRESS ? null : remoteAddress);
+			if (event == DataEvent.RECEIVED) {
+				session = createSession(remoteAddress == NULL_ADDRESS ? null : remoteAddress);
+			}
 			if (session == null) {
 				return;
 			}

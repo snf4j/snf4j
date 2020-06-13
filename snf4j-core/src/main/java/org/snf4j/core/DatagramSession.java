@@ -69,7 +69,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	private final boolean ignorePossiblyIncomplete;
 	
-	private IEncodeTaskWriter encodeTaskWriter;
+	IEncodeTaskWriter encodeTaskWriter;
 
 	DatagramSession(String name, IDatagramHandler handler, boolean noCodec) {
 		super(name, handler, LOGGER, noCodec);
@@ -227,6 +227,31 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		return send(null, datagram);
 	}
 
+	IFuture<Void> simpleSend(SocketAddress remoteAddress, byte[] datagram, boolean withFuture) {
+		if (codec != null) {
+			EncodeTask task = EncodeTask.simple(this, datagram);
+			
+			if (withFuture) {
+				return task.register(remoteAddress);
+			}
+			task.registernf(remoteAddress);
+			return null;
+		}
+		
+		DatagramRecord record = new DatagramRecord(remoteAddress);
+		long futureExpectedLen;
+		
+		record.buffer = ByteBuffer.wrap(datagram);
+		futureExpectedLen = write0(record);
+		if (withFuture) {
+			if (futureExpectedLen == -1) {
+				return futuresController.getCancelledFuture();
+			}
+			return futuresController.getWriteFuture(futureExpectedLen);
+		}
+		return null;
+	}
+	
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram) {
 		if (datagram == null) {
@@ -345,6 +370,30 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		}
 	}
 
+	IFuture<Void> simpleSend(SocketAddress remoteAddress, ByteBuffer datagram, boolean withFuture) {
+		if (codec != null) {
+			EncodeTask task = EncodeTask.simple(this, datagram);
+			
+			if (withFuture) {
+				return task.register(remoteAddress);
+			}
+			task.registernf(remoteAddress);
+			return null;
+		}
+		DatagramRecord record = new DatagramRecord(remoteAddress);
+		long futureExpectedLen;
+		
+		record.buffer = datagram;
+		futureExpectedLen = write0(record);
+		if (withFuture) {
+			if (futureExpectedLen == -1) {
+				return futuresController.getCancelledFuture();
+			}
+			return futuresController.getWriteFuture(futureExpectedLen);
+		}
+		return null;
+	}
+	
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram) {
 		if (datagram == null) {

@@ -43,7 +43,7 @@ class DatagramServerSession extends DatagramSession {
 	private AtomicBoolean isClosing = new AtomicBoolean(false);
 	
 	DatagramServerSession(DatagramSession delegate, SocketAddress remoteAddress, IDatagramHandler handler) {
-		super(null, handler, true);
+		super(null, handler, false);
 		this.delegate = delegate;
 		this.remoteAddress = remoteAddress;
 		setLoop(delegate.loop);
@@ -54,6 +54,14 @@ class DatagramServerSession extends DatagramSession {
 		synchronized (writeLock) {
 			closing = ClosingState.FINISHED;
 		}
+	}
+	
+	@Override
+	IEncodeTaskWriter getEncodeTaskWriter() {
+		if (encodeTaskWriter == null) {
+			encodeTaskWriter = new EncodeTaskWriter();
+		}
+		return encodeTaskWriter;
 	}
 	
 	@Override
@@ -150,105 +158,175 @@ class DatagramServerSession extends DatagramSession {
 
 	@Override
 	public IFuture<Void> write(byte[] datagram) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram);
+		}
 		return delegate.send(remoteAddress, datagram);
 	}
 
 	@Override
 	public void writenf(byte[] datagram) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram);
+			return;
+		}
 		delegate.sendnf(remoteAddress, datagram);
 	}
 
 	@Override
 	public IFuture<Void> write(byte[] datagram, int offset, int length) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram, offset, length);
+		}
 		return delegate.send(remoteAddress, datagram, offset, length);
 	}
 
 	@Override
 	public void writenf(byte[] datagram, int offset, int length) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram, offset, length);
+			return;
+		}
 		delegate.sendnf(remoteAddress, datagram, offset, length);		
 	}
 
 	@Override
 	public IFuture<Void> write(ByteBuffer datagram) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram);
+		}
 		return delegate.send(remoteAddress, datagram);
 	}
 
 	@Override
 	public void writenf(ByteBuffer datagram) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram);
+			return;
+		}
 		delegate.sendnf(remoteAddress, datagram);
 	}
 
 	@Override
 	public IFuture<Void> write(ByteBuffer datagram, int length) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram, length);
+		}
 		return delegate.send(remoteAddress, datagram, length);
 	}
 
 	@Override
 	public void writenf(ByteBuffer datagram, int length) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram, length);
+			return;
+		}
 		delegate.sendnf(remoteAddress, datagram, length);
 	}
 
 	@Override
 	public IFuture<Void> write(Object msg) {
+		if (codec != null) {
+			return super.send(remoteAddress, msg);
+		}
 		return delegate.send(remoteAddress, msg);
 	}
 
 	@Override
 	public void writenf(Object msg) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, msg);
+			return;
+		}
 		delegate.sendnf(remoteAddress, msg);		
 	}
 
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram);
+		}
 		return delegate.send(remoteAddress, datagram);
 	}
 
 	@Override
 	public void sendnf(SocketAddress remoteAddress, byte[] datagram) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram);
+			return;
+		}
 		delegate.sendnf(remoteAddress, datagram);		
 	}
 
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, byte[] datagram,
 			int offset, int length) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram, offset, length);
+		}
 		return delegate.send(remoteAddress, datagram, offset, length);
 	}
 
 	@Override
 	public void sendnf(SocketAddress remoteAddress, byte[] datagram,
 			int offset, int length) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram, offset, length);
+			return;
+		}
 		delegate.sendnf(remoteAddress, datagram, offset, length);
 	}
 
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram);
+		}
 		return delegate.send(remoteAddress, datagram);
 	}
 
 	@Override
 	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram);
+			return;
+		}
 		delegate.sendnf(remoteAddress, datagram);	
 	}
 
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram,
 			int length) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram, length);
+		}
 		return delegate.send(remoteAddress, datagram, length);
 	}
 
 	@Override
 	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram,
 			int length) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram, length);
+			return;
+		}
 		delegate.sendnf(remoteAddress, datagram, length);	
 	}
 
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, Object msg) {
+		if (codec != null) {
+			return super.send(remoteAddress, msg);
+		}
 		return delegate.send(remoteAddress, msg);
 	}
 
 	@Override
 	public void sendnf(SocketAddress remoteAddress, Object msg) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, msg);
+			return;
+		}
 		delegate.sendnf(remoteAddress, msg);		
 	}
 
@@ -260,4 +338,18 @@ class DatagramServerSession extends DatagramSession {
 		}
 		
 	}
+	
+	private class EncodeTaskWriter implements IEncodeTaskWriter {
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture) {
+			return delegate.simpleSend(remoteAddress, buffer, withFuture);
+		}
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture) {
+			return delegate.simpleSend(remoteAddress, bytes, withFuture);
+		}
+	}
+	
 }
