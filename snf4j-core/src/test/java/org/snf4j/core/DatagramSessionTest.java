@@ -1433,6 +1433,10 @@ public class DatagramSessionTest {
 		}
 		catch (IllegalSessionStateException e) {}
 
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		s.waitForSessionReady(TIMEOUT);
+		
 		//start and stop, releasing
 		c = new DatagramHandler(PORT);
 		allocator = new TestAllocator(false, true);
@@ -1444,7 +1448,6 @@ public class DatagramSessionTest {
 		assertEquals(0, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		waitFor(50);
 		assertEquals(0, allocator.getSize());
 		assertEquals(1, allocator.getAllocatedCount());
 		assertEquals(1, allocator.getReleasedCount());
@@ -1462,12 +1465,10 @@ public class DatagramSessionTest {
 		assertEquals(0, allocator.getReleasedCount());
 		c.getSession().resumeWrite();
 		c.waitForDataSent(TIMEOUT);
-		waitFor(50);
 		assertEquals(1, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(1, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
-		waitFor(50);
 		assertEquals(0, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(2, allocator.getReleasedCount());
@@ -1486,7 +1487,6 @@ public class DatagramSessionTest {
 		c.getSession().quickClose();
 		c.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
-		waitFor(50);
 		assertEquals(0, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(2, allocator.getReleasedCount());
@@ -1505,12 +1505,10 @@ public class DatagramSessionTest {
 		assertEquals(0, allocator.getReleasedCount());
 		c.getSession().resumeWrite();
 		c.waitForDataSent(TIMEOUT);
-		waitFor(50);
 		assertEquals(1, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(1, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
-		waitFor(50);
 		assertEquals(1, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(1, allocator.getReleasedCount());
@@ -1530,7 +1528,6 @@ public class DatagramSessionTest {
 		c.getSession().quickClose();
 		c.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
-		waitFor(50);
 		assertEquals(2, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
@@ -1550,11 +1547,11 @@ public class DatagramSessionTest {
 		c.getSession().quickClose();
 		c.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
-		waitFor(50);
 		assertEquals(0, allocator.getSize());
 		assertEquals(1, allocator.getAllocatedCount());
 		assertEquals(1, allocator.getReleasedCount());
 		
+		s.stop(TIMEOUT);
 	}
 
 	@Test
