@@ -153,7 +153,7 @@ public class SSLSessionTest {
 
 	TestSSLEngine getSSLEngine(SSLSession session) throws Exception {
 		InternalEngineHandler internal = getInternal(session);
-		Field field = internal.getClass().getDeclaredField("engine");
+		Field field = AbstractEngineHandler.class.getDeclaredField("engine");
 		
 		field.setAccessible(true);
 		InternalSSLEngine engine = (InternalSSLEngine) field.get(internal);
@@ -587,7 +587,7 @@ public class SSLSessionTest {
 		session.closing = ClosingState.NONE;
 
 		InternalEngineHandler internal = getInternal(session);
-		Field field = internal.getClass().getDeclaredField("closing");
+		Field field = AbstractEngineHandler.class.getDeclaredField("closing");
 		field.setAccessible(true);
 		field.set(internal, ClosingState.SENDING);
 		assertFalse(session.write(new byte[3], 0, 1).isSuccessful());

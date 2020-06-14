@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.snf4j.core.InternalEngineHandler.Handshake;
+import org.snf4j.core.AbstractEngineHandler.Handshake;
 import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
@@ -107,7 +107,7 @@ public class InternalEngineHandlerTest {
 	}
 	
 	void set(Handler handler, String name, Object value) throws Exception {
-		Field field = handler.getClass().getSuperclass().getDeclaredField(name);
+		Field field = AbstractEngineHandler.class.getDeclaredField(name);
 		
 		field.setAccessible(true);
 		field.set(handler, value);
@@ -309,7 +309,7 @@ public class InternalEngineHandlerTest {
 	
 	@SuppressWarnings("unchecked")
 	AtomicReference<Handshake> getHandshake(InternalEngineHandler handler) throws Exception {
-		Field f = InternalEngineHandler.class.getDeclaredField("handshake");
+		Field f = AbstractEngineHandler.class.getDeclaredField("handshake");
 		
 		f.setAccessible(true);
 		return (AtomicReference<Handshake>) f.get(handler);

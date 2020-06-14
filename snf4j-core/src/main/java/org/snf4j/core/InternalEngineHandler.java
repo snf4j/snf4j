@@ -27,75 +27,25 @@ package org.snf4j.core;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.Executor;
 
-import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
-import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.ITwoThresholdFuture;
-import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IStreamHandler;
-import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.handler.SessionIncidentException;
-import org.snf4j.core.logger.ExceptionLogger;
-import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.ISession;
-import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.IStreamSession;
 
-class InternalEngineHandler implements IStreamHandler, Runnable {
-
-	private final static AtomicLong nextDelegatedTaskId = new AtomicLong(0); 
-	
-	private final ILogger logger;
-	
-	private final IExceptionLogger elogger = ExceptionLogger.getInstance();
-	
-	private final IStreamHandler handler;
-	
-	private final IEngine engine;
-	
-	private final IByteBufferAllocator allocator;
-	
-	private EngineStreamSession session;
-	
-	private final Object writeLock = new Object();
-	
-	private volatile ClosingState closing = ClosingState.NONE;
-	
-	/** Counts total application bytes that was already wrapped */
-	private long netCounter;
-	
-	/** Counts total application bytes that needed wrapping */
-	private volatile long appCounter;
-	
-	/** Tells if the initial handshaking is pending */
-	private boolean isReadyPending = true;
-	
-	/** Tells if any incoming data is ignored */ 
-	private boolean readIgnored;
-	
-	enum Handshake {NONE, REQUESTED, STARTED};
-	
-	private final AtomicReference<Handshake> handshake = new AtomicReference<Handshake>(Handshake.NONE); 
+class InternalEngineHandler extends AbstractEngineHandler<EngineStreamSession, IStreamHandler> implements IStreamHandler {
 	
 	private final ConcurrentLinkedQueue<ITwoThresholdFuture<Void>> pendingFutures = new ConcurrentLinkedQueue<ITwoThresholdFuture<Void>>();
 	
 	private ITwoThresholdFuture<Void> polledFuture;
-	
-	private final int minAppBufferSize;
-	
-	private final int maxAppBufferSize;
-	
-	private final int minNetBufferSize;
-	
-	private final int maxNetBufferSize;
 	
 	private ByteBuffer[] outAppBuffers;
 
@@ -105,127 +55,15 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 
 	private ByteBuffer inNetBuffer;
 	
-	boolean debugEnabled;
-	
-	boolean traceEnabled;
-	
 	public InternalEngineHandler(IEngine engine, IStreamHandler handler, ILogger logger) {
-		this.handler = handler;
-		this.logger = logger;
-		allocator = handler.getFactory().getAllocator();
-		this.engine = engine;
-		minAppBufferSize = engine.getMinApplicationBufferSize();
-		minNetBufferSize = engine.getMinNetworkBufferSize();
-		maxAppBufferSize = engine.getMaxApplicationBufferSize();
-		maxNetBufferSize = engine.getMaxNetworkBufferSize();
+		super(engine, handler, logger);
 	}
 
 	IStreamHandler getHandler() {
 		return handler;
 	}
 	
-	void beginHandshake(boolean lazy) {
-		handshake.compareAndSet(Handshake.NONE, Handshake.REQUESTED);
-		if (!lazy) {
-			session.loop.executenf(this);
-		}
-	}
-	
-	/** Method is always running in the same selector loop's thread */
-	@SuppressWarnings("incomplete-switch")
 	@Override
-	public void run() {
-		if (closing == ClosingState.FINISHED) {
-			return;
-		}
-		
-		if (handshake.compareAndSet(Handshake.REQUESTED, Handshake.STARTED)) {
-			if (closing == ClosingState.NONE) {
-				try {
-					engine.beginHandshake();
-				} catch (Exception e) {
-					elogger.error(logger, "Handshake initialization failed for {}: {}", session, e);
-					fireException(e);
-					return;
-				}
-			}
-		}
-		
-		boolean running = true;
-		HandshakeStatus[] status = new HandshakeStatus[1];
-		
-		debugEnabled = logger.isDebugEnabled();
-		traceEnabled = debugEnabled ? logger.isTraceEnabled() : false;
-		
-		do {
-			boolean wrapNeeded;
-			
-			if (closing != ClosingState.NONE) {
-				wrapNeeded = handleClosing();
-			}
-			else {
-				wrapNeeded = false;
-			}
-			
-			if (status[0] == null) {
-				status[0] = engine.getHandshakeStatus();
-			}
-			switch (status[0]) {
-			case NOT_HANDSHAKING:	
-				running = false;
-				if (inNetBuffer.position() != 0) {
-					running |= unwrap(status);
-				}				
-				if (appCounter > netCounter || isReadyPending || wrapNeeded) {
-					running |= wrap(status);
-				}
-				break;
-				
-			case NEED_WRAP:
-				running = wrap(status);
-				break;
-				
-			case NEED_UNWRAP:
-				running = unwrap(status);
-				break;
-				
-			case NEED_TASK:
-				Runnable task = engine.getDelegatedTask();
-				
-				try {
-					while (task != null) {
-						if (traceEnabled) {
-							logger.trace("Starting execution of delegated task {} for {}" , task, session);
-						}
-						session.getExecutor().execute(new DelegatedTask(task, traceEnabled));
-						task = engine.getDelegatedTask();
-					}
-				}
-				catch (Exception e) {
-					elogger.error(logger, "Execution of delegated task failed for {}: {}", session, e);
-					fireException(e);
-					return;
-				}
-				running = false;
-				break;
-			}
-			
-			if (status[0] == HandshakeStatus.FINISHED) {
-				handshake.set(Handshake.NONE);
-				if (isReadyPending) {
-					if (debugEnabled) {
-						logger.debug("Initial handshaking is finished for {}", session);
-					}
-					isReadyPending = false;
-					fireReady();
-				}
-				status[0] = null;
-			}
-			
-		} while (running);
-	}
-	
-	/** Return true if wrap needed */
 	final boolean handleClosing() {
 		ClosingState closing = this.closing;
 		
@@ -251,6 +89,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		return closing == ClosingState.SENDING;
 	}
 	
+	@Override
 	final void handleClosed() {
 		ClosingState prevClosing;
 		
@@ -275,8 +114,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		}
 	}
 	
-	
-	/** Returns false when the processing loop need to be broken */
+	@Override
 	boolean unwrap(HandshakeStatus[] status) {
 		if (traceEnabled) {
 			logger.trace("Unwrapping started for {}", session);
@@ -357,7 +195,7 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 						return true;
 					}
 					else {
-						session.superQuickClose();
+						superQuickClose();
 					}
 					return false;
 			}
@@ -366,8 +204,8 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		return true;
 	}
 
-	/** Returns false when the processing loop need to be broken */
 	@SuppressWarnings("incomplete-switch")
+	@Override
 	boolean wrap(HandshakeStatus[] status) {
 		if (traceEnabled) {
 			logger.trace("Wrapping started for {}", session);
@@ -476,6 +314,21 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		return true;
 	}	
 	
+	@Override
+	final Executor getExecutor() {
+		return session.getExecutor();
+	}
+	
+	@Override
+	final boolean needUnwrap() {
+		return inNetBuffer.position() != 0;
+	}
+	
+	@Override
+	final void superQuickClose() {
+		session.superQuickClose();		
+	}
+	
 	private final void flush() {
 		int position = outNetBuffer.position();
 
@@ -499,26 +352,6 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 					polledFuture.setSecondThreshold(futureThreshold);
 				}
 			}
-		}
-	}
-	
-	private final void fireReady() {
-		if (debugEnabled) {
-			logger.debug("Firing event {} for {}", EventType.SESSION_READY, session);
-		}
-		session.event(SessionEvent.READY);
-		if (traceEnabled) {
-			logger.trace("Ending event {} for {}", EventType.SESSION_READY, session);
-		}
-	}
-	
-	private final void fireException(Throwable t) {
-		if (debugEnabled) {
-			logger.debug("Firing event {} for {}", EventType.EXCEPTION_CAUGHT, session);
-		}
-		session.exception(t);
-		if (traceEnabled) {
-			logger.trace("Ending event {} for {}", EventType.EXCEPTION_CAUGHT, session);
 		}
 	}
 	
@@ -570,59 +403,17 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		return future;
 	}	
 	
-	void quickClose() {
-		boolean stateChanged = false;
-		
-		synchronized (writeLock) {
-			if (closing == ClosingState.NONE || closing == ClosingState.SENDING) {
-				stateChanged = true;
-				closing = ClosingState.FINISHING;
-			}
-		}
-		if (stateChanged) {
-			session.loop.executenf(this);
-		}
-	}
-	
-	void close() {
-		boolean stateChanged = false;
-
-		synchronized (writeLock) {
-			if (closing == ClosingState.NONE) {
-				stateChanged = true;
-				closing = ClosingState.SENDING;
-			}
-		}		
-		if (stateChanged) {
-			session.loop.executenf(this);
-		}
-	}
-	
-	void dirtyClose() {
-		boolean stateChanged = false;
-
-		synchronized (writeLock) {
-			if (closing == ClosingState.NONE || closing == ClosingState.SENDING) {
-				stateChanged = true;
-				closing = ClosingState.FINISHING;
-			}
-		}
-		session.superQuickClose();
-		if (stateChanged) {
-			session.loop.executenf(this);
-		}
-	}
-	
+	@Override
 	void preCreated() {
+		super.preCreated();
 		outAppBuffers = new ByteBuffer[] {allocator.allocate(minAppBufferSize)};
 		inAppBuffer = allocator.allocate(minAppBufferSize);
 		outNetBuffer = allocator.allocate(minNetBufferSize);
 		inNetBuffer = allocator.allocate(minNetBufferSize);
-		engine.init();
 	}
 	
 	void postEnding() {
-		engine.cleanup();
+		super.postEnding();
 		if (allocator.isReleasable()) {
 			for (int i=outAppBuffers.length-1;i>=0; --i) {
 				allocator.release(outAppBuffers[i]);
@@ -638,11 +429,6 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		}
 	}
 	
-	@Override
-	public String getName() {
-		return handler.getName();
-	}
-
 	@Override
 	public void read(byte[] data) {
 		if (readIgnored) {
@@ -660,56 +446,6 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		}
 		inNetBuffer.put(data);
 		run();	
-	}
-
-	@Override
-	public void read(Object msg) {
-	}
-	
-	@Override
-	public void event(SessionEvent event) {
-		if (event == SessionEvent.CLOSED) {
-			handleClosed();
-		}
-		handler.event(event);
-		if (event == SessionEvent.OPENED) {
-			run();
-		}
-	}	
-
-	@Override
-	public void event(DataEvent event, long length) {
-		handler.event(event, length);
-	}
-
-	@Override
-	public void exception(Throwable t) {
-		handler.exception(t);
-	}
-
-	@Override
-	public boolean incident(SessionIncident incident, Throwable t) {
-		return handler.incident(incident, t);
-	}
-
-	@Override
-	public void timer(Object event) {
-		handler.timer(event);
-	}
-	
-	@Override
-	public void timer(Runnable task) {
-		handler.timer(task);
-	}
-	
-	@Override
-	public ISessionStructureFactory getFactory() {
-		return handler.getFactory();
-	}
-
-	@Override
-	public ISessionConfig getConfig() {
-		return handler.getConfig();
 	}
 
 	@Override
@@ -744,64 +480,4 @@ class InternalEngineHandler implements IStreamHandler, Runnable {
 		return maxLen;
 	}
 
-	@Override
-	public String toString() {
-		return getClass().getName() + "[session=" + session + "]";
-	}
-
-	private class FailureTask implements Runnable {
-		private final Exception e;
-		
-		FailureTask(Exception e) {
-			this.e = e;
-		}
-		
-		@Override
-		public void run() {
-			fireException(e);
-			return;
-		}
-
-		@Override
-		public String toString() {
-			return getClass().getName() + "[session=" + session + "]";
-		}
-	}
-	
-	private class DelegatedTask implements Runnable {
-		
-		private final long id;
-		
-		private final Runnable delegate;
-		
-		private final boolean trace;
-		
-		DelegatedTask(Runnable delegate, boolean trace) {
-			this.delegate = delegate;
-			this.trace = trace;
-			id = nextDelegatedTaskId.incrementAndGet();
-		}
-
-		@Override
-		public void run() {
-			try {
-				delegate.run();
-			}
-			catch (Exception e) {
-				elogger.error(logger, "Execution of delegated task {} failed for {}: {}" , delegate, session, e);
-				session.loop.executenf(new FailureTask(e));
-				return;
-			}
-			
-			if (trace) {
-				logger.trace("Finished execution of delegated task {} for {}" , delegate, session);
-			}
-			session.loop.executenf(InternalEngineHandler.this);
-		}
-		
-		@Override
-		public String toString() {
-			return "engine-delegated-task-" + id;
-		}
-	}
 }

@@ -37,7 +37,7 @@ import javax.net.ssl.SSLEngine;
 
 import org.junit.After;
 import org.junit.Test;
-import org.snf4j.core.InternalEngineHandler.Handshake;
+import org.snf4j.core.AbstractEngineHandler.Handshake;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.logger.LoggerFactory;
@@ -67,7 +67,7 @@ public class EngineSessionTest {
 		
 		f.setAccessible(true);
 		Object o = f.get(session);
-		f = InternalEngineHandler.class.getDeclaredField("engine");
+		f = AbstractEngineHandler.class.getDeclaredField("engine");
 		f.setAccessible(true);
 		
 		return (IEngine) f.get(o);
@@ -134,7 +134,7 @@ public class EngineSessionTest {
 		field.setAccessible(true);
 		Object internal = field.get(session);
 		
-		field = InternalEngineHandler.class.getDeclaredField("handshake");
+		field = AbstractEngineHandler.class.getDeclaredField("handshake");
 		field.setAccessible(true);
 		return (AtomicReference<Handshake>) field.get(internal);
 	}
