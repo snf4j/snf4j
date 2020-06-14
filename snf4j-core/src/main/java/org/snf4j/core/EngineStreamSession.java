@@ -44,7 +44,7 @@ import org.snf4j.core.logger.ILogger;
  */
 public class EngineStreamSession extends StreamSession {
 
-	private final InternalEngineHandler internal;
+	private final EngineStreamHandler internal;
 	
 	private volatile Executor executor;
 	
@@ -63,8 +63,8 @@ public class EngineStreamSession extends StreamSession {
 	 *            the logger used to log messages related with this session
 	 */
 	public EngineStreamSession(String name, IEngine engine, IStreamHandler handler, ILogger logger) {
-		super(name, new InternalEngineHandler(engine, handler, logger));
-		internal = (InternalEngineHandler) this.handler;
+		super(name, new EngineStreamHandler(engine, handler, logger));
+		internal = (EngineStreamHandler) this.handler;
 		executor = handler.getFactory().getExecutor();
 	}
 
@@ -80,8 +80,8 @@ public class EngineStreamSession extends StreamSession {
 	 *            the logger used to log messages related with this session
 	 */
 	public EngineStreamSession(IEngine engine, IStreamHandler handler, ILogger logger) {
-		super(new InternalEngineHandler(engine, handler, logger));
-		internal = (InternalEngineHandler) this.handler;
+		super(new EngineStreamHandler(engine, handler, logger));
+		internal = (EngineStreamHandler) this.handler;
 		executor = handler.getFactory().getExecutor();
 	}
 

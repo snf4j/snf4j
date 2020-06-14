@@ -100,14 +100,14 @@ public class EngineSessionTest {
 		startAndWaitForReady(server, client, false);
 	}
 	
-	ByteBuffer getBuffer(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer getBuffer(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer) field.get(handler);
 	}
 
-	ByteBuffer[] getBuffers(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer[] getBuffers(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
@@ -118,14 +118,14 @@ public class EngineSessionTest {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffer((InternalEngineHandler) field.get(session), name);
+		return getBuffer((EngineStreamHandler) field.get(session), name);
 	}
 
 	ByteBuffer[] getBuffers(EngineStreamSession session, String name) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffers((InternalEngineHandler) field.get(session), name);
+		return getBuffers((EngineStreamHandler) field.get(session), name);
 	}
 	
 	@SuppressWarnings("unchecked")

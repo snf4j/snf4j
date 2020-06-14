@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IStreamSession;
 
-class InternalEngineHandler extends AbstractEngineHandler<EngineStreamSession, IStreamHandler> implements IStreamHandler {
+class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, IStreamHandler> implements IStreamHandler {
 	
 	private final ConcurrentLinkedQueue<ITwoThresholdFuture<Void>> pendingFutures = new ConcurrentLinkedQueue<ITwoThresholdFuture<Void>>();
 	
@@ -55,7 +55,7 @@ class InternalEngineHandler extends AbstractEngineHandler<EngineStreamSession, I
 
 	private ByteBuffer inNetBuffer;
 	
-	public InternalEngineHandler(IEngine engine, IStreamHandler handler, ILogger logger) {
+	public EngineStreamHandler(IEngine engine, IStreamHandler handler, ILogger logger) {
 		super(engine, handler, logger);
 	}
 

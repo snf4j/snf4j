@@ -102,21 +102,21 @@ public class SSLSessionTest {
 		Thread.sleep(millis);
 	}
 	
-	ByteBuffer getBuffer(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer getBuffer(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer) field.get(handler);
 	}
 
-	ByteBuffer[] getBuffers(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer[] getBuffers(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer[]) field.get(handler);
 	}
 
-	void setBuffer(InternalEngineHandler handler, String name, ByteBuffer buf) throws Exception {
+	void setBuffer(EngineStreamHandler handler, String name, ByteBuffer buf) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
@@ -127,32 +127,32 @@ public class SSLSessionTest {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffer((InternalEngineHandler) field.get(session), name);
+		return getBuffer((EngineStreamHandler) field.get(session), name);
 	}
 
 	ByteBuffer[] getBuffers(SSLSession session, String name) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffers((InternalEngineHandler) field.get(session), name);
+		return getBuffers((EngineStreamHandler) field.get(session), name);
 	}
 
 	void setBuffer(EngineStreamSession session, String name, ByteBuffer buf) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		setBuffer((InternalEngineHandler) field.get(session), name, buf);
+		setBuffer((EngineStreamHandler) field.get(session), name, buf);
 	}
 	
-	InternalEngineHandler getInternal(EngineStreamSession session) throws Exception {
+	EngineStreamHandler getInternal(EngineStreamSession session) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return (InternalEngineHandler) field.get(session);
+		return (EngineStreamHandler) field.get(session);
 	}
 
 	TestSSLEngine getSSLEngine(SSLSession session) throws Exception {
-		InternalEngineHandler internal = getInternal(session);
+		EngineStreamHandler internal = getInternal(session);
 		Field field = AbstractEngineHandler.class.getDeclaredField("engine");
 		
 		field.setAccessible(true);
@@ -586,7 +586,7 @@ public class SSLSessionTest {
 		session.writenf(getBuffer(10,0), 5);
 		session.closing = ClosingState.NONE;
 
-		InternalEngineHandler internal = getInternal(session);
+		EngineStreamHandler internal = getInternal(session);
 		Field field = AbstractEngineHandler.class.getDeclaredField("closing");
 		field.setAccessible(true);
 		field.set(internal, ClosingState.SENDING);
