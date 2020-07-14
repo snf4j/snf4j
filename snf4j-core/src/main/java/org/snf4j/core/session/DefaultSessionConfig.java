@@ -69,6 +69,10 @@ public class DefaultSessionConfig implements ISessionConfig {
 	
 	private boolean waitForInboundCloseMessage; 
 	
+	private long maxWaitTimeForDatagramSessionReady = 60000;
+	
+	private long datagramServerSessionTimedOutDelay = 60000;
+	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
 	 * 
@@ -325,5 +329,25 @@ public class DefaultSessionConfig implements ISessionConfig {
 	@Override
 	public ICodecExecutor createCodecExecutor() {
 		return null;
+	}
+	
+	public DefaultSessionConfig setMaxWaitTimeForDatagramSessionReady(long maxWaitTime) {
+		maxWaitTimeForDatagramSessionReady = maxWaitTime;
+		return this;
+	}
+	
+	@Override
+	public long getMaxWaitTimeForDatagramSessionReady() {
+		return maxWaitTimeForDatagramSessionReady;
+	}
+	
+	public DefaultSessionConfig setDatagramServerSessionTimedOutDelay(long delay) {
+		datagramServerSessionTimedOutDelay = delay;
+		return this;
+	}
+	
+	@Override
+	public long getDatagramServerSessionTimedOutDelay() {
+		return datagramServerSessionTimedOutDelay;
 	}
 }

@@ -54,6 +54,13 @@ public enum HandshakeStatus {
 	NEED_UNWRAP,
 	
 	/**
+	 * An {@link IEngine} implementation is ready to unwrap data that has been
+	 * previously received from the remote side. The data does not need to
+	 * be received again.
+	 */
+	NEED_UNWRAP_AGAIN,
+	
+	/**
 	 * An {@link IEngine} implementation must send data to the remote side.
 	 */
 	NEED_WRAP,

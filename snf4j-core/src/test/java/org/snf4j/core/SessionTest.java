@@ -822,6 +822,16 @@ public class SessionTest {
 			fail("Exception not thrown");
 		}
 		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.write(getBuffer(0,90), -1);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.writenf(getBuffer(0,90), -1);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
 		
 		assertIllegalStateException(session, new byte[10], 0, 10);
 		assertIllegalStateException(session, new byte[10], 1, 9);
@@ -1263,6 +1273,7 @@ public class SessionTest {
 		if (suspendC) c.getSession().suspendWrite();
 		if (writeS) s.write(new Packet(PacketType.NOP));
 		if (writeC) c.write(new Packet(PacketType.NOP));
+		waitFor(100);
 		if (quickClose) {
 			c.getSession().quickClose();
 		}

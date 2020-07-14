@@ -37,6 +37,7 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
+import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.core.logger.ExceptionLogger;
 import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
@@ -58,11 +59,7 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	
 	volatile int minAppBufferSize;
 	
-	int maxAppBufferSize;
-	
 	int minNetBufferSize;
-	
-	int maxNetBufferSize;
 	
 	final IByteBufferAllocator allocator;
 	
@@ -96,8 +93,6 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 		this.logger = logger;
 		allocator = handler.getFactory().getAllocator();
 	}
-	
-	abstract void handleClosed();
 	
 	/** Return true if wrap needed */
 	abstract boolean handleClosing();
@@ -170,6 +165,7 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 				break;
 				
 			case NEED_UNWRAP:
+			case NEED_UNWRAP_AGAIN:
 				running = unwrap(status);
 				break;
 				
@@ -201,7 +197,7 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 						logger.debug("Initial handshaking is finished for {}", session);
 					}
 					isReadyPending = false;
-					fireReady();
+					handleReady();
 				}
 				status[0] = null;
 			}
@@ -209,12 +205,42 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 		} while (running);
 	}
 	
+	void handleOpened() {
+		run();
+	}
+	
+	void handleReady() {
+		fireReady();
+	}
+
+	void handleClosed() {
+		ClosingState prevClosing;
+		
+		synchronized (writeLock) {
+			prevClosing = closing;
+			closing = ClosingState.FINISHED;
+		}
+		if (!engine.isInboundDone() && !engine.isOutboundDone()) {
+			try {
+				engine.closeInbound();
+			}
+			catch (SessionIncidentException e) {
+				if (prevClosing == ClosingState.NONE && !session.wasException()) {
+					if (!session.incident(e.getIncident(), e)) {
+						elogger.warn(logger, e.getIncident().defaultMessage(), session, e);
+					}
+				}
+			}
+		}
+		if (!engine.isOutboundDone()) {
+			engine.closeOutbound();
+		}
+	}
+	
 	void preCreated() {
 		engine.init();
 		minAppBufferSize = engine.getMinApplicationBufferSize();
 		minNetBufferSize = engine.getMinNetworkBufferSize();
-		maxAppBufferSize = engine.getMaxApplicationBufferSize();
-		maxNetBufferSize = engine.getMaxNetworkBufferSize();
 	}
 	
 	void postEnding() {
@@ -307,7 +333,7 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 		}
 		handler.event(event);
 		if (event == SessionEvent.OPENED) {
-			run();
+			handleOpened();
 		}
 	}	
 

@@ -55,6 +55,10 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 
 	private ByteBuffer inNetBuffer;
 	
+	private int maxAppBufferSize;
+	
+	private int maxNetBufferSize;
+	
 	public EngineStreamHandler(IEngine engine, IStreamHandler handler, ILogger logger) {
 		super(engine, handler, logger);
 	}
@@ -87,31 +91,6 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			isReadyPending = false;
 		}
 		return closing == ClosingState.SENDING;
-	}
-	
-	@Override
-	final void handleClosed() {
-		ClosingState prevClosing;
-		
-		synchronized (writeLock) {
-			prevClosing = closing;
-			closing = ClosingState.FINISHED;
-		}
-		if (!engine.isInboundDone() && !engine.isOutboundDone()) {
-			try {
-				engine.closeInbound();
-			}
-			catch (SessionIncidentException e) {
-				if (prevClosing == ClosingState.NONE && !session.wasException()) {
-					if (!session.incident(e.getIncident(), e)) {
-						elogger.warn(logger, e.getIncident().defaultMessage(), session, e);
-					}
-				}
-			}
-		}
-		if (!engine.isOutboundDone()) {
-			engine.closeOutbound();
-		}
 	}
 	
 	@Override
@@ -170,6 +149,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						logger.debug("Unwrapping overflow, input application buffer need resizing for {}", session);
 					}
 					try {
+						//TODO refresh min, max
 						inAppBuffer = allocator.ensure(inAppBuffer, minAppBufferSize, minAppBufferSize, maxAppBufferSize);
 					}
 					catch (Exception e) {
@@ -288,6 +268,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						logger.debug("Wrapping overflow, output packet buffer need resizing for {}", session);
 					}
 					try {
+						//TODO refresh min, max
 						outNetBuffer = allocator.ensure(outNetBuffer, minNetBufferSize, minNetBufferSize, maxNetBufferSize);
 					}
 					catch (Exception e) {
@@ -406,6 +387,8 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 	@Override
 	void preCreated() {
 		super.preCreated();
+		maxAppBufferSize = engine.getMaxApplicationBufferSize();
+		maxNetBufferSize = engine.getMaxNetworkBufferSize();
 		outAppBuffers = new ByteBuffer[] {allocator.allocate(minAppBufferSize)};
 		inAppBuffer = allocator.allocate(minAppBufferSize);
 		outNetBuffer = allocator.allocate(minNetBufferSize);
@@ -436,6 +419,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		}
 		if (data.length > inNetBuffer.remaining()) {
 			try {
+				//TODO refresh min, max
 				inNetBuffer = allocator.ensure(inNetBuffer, data.length, minNetBufferSize, maxNetBufferSize);
 			}
 			catch (Exception e) {

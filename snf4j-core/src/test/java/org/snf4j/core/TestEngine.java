@@ -322,6 +322,7 @@ public class TestEngine implements IEngine {
 		map.put("NH", HandshakeStatus.NOT_HANDSHAKING);
 		map.put("NW", HandshakeStatus.NEED_WRAP);
 		map.put("NU", HandshakeStatus.NEED_UNWRAP);
+		map.put("NA", HandshakeStatus.NEED_UNWRAP_AGAIN);
 		map.put("NT", HandshakeStatus.NEED_TASK);
 		map.put("OK", Status.OK);
 		map.put("BO", Status.BUFFER_OVERFLOW);

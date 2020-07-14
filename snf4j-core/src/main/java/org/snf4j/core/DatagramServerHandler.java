@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.IDatagramHandlerFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
@@ -38,10 +39,14 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
+import org.snf4j.core.logger.ExceptionLogger;
+import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.ISessionTimer;
+import org.snf4j.core.timer.ITimerTask;
 
 
 /**
@@ -58,6 +63,8 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 
 	private final static ILogger LOGGER = LoggerFactory.getLogger(DatagramServerHandler.class);
 	
+	private final IExceptionLogger elogger = ExceptionLogger.getInstance();
+	
 	/**
 	 * Sessions currently handled by this handler.
 	 * <p>
@@ -70,6 +77,8 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	 * thread-safe by default.
 	 */
 	protected Map<SocketAddress, DatagramSession> sessions = new HashMap<SocketAddress, DatagramSession>();
+	
+	protected Map<SocketAddress, ITimerTask> timers = new HashMap<SocketAddress, ITimerTask>();
 	
 	private final IDatagramHandlerFactory handlerFactory;
 	
@@ -164,10 +173,14 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		}
 	}
 	
+	private final void cancelTimers() {
+		
+	}
+	
 	@Override
 	public void event(SessionEvent event) {
 		if (event == SessionEvent.CLOSED) {
-			closeAllSessions();
+			handleClosed();
 		}
 		super.event(event);
 	}
@@ -280,45 +293,102 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		}
 	}
 
+	protected IEngine createEngine(SocketAddress remoteAddress, ISessionConfig config) throws Exception {
+		return null;
+	}
+	
 	DatagramServerSession createSession(SocketAddress remoteAddress) {
-		IDatagramHandler handler = handlerFactory.create(remoteAddress);
+		SocketAddress realAddress = remoteAddress == null ? getSession().getRemoteAddress() : remoteAddress;
+		
+		if (timers.containsKey(realAddress)) {
+			return null;
+		}
+		
+		IDatagramHandler handler = handlerFactory.create(realAddress);
 		DatagramServerSession session = null;
 		
 		if (handler != null) {
-			session = new DatagramServerSession((DatagramSession) getSession(), remoteAddress, handler);
+			IEngine engine;
+			
+			try {
+				engine = createEngine(realAddress, handler.getConfig());
+			}
+			catch (Exception e) {
+				elogger.error(LOGGER, "Creation of engine for remote address {} failed: {}", realAddress, e);
+				return null;
+			}
+
+			if (engine == null) {
+				session = new DatagramServerSession((DatagramSession) getSession(), remoteAddress, handler);
+			}
+			else {
+				session = new EngineDatagramServerSession(engine, (DatagramSession) getSession(), remoteAddress, handler);
+			}
+			session.preCreated();
 			fireEvent(session, SessionEvent.CREATED);
 			if (session.closeCalled.get()) {
 				session.closingFinished();
 				fireEvent(session, SessionEvent.ENDING);
+				session.postEnding();
 				return null;
 			}
 			session.setSelectionKey(((DatagramSession) getSession()).key);
 			fireEvent(session, SessionEvent.OPENED);
 			if (session.closeCalled.get()) {
-				closeSession(session);
+				closeSession(session, true);
 				return null;
 			}
 		}
 		return session;
 	}
 	
-	void closeSession(DatagramSession session) {
+	@Override
+	public void timer(Object event) {
+		timers.remove(event);
+	}
+	
+	void setTimeWaitTimer(DatagramSession session) {
+		long delay = session.getConfig().getDatagramServerSessionTimedOutDelay();
+		
+		if (delay > 0) {
+			ISessionTimer timer = getSession().getTimer();
+			
+			if (timer.isSupported()) {
+				SocketAddress remoteAddress = session.getRemoteAddress();
+				
+				if (remoteAddress != null) {
+					ITimerTask task = timers.put(remoteAddress, timer.scheduleEvent(remoteAddress, delay));
+
+					if (task != null) {
+						task.cancelTask();
+					}
+				}
+			}
+		}
+	}
+	
+	void closeSession(DatagramSession session, boolean timeWaitDelay) {
+		if (timeWaitDelay) {
+			setTimeWaitTimer(session);
+		}
 		((DatagramServerSession)session).closingFinished();
 		fireEvent(session, SessionEvent.CLOSED);
 		fireEvent(session, SessionEvent.ENDING);
+		session.postEnding();
 	}
 	
 	void closeSession(SocketAddress remoteAddress) {
 		DatagramSession session = sessions.remove(remoteAddress == null ? NULL_ADDRESS : remoteAddress);
 		
 		if (session != null) {
-			closeSession(session);
+			closeSession(session, true);
 		}
 	}
 
-	void closeAllSessions() {
+	void handleClosed() {
+		cancelTimers();
 		for (DatagramSession session: getSessions()) {
-			closeSession(session);
+			closeSession(session, false);
 		}
 		sessions.clear();
 	}

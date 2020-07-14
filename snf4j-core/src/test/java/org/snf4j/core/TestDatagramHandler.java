@@ -43,6 +43,13 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 
 	volatile TestAllocator allocator;
 	
+	public TestDatagramHandler() {
+	}
+	
+	public TestDatagramHandler(String name) {
+		super(name);
+	}
+	
 	String getEventLog() {
 		String s = sb.toString();
 		sb.setLength(0);

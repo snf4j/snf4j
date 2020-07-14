@@ -179,45 +179,39 @@ public interface IEngine {
 	void closeInbound() throws SessionIncidentException;
 	
 	/**
-	 * Gets the minimum size of the buffer holding application data. An
+	 * Gets the current minimum size of the buffer holding application data. An
 	 * {@link IEngine} implementation may use application data (i.e. the
 	 * application data wrapped in one network packet) of any size up to and
 	 * including the value returned by this method.
-	 * <p>
-	 * This method is only called once by the constructor of the
-	 * {@link org.snf4j.core.EngineStreamSession EngineStreamSession} class.
 	 * 
 	 * @return the minimum buffer size
 	 */
 	int getMinApplicationBufferSize();
 	
 	/**
-	 * Gets the minimum size of the buffer holding network data. An {@link IEngine} 
+	 * Gets the current minimum size of the buffer holding network data. An {@link IEngine} 
 	 * implementation may generate network packets of any size up to and including the value
 	 * returned by this method.  
-	 * <p>
-	 * This method is only called once by the constructor of the
-	 * {@link org.snf4j.core.EngineStreamSession EngineStreamSession} class.
 	 * 
 	 * @return the minimum buffer size
 	 */
 	int getMinNetworkBufferSize();
 
 	/**
-	 * Gets the maximum size of the buffer holding application data
+	 * Gets the current maximum size of the buffer holding application data
 	 * <p>
-	 * This method is only called once by the constructor of the
-	 * {@link org.snf4j.core.EngineStreamSession EngineStreamSession} class.
+	 * This method is only used by the {@link org.snf4j.core.EngineStreamSession
+	 * EngineStreamSession} class.
 	 * 
 	 * @return the maximum buffer size
 	 */
 	int getMaxApplicationBufferSize();
 	
 	/**
-	 * Gets the maximum size of the buffer holding network data
+	 * Gets the current maximum size of the buffer holding network data
 	 * <p>
-	 * This method is only called once by the constructor of the
-	 * {@link org.snf4j.core.EngineStreamSession EngineStreamSession} class.
+	 * This method is only used by the {@link org.snf4j.core.EngineStreamSession
+	 * EngineStreamSession} class.
 	 * 
 	 * @return the maximum buffer size
 	 */

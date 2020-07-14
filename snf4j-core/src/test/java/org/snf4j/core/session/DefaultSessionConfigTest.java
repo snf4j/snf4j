@@ -53,12 +53,16 @@ public class DefaultSessionConfigTest {
 		assertEquals(1, c.getMaxSSLNetworkBufferSizeRatio());
 		assertFalse(c.waitForInboundCloseMessage());
 		assertNull(c.createCodecExecutor());
+		assertEquals(60000, c.getMaxWaitTimeForDatagramSessionReady());
+		assertEquals(60000, c.getDatagramServerSessionTimedOutDelay());
 
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
 			.setEndingAction(EndingAction.STOP).setCanOwnDataPassedToWriteAndSendMethods(true)
 			.setMaxSSLApplicationBufferSizeRatio(5).setMaxSSLNetworkBufferSizeRatio(6)
-			.setWaitForInboundCloseMessage(true);
+			.setWaitForInboundCloseMessage(true).setMaxWaitTimeForDatagramSessionReady(1001)
+			.setDatagramServerSessionTimedOutDelay(1002)
+			.getClass();
 
 		assertEquals(10, c.getMinInBufferCapacity());
 		assertEquals(100, c.getMaxInBufferCapacity());
@@ -70,6 +74,8 @@ public class DefaultSessionConfigTest {
 		assertEquals(5, c.getMaxSSLApplicationBufferSizeRatio());
 		assertEquals(6, c.getMaxSSLNetworkBufferSizeRatio());
 		assertTrue(c.waitForInboundCloseMessage());
+		assertEquals(1001, c.getMaxWaitTimeForDatagramSessionReady());
+		assertEquals(1002, c.getDatagramServerSessionTimedOutDelay());
 		
 		SSLEngine engine = c.createSSLEngine(true);
 		assertNotNull(engine);

@@ -25,16 +25,23 @@
  */
 package org.snf4j.core;
 
-import java.io.IOException;
+import java.io.File;
+import java.io.FileInputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.DatagramChannel;
+import java.security.KeyStore;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -51,12 +58,24 @@ import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.SSLEngineCreateException;
 import org.snf4j.core.timer.ITimer;
 
 public class DatagramHandler {
 	SelectorLoop loop;
 	int port;
+	public TestDTLSEngine testEngine;
+	public boolean nullEngine;
+	public boolean engineException;
+	public SSLEngine engine;
+	public boolean ssl;
+	public boolean sslClient;
+	public boolean sslClientMode = true;
+	public boolean sslRemoteAddress;
 	volatile DatagramSession session;
+	volatile DatagramChannel channel;
+	SocketAddress localAddress, remoteAddress;
+	boolean connected;
 	ThreadFactory threadFactory;
 	boolean registerConnectedSession;
 	long throughputCalcInterval = 1000;
@@ -76,7 +95,9 @@ public class DatagramHandler {
 	volatile boolean incidentQuickClose;
 	volatile boolean incidentDirtyClose;
 	volatile boolean exceptionClose;
-
+	volatile boolean waitForCloseMessage;
+	public volatile boolean throwInException;
+	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	public volatile boolean throwInEvent;
 	public final AtomicInteger throwInEventCount = new AtomicInteger();
 	public volatile boolean throwInRead;
@@ -105,6 +126,14 @@ public class DatagramHandler {
 
 	IDatagramHandlerFactory factory;
 	boolean useDatagramServerHandler;
+	volatile SocketAddress handlerFactoryRemoteAddress;
+	
+	volatile long maxWaitTimeForReady = 5000;
+	volatile long timeWaitDelay = 5000;
+	
+	static volatile SSLContext sslContext = null; 
+	
+	public static double JAVA_VER = Double.parseDouble(System.getProperty("java.specification.version"));
 	
 	static {
 		eventMapping.put(EventType.SESSION_CREATED, "SCR");
@@ -116,7 +145,33 @@ public class DatagramHandler {
 		eventMapping.put(EventType.DATA_SENT, "DS");
 		eventMapping.put(EventType.EXCEPTION_CAUGHT, "EXC");
 	}
+	
+	public SSLContext getSSLContext() throws Exception {
+		if (sslContext == null) {
+			synchronized (Server.class) {
+				if (sslContext == null) {
+					KeyStore ks = KeyStore.getInstance("JKS");
+					KeyStore ts = KeyStore.getInstance("JKS");
+					char[] password = "password".toCharArray();
 
+					File file = new File(getClass().getClassLoader().getResource("keystore.jks").getFile());
+
+					ks.load(new FileInputStream(file), password);
+					ts.load(new FileInputStream(file), password);
+
+					KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+					kmf.init(ks, password);
+					TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+					tmf.init(ts);
+
+					SSLContext ctx = SSLContext.getInstance("DTLS");
+					ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+					sslContext = ctx;
+				}
+			}
+		}
+		return sslContext;
+	}
 	public DatagramHandler(int port) {
 		this.port = port;
 	}
@@ -153,24 +208,59 @@ public class DatagramHandler {
 		}
 		return s;
 	}
+	
+	public String trimRecordedData(String prefix) {
+		String s;
+		
+		synchronized(recorder) {
+			s = recorder.toString();
+			recorder.setLength(0);
+		}
+		if (prefix != null && prefix.length() > 0) {
+			if (s.startsWith(prefix)) {
+				s = s.substring(prefix.length());
+			}
+		}
+		return s;
+	}
 
-	public void startServer() throws IOException {
+	public String getRecordedData(String limit, boolean clear) {
+		String s;
+		
+		synchronized(recorder) {
+			s = recorder.toString();
+			if (clear) {
+				recorder.setLength(0);
+			}
+
+			int i = s.indexOf(limit);
+			if (i != -1) {
+				if (clear) {
+					recorder.append(s.substring(i + limit.length()));
+				}
+				s = s.substring(0, i);
+			}
+		}
+		return s;
+	}
+	
+	public void startServer() throws Exception {
 		start(false);
 	}
 	
-	public void startClient() throws IOException {
+	public void startClient() throws Exception {
 		start(true);
 	}
 	
-	void start(boolean connected) throws IOException {
+	void start(boolean connected) throws Exception {
 		start(connected, false, null);
 	}
 	
-	void start(boolean connected, SelectorLoop loop) throws IOException {
+	void start(boolean connected, SelectorLoop loop) throws Exception {
 		start(connected, false, loop);
 	}
 	
-	void start(boolean connected, boolean firstRegistrate, SelectorLoop loop) throws IOException {
+	void start(boolean connected, boolean firstRegistrate, SelectorLoop loop) throws Exception {
 		if (loop == null) {
 			this.loop = new SelectorLoop();
 			loop = this.loop;
@@ -190,18 +280,35 @@ public class DatagramHandler {
 		IDatagramHandler handler;
 		if (useDatagramServerHandler) {
 			if (factory != null) {
-				handler = new ServerHandler(factory);
+				handler = ssl ? new DTLSHandler(factory) : new ServerHandler(factory);
 			}
 			else {
-				handler = new ServerHandler(new IDatagramHandlerFactory() {
+				if (ssl) {
+					handler = new DTLSHandler(new IDatagramHandlerFactory() {
+
+						@Override
+						public IDatagramHandler create(
+								SocketAddress remoteAddress) {
+							handlerFactoryRemoteAddress = remoteAddress;
+							return createNullHandler ? null : new Handler();
+						}
+					},
+					new Handler(true).getConfig());
 					
-					@Override
-					public IDatagramHandler create(
-							SocketAddress remoteAddress) {
-						return createNullHandler ? null : new Handler();
-					}
-				},
-				new Handler(true).getConfig());
+				}
+				else {
+					handler = new ServerHandler(new IDatagramHandlerFactory() {
+
+						@Override
+						public IDatagramHandler create(
+								SocketAddress remoteAddress) {
+							handlerFactoryRemoteAddress = remoteAddress;
+							return createNullHandler ? null : new Handler();
+						}
+					},
+					new Handler(true).getConfig(),
+					new StructureFactory());
+				}
 			}
 		}
 		else {
@@ -209,11 +316,26 @@ public class DatagramHandler {
 		}
 		
 		DatagramChannel dc = DatagramChannel.open();
+		channel = dc;
 		dc.configureBlocking(false);
+		if (this.connected) {
+			connected = true;
+		}
 		if (connected) {
-			dc.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
+			if (localAddress != null) {
+				dc.socket().bind(localAddress);
+			}
+			if (remoteAddress != null) {
+				dc.connect(remoteAddress);
+			}
+			else {
+				dc.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
+			}
 			
 			if (registerConnectedSession) {
+				if (ssl) {
+					session = new DTLSSession(sslRemoteAddress ? remoteAddress : null, new Handler(), sslClientMode);
+				}
 				session = useTestSession ? new TestDatagramSession(new Handler()) 
 						: new DatagramSession(new Handler());
 				session.setChannel(dc);
@@ -223,7 +345,10 @@ public class DatagramHandler {
 			}
 			else {
 				if (initSession == null) {
-					if (useTestSession) {
+					if (ssl) {
+						session = (DatagramSession) loop.register(dc, new DTLSSession(sslRemoteAddress ? remoteAddress : null, new Handler(), sslClientMode)).getSession();
+					}
+					else if (useTestSession) {
 						session = (DatagramSession) loop.register(dc, new TestDatagramSession(handler)).getSession();
 					}
 					else {
@@ -236,7 +361,12 @@ public class DatagramHandler {
 			}
 		}
 		else {
-			dc.socket().bind(new InetSocketAddress(port));
+			if (localAddress != null) {
+				dc.socket().bind(localAddress);
+			}
+			else {
+				dc.socket().bind(new InetSocketAddress(port));
+			}
 			if (registerConnectedSession) {
 				session = useTestSession ? new TestDatagramSession(new Handler()) 
 						: new DatagramSession(new Handler());
@@ -246,8 +376,13 @@ public class DatagramHandler {
 				loop.register(dc, session);
 			}
 			else {
-				session = (DatagramSession) loop.register(dc, useTestSession ? new TestDatagramSession(handler) 
-						: new DatagramSession(handler)).getSession();
+				if (sslClient) {
+					session = (DatagramSession) loop.register(dc, new DTLSSession(sslRemoteAddress ? remoteAddress : null, new Handler(), sslClientMode)).getSession();
+				}
+				else {
+					session = (DatagramSession) loop.register(dc, useTestSession ? new TestDatagramSession(handler) 
+							: new DatagramSession(handler)).getSession();
+				}
 			}
 		}
 
@@ -348,6 +483,16 @@ public class DatagramHandler {
 		
 	}
 	
+	class DTLSHandler extends DTLSServerHandler {
+		public DTLSHandler(IDatagramHandlerFactory handlerFactory) {
+			super(handlerFactory);
+		}
+		
+		public DTLSHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config) {
+			super(handlerFactory, config);
+		}
+	}
+	
 	class Handler extends AbstractDatagramHandler {
 		boolean codec2;
 		
@@ -357,6 +502,35 @@ public class DatagramHandler {
 		@Override
 		public ISessionConfig getConfig() {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
+				@Override
+				public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+					if (nullEngine) {
+						return null;
+					}
+					if (engineException) {
+						throw new SSLEngineCreateException();
+					}
+					
+					SSLEngine engine = DatagramHandler.this.testEngine;
+					
+					if (engine == null && DatagramHandler.JAVA_VER < 9.0) {
+						System.out.println("[INFO] JAVA_VER ("+DatagramHandler.JAVA_VER+") < 9.0 - using TestDTLSEngine");
+						engine = new TestDTLSEngine();
+					}
+					
+					try {
+						engine = engine == null ? getSSLContext().createSSLEngine() : engine;
+					} catch (Exception e) {
+						throw new SSLEngineCreateException(e);
+					}
+					DatagramHandler.this.engine = engine;
+					engine.setUseClientMode(clientMode);
+					if (!clientMode) {
+						engine.setNeedClientAuth(true);
+					}
+					return new TestSSLEngine(engine);
+				}
+				
 				@Override
 				public ICodecExecutor createCodecExecutor() {
 					if (!codec2) {
@@ -372,6 +546,9 @@ public class DatagramHandler {
 			config.setIgnorePossiblyIncompleteDatagrams(ignorePossiblyIncomplete);
 			config.setEndingAction(endingAction);
 			config.setCanOwnDataPassedToWriteAndSendMethods(canOwnPasseData);
+			config.setMaxWaitTimeForDatagramSessionReady(maxWaitTimeForReady);
+			config.setDatagramServerSessionTimedOutDelay(timeWaitDelay);
+			config.setWaitForInboundCloseMessage(waitForCloseMessage);
 			return config;
 		}
 
@@ -594,6 +771,10 @@ public class DatagramHandler {
 		@Override
 		public void exception(Throwable t) {
 			event(EventType.EXCEPTION_CAUGHT, -1, null, true);
+			if (throwInException) {
+				throwInExceptionCount.incrementAndGet();
+				throw new NullPointerException();
+			}
 			if (exceptionClose) {
 				record("close");
 				getSession().close();

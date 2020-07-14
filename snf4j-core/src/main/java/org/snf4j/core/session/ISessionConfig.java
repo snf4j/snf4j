@@ -188,4 +188,7 @@ public interface ISessionConfig {
 	 */
 	ICodecExecutor createCodecExecutor();
 	
+	long getMaxWaitTimeForDatagramSessionReady();
+	
+	long getDatagramServerSessionTimedOutDelay();
 }

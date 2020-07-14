@@ -58,7 +58,8 @@ import org.snf4j.core.session.IllegalSessionStateException;
 public class SSLSessionTest {
 	long TIMEOUT = 2000;
 	int PORT = 7777;
-
+	long AFTER_TIMEOUT = 0;
+	
 	Server s;
 	Client c;
 	
@@ -82,12 +83,13 @@ public class SSLSessionTest {
 	@Before
 	public void before() {
 		s = c = null;
+		AFTER_TIMEOUT = 0;
 	}
 	
 	@After
 	public void after() throws InterruptedException {
-		if (c != null) c.stop(TIMEOUT);
-		if (s != null) s.stop(TIMEOUT);
+		if (c != null) c.stop(TIMEOUT+AFTER_TIMEOUT);
+		if (s != null) s.stop(TIMEOUT+AFTER_TIMEOUT);
 	}
 
 	private byte[] getBytes(int size, int value) {
@@ -281,6 +283,8 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|NOP(567)|DS|SCL|SEN|", s.getRecordedData(true));
+		c.getSession().exception(new Exception());
+		assertEquals("", c.getRecordedData(true));
 		
 		//close already closed session
 		session.close();
@@ -667,6 +671,16 @@ public class SSLSessionTest {
 		catch (IndexOutOfBoundsException e) {}
 		try {
 			session.writenf(getBuffer(0,90), 11);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}		
+		try {
+			session.write(getBuffer(0,90), -1);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.writenf(getBuffer(0,90), -1);
 			fail("Exception not thrown");
 		}
 		catch (IndexOutOfBoundsException e) {}		
@@ -1379,6 +1393,7 @@ public class SSLSessionTest {
 		TestOwnSSLSession session = (TestOwnSSLSession) c.getSession();
 		session.sleepHandleClosingInProgress = 4000;
 		session.close();
+		AFTER_TIMEOUT = 4000;
 		
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
