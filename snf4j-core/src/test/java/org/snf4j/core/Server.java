@@ -71,6 +71,7 @@ import org.snf4j.core.pool.ISelectorLoopPool;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
+import org.snf4j.core.timer.IRetransmissionModel;
 import org.snf4j.core.timer.ITimer;
 
 public class Server {
@@ -482,6 +483,11 @@ public class Server {
 		@Override
 		public ITimer getTimer() {
 			return timer;
+		}
+
+		@Override
+		public IRetransmissionModel getRetransmissionModel() {
+			return null;
 		}
 		
 	}

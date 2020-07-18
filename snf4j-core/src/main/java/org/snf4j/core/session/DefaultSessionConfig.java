@@ -69,9 +69,9 @@ public class DefaultSessionConfig implements ISessionConfig {
 	
 	private boolean waitForInboundCloseMessage; 
 	
-	private long maxWaitTimeForDatagramSessionReady = 60000;
+	private long datagramEngineHandshakeTimeout = 60000;
 	
-	private long datagramServerSessionTimedOutDelay = 60000;
+	private long datagramServerSessionReopenBlockedInterval = 60000;
 	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
@@ -331,23 +331,23 @@ public class DefaultSessionConfig implements ISessionConfig {
 		return null;
 	}
 	
-	public DefaultSessionConfig setMaxWaitTimeForDatagramSessionReady(long maxWaitTime) {
-		maxWaitTimeForDatagramSessionReady = maxWaitTime;
+	public DefaultSessionConfig setDatagramEngineHandshakeTimeout(long timeout) {
+		datagramEngineHandshakeTimeout = timeout;
 		return this;
 	}
 	
 	@Override
-	public long getMaxWaitTimeForDatagramSessionReady() {
-		return maxWaitTimeForDatagramSessionReady;
+	public long getDatagramEngineHandshakeTimeout() {
+		return datagramEngineHandshakeTimeout;
 	}
 	
-	public DefaultSessionConfig setDatagramServerSessionTimedOutDelay(long delay) {
-		datagramServerSessionTimedOutDelay = delay;
+	public DefaultSessionConfig setDatagramServerSessionReopenBlockedInterval(long interval) {
+		datagramServerSessionReopenBlockedInterval = interval;
 		return this;
 	}
 	
 	@Override
-	public long getDatagramServerSessionTimedOutDelay() {
-		return datagramServerSessionTimedOutDelay;
+	public long getDatagramServerSessionReopenBlockedInterval() {
+		return datagramServerSessionReopenBlockedInterval;
 	}
 }

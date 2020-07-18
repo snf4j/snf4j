@@ -14,6 +14,7 @@ import org.snf4j.core.factory.IDatagramHandlerFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.timer.IRetransmissionModel;
 import org.snf4j.core.timer.ITimer;
 
 public class DTLSServerHandlerTest {
@@ -47,6 +48,11 @@ public class DTLSServerHandlerTest {
 			
 			@Override
 			public ITimer getTimer() {
+				return null;
+			}
+
+			@Override
+			public IRetransmissionModel getRetransmissionModel() {
 				return null;
 			}
 			

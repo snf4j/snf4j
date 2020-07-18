@@ -174,7 +174,10 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	}
 	
 	private final void cancelTimers() {
-		
+		for(ITimerTask timer: timers.values()) {
+			timer.cancelTask();
+		}
+		timers.clear();
 	}
 	
 	@Override
@@ -347,8 +350,8 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		timers.remove(event);
 	}
 	
-	void setTimeWaitTimer(DatagramSession session) {
-		long delay = session.getConfig().getDatagramServerSessionTimedOutDelay();
+	void setReopenBlockedTimer(DatagramSession session) {
+		long delay = session.getConfig().getDatagramServerSessionReopenBlockedInterval();
 		
 		if (delay > 0) {
 			ISessionTimer timer = getSession().getTimer();
@@ -367,9 +370,9 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		}
 	}
 	
-	void closeSession(DatagramSession session, boolean timeWaitDelay) {
-		if (timeWaitDelay) {
-			setTimeWaitTimer(session);
+	void closeSession(DatagramSession session, boolean block) {
+		if (block) {
+			setReopenBlockedTimer(session);
 		}
 		((DatagramServerSession)session).closingFinished();
 		fireEvent(session, SessionEvent.CLOSED);

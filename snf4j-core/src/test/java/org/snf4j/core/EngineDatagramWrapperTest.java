@@ -247,7 +247,7 @@ public class EngineDatagramWrapperTest extends DTLSTest {
 	
 	@Test
 	public void testBeginHandshake() throws Exception {
-		assumeFailingOrNoHandshake();
+		assumeFailingOrNoRehandshake();
 		
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;

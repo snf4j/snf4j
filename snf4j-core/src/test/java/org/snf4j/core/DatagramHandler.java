@@ -72,6 +72,7 @@ public class DatagramHandler {
 	public boolean sslClient;
 	public boolean sslClientMode = true;
 	public boolean sslRemoteAddress;
+	public boolean proxyAction;
 	volatile DatagramSession session;
 	volatile DatagramChannel channel;
 	SocketAddress localAddress, remoteAddress;
@@ -128,8 +129,8 @@ public class DatagramHandler {
 	boolean useDatagramServerHandler;
 	volatile SocketAddress handlerFactoryRemoteAddress;
 	
-	volatile long maxWaitTimeForReady = 5000;
-	volatile long timeWaitDelay = 5000;
+	volatile long handshakeTimeout = 5000;
+	volatile long reopenBlockedInterval = 4999;
 	
 	static volatile SSLContext sslContext = null; 
 	
@@ -293,7 +294,8 @@ public class DatagramHandler {
 							return createNullHandler ? null : new Handler();
 						}
 					},
-					new Handler(true).getConfig());
+					new Handler(true).getConfig(),
+					new StructureFactory());
 					
 				}
 				else {
@@ -491,6 +493,10 @@ public class DatagramHandler {
 		public DTLSHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config) {
 			super(handlerFactory, config);
 		}
+		
+		public DTLSHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config, ISessionStructureFactory factory) {
+			super(handlerFactory, config, factory);
+		}
 	}
 	
 	class Handler extends AbstractDatagramHandler {
@@ -546,8 +552,8 @@ public class DatagramHandler {
 			config.setIgnorePossiblyIncompleteDatagrams(ignorePossiblyIncomplete);
 			config.setEndingAction(endingAction);
 			config.setCanOwnDataPassedToWriteAndSendMethods(canOwnPasseData);
-			config.setMaxWaitTimeForDatagramSessionReady(maxWaitTimeForReady);
-			config.setDatagramServerSessionTimedOutDelay(timeWaitDelay);
+			config.setDatagramEngineHandshakeTimeout(handshakeTimeout);
+			config.setDatagramServerSessionReopenBlockedInterval(reopenBlockedInterval);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
 			return config;
 		}

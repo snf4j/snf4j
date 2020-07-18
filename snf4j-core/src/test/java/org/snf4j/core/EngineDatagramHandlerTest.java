@@ -586,7 +586,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		c = new DatagramHandler(PORT);
 		c.ssl = true;
 		c.timer = new DefaultTimer();
-		c.maxWaitTimeForReady = 100;
+		c.handshakeTimeout = 100;
 		c.startClient();
 		c.waitForSessionEnding(TIMEOUT);
 	}

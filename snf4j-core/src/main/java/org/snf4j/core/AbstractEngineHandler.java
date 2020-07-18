@@ -111,7 +111,6 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	abstract void superQuickClose();
 	
 	/** Method is always running in the same selector loop's thread */
-	@SuppressWarnings("incomplete-switch")
 	@Override
 	public void run() {
 		if (closing == ClosingState.FINISHED) {
@@ -130,8 +129,14 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			}
 		}
 		
+		run(new HandshakeStatus[1]);
+	}
+	
+	boolean handshaking;
+	
+	@SuppressWarnings("incomplete-switch")
+	void run(HandshakeStatus[] status) {
 		boolean running = true;
-		HandshakeStatus[] status = new HandshakeStatus[1];
 		
 		debugEnabled = logger.isDebugEnabled();
 		traceEnabled = debugEnabled ? logger.isTraceEnabled() : false;
@@ -140,6 +145,9 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			boolean wrapNeeded;
 			
 			if (closing != ClosingState.NONE) {
+				if (closing == ClosingState.FINISHED) {
+					break;
+				}
 				wrapNeeded = handleClosing();
 			}
 			else {
@@ -149,6 +157,12 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			if (status[0] == null) {
 				status[0] = engine.getHandshakeStatus();
 			}
+			
+			if (!handshaking && status[0] != HandshakeStatus.NOT_HANDSHAKING) {
+				handshaking = true;
+				handleBeginHandshake();
+			}
+			
 			switch (status[0]) {
 			case NOT_HANDSHAKING:	
 				running = false;
@@ -192,6 +206,8 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			
 			if (status[0] == HandshakeStatus.FINISHED) {
 				handshake.set(Handshake.NONE);
+				handshaking = false;
+				handleFinished();
 				if (isReadyPending) {
 					if (debugEnabled) {
 						logger.debug("Initial handshaking is finished for {}", session);
@@ -207,6 +223,12 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	
 	void handleOpened() {
 		run();
+	}
+	
+	void handleBeginHandshake() {
+	}
+	
+	void handleFinished() {
 	}
 	
 	void handleReady() {

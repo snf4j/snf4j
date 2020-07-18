@@ -1,6 +1,7 @@
 package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -9,16 +10,20 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import javax.net.ssl.SSLEngine;
 
 import org.junit.Test;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.future.IFuture;
+import org.snf4j.core.handler.SessionHandshakeTimeoutException;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.IEngineSession;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
 import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.TestTimer;
 
 public class DTLSSessionTest extends DTLSTest {
 
@@ -32,7 +37,6 @@ public class DTLSSessionTest extends DTLSTest {
 			return super.createSSLEngine(clientMode);
 		}
 	};
-	
 	
 	@Test
 	public void testConstructor() throws Exception {
@@ -80,7 +84,7 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals("CSCSCSC", clientMode.toString());
 		s = new DTLSSession(h, false);
 		assertEquals("CSCSCSCS", clientMode.toString());
-		
+
 	}
 	
 	private void testConnectedToConnected(DefaultCodecExecutor codec) throws Exception {
@@ -272,7 +276,8 @@ public class DTLSSessionTest extends DTLSTest {
 
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
-		s.timer = new DefaultTimer();
+		s.timer = new TestTimer();
+		s.reopenBlockedInterval = 0;
 		s.ssl = true;
 		c = new DatagramHandler(PORT);
 		c.ssl = true;
@@ -325,7 +330,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().dirtyClose();
 		
 		//closed by server
-		s.maxWaitTimeForReady = 1000;
+		s.handshakeTimeout = 1000;
 		c = new DatagramHandler(PORT);
 		c.ssl = true;
 		c.startClient();
@@ -341,7 +346,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.stop(TIMEOUT);
 		
 		//quickly closed by server
-		s.maxWaitTimeForReady = 1000;
+		s.handshakeTimeout = 1000;
 		c = new DatagramHandler(PORT);
 		c.ssl = true;
 		c.startClient();
@@ -357,7 +362,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.stop(TIMEOUT);
 
 		//dirty closed by server
-		s.maxWaitTimeForReady = 1000;
+		s.handshakeTimeout = 1000;
 		c = new DatagramHandler(PORT);
 		c.ssl = true;
 		c.startClient();
@@ -370,13 +375,17 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertEquals(0, ((TestTimer)s.timer).getSize());
 	
 	}
 	
 	@Test
 	public void testBeginHandshake() throws Exception {
 		assumeJava9();
-		assumeSuccessfulHandshake();
+		assumeSuccessfulRehandshake();
 		
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
@@ -438,6 +447,11 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals("DR+|DS+|ECHO()|DS|", getRecordedData(c));
 		assertEquals("DR+|DS+|ECHO_RESPONSE()|", getRecordedData(s));
 		
+		c.getSession().dirtyClose();
+		s.getSession().dirtyClose();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		
 	}
 	
 	@Test
@@ -465,7 +479,7 @@ public class DTLSSessionTest extends DTLSTest {
 		//try to connect with new ssl engine to the same server session
 		c = new DatagramHandler(PORT);
 		c.timer = new DefaultTimer();
-		c.maxWaitTimeForReady = 500;
+		c.handshakeTimeout = 500;
 		c.ssl = true;
 		c.localAddress = origSession.getLocalAddress();
 		c.startClient();
@@ -482,6 +496,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		origSession.close();
@@ -772,4 +787,452 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(100);
 		assertEquals("", c.getRecordedData(true));
 	}
+
+	void prepareProxy(boolean serverProxyAction, boolean clientProxyAction) throws Exception {
+		p = new DatagramProxy(PORT);
+		p.start(TIMEOUT);
+
+		s = new DatagramHandler(PORT+1);
+		s.useDatagramServerHandler = true;
+		s.localAddress = address(PORT+1);
+		s.ssl = true;
+		s.timer = new TestTimer();
+		s.handshakeTimeout = 120000;
+		s.proxyAction = serverProxyAction;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.timer = new TestTimer();
+		c.handshakeTimeout = 120000;
+		c.proxyAction = clientProxyAction;
+		p.peer1 = s;
+		p.peer2 = c;
+	}
+	
+	@Test
+	public void testRetransmissionDoubleEachPacket() throws Exception {
+		assumeJava9();
+		
+		prepareProxy(true, true);
+		p.action = p.DUPLICATE_ACTION;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		s.getRecordedData(true);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|NOP()|DR|NOP()|", s.getRecordedData(true));
+		
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		
+		TestTimer t = (TestTimer)s.timer;
+		assertEquals(1, t.getSize());
+		assertEquals("4999|", t.get());
+		assertEquals("1000|4999|120000|", t.getDelays());
+		t = (TestTimer)c.timer;
+		assertEquals(0, t.getSize());
+		assertEquals("1000|120000|", t.getDelays());
+	}
+	
+	@Test
+	public void testRetransmissionWithOnePreviousPacket() throws Exception {
+		assumeJava9();
+		
+		prepareProxy(true, true);
+		p.action = p.WITH_1PPREVIOUS_PACKET_ACTION;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		s.getRecordedData(true);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|NOP()|DR|", s.getRecordedData(true));
+		
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		
+		TestTimer t = (TestTimer)s.timer;
+		assertEquals(1, t.getSize());
+		assertEquals("4999|", t.get());
+		assertEquals("1000|4999|120000|", t.getDelays());
+		t = (TestTimer)c.timer;
+		assertEquals(0, t.getSize());
+		assertEquals("1000|120000|", t.getDelays());
+	}
+	
+	@Test
+	public void testRetransmissionLostEveryPacketOnce() throws Exception {
+		assumeJava9();
+		
+		prepareProxy(true, true);
+		p.action = p.LOST_EVERY_PACKET_ONCE_ACTION;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT*10);
+		s.waitForSessionReady(TIMEOUT*10);
+		
+		p.action = p.DEFAULT_ACTION;
+		s.getRecordedData(true);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+
+		TestTimer t = (TestTimer)s.timer;
+		assertEquals(1, t.getSize());
+		assertEquals("4999|", t.get());
+		assertEquals("1000|2000|4999|120000|", t.getDelays());
+		t = (TestTimer)c.timer;
+		assertEquals(0, t.getSize());
+		assertEquals("1000|2000|120000|", t.getDelays());
+	
+	}
+	
+	@Test
+	public void testWriteBeforeHandshakeCompletes() throws Exception {
+		assumeJava9();
+		
+		prepareProxy(true, false);
+		p.action = p.LOST_FIRST_1PACKET_ACTION;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionOpen(TIMEOUT);
+		c.getSession().write(nop());
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertTrue(s.getRecordedData(true).endsWith("DR|NOP()|"));
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		
+		TestTimer t = (TestTimer)s.timer;
+		assertEquals(1, t.getSize());
+		assertEquals("4999|", t.get());
+		assertEquals("1000|4999|120000|", t.getDelays());
+		t = (TestTimer)c.timer;
+		assertEquals(0, t.getSize());
+		assertEquals("1000|2000|120000|", t.getDelays());
+	}
+	
+	@Test
+	public void testWriteBeforeSecondHandshakeCompletes() throws Exception {
+		assumeSuccessfulRehandshake();
+		
+		prepareProxy(true, false);
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		s.getRecordedData(true);
+		
+		p.action = p.LOST_FIRST_1PACKET_ACTION;
+		((IEngineSession)c.getSession()).beginHandshake();
+		waitFor(100);
+		IFuture<Void> f = c.getSession().write(nop("1"));
+		waitFor(800);
+		assertFalse(f.isDone());
+		s.waitForDataRead(TIMEOUT);
+		assertTrue(s.getRecordedData(true).endsWith("DR|NOP(1)|"));
+		assertTrue(f.isSuccessful());	
+	}
+	
+	@Test
+	public void testHandshakeTimeout() throws Exception {
+		assumeJava9();
+		
+		//initial handshake
+		prepareProxy(true, false);
+		TestTimer t = (TestTimer)c.timer;
+		p.action = p.LOST_EVERY_PACKET_ACTION;
+		c.handshakeTimeout = 500;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionOpen(TIMEOUT);
+		waitFor(100);
+		assertEquals("1000|500|", t.getTrace(true));
+		c.getRecordedData(true);
+		waitFor(300);
+		assertEquals("", c.getRecordedData(true));
+		waitFor(200);
+		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.getSession().getReadyFuture().cause() instanceof SessionHandshakeTimeoutException);
+		assertEquals("c1000|", t.getTrace(true));
+		assertEquals(1, t.getExpiredSize());
+		assertEquals("500|", t.getExpired());
+		assertEquals(0, t.getSize());
+		assertEquals("500|1000|", t.getDelays());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		p.stop(TIMEOUT);
+		
+		//second handshake
+		prepareProxy(true, false);
+		t = (TestTimer)c.timer;
+		c.handshakeTimeout = 500;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		((TestTimer)c.timer).getTrace(true);
+		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		assertEquals("", ((TestTimer)c.timer).getTrace(true));
+		p.action = p.LOST_EVERY_PACKET_ACTION;
+		((IEngineSession)c.getSession()).beginHandshake();
+		waitFor(100);
+		assertEquals("500|1000|", t.getTrace(true));
+		c.getRecordedData(true);
+		waitFor(300);
+		assertEquals("", c.getRecordedData(true));
+		waitFor(200);
+		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.getSession().getReadyFuture().isSuccessful());
+		assertTrue(c.getSession().getCloseFuture().cause() instanceof SessionHandshakeTimeoutException);
+		assertEquals("c1000|", t.getTrace(true));
+		assertEquals("500|", t.getExpired());
+		assertEquals(0, t.getSize());
+		assertEquals("500|1000|", t.getDelays());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		p.stop(TIMEOUT);
+		
+		//handshake after close
+		if (HANDSHAKING_AFTER_CLOSE) {
+			prepareProxy(true, false);
+			t = (TestTimer)c.timer;
+			c.handshakeTimeout = 500;
+			c.waitForCloseMessage = true;
+			s.startServer();
+			c.startClient();
+			c.waitForSessionReady(TIMEOUT);
+			s.waitForSessionReady(TIMEOUT);
+			t.getTrace(true);
+			p.action = p.LOST_EVERY_PACKET_ACTION;
+			c.getSession().close();
+			waitFor(100);
+			assertEquals("1000|500|", t.getTrace(true));
+			c.getRecordedData(true);
+			waitFor(300);
+			assertEquals("", c.getRecordedData(true));
+			waitFor(200);
+			assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+			c.waitForSessionEnding(TIMEOUT);
+			assertTrue(c.getSession().getCloseFuture().cause() instanceof SessionHandshakeTimeoutException);
+			assertEquals("c1000|", t.getTrace(true));
+			assertEquals("500|", t.getExpired());
+			assertEquals(0, t.getSize());
+			assertEquals("500|1000|", t.getDelays());
+		}
+	}
+	
+	@Test
+	public void testRetransmissionTimeout() throws Exception {
+		assumeJava9();
+		
+		prepareProxy(true, false);
+		TestTimer t = (TestTimer)c.timer;
+		p.action = p.LOST_FIRST_3PACKETS_ACTION;
+		s.startServer();
+		c.startClient();
+		c.waitForDataSent(TIMEOUT);
+		
+		List<byte[]> cp = p.get(c.getSession().getLocalAddress());
+		List<byte[]> sp = p.get(c.localAddress);
+		
+		waitFor(100);
+		assertEquals(1, cp.size());
+		assertEquals("1000|120000|", t.getTrace(true));
+		waitFor(800);
+		assertEquals(1, cp.size());
+		assertEquals("", t.getTrace(true));
+		waitFor(200);
+		assertEquals(2, cp.size());
+		assertEquals("2000|", t.getTrace(true));
+		waitFor(1800);
+		assertEquals(2, cp.size());
+		assertEquals("", t.getTrace(true));
+		waitFor(200);
+		assertEquals(3, cp.size());
+		assertEquals("4000|", t.getTrace(true));
+		waitFor(3800);
+		assertEquals(3, cp.size());
+		assertEquals("", t.getTrace(true));
+		assertEquals(0, sp.size());
+		waitFor(200);
+		assertTrue(cp.size() >= 4);
+		
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("1000|2000|4000|8000|120000|", t.getDelays());
+
+		t.getTrace(true);
+		s.getRecordedData(true);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		assertEquals("", t.getTrace(true));
+		
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("1000|2000|4000|", t.getExpired());
+		assertEquals(0, t.getSize());
+		assertEquals("1000|2000|4000|8000|120000|", t.getDelays());
+		
+	}
+	
+	@Test
+	public void testRetransmissionAfterClose() throws Exception {
+		assumeHandshakingAfterClose();
+		
+		prepareProxy(true, false);
+		TestTimer t = (TestTimer)c.timer;
+		c.waitForCloseMessage = true;
+		c.handshakeTimeout = 3000;
+		s.handshakeTimeout = 3000;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		
+		p.action = p.LOST_FIRST_1PACKET_ACTION;
+		t.getTrace(true);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		c.getSession().close();
+		waitFor(100);
+		assertEquals("1000|3000|", t.getTrace(true));
+		waitFor(800);
+		assertEquals("", t.getTrace(true));
+		waitFor(200);
+		assertEquals("", t.getTrace(true));
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|EXC|SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.getSession().getCloseFuture().cause() instanceof SessionHandshakeTimeoutException);
+		assertEquals("", t.getTrace(true));
+		assertEquals("1000|3000|", t.getExpired());
+		assertEquals(0, t.getSize());
+		waitFor(100);
+		assertEquals("", s.getRecordedData(true));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		p.stop(TIMEOUT);
+
+		prepareProxy(true, false);
+		t = (TestTimer)c.timer;
+		c.handshakeTimeout = 3000;
+		s.handshakeTimeout = 3000;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+
+		p.action = p.LOST_FIRST_1PACKET_ACTION;
+		t.getTrace(true);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("3000|c3000|", t.getTrace(true));
+		assertEquals("", t.getExpired());
+		assertEquals(0, t.getSize());
+		
+	}
+	
+	@Test
+	public void testRetransmissionAfterCloseNoHandshaking() throws Exception {
+		assumeNoHandshakingAfterClose();
+
+		prepareProxy(true, false);
+		TestTimer t = (TestTimer)c.timer;
+		c.waitForCloseMessage = true;
+		c.handshakeTimeout = 3000;
+		s.handshakeTimeout = 3000;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		
+		p.action = p.LOST_FIRST_1PACKET_ACTION;
+		t.getTrace(true);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		c.getSession().close();
+		waitFor(500);
+		assertEquals("", t.getTrace(true));
+		assertEquals("DS|", c.getRecordedData(true));
+		c.getSession().dirtyClose();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("", t.getExpired());
+		assertEquals(0, t.getSize());
+
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		p.stop(TIMEOUT);
+
+		prepareProxy(true, false);
+		t = (TestTimer)c.timer;
+		c.handshakeTimeout = 3000;
+		s.handshakeTimeout = 3000;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+
+		p.action = p.LOST_FIRST_1PACKET_ACTION;
+		t.getTrace(true);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("", t.getTrace(true));
+		assertEquals("", t.getExpired());
+		assertEquals(0, t.getSize());
+		
+	}
+	
 }

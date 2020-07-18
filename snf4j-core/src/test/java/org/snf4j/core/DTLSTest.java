@@ -19,6 +19,7 @@ public class DTLSTest {
 	
 	DatagramHandler c;
 	DatagramHandler s,s2;
+	DatagramProxy p;
 	
 	TestCodec codec;
 	
@@ -30,12 +31,22 @@ public class DTLSTest {
 		Assume.assumeTrue(DatagramHandler.JAVA_VER >= 9.0);
 	}
 	
-	public static void assumeSuccessfulHandshake() {
+	public static void assumeSuccessfulRehandshake() {
 		Assume.assumeTrue(DatagramHandler.JAVA_VER >= 9.0 && DatagramHandler.JAVA_VER < 11.0);
 	}
 	
-	public static void assumeFailingOrNoHandshake() {
+	public static void assumeFailingOrNoRehandshake() {
 		Assume.assumeTrue(DatagramHandler.JAVA_VER < 9.0 || DatagramHandler.JAVA_VER >= 11.0);
+	}
+	
+	static final boolean HANDSHAKING_AFTER_CLOSE = DatagramHandler.JAVA_VER <= 11.0;
+	
+	public static void assumeHandshakingAfterClose() {
+		Assume.assumeTrue(DatagramHandler.JAVA_VER >= 9.0 && HANDSHAKING_AFTER_CLOSE);
+	}
+	
+	public static void assumeNoHandshakingAfterClose() {
+		Assume.assumeTrue(!HANDSHAKING_AFTER_CLOSE);
 	}
 	
 	static final boolean TLS1_3 = SSLSessionTest.TLS1_3;
@@ -43,6 +54,7 @@ public class DTLSTest {
 	@Before
 	public void before() {
 		s = s2 = c = null;
+		p = null;
 	}
 	
 	@After
@@ -50,6 +62,7 @@ public class DTLSTest {
 		if (c != null) c.stop(TIMEOUT);
 		if (s != null) s.stop(TIMEOUT);
 		if (s2 != null) s2.stop(TIMEOUT);
+		if (p != null) p.stop(TIMEOUT);
 	}
 	
 	void waitFor(long millis) throws InterruptedException {

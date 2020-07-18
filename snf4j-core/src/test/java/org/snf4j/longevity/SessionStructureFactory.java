@@ -31,6 +31,7 @@ import java.util.concurrent.Executor;
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.factory.ISessionStructureFactory;
+import org.snf4j.core.timer.IRetransmissionModel;
 import org.snf4j.core.timer.ITimer;
 
 public class SessionStructureFactory implements ISessionStructureFactory {
@@ -52,6 +53,11 @@ public class SessionStructureFactory implements ISessionStructureFactory {
 
 	@Override
 	public ITimer getTimer() {
+		return null;
+	}
+
+	@Override
+	public IRetransmissionModel getRetransmissionModel() {
 		return null;
 	}
 }

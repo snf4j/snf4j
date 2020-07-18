@@ -53,6 +53,7 @@ import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.SessionState;
 import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.IRetransmissionModel;
 import org.snf4j.core.timer.ITimer;
 import org.snf4j.core.timer.ITimerTask;
 
@@ -165,6 +166,11 @@ public class DatagramServerHandlerTest {
 			
 			@Override
 			public ITimer getTimer() {
+				return null;
+			}
+
+			@Override
+			public IRetransmissionModel getRetransmissionModel() {
 				return null;
 			}
 			
@@ -1092,7 +1098,7 @@ public class DatagramServerHandlerTest {
 		c = new DatagramHandler(PORT);
 		c.useDatagramServerHandler = true;
 		c.timer = new DefaultTimer();
-		c.timeWaitDelay = 500;
+		c.reopenBlockedInterval = 500;
 		s.startServer();
 		c.startClient();
 		Map<SocketAddress, ITimerTask> timers = getTimers(c.getSession().getHandler());
@@ -1131,7 +1137,7 @@ public class DatagramServerHandlerTest {
 		//test wait time
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
-		s.timeWaitDelay = 500;
+		s.reopenBlockedInterval = 500;
 		s.timer = new DefaultTimer();
 		c = new DatagramHandler(PORT);
 		s.startServer();
@@ -1169,12 +1175,12 @@ public class DatagramServerHandlerTest {
 		assertFalse(task == timers.values().iterator().next());
 		s.stop(TIMEOUT);
 		DatagramServerHandler h = (DatagramServerHandler) superSession.getHandler();
-		h.setTimeWaitTimer(superSession);
+		h.setReopenBlockedTimer(superSession);
 		
 		//test with wait time = 0
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
-		s.timeWaitDelay = 0;
+		s.reopenBlockedInterval = 0;
 		s.timer = new DefaultTimer();
 		s.startServer();
 		c.getSession().write(nop());
@@ -1192,7 +1198,7 @@ public class DatagramServerHandlerTest {
 		//test with no timer
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
-		s.timeWaitDelay = 500;
+		s.reopenBlockedInterval = 500;
 		s.startServer();
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);

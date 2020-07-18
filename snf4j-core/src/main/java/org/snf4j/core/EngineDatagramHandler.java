@@ -16,11 +16,14 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.handler.SessionIncidentException;
-import org.snf4j.core.handler.SessionReadyTimeoutException;
+import org.snf4j.core.handler.SessionHandshakeTimeoutException;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.IEngineSession;
 import org.snf4j.core.session.ISession;
+import org.snf4j.core.session.ISessionTimer;
+import org.snf4j.core.timer.DefaultRetransmissionModel;
+import org.snf4j.core.timer.IRetransmissionModel;
 import org.snf4j.core.timer.ITimerTask;
 
 class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IDatagramHandler> implements IDatagramHandler {
@@ -33,48 +36,83 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	
 	private Queue<ByteBuffer> inNetBuffers;
 
-	private ITimerTask readyTimer;
-	
-	private static final Object SESSION_READY_TIMEOUT_EVENT = new Object();
+	private ITimerTask handshakeTimer;
+
+	private static final Object HANDSHAKE_TIMEOUT_EVENT = new Object();
 	
 	private final SocketAddress remoteAddress;
+	
+	private ITimerTask retransmissionTimer;
+
+	private final IRetransmissionModel retransmissionModel;
+	
+	private static final Object RETRANSMISSION_TIMEOUT_EVENT = new Object();
+	
+	private static final boolean[] RETRANSMISSION_RESET = new boolean[HandshakeStatus.values().length];
+	
+	static {
+		RETRANSMISSION_RESET[HandshakeStatus.NEED_WRAP.ordinal()] = true;
+		RETRANSMISSION_RESET[HandshakeStatus.NEED_TASK.ordinal()] = true;
+		RETRANSMISSION_RESET[HandshakeStatus.FINISHED.ordinal()] = true;
+		RETRANSMISSION_RESET[HandshakeStatus.NOT_HANDSHAKING.ordinal()] = true;
+	}
 	
 	EngineDatagramHandler(IEngine engine, SocketAddress remoteAddress, IDatagramHandler handler, ILogger logger) {
 		super(engine, handler, logger);
 		this.remoteAddress = remoteAddress;
+		IRetransmissionModel model = handler.getFactory().getRetransmissionModel();
+		retransmissionModel = model != null ? model : new DefaultRetransmissionModel();
 	}
 
-	private final void cancelReadyTimer() {
-		if (readyTimer != null) {
-			readyTimer.cancelTask();
-			readyTimer = null;
+	private final void cancelHandshakeTimer() {
+		if (handshakeTimer != null) {
+			handshakeTimer.cancelTask();
+			handshakeTimer = null;
+		}
+	}
+
+	private final void cancelRetransmissionTimer() {
+		if (retransmissionTimer != null) {
+			retransmissionTimer.cancelTask();
+			retransmissionTimer = null;
+			if (traceEnabled) {
+				logger.trace("Retransmission timer canceled for {}", session);
+			}
 		}
 	}
 	
-	@Override
-	void handleOpened() {
-		if (session.getTimer().isSupported()) {
-			readyTimer = session.getTimer().scheduleEvent(SESSION_READY_TIMEOUT_EVENT, session.getConfig().getMaxWaitTimeForDatagramSessionReady());
+	@Override 
+	void handleBeginHandshake() {
+		ISessionTimer timer = session.getTimer();
+		
+		if (timer.isSupported()) {
+			handshakeTimer = timer.scheduleEvent(HANDSHAKE_TIMEOUT_EVENT, session.getConfig().getDatagramEngineHandshakeTimeout());
 		}
-		super.handleOpened();
+		super.handleBeginHandshake();
 	}
 	
 	@Override
-	void handleReady() {
-		cancelReadyTimer();
-		super.handleReady();
+	void handleFinished() {
+		cancelHandshakeTimer();
+		super.handleFinished();
 	}
 	
 	@Override
 	void handleClosed() {
-		cancelReadyTimer();
+		cancelHandshakeTimer();
+		cancelRetransmissionTimer();
 		super.handleClosed();
 	}
 	
 	@Override
 	public void timer(Object event) {
-		if (event == SESSION_READY_TIMEOUT_EVENT) {
-			fireException(new SessionReadyTimeoutException());
+		if (event == RETRANSMISSION_TIMEOUT_EVENT) {
+			retransmissionTimer = null;
+			run(new HandshakeStatus[] {HandshakeStatus.NEED_WRAP});
+		}
+		else if (event == HANDSHAKE_TIMEOUT_EVENT) {
+			handshakeTimer = null;
+			fireException(new SessionHandshakeTimeoutException());
 		}
 		else {
 			super.timer(event);
@@ -132,12 +170,13 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		
 		IEngineResult unwrapResult;
 		ByteBuffer inNetBuffer;
-		boolean repeat, pollNeeded;
+		boolean repeat, pollNeeded, unwrapAgain;
 		
 		do {
 			repeat = false;
+			unwrapAgain = status[0] == HandshakeStatus.NEED_UNWRAP_AGAIN;
 			
-			if (status[0] == HandshakeStatus.NEED_UNWRAP_AGAIN) {
+			if (unwrapAgain) {
 				inNetBuffer = EMPTY_BUFFER;
 				pollNeeded = false;
 			}
@@ -162,6 +201,17 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 					}
 				}
 				status[0] = unwrapResult.getHandshakeStatus();
+				if (retransmissionTimer != null) {
+					if (RETRANSMISSION_RESET[status[0].ordinal()]) {
+						cancelRetransmissionTimer();
+						retransmissionModel.reset();
+					}
+				}
+				else if (unwrapAgain) {
+					if (status[0] == HandshakeStatus.NEED_UNWRAP) {
+						scheduleRetransmission();
+					}
+				}
 				if (traceEnabled) {
 					logger.trace(
 							"Unwrapping consumed {} byte(s) to produce {} byte(s) for {}",
@@ -262,6 +312,21 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		return true;
 	}
 
+	private final void scheduleRetransmission() {
+		ISessionTimer timer = session.getTimer();
+		
+		if (retransmissionTimer != null || !timer.isSupported()) {
+			return;
+		}
+		
+		long interval = retransmissionModel.next();
+		
+		retransmissionTimer = timer.scheduleEvent(RETRANSMISSION_TIMEOUT_EVENT, interval);
+		if (traceEnabled) {
+			logger.trace("Retransmission timer scheduled for execution after {} ms for {}", interval, session);
+		}
+	}
+	
 	@Override
 	boolean wrap(HandshakeStatus[] status) {
 		if (traceEnabled) {
@@ -333,7 +398,11 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 
 			switch (wrapResult.getStatus()) {
 				case OK:
-					flush(record, outNetBuffer);
+					if (flush(record, outNetBuffer)) {
+						if (status[0] == HandshakeStatus.NEED_UNWRAP) {
+							scheduleRetransmission();
+						}
+					}
 					break;
 					
 				case BUFFER_OVERFLOW:
@@ -362,8 +431,11 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 					if (debugEnabled) {
 						logger.debug("Wrapping has been closed for {}", session);
 					}
-					flush(record, outNetBuffer);
+					boolean flushed = flush(record, outNetBuffer);
 					if (handler.getConfig().waitForInboundCloseMessage() && !engine.isInboundDone()) {
+						if (flushed && status[0] == HandshakeStatus.NEED_UNWRAP) {
+							scheduleRetransmission();
+						}
 						return true;
 					}
 					session.superClose();
@@ -438,12 +510,12 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		return handler;
 	}
 	
-	private final void flush(EngineDatagramRecord record, ByteBuffer buffer) {
+	private final boolean flush(EngineDatagramRecord record, ByteBuffer buffer) {
 		if (buffer.position() == 0) {
 			if (allocator.isReleasable()) {
 				allocator.release(buffer);
 			}
-			return;
+			return false;
 		}
 		else if (record == null) {
 			record = new EngineDatagramRecord(null);
@@ -456,6 +528,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		if (record.future != null) {
 			record.future.setSecondThreshold(futureThreshold);
 		}
+		return true;
 	}
 	
 	IFuture<Void> write(EngineDatagramRecord record, boolean needFuture) {

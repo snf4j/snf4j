@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.timer.IRetransmissionModel;
 import org.snf4j.core.timer.ITimer;
 
 /**
@@ -72,4 +73,6 @@ public interface ISessionStructureFactory {
 	 *         supported by the session.
 	 */
 	ITimer getTimer();
+	
+	IRetransmissionModel getRetransmissionModel();
 }
