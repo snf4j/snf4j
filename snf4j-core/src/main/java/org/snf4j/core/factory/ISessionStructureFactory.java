@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.timer.IRetransmissionModel;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 
 /**
@@ -55,13 +55,12 @@ public interface ISessionStructureFactory {
 	ConcurrentMap<Object,Object> getAttributes();
 	
 	/**
-	 * Returns an executor that will be used by the
-	 * {@link org.snf4j.core.EngineStreamSession EngineStreamSession} to execute
-	 * delegated tasks required by the session to complete operations that
-	 * block, or may take an extended period of time to complete.
+	 * Returns an executor that will be used by engine-driven sessions to execute
+	 * delegated tasks required by the sessions to complete operations that block, or
+	 * may take an extended period of time to complete.
 	 * 
-	 * @return an executor, or {@code null} if the session should use the
-	 *         default executor
+	 * @return an executor, or {@code null} if the session should use the default
+	 *         executor
 	 */
 	Executor getExecutor();
 	
@@ -74,5 +73,11 @@ public interface ISessionStructureFactory {
 	 */
 	ITimer getTimer();
 	
-	IRetransmissionModel getRetransmissionModel();
+	/**
+	 * Returns a timeout model that will be used by engine-driven datagram sessions
+	 * to retransmit lost packets.
+	 * 
+	 * @return the timeout model
+	 */
+	ITimeoutModel getTimeoutModel();
 }

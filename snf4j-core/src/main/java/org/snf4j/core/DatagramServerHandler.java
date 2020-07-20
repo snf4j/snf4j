@@ -78,6 +78,15 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	 */
 	protected Map<SocketAddress, DatagramSession> sessions = new HashMap<SocketAddress, DatagramSession>();
 	
+	/**
+	 * A map holding timers used internally by the class. As the map is accessed
+	 * every time a session is created or closed it may be required by a class
+	 * extending this class to provide its own implementation for the map. The map
+	 * implementation can be safely replaced in the constructor.
+	 * <p>
+	 * <b>Thread-safe considerations:</b> It is not required by the SNF4J framework
+	 * that the map implementation is thread safe.
+	 */
 	protected Map<SocketAddress, ITimerTask> timers = new HashMap<SocketAddress, ITimerTask>();
 	
 	private final IDatagramHandlerFactory handlerFactory;
@@ -296,6 +305,17 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		}
 	}
 
+	/**
+	 * Determines if newly created session should be an engine-driver session. The
+	 * default implementation always returns {@code null}.
+	 * 
+	 * @param remoteAddress address of the remote peer for which the session is
+	 *                      about to be created
+	 * @param config        the configuration for the session being created
+	 * @return the engine implementation or {@code null} if the session being
+	 *         created should not be engine-driven
+	 * @throws Exception if the engine could not be created
+	 */
 	protected IEngine createEngine(SocketAddress remoteAddress, ISessionConfig config) throws Exception {
 		return null;
 	}

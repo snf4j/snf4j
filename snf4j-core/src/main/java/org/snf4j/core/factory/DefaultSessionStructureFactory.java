@@ -30,7 +30,7 @@ import java.util.concurrent.Executor;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.timer.IRetransmissionModel;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 
 /**
@@ -91,7 +91,7 @@ public class DefaultSessionStructureFactory implements ISessionStructureFactory 
 	}
 
 	@Override
-	public IRetransmissionModel getRetransmissionModel() {
+	public ITimeoutModel getTimeoutModel() {
 		return null;
 	}
 

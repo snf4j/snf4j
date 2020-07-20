@@ -53,7 +53,7 @@ import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.SessionState;
 import org.snf4j.core.timer.DefaultTimer;
-import org.snf4j.core.timer.IRetransmissionModel;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 import org.snf4j.core.timer.ITimerTask;
 
@@ -170,7 +170,7 @@ public class DatagramServerHandlerTest {
 			}
 
 			@Override
-			public IRetransmissionModel getRetransmissionModel() {
+			public ITimeoutModel getTimeoutModel() {
 				return null;
 			}
 			

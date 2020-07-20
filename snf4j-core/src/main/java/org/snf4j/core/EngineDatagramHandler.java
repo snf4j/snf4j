@@ -22,8 +22,8 @@ import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.IEngineSession;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionTimer;
-import org.snf4j.core.timer.DefaultRetransmissionModel;
-import org.snf4j.core.timer.IRetransmissionModel;
+import org.snf4j.core.timer.DefaultTimeoutModel;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimerTask;
 
 class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IDatagramHandler> implements IDatagramHandler {
@@ -44,7 +44,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	
 	private ITimerTask retransmissionTimer;
 
-	private final IRetransmissionModel retransmissionModel;
+	private final ITimeoutModel timeoutModel;
 	
 	private static final Object RETRANSMISSION_TIMEOUT_EVENT = new Object();
 	
@@ -60,14 +60,20 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	EngineDatagramHandler(IEngine engine, SocketAddress remoteAddress, IDatagramHandler handler, ILogger logger) {
 		super(engine, handler, logger);
 		this.remoteAddress = remoteAddress;
-		IRetransmissionModel model = handler.getFactory().getRetransmissionModel();
-		retransmissionModel = model != null ? model : new DefaultRetransmissionModel();
+		ITimeoutModel model = handler.getFactory().getTimeoutModel();
+		timeoutModel = model != null ? model : new DefaultTimeoutModel();
 	}
 
-	private final void cancelHandshakeTimer() {
-		if (handshakeTimer != null) {
-			handshakeTimer.cancelTask();
-			handshakeTimer = null;
+	private final void scheduleRetransmission() {
+		ISessionTimer timer = session.getTimer();
+		
+		if (retransmissionTimer == null && timer.isSupported()) {
+			long timeout = timeoutModel.next();
+
+			retransmissionTimer = timer.scheduleEvent(RETRANSMISSION_TIMEOUT_EVENT, timeout);
+			if (traceEnabled) {
+				logger.trace("Retransmission timer scheduled for execution after {} ms for {}", timeout, session);
+			}
 		}
 	}
 
@@ -85,10 +91,25 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	void handleBeginHandshake() {
 		ISessionTimer timer = session.getTimer();
 		
-		if (timer.isSupported()) {
-			handshakeTimer = timer.scheduleEvent(HANDSHAKE_TIMEOUT_EVENT, session.getConfig().getDatagramEngineHandshakeTimeout());
+		if (handshakeTimer == null && timer.isSupported()) {
+			long timeout = session.getConfig().getEngineHandshakeTimeout();
+			
+			handshakeTimer = timer.scheduleEvent(HANDSHAKE_TIMEOUT_EVENT, timeout);
+			if (traceEnabled) {
+				logger.trace("Handshake expiration timer scheduled for execution after {} ms for {}", timeout, session);
+			}
 		}
 		super.handleBeginHandshake();
+	}
+	
+	private final void cancelHandshakeTimer() {
+		if (handshakeTimer != null) {
+			handshakeTimer.cancelTask();
+			handshakeTimer = null;
+			if (traceEnabled) {
+				logger.trace("Handshake expiration timer canceled for {}", session);
+			}
+		}
 	}
 	
 	@Override
@@ -204,7 +225,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 				if (retransmissionTimer != null) {
 					if (RETRANSMISSION_RESET[status[0].ordinal()]) {
 						cancelRetransmissionTimer();
-						retransmissionModel.reset();
+						timeoutModel.reset();
 					}
 				}
 				else if (unwrapAgain) {
@@ -312,21 +333,6 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		return true;
 	}
 
-	private final void scheduleRetransmission() {
-		ISessionTimer timer = session.getTimer();
-		
-		if (retransmissionTimer != null || !timer.isSupported()) {
-			return;
-		}
-		
-		long interval = retransmissionModel.next();
-		
-		retransmissionTimer = timer.scheduleEvent(RETRANSMISSION_TIMEOUT_EVENT, interval);
-		if (traceEnabled) {
-			logger.trace("Retransmission timer scheduled for execution after {} ms for {}", interval, session);
-		}
-	}
-	
 	@Override
 	boolean wrap(HandshakeStatus[] status) {
 		if (traceEnabled) {

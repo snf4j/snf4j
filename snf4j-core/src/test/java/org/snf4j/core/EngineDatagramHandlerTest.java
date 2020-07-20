@@ -19,7 +19,10 @@ import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.LoggerRecorder;
+import org.snf4j.core.timer.DefaultTimeoutModel;
 import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.ITimerTask;
+import org.snf4j.core.timer.TestTimer;
 
 public class EngineDatagramHandlerTest extends DTLSTest {
 
@@ -590,4 +593,93 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		c.startClient();
 		c.waitForSessionEnding(TIMEOUT);
 	}
+	
+	@Test
+	public void testScheduleAlreadyRunningTimer() throws Exception {
+		prepareServerClient(false);
+		c.timer = new TestTimer();
+		c.timeoutModel = new DefaultTimeoutModel(444,50000);
+		c.handshakeTimeout = 4998;
+		c.waitForCloseMessage = true;
+		c.testEngine.handshakingAfterClose = true;
+		TestTimer t = (TestTimer)c.timer;
+		s.startServer();
+		c.startClient();
+		assertReady(c, s);
+		t.getTrace(true);
+		c.getRecordedData(true);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("444|4998|c444|c4998|", t.getTrace(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		prepareServerClient(false);
+		c.timer = new TestTimer();
+		c.handshakeTimeout = 4998;
+		c.waitForCloseMessage = true;
+		c.testEngine.handshakingAfterClose = true;
+		t = (TestTimer)c.timer;
+		s.startServer();
+		c.startClient();
+		assertReady(c, s);
+		t.getTrace(true);
+		c.getRecordedData(true);
+		
+		Runnable r = new Runnable() {
+
+			@Override
+			public void run() {
+			}
+		};
+		
+		ITimerTask task = new DefaultTimer().schedule(r, 1000);
+		task.cancelTask();
+
+		EngineDatagramHandler h = getHandler(c.getSession());
+		Field f = EngineDatagramHandler.class.getDeclaredField("handshakeTimer");
+		f.setAccessible(true);
+		f.set(h, task);
+		f = EngineDatagramHandler.class.getDeclaredField("retransmissionTimer");
+		f.setAccessible(true);
+		f.set(h, task);		
+		
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("", t.getTrace(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testRetransmission() throws Exception {
+		prepareServerClient(false);
+		c.handshakeTimeout = 2000;
+		c.waitForCloseMessage = true;
+		c.testEngine.handshakingAfterClose = true;
+		c.timer = new TestTimer();
+		
+		TestTimer t = (TestTimer)c.timer;
+		s.startServer();
+		c.startClient();
+		assertReady(c, s);
+		s.getSession().dirtyClose();
+		s.waitForSessionEnding(TIMEOUT);
+		t.getTrace(true);
+		c.testEngine.addRecord("U|NU|-|-|OK|-|");
+		c.testEngine.addRecord("U|NH|-|-|OK|F|");
+		EngineDatagramHandler h = getHandler(c.getSession());
+		h.handshaking = true;
+		h.run(new org.snf4j.core.engine.HandshakeStatus[] {org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP_AGAIN});
+		waitFor(100);
+		assertEquals("1000|", t.getTrace(true));
+		waitFor(1000);
+		assertEquals("1000|", t.getExpired());
+		c.getSession().dirtyClose();
+		c.waitForSessionEnding(TIMEOUT);
+	}	
 }

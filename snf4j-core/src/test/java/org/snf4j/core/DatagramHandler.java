@@ -59,6 +59,7 @@ import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 
 public class DatagramHandler {
@@ -86,6 +87,7 @@ public class DatagramHandler {
 	boolean directAllocator;
 	TestAllocator allocator;
 	ITimer timer;
+	ITimeoutModel timeoutModel;
 	boolean canOwnPasseData;
 	volatile boolean useTestSession;
 	DefaultCodecExecutor codecPipeline;
@@ -450,6 +452,11 @@ public class DatagramHandler {
 		public ITimer getTimer() {
 			return timer;
 		}
+		
+		@Override
+		public ITimeoutModel getTimeoutModel() {
+			return timeoutModel;
+		}
 	}
 	
 	class ServerHandler extends DatagramServerHandler {
@@ -552,7 +559,7 @@ public class DatagramHandler {
 			config.setIgnorePossiblyIncompleteDatagrams(ignorePossiblyIncomplete);
 			config.setEndingAction(endingAction);
 			config.setCanOwnDataPassedToWriteAndSendMethods(canOwnPasseData);
-			config.setDatagramEngineHandshakeTimeout(handshakeTimeout);
+			config.setEngineHandshakeTimeout(handshakeTimeout);
 			config.setDatagramServerSessionReopenBlockedInterval(reopenBlockedInterval);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
 			return config;

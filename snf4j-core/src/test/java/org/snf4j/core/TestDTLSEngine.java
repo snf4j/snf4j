@@ -25,6 +25,8 @@ public class TestDTLSEngine extends SSLEngine {
 	
 	boolean mode;
 	
+	boolean handshakingAfterClose;
+	
 	SSLException wrapException;
 	
 	SSLException unwrapException;
@@ -105,7 +107,12 @@ public class TestDTLSEngine extends SSLEngine {
 	public void closeOutbound() {
 		if (!outboundDone) {
 			clearRecords();
-			addRecord("W|NH|-|close|C|-|");
+			if (handshakingAfterClose) {
+				addRecord("W|NU|-|close|C|-|");
+			}
+			else {
+				addRecord("W|NH|-|close|C|-|");
+			}
 			outboundDone = true;
 		}
 	}
@@ -304,7 +311,7 @@ public class TestDTLSEngine extends SSLEngine {
 			addRecord("W|NW|-|-|OK|NT|");
 			addRecord("W|NU|-|-|OK|F|");
 			addRecord("U|NU|88888888|-|OK|-|");
-			addRecord("U|NH|999999999|-|OK|-|");
+			addRecord("U|NH|999999999|-|OK|F|");
 		}
 		else {
 			addRecord("W|NU|-|-|OK|-|");

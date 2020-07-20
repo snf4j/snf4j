@@ -43,7 +43,7 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
-import org.snf4j.core.timer.IRetransmissionModel;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 
 public class EngineServer {
@@ -172,7 +172,7 @@ public class EngineServer {
 		}
 
 		@Override
-		public IRetransmissionModel getRetransmissionModel() {
+		public ITimeoutModel getTimeoutModel() {
 			return null;
 		}
 	}

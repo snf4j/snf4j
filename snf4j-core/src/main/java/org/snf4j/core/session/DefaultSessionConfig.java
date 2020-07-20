@@ -69,7 +69,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	
 	private boolean waitForInboundCloseMessage; 
 	
-	private long datagramEngineHandshakeTimeout = 60000;
+	private long engineHandshakeTimeout = 60000;
 	
 	private long datagramServerSessionReopenBlockedInterval = 60000;
 	
@@ -331,21 +331,54 @@ public class DefaultSessionConfig implements ISessionConfig {
 		return null;
 	}
 	
-	public DefaultSessionConfig setDatagramEngineHandshakeTimeout(long timeout) {
-		datagramEngineHandshakeTimeout = timeout;
+	/**
+	 * Configures how long the SNF4J framework should wait for completion of the
+	 * handshake phase for engine-driven sessions.
+	 * <p>
+	 * This configuration parameter is supported only by datagram engine-driver
+	 * sessions.
+	 * 
+	 * @param timeout the timeout in milliseconds
+	 * @return this session config object
+	 * @see #getEngineHandshakeTimeout()
+	 */
+	public DefaultSessionConfig setEngineHandshakeTimeout(long timeout) {
+		engineHandshakeTimeout = timeout;
 		return this;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>60000</code>
+	 */
 	@Override
-	public long getDatagramEngineHandshakeTimeout() {
-		return datagramEngineHandshakeTimeout;
+	public long getEngineHandshakeTimeout() {
+		return engineHandshakeTimeout;
 	}
 	
+	/**
+	 * Configures how long the {@link org.snf4j.core.DatagramServerHandler
+	 * DatagramServerHandler} should block re-opening of a new session for the
+	 * remote peer which session has just been closed. The purpose of it is to
+	 * prevent opening of a new session as a result of receiving some delayed or
+	 * retransmitted datagrams.
+	 * 
+	 * @param interval the interval in milliseconds or zero if the re-opening should
+	 *                 be allowed immediately
+	 * @return this session config object
+	 * @see #getDatagramServerSessionReopenBlockedInterval()
+	 */
 	public DefaultSessionConfig setDatagramServerSessionReopenBlockedInterval(long interval) {
 		datagramServerSessionReopenBlockedInterval = interval;
 		return this;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>60000</code>
+	 */
 	@Override
 	public long getDatagramServerSessionReopenBlockedInterval() {
 		return datagramServerSessionReopenBlockedInterval;

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,41 +23,26 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.longevity;
+package org.snf4j.core.timer;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
-
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.factory.ISessionStructureFactory;
-import org.snf4j.core.timer.ITimeoutModel;
-import org.snf4j.core.timer.ITimer;
-
-public class SessionStructureFactory implements ISessionStructureFactory {
-
-	@Override
-	public IByteBufferAllocator getAllocator() {
-		return new DefaultAllocator(Utils.randomBoolean(Config.DIRECT_ALLOCATOR_RATIO));
-	}
-
-	@Override
-	public ConcurrentMap<Object, Object> getAttributes() {
-		return null;
-	}
-
-	@Override
-	public Executor getExecutor() {
-		return null;
-	}
-
-	@Override
-	public ITimer getTimer() {
-		return null;
-	}
-
-	@Override
-	public ITimeoutModel getTimeoutModel() {
-		return null;
-	}
+/**
+ * Interface used to implement models of timing out operations.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ * 
+ */
+public interface ITimeoutModel {
+	
+	/**
+	 * Returns the next timeout value.
+	 * 
+	 * @return the timeout value in milliseconds.
+	 */
+	long next();
+	
+	/**
+	 * Resets the model. After calling this method the {@link #next()} method 
+	 * should return the initial value.
+	 */
+	void reset();
 }
