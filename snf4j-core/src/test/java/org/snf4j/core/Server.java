@@ -433,7 +433,7 @@ public class Server {
 				throw new Exception("");
 			}
 			if (ssl) {
-				return new SSLSession(createHandler(channel), false);
+				return new SSLSession(channel.socket().getRemoteSocketAddress(), createHandler(channel), false);
 			}
 			return useTestSession ? new TestStreamSession(createHandler(channel)) : 
 				new StreamSession(createHandler(channel));

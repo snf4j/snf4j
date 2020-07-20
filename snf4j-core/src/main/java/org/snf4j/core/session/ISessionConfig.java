@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.session;
 
+import java.net.SocketAddress;
+
 import javax.net.ssl.SSLEngine;
 
 import org.snf4j.core.EndingAction;
@@ -130,7 +132,7 @@ public interface ISessionConfig {
 	EndingAction getEndingAction();
 	
 	/**
-	 * Creates a new SSLEngine for the SSL session.
+	 * Creates a new SSLEngine for the SSL/DTLS session.
 	 * 
 	 * @param clientMode
 	 *            <code>true</code> if the engine should start its handshaking
@@ -140,6 +142,21 @@ public interface ISessionConfig {
 	 *             when the SSL engine could not be created
 	 */
 	SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException;
+	
+	/**
+	 * Creates a new SSLEngine for the SSL/DTLS session with known remote peer. It 
+	 * is called when the remote address is known at the moment a session object is 
+	 * created. 
+	 * 
+	 * @param remoteAddress the address of the remote peer
+	 * @param clientMode
+	 *            <code>true</code> if the engine should start its handshaking
+	 *            in client mode
+	 * @return the SSLEngine object
+	 * @throws SSLEngineCreateException
+	 *             when the SSL engine could not be created
+	 */
+	SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException;
 	
 	/**
 	 * Gets the ratio that is used to calculate the maximum size of the SSL

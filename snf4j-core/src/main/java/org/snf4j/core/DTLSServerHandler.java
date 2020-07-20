@@ -97,7 +97,7 @@ public class DTLSServerHandler extends DatagramServerHandler {
 	 */
 	@Override
 	protected IEngine createEngine(SocketAddress remoteAddress, ISessionConfig config) throws Exception {
-		SSLEngine engine = config.createSSLEngine(false);
+		SSLEngine engine = config.createSSLEngine(remoteAddress, false);
 		
 		if (engine != null) {
 			return new InternalSSLEngine(engine, config);

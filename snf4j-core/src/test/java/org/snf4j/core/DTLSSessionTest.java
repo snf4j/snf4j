@@ -29,11 +29,21 @@ public class DTLSSessionTest extends DTLSTest {
 
 	final StringBuilder clientMode = new StringBuilder();
 	
+	SocketAddress remoteAddress;
+	
 	DefaultSessionConfig testConfig = new DefaultSessionConfig() {
 		
 		@Override
 		public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
 			DTLSSessionTest.this.clientMode.append(clientMode ? "C" : "S");
+			remoteAddress = null;
+			return super.createSSLEngine(clientMode);
+		}
+		
+		@Override
+		public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+			DTLSSessionTest.this.clientMode.append(clientMode ? "C" : "S");
+			DTLSSessionTest.this.remoteAddress = remoteAddress;
 			return super.createSSLEngine(clientMode);
 		}
 	};
@@ -58,32 +68,47 @@ public class DTLSSessionTest extends DTLSTest {
 		assertTrue(h == s.getHandler());
 		assertTrue(a == af.get(s));
 		assertEquals("C", clientMode.toString());
+		assertTrue(a == remoteAddress);
+		remoteAddress = null;
 		s = new DTLSSession("Test1", a, h, false);
 		assertEquals("CS", clientMode.toString());
+		assertTrue(a == remoteAddress);
+		remoteAddress = null;
 		
 		s = new DTLSSession(a, h, true);
 		assertEquals("Test2", s.getName());
 		assertTrue(h == s.getHandler());
 		assertTrue(a == af.get(s));
 		assertEquals("CSC", clientMode.toString());
+		assertTrue(a == remoteAddress);
+		remoteAddress = null;
 		s = new DTLSSession(a, h, false);
 		assertEquals("CSCS", clientMode.toString());
+		assertTrue(a == remoteAddress);
 		
 		s = new DTLSSession("Test1",  h, true);
 		assertEquals("Test1", s.getName());
 		assertTrue(h == s.getHandler());
 		assertNull(af.get(s));
 		assertEquals("CSCSC", clientMode.toString());
+		assertNull(remoteAddress);
+		remoteAddress = a;
 		s = new DTLSSession("Test1", h, false);
 		assertEquals("CSCSCS", clientMode.toString());
+		assertNull(remoteAddress);
+		remoteAddress = a;
 	
 		s = new DTLSSession(h, true);
 		assertEquals("Test2", s.getName());
 		assertTrue(h == s.getHandler());
 		assertNull(af.get(s));
 		assertEquals("CSCSCSC", clientMode.toString());
+		assertNull(remoteAddress);
+		remoteAddress = a;
 		s = new DTLSSession(h, false);
 		assertEquals("CSCSCSCS", clientMode.toString());
+		assertNull(remoteAddress);
+		remoteAddress = a;
 
 	}
 	
@@ -395,6 +420,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s.startServer();
 		c.startClient();
 		assertReady(c, s);
+		assertEquals("" + c.getSession().getLocalAddress() + "|false", s.engineArguments);
 		
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);

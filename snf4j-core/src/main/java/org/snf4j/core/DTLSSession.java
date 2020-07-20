@@ -12,18 +12,18 @@ public class DTLSSession extends EngineDatagramSession {
 	private final static ILogger LOGGER = LoggerFactory.getLogger(DTLSSession.class);
 	
 	public DTLSSession(String name, SocketAddress remoteAddress, IDatagramHandler handler, boolean clientMode) throws SSLEngineCreateException {
-		super(name, new InternalSSLEngine(handler.getConfig(), clientMode), remoteAddress, handler, LOGGER);
+		super(name, new InternalSSLEngine(remoteAddress, handler.getConfig(), clientMode), remoteAddress, handler, LOGGER);
 	}
 	
 	public DTLSSession(SocketAddress remoteAddress, IDatagramHandler handler, boolean clientMode) throws SSLEngineCreateException {
-		super(new InternalSSLEngine(handler.getConfig(), clientMode), remoteAddress, handler, LOGGER);
+		super(new InternalSSLEngine(remoteAddress, handler.getConfig(), clientMode), remoteAddress, handler, LOGGER);
 	}
 	
 	public DTLSSession(String name, IDatagramHandler handler, boolean clientMode) throws SSLEngineCreateException {
-		super(name, new InternalSSLEngine(handler.getConfig(), clientMode), handler, LOGGER);
+		super(name, new InternalSSLEngine(null, handler.getConfig(), clientMode), handler, LOGGER);
 	}
 	
 	public DTLSSession(IDatagramHandler handler, boolean clientMode) throws SSLEngineCreateException {
-		super(new InternalSSLEngine(handler.getConfig(), clientMode), handler, LOGGER);
+		super(new InternalSSLEngine(null, handler.getConfig(), clientMode), handler, LOGGER);
 	}
 }

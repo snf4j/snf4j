@@ -25,6 +25,7 @@
  */
 package org.snf4j.core.factory;
 
+import java.net.SocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
@@ -73,8 +74,15 @@ public abstract class AbstractSessionFactory implements IStreamSessionFactory {
 	 */
 	@Override
 	public StreamSession create(SocketChannel channel) throws Exception {
-		return ssl ? new SSLSession(createHandler(channel), false) 
-				: new StreamSession(createHandler(channel));
+		if (ssl) {
+			SocketAddress peer = channel.socket().getRemoteSocketAddress();
+			
+			if (peer != null) {
+				return new SSLSession(peer, createHandler(channel), false);
+			}
+			return new SSLSession(createHandler(channel), false);
+		}
+		return new StreamSession(createHandler(channel));
 	}
 	
 	/**

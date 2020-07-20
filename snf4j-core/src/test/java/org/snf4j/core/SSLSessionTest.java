@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
@@ -172,10 +173,66 @@ public class SSLSessionTest {
 		SSLSession session = new SSLSession(handler, true);
 		assertTrue(handler == session.getHandler());
 		assertEquals("Test1", session.getName());
+		assertEquals("true", handler.engineArguments);
+		
+		session = new SSLSession(handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals("false", handler.engineArguments);
 		
 		session = new SSLSession("Test2", handler, true);
 		assertTrue(handler == session.getHandler());
 		assertEquals("Test2", session.getName());
+		assertEquals("true", handler.engineArguments);
+		
+		session = new SSLSession("Test2", handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals("false", handler.engineArguments);
+
+		InetSocketAddress a = new InetSocketAddress("127.0.0.1", 7000);
+		String s = "" + a;
+		
+		session = new SSLSession(a, handler, true);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals(s+"|true", handler.engineArguments);
+		
+		session = new SSLSession(a, handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals(s+"|false", handler.engineArguments);
+		
+		session = new SSLSession("Test2", a, handler, true);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals(s+"|true", handler.engineArguments);
+		
+		session = new SSLSession("Test2", a, handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals(s+"|false", handler.engineArguments);
+
+		session = new SSLSession((SocketAddress)null, handler, true);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals("true", handler.engineArguments);
+		
+		session = new SSLSession((SocketAddress)null, handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals("false", handler.engineArguments);
+		
+		session = new SSLSession("Test2", (SocketAddress)null, handler, true);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals("true", handler.engineArguments);
+		
+		session = new SSLSession("Test2", (SocketAddress)null, handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals("false", handler.engineArguments);
+		
 	}
 	
 	@Test

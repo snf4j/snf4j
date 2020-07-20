@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
 import javax.net.ssl.SSLEngine;
@@ -68,9 +69,14 @@ class InternalSSLEngine implements IEngine {
 		}
 	}
 	
-	InternalSSLEngine(ISessionConfig config, boolean clientMode) throws SSLEngineCreateException {
+	InternalSSLEngine(SocketAddress remoteAddress, ISessionConfig config, boolean clientMode) throws SSLEngineCreateException {
 		this.config = config;
-		this.engine = config.createSSLEngine(clientMode);
+		if (remoteAddress != null) {
+			this.engine = config.createSSLEngine(remoteAddress, clientMode);
+		}
+		else {
+			this.engine = config.createSSLEngine(clientMode);
+		}
 	}
 	
 	InternalSSLEngine(SSLEngine engine, ISessionConfig config) {

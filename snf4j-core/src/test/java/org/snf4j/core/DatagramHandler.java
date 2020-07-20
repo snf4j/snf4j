@@ -69,6 +69,7 @@ public class DatagramHandler {
 	public boolean nullEngine;
 	public boolean engineException;
 	public SSLEngine engine;
+	volatile public String engineArguments;
 	public boolean ssl;
 	public boolean sslClient;
 	public boolean sslClientMode = true;
@@ -542,6 +543,12 @@ public class DatagramHandler {
 						engine.setNeedClientAuth(true);
 					}
 					return new TestSSLEngine(engine);
+				}
+				
+				@Override
+				public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+					engineArguments = "" + remoteAddress + "|" + clientMode;
+					return createSSLEngine(clientMode);
 				}
 				
 				@Override

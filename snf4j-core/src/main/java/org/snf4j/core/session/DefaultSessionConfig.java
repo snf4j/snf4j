@@ -25,6 +25,7 @@
  */
 package org.snf4j.core.session;
 
+import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
 
 import javax.net.ssl.SSLContext;
@@ -241,6 +242,16 @@ public class DefaultSessionConfig implements ISessionConfig {
 		}
 		engine.setUseClientMode(clientMode);
 		return engine;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it returns value from the {@link #createSSLEngine(boolean)} method.
+	 */
+	@Override
+	public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+		return createSSLEngine(clientMode);
 	}
 	
 	/**
