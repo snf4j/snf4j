@@ -1,3 +1,28 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2020 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
 package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
@@ -17,7 +42,7 @@ import javax.net.ssl.SSLEngine;
 import org.junit.Test;
 import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.future.IFuture;
-import org.snf4j.core.handler.SessionHandshakeTimeoutException;
+import org.snf4j.core.handler.HandshakeTimeoutException;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.IEngineSession;
 import org.snf4j.core.session.ISessionConfig;
@@ -814,6 +839,142 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals("", c.getRecordedData(true));
 	}
 
+	@Test
+	public void testCloseInSessionCreatedEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.ssl = true;
+		s.timer = new TestTimer();
+		s.closeInEvent = EventType.SESSION_CREATED;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionOpen(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SEN|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|DS|", c.getRecordedData(true));
+		assertEquals("", ((TestTimer)s.timer).getTrace(true));
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.closeInEvent = null;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.closeInEvent = EventType.SESSION_CREATED;
+		c.startClient();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SEN|", c.getRecordedData(true));
+	}
+
+	@Test
+	public void testCloseInSessionOpenedEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.ssl = true;
+		s.timer = new TestTimer();
+		s.closeInEvent = EventType.SESSION_OPENED;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionOpen(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|DS|", c.getRecordedData(true));
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+
+		s.closeInEvent = null;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.closeInEvent = EventType.SESSION_OPENED;
+		c.startClient();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|SCL|SEN|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
+		assertEquals(0, ((TestTimer)s.timer).getSize());
+	}
+	
+	@Test
+	public void testCloseInSessionReadyEvent() throws Exception {
+		assumeJava9();
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.ssl = true;
+		s.timer = new TestTimer();
+		s.closeInEvent = EventType.SESSION_READY;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		s.startServer();
+		c.startClient();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|DR+|DS+|RDY|SCL|SEN|", getRecordedData(s));
+		waitFor(100);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|DR+|DS+|RDY|DR+|DS|SCL|SEN|", getRecordedData(c));
+		c.stop(TIMEOUT);
+		
+		s.closeInEvent = null;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.closeInEvent = EventType.SESSION_READY;
+		c.startClient();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|DR+|DS+|RDY|DR|DS|SCL|SEN|", getRecordedData(c));
+		s.stop(TIMEOUT);
+		assertEquals(0, ((TestTimer)s.timer).getSize());
+	}
+	
+	@Test
+	public void testCloseInSessionCloseEvent() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.ssl = true;
+		s.timer = new TestTimer();
+		s.closeInEvent = EventType.SESSION_CLOSED;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		s.closeInEvent = null;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.closeInEvent = EventType.SESSION_CLOSED;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
+		assertEquals(0, ((TestTimer)s.timer).getSize());
+		
+	}
+	
 	void prepareProxy(boolean serverProxyAction, boolean clientProxyAction) throws Exception {
 		p = new DatagramProxy(PORT);
 		p.start(TIMEOUT);
@@ -1012,7 +1173,7 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals("", c.getRecordedData(true));
 		waitFor(200);
 		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
-		assertTrue(c.getSession().getReadyFuture().cause() instanceof SessionHandshakeTimeoutException);
+		assertTrue(c.getSession().getReadyFuture().cause() instanceof HandshakeTimeoutException);
 		assertEquals("c1000|", t.getTrace(true));
 		assertEquals(1, t.getExpiredSize());
 		assertEquals("500|", t.getExpired());
@@ -1047,7 +1208,7 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(200);
 		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
 		assertTrue(c.getSession().getReadyFuture().isSuccessful());
-		assertTrue(c.getSession().getCloseFuture().cause() instanceof SessionHandshakeTimeoutException);
+		assertTrue(c.getSession().getCloseFuture().cause() instanceof HandshakeTimeoutException);
 		assertEquals("c1000|", t.getTrace(true));
 		assertEquals("500|", t.getExpired());
 		assertEquals(0, t.getSize());
@@ -1077,7 +1238,7 @@ public class DTLSSessionTest extends DTLSTest {
 			waitFor(200);
 			assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
 			c.waitForSessionEnding(TIMEOUT);
-			assertTrue(c.getSession().getCloseFuture().cause() instanceof SessionHandshakeTimeoutException);
+			assertTrue(c.getSession().getCloseFuture().cause() instanceof HandshakeTimeoutException);
 			assertEquals("c1000|", t.getTrace(true));
 			assertEquals("500|", t.getExpired());
 			assertEquals(0, t.getSize());
@@ -1175,7 +1336,7 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals("", t.getTrace(true));
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|EXC|SCL|SEN|", c.getRecordedData(true));
-		assertTrue(c.getSession().getCloseFuture().cause() instanceof SessionHandshakeTimeoutException);
+		assertTrue(c.getSession().getCloseFuture().cause() instanceof HandshakeTimeoutException);
 		assertEquals("", t.getTrace(true));
 		assertEquals("1000|3000|", t.getExpired());
 		assertEquals(0, t.getSize());

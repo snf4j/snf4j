@@ -1,5 +1,5 @@
 /*
-T * -------------------------------- MIT License --------------------------------
+ * -------------------------------- MIT License --------------------------------
  * 
  * Copyright (c) 2019-2020 SNF4J contributors
  * 
@@ -38,7 +38,7 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.IEngineStreamSession;
 
 /**
- * The stream-oriented session that handle protocols driven by customized protocol engines 
+ * A stream-oriented session that handles protocols driven by customized protocol engines 
  * implementing the {@link IEngine} interface.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>

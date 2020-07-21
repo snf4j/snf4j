@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -209,9 +209,9 @@ public interface ISessionConfig {
 	 * Determines how long the SNF4J framework should wait for completion of the
 	 * handshake phase for engine-driven sessions. If the handshake does not
 	 * complete within the timeout interval the
-	 * {@link org.snf4j.core.handler.SessionHandshakeTimeoutException
-	 * SessionHandshakeTimeoutException} will be thrown and the session will be
-	 * quickly closed.
+	 * {@link org.snf4j.core.handler.HandshakeTimeoutException
+	 * HandshakeTimeoutException} will be thrown and the session will be quickly
+	 * closed.
 	 * <p>
 	 * This configuration parameter is supported only by datagram engine-driver
 	 * sessions.

@@ -79,6 +79,8 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	/** Tells if any incoming data is ignored */ 
 	boolean readIgnored;
 	
+	boolean handshaking;
+	
 	enum Handshake {NONE, REQUESTED, STARTED};
 	
 	final AtomicReference<Handshake> handshake = new AtomicReference<Handshake>(Handshake.NONE); 
@@ -132,8 +134,6 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 		run(new HandshakeStatus[1]);
 	}
 	
-	boolean handshaking;
-	
 	@SuppressWarnings("incomplete-switch")
 	void run(HandshakeStatus[] status) {
 		boolean running = true;
@@ -147,6 +147,9 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			if (closing != ClosingState.NONE) {
 				if (closing == ClosingState.FINISHED) {
 					break;
+				}
+				if (handshaking && closing == ClosingState.SENDING) {
+					closing = ClosingState.FINISHING;
 				}
 				wrapNeeded = handleClosing();
 			}

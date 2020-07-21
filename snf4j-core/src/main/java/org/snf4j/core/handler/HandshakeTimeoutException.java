@@ -26,54 +26,18 @@
 package org.snf4j.core.handler;
 
 /**
- * Signals a general exception in processing of a session.
+ * Signals that the handshake phase did not finished within expected time.
  *    
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class SessionException extends Exception {
-	
-	private static final long serialVersionUID = -4166432567474000446L;
+public class HandshakeTimeoutException extends SessionException {
+
+	private static final long serialVersionUID = 5821450417870443424L;
 
 	/**
-	 * Constructs a new exception without the detail message.
+	 * Constructs the exception with the default detail message.
 	 */
-	public SessionException() {
+	public HandshakeTimeoutException() {
+		super("Session handshake timed out");
 	}
-
-	/**
-	 * Constructs a new exception with the specified detail message.
-	 *
-	 * @param message
-	 *            the detail message.
-	 */
-	public SessionException(String message) {
-		super(message);
-	}
-	
-	/**
-	 * Constructs a new exception with the specified detail message and cause.
-	 *
-	 * @param message
-	 *            the detail message.
-	 * @param cause
-	 *            the cause
-	 */
-	public SessionException(String message, Throwable cause) {
-		super(message, cause);
-	}
-	
-	/**
-	 * Constructs a new exception with the specified cause and a detail message
-	 * of <tt>(cause==null ? null : cause.toString())</tt> (which typically
-	 * contains the class and detail message of <tt>cause</tt>). This
-	 * constructor is useful for exceptions that are little more than wrappers
-	 * for other throwables.
-	 *
-	 * @param cause
-	 *            the cause
-	 */
-	public SessionException(Throwable cause) {
-		super(cause);
-	}
-
 }
