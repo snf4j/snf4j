@@ -77,7 +77,8 @@ public interface ISessionStructureFactory {
 	 * Returns a timeout model that will be used by engine-driven datagram sessions
 	 * to retransmit lost packets.
 	 * 
-	 * @return the timeout model
+	 * @return the timeout model, or {@code null} if the session should use the default
+	 *         timeout model.
 	 */
 	ITimeoutModel getTimeoutModel();
 }

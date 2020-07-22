@@ -1,3 +1,28 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2020 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
 package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
@@ -317,6 +342,32 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		c.waitForSessionEnding(TIMEOUT);
 		waitFor(50);
 		assertEquals(0, c.allocator.getSize());
+		
+		stopServerClient();
+		prepareServerClient(false);
+		c.waitForCloseMessage = true;
+		c.timer = new TestTimer();
+		c.handshakeTimeout = 3333;
+		TestTimer t = (TestTimer)c.timer;
+		s.startServer();
+		c.startClient();
+		assertReady(c, s);
+		EngineDatagramHandler h = getHandler(c.getSession());
+		t.getTrace(true);
+		
+		c.testEngine.addRecord("W|NU|-|-|C|-|");
+		h.run(new org.snf4j.core.engine.HandshakeStatus[] {org.snf4j.core.engine.HandshakeStatus.NEED_WRAP});
+		assertEquals("3333|", t.getTrace(true));
+
+		c.testEngine.addRecord("W|NH|-|-|C|-|");
+		h.run(new org.snf4j.core.engine.HandshakeStatus[] {org.snf4j.core.engine.HandshakeStatus.NEED_WRAP});
+		assertEquals("", t.getTrace(true));
+
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("c3333|", t.getTrace(true));
+		assertEquals(0, t.getSize());
 		
 	}
 	

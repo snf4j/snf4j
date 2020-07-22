@@ -90,6 +90,10 @@ public class DefaultSessionStructureFactory implements ISessionStructureFactory 
 		return null;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * @return <code>null</code>, so the default timeout model should be used by the session
+	 */
 	@Override
 	public ITimeoutModel getTimeoutModel() {
 		return null;
