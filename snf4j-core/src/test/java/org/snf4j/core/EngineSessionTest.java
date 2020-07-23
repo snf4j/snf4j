@@ -429,7 +429,23 @@ public class EngineSessionTest {
 		assertEquals("U3|R789|", s.getTrace(true));
 		assertCapacity(c.getSession(), 10, 10, 10);
 		assertCapacity(s.getSession(), 10, 10, 10);
-	
+
+		//buffer overflow successful update min mix
+		ce.maxAppBufferSize += 1;
+		ce.appBufferSize -= 1;
+		ce.maxNetBufferSize += 2;
+		ce.netBufferSize -= 2;
+		ce.addRecord("W|NT|-|-|BO|-|");
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("W3|W3|", c.getTrace(true));
+		assertEquals("U3|R789|", s.getTrace(true));
+		assertCapacity(c.getSession(), 10, 10, 10);
+		assertCapacity(s.getSession(), 10, 10, 10);
+		assertMinMax(c.getSession(), 10, 10, 8, 12);
+		
 		se.addRecord("W|NH|-|-|C|-|");
 		ce.addRecord("W|NH|-|-|C|-|");
 		c.getSession().close();
@@ -441,6 +457,25 @@ public class EngineSessionTest {
 		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
 	}
 
+	public void assertMinMax(StreamSession session, int minApp, int maxApp, int minNet, int maxNet) throws Exception {
+		Field f = EngineStreamSession.class.getDeclaredField("internal");
+		
+		f.setAccessible(true);
+		Object o = f.get(session);
+		Field f0 = EngineStreamHandler.class.getDeclaredField("maxAppBufferSize");
+		f0.setAccessible(true);
+		assertEquals(maxApp, f0.getInt(o));
+		f0 = EngineStreamHandler.class.getDeclaredField("maxNetBufferSize");
+		f0.setAccessible(true);
+		assertEquals(maxNet, f0.getInt(o));
+		f0 = AbstractEngineHandler.class.getDeclaredField("minAppBufferSize");
+		f0.setAccessible(true);
+		assertEquals(minApp, f0.getInt(o));
+		f0 = AbstractEngineHandler.class.getDeclaredField("minNetBufferSize");
+		f0.setAccessible(true);
+		assertEquals(minNet, f0.getInt(o));		
+	}
+	
 	@Test
 	public void testUnwrappingBufferOverflow() throws Exception {
 		TestEngine se = createEngine(HandshakeStatus.NOT_HANDSHAKING, 10, 10);
@@ -500,6 +535,22 @@ public class EngineSessionTest {
 		assertEquals("U3|U3|R789|", s.getTrace(true));
 		assertCapacity(c.getSession(), 10, 10, 10);
 		assertCapacity(s.getSession(), 10, 10, 10);
+
+		//buffer overflow update min max
+		se.maxAppBufferSize += 1;
+		se.appBufferSize -= 1;
+		se.maxNetBufferSize += 2;
+		se.netBufferSize -= 2;
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|-|-|BO|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("W3|", c.getTrace(true));
+		assertEquals("U3|U3|R789|", s.getTrace(true));
+		assertCapacity(c.getSession(), 10, 10, 10);
+		assertCapacity(s.getSession(), 10, 10, 10);
+		assertMinMax(s.getSession(), 9, 11, 10, 10);
 		
 		se.addRecord("W|NH|-|-|C|-|");
 		ce.addRecord("W|NH|-|-|C|-|");
@@ -786,6 +837,53 @@ public class EngineSessionTest {
 		
 		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
 		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));		
+		
+		c.stop();
+		s.stop();
+		
+		se = createEngine(HandshakeStatus.NOT_HANDSHAKING, 10, 20);
+		ce = createEngine(HandshakeStatus.NOT_HANDSHAKING, 10, 20);
+		
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce);
+		
+		s.getTrace(true);
+		c.getTrace(true);
+
+		assertCapacity(c.getSession(), 10, 10, 10);
+		assertCapacity(s.getSession(), 10, 10, 10);
+		
+		//update min max
+		se.maxAppBufferSize += 1;
+		se.appBufferSize -= 1;
+		se.maxNetBufferSize += 2;
+		se.netBufferSize -= 2;
+		outNet = getBuffer(c.getSession(), "outNetBuffer");
+		outNet.put("1".getBytes());
+		ce.addRecord("W|NH|-|-|BO|-|");
+		ce.addRecord("W|NH|1122334455|6677889900|OK|-|");
+		se.addRecord("U|NH|16677889900|1627384950|OK|-|");
+		c.getSession().write("1122334455".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		s.resetDataRead();
+		assertEquals("W10|W10|", c.getTrace(true));
+		assertEquals("U11|R1627384950|", s.getTrace(true));
+		assertCapacity(c.getSession(), 10, 10, 20);
+		assertCapacity(s.getSession(), 10, 22, 10);
+		assertMinMax(s.getSession(), 10, 20, 8, 22);
+
+		se.addRecord("W|NH|-|-|C|-|");
+		ce.addRecord("W|NH|-|-|C|-|");
+		c.getSession().close();
+
+		s.waitForFinish(TIMEOUT);
+		c.waitForFinish(TIMEOUT);
+		
+		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));		
+	
 	}	
 
 	@Test

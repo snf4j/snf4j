@@ -85,6 +85,18 @@ public class Constants {
 	public final static String IGNORE_NO_SESSION_TIMER_EXCEPTION = PROPERTY_PREFIX + "IgnoreNoSessionTimerException";
 	
 	/**
+	 * System property specifying a threshold for the maximum number of loops needed
+	 * to finish the handshake phase for the engine driven sessions. Usually the
+	 * handshake phase requires small number of loops to finish so reaching the
+	 * threshold set to a big value may indicate that an
+	 * {@link org.snf4j.core.engine.IEngine IEngine} implementation used to drive a
+	 * session stuck in some bad state causing an infinite loop.
+	 * <p>
+	 * The default value for this property is 500.
+	 */
+	public final static String MAX_HANDSHAKE_LOOPS_THRESHOLD = PROPERTY_PREFIX + "MaxHandshakeLoopsThreshold";
+	
+	/**
 	 * Short name for the API.
 	 */
 	public final static String SHORT_NAME = "SNF4J";

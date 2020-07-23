@@ -34,6 +34,7 @@ import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.DataEvent;
+import org.snf4j.core.handler.HandshakeLoopsThresholdException;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
@@ -46,6 +47,8 @@ import org.snf4j.core.session.ISessionConfig;
 abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandler> implements IHandler, Runnable {
 	
 	private final static AtomicLong nextDelegatedTaskId = new AtomicLong(0); 
+	
+	private final static int MAX_HANDSHAKE_LOOPS_THRESHOLD = Integer.getInteger(Constants.MAX_HANDSHAKE_LOOPS_THRESHOLD, 500);
 	
 	final ILogger logger;
 	
@@ -80,6 +83,8 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	boolean readIgnored;
 	
 	boolean handshaking;
+	
+	int handshakeLoops;
 	
 	enum Handshake {NONE, REQUESTED, STARTED};
 	
@@ -161,8 +166,19 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 				status[0] = engine.getHandshakeStatus();
 			}
 			
-			if (!handshaking && status[0] != HandshakeStatus.NOT_HANDSHAKING) {
+			if (handshaking) {
+				if (handshakeLoops < MAX_HANDSHAKE_LOOPS_THRESHOLD) {
+					++handshakeLoops;
+				}
+				else {
+					logger.error("Maximum handshake loops threshold has reached for {}", session);
+					fireException(new HandshakeLoopsThresholdException());
+					return;
+				}
+			}
+			else if (status[0] != HandshakeStatus.NOT_HANDSHAKING) {
 				handshaking = true;
+				handshakeLoops = 0;
 				handleBeginHandshake();
 			}
 			

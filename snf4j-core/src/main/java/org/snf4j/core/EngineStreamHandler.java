@@ -149,7 +149,8 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						logger.debug("Unwrapping overflow, input application buffer need resizing for {}", session);
 					}
 					try {
-						//TODO refresh min, max
+						minAppBufferSize = engine.getMinApplicationBufferSize();
+						maxAppBufferSize = engine.getMaxApplicationBufferSize();	
 						inAppBuffer = allocator.ensure(inAppBuffer, minAppBufferSize, minAppBufferSize, maxAppBufferSize);
 					}
 					catch (Exception e) {
@@ -268,7 +269,8 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						logger.debug("Wrapping overflow, output packet buffer need resizing for {}", session);
 					}
 					try {
-						//TODO refresh min, max
+						minNetBufferSize = engine.getMinNetworkBufferSize();
+						maxNetBufferSize = engine.getMaxNetworkBufferSize();	
 						outNetBuffer = allocator.ensure(outNetBuffer, minNetBufferSize, minNetBufferSize, maxNetBufferSize);
 					}
 					catch (Exception e) {
@@ -419,7 +421,8 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		}
 		if (data.length > inNetBuffer.remaining()) {
 			try {
-				//TODO refresh min, max
+				minNetBufferSize = engine.getMinNetworkBufferSize();
+				maxNetBufferSize = engine.getMaxNetworkBufferSize();		
 				inNetBuffer = allocator.ensure(inNetBuffer, data.length, minNetBufferSize, maxNetBufferSize);
 			}
 			catch (Exception e) {

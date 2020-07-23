@@ -42,6 +42,7 @@ import javax.net.ssl.SSLException;
 
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.handler.HandshakeLoopsThresholdException;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.LoggerRecorder;
 import org.snf4j.core.timer.DefaultTimeoutModel;
@@ -732,5 +733,38 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		assertEquals("1000|", t.getExpired());
 		c.getSession().dirtyClose();
 		c.waitForSessionEnding(TIMEOUT);
+	}	
+	
+	@Test
+	public void testMaxHandshakeLoopsThreshold() throws Exception {
+		prepareServerClient(true);
+		
+		int size = 500;
+		String threshold = System.getProperty(Constants.MAX_HANDSHAKE_LOOPS_THRESHOLD);
+		if (threshold != null) {
+			size = Integer.parseInt(threshold);
+			System.out.println("[INFO] MAX_HANDSHAKE_LOOPS_THRESHOLD="+size);
+		}
+		
+		++size;
+		
+		for (int i=0; i<size; ++i) {
+			c.testEngine.addRecord("W|NW|-|-|OK|-|");
+		}
+		c.testEngine.addRecord("W|NH|-|-|OK|F|");
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP()|", s.getRecordedData(true));
+
+		for (int i=0; i<size+1; ++i) {
+			c.testEngine.addRecord("W|NW|-|-|OK|-|");
+		}
+		c.testEngine.addRecord("W|NH|-|-|OK|F|");
+		c.getRecordedData(true);
+		c.getSession().write(nop());
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.getSession().getCloseFuture().cause() instanceof HandshakeLoopsThresholdException);
+		
 	}	
 }

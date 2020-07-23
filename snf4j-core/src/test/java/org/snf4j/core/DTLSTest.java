@@ -172,7 +172,7 @@ public class DTLSTest {
 		if (server != null) {
 			server.waitForSessionReady(TIMEOUT);
 		}
-		waitFor(10);
+		waitFor(50);
 		if (client != null) {
 			assertEquals(expectedClient, getRecordedData(client));
 		}
