@@ -174,7 +174,12 @@ public class DTLSTest {
 		}
 		waitFor(50);
 		if (client != null) {
-			assertEquals(expectedClient, getRecordedData(client));
+			String s = getRecordedData(client);
+			
+			if (!s.endsWith("+|") && s.endsWith("|")) {
+				s = s.substring(0, s.length()-1) + "+|";
+			}
+			assertEquals(expectedClient, s);
 		}
 		if (server != null) {
 			assertEquals(expectedServer, getRecordedData(server));

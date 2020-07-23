@@ -89,7 +89,9 @@ public class AbstractSessionFactoryTest {
 			assertTrue(s instanceof SSLSession);
 			engine = EngineSessionTest.getSSLEngine((EngineStreamSession) s);
 			assertFalse(engine.getUseClientMode());
-			assertEquals("127.0.0.1", engine.getPeerHost());
+			if (!"localhost".equals(engine.getPeerHost())) {
+				assertEquals("127.0.0.1", engine.getPeerHost());
+			}
 			assertEquals(7000, engine.getPeerPort());
 		}
 		finally {

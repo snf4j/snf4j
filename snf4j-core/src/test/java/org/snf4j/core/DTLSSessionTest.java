@@ -588,12 +588,18 @@ public class DTLSSessionTest extends DTLSTest {
 	public void testReconnectFromOtherSession() throws Exception {
 		assumeJava9();
 		
-		s = new DatagramHandler(PORT);
+		p = new DatagramProxy(PORT);
+		p.start(TIMEOUT);
+
+		s = new DatagramHandler(PORT+1);
 		s.useDatagramServerHandler = true;
+		s.localAddress = address(PORT+1);
 		s.ssl = true;
 		c = new DatagramHandler(PORT);
 		c.ssl = true;
-
+		p.peer1 = s;
+		p.peer2 = c;
+		
 		s.startServer();
 		c.startClient();
 		assertReady(c, s);
@@ -611,7 +617,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.timer = new DefaultTimer();
 		c.handshakeTimeout = 500;
 		c.ssl = true;
-		c.localAddress = origSession.getLocalAddress();
+		p.peer2 = c;
 		c.startClient();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForDataReceived(TIMEOUT);
@@ -621,6 +627,7 @@ public class DTLSSessionTest extends DTLSTest {
 
 		//check the original session
 		c = origC;
+		p.peer2 = c;
 		origSession.write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
