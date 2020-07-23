@@ -29,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 import java.net.InetAddress;
@@ -72,6 +73,84 @@ public class DTLSSessionTest extends DTLSTest {
 			return super.createSSLEngine(clientMode);
 		}
 	};
+	
+	@Test
+	public void testNoSessionTimerException() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.ssl = true;
+		s.useDatagramServerHandler = true;
+		s.startServer();
+		
+		System.setProperty(Constants.IGNORE_NO_SESSION_TIMER_EXCEPTION, "0");
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		try {
+			c.startClient(); fail();
+		}
+		catch (IllegalStateException e) {
+		}
+		c.stop(TIMEOUT);
+		
+		System.setProperty(Constants.IGNORE_NO_SESSION_TIMER_EXCEPTION, "");
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		try {
+			c.startClient(); fail();
+		}
+		catch (IllegalStateException e) {
+		}
+		c.stop(TIMEOUT);
+		
+		System.setProperty(Constants.IGNORE_NO_SESSION_TIMER_EXCEPTION, "1");
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+
+		System.clearProperty(Constants.IGNORE_NO_SESSION_TIMER_EXCEPTION);
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		try {
+			c.startClient(); fail();
+		}
+		catch (IllegalStateException e) {
+		}
+		c.stop(TIMEOUT);
+		
+		s.getRecordedData(true);
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.timer = new DefaultTimer();
+		c.startClient();
+		c.waitForSessionOpen(TIMEOUT);
+		waitFor(100);
+		assertEquals("", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		s.timer = new DefaultTimer();
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.timer = new DefaultTimer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		
+		System.setProperty(Constants.IGNORE_NO_SESSION_TIMER_EXCEPTION, "1");
+		s.timer = null;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+	}
 	
 	@Test
 	public void testConstructor() throws Exception {

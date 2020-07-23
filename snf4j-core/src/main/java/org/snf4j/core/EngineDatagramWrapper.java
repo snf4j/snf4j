@@ -46,8 +46,13 @@ class EngineDatagramWrapper {
 	private volatile Executor executor;	
 	
 	EngineDatagramWrapper(SocketAddress remoteAddress, EngineDatagramHandler internal) {
-		this.internal = internal;
 		this.session = internal.session;
+		if (!session.getTimer().isSupported()) {
+			if (!Constants.YES.equals(System.getProperty(Constants.IGNORE_NO_SESSION_TIMER_EXCEPTION, Constants.NO))) {
+				throw new IllegalStateException("no timer specified");
+			}
+		}
+		this.internal = internal;
 		this.remoteAddress = remoteAddress;
 	}
 

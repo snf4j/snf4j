@@ -68,7 +68,7 @@ public interface ISessionStructureFactory {
 	 * Returns a timer implementation that will be used by the session timer to
 	 * schedule events and tasks.
 	 * 
-	 * @return a timer, or {@code null} if the session time shouldn't be
+	 * @return a timer, or {@code null} if the session timer shouldn't be
 	 *         supported by the session.
 	 */
 	ITimer getTimer();

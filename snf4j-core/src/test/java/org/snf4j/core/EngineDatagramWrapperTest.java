@@ -88,6 +88,7 @@ public class EngineDatagramWrapperTest extends DTLSTest {
 		SocketAddress a1 = address(100);
 		SocketAddress a2 = address(101);
 		EngineDatagramHandler h = new EngineDatagramHandler(null, null, new TestDatagramHandler(), null);
+		h.setSession(new DTLSSession(h.getHandler(), true));
 		
 		EngineDatagramWrapper w = new EngineDatagramWrapper(null, h);
 		assertFalse(w.connectedTo(a1));
@@ -99,9 +100,10 @@ public class EngineDatagramWrapperTest extends DTLSTest {
 	}
 	
 	@Test
-	public void testGetHandler() {
+	public void testGetHandler() throws Exception {
 		TestDatagramHandler h0 = new TestDatagramHandler();
 		EngineDatagramHandler h = new EngineDatagramHandler(null, null, h0, null);
+		h.setSession(new DTLSSession(h.getHandler(), true));
 		
 		EngineDatagramWrapper w = new EngineDatagramWrapper(null, h);
 		assertTrue(h0 == w.getHandler());

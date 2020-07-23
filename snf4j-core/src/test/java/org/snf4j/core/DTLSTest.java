@@ -80,6 +80,7 @@ public class DTLSTest {
 	public void before() {
 		s = s2 = c = null;
 		p = null;
+		System.setProperty(Constants.IGNORE_NO_SESSION_TIMER_EXCEPTION, Constants.YES);
 	}
 	
 	@After

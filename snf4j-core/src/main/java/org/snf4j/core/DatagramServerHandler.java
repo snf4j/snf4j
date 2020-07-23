@@ -341,12 +341,19 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 				return null;
 			}
 
-			if (engine == null) {
-				session = new DatagramServerSession((DatagramSession) getSession(), remoteAddress, handler);
+			try {
+				if (engine == null) {
+					session = new DatagramServerSession((DatagramSession) getSession(), remoteAddress, handler);
+				}
+				else {
+					session = new EngineDatagramServerSession(engine, (DatagramSession) getSession(), remoteAddress, handler);
+				}
 			}
-			else {
-				session = new EngineDatagramServerSession(engine, (DatagramSession) getSession(), remoteAddress, handler);
+			catch (Exception e) {
+				elogger.error(LOGGER, "Creation of session for remote address {} failed: {}", realAddress, e);
+				return null;
 			}
+			
 			session.preCreated();
 			fireEvent(session, SessionEvent.CREATED);
 			if (session.closeCalled.get()) {

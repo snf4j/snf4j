@@ -55,6 +55,10 @@ public class DTLSSession extends EngineDatagramSession {
 	 * @param clientMode    <code>true</code> if the engine should start its
 	 *                      handshaking in "client" mode
 	 * @throws SSLEngineCreateException when the SSL engine could not be created
+	 * @throws IllegalStateException if no timer was configured. The exception can
+	 *                               be ignored by setting the system property
+	 *                               {@link org.snf4j.core.Constants#IGNORE_NO_SESSION_TIMER_EXCEPTION
+	 *                               IGNORE_NO_SESSION_TIMER_EXCEPTION}
 	 */
 	public DTLSSession(String name, SocketAddress remoteAddress, IDatagramHandler handler, boolean clientMode) throws SSLEngineCreateException {
 		super(name, new InternalSSLEngine(remoteAddress, handler.getConfig(), clientMode), remoteAddress, handler, LOGGER);
@@ -69,6 +73,10 @@ public class DTLSSession extends EngineDatagramSession {
 	 * @param clientMode    <code>true</code> if the engine should start its
 	 *                      handshaking in "client" mode
 	 * @throws SSLEngineCreateException when the SSL engine could not be created
+	 * @throws IllegalStateException if no timer was configured. The exception can
+	 *                               be ignored by setting the system property
+	 *                               {@link org.snf4j.core.Constants#IGNORE_NO_SESSION_TIMER_EXCEPTION
+	 *                               IGNORE_NO_SESSION_TIMER_EXCEPTION}
 	 */
 	public DTLSSession(SocketAddress remoteAddress, IDatagramHandler handler, boolean clientMode) throws SSLEngineCreateException {
 		super(new InternalSSLEngine(remoteAddress, handler.getConfig(), clientMode), remoteAddress, handler, LOGGER);
@@ -84,6 +92,10 @@ public class DTLSSession extends EngineDatagramSession {
 	 * @param clientMode <code>true</code> if the engine should start its
 	 *                   handshaking in "client" mode
 	 * @throws SSLEngineCreateException when the SSL engine could not be created
+	 * @throws IllegalStateException if no timer was configured. The exception can
+	 *                               be ignored by setting the system property
+	 *                               {@link org.snf4j.core.Constants#IGNORE_NO_SESSION_TIMER_EXCEPTION
+	 *                               IGNORE_NO_SESSION_TIMER_EXCEPTION}
 	 */
 	public DTLSSession(String name, IDatagramHandler handler, boolean clientMode) throws SSLEngineCreateException {
 		super(name, new InternalSSLEngine(null, handler.getConfig(), clientMode), handler, LOGGER);
@@ -97,6 +109,10 @@ public class DTLSSession extends EngineDatagramSession {
 	 * @param clientMode <code>true</code> if the engine should start its
 	 *                   handshaking in "client" mode
 	 * @throws SSLEngineCreateException when the SSL engine could not be created
+	 * @throws IllegalStateException if no timer was configured. The exception can
+	 *                               be ignored by setting the system property
+	 *                               {@link org.snf4j.core.Constants#IGNORE_NO_SESSION_TIMER_EXCEPTION
+	 *                               IGNORE_NO_SESSION_TIMER_EXCEPTION}
 	 */
 	public DTLSSession(IDatagramHandler handler, boolean clientMode) throws SSLEngineCreateException {
 		super(new InternalSSLEngine(null, handler.getConfig(), clientMode), handler, LOGGER);

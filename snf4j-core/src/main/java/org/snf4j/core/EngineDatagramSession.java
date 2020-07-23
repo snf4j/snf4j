@@ -60,6 +60,10 @@ public class EngineDatagramSession extends DatagramSession implements IEngineDat
 	 * @param handler       the handler that should be associated with this session
 	 * @param logger        the logger used to log messages related with this
 	 *                      session
+	 * @throws IllegalStateException if no timer was configured. The exception can
+	 *                               be ignored by setting the system property
+	 *                               {@link org.snf4j.core.Constants#IGNORE_NO_SESSION_TIMER_EXCEPTION
+	 *                               IGNORE_NO_SESSION_TIMER_EXCEPTION}
 	 */
 	public EngineDatagramSession(String name, IEngine engine, SocketAddress remoteAddress, IDatagramHandler handler, ILogger logger) {
 		super(name, new EngineDatagramHandler(engine, remoteAddress, handler, logger));
@@ -78,6 +82,10 @@ public class EngineDatagramSession extends DatagramSession implements IEngineDat
 	 * @param handler       the handler that should be associated with this session
 	 * @param logger        the logger used to log messages related with this
 	 *                      session
+	 * @throws IllegalStateException if no timer was configured. The exception can
+	 *                               be ignored by setting the system property
+	 *                               {@link org.snf4j.core.Constants#IGNORE_NO_SESSION_TIMER_EXCEPTION
+	 *                               IGNORE_NO_SESSION_TIMER_EXCEPTION}
 	 */
 	public EngineDatagramSession(IEngine engine, SocketAddress remoteAddress, IDatagramHandler handler, ILogger logger) {
 		this(null, engine, remoteAddress, handler, logger);
@@ -94,6 +102,10 @@ public class EngineDatagramSession extends DatagramSession implements IEngineDat
 	 * @param handler       the handler that should be associated with this session
 	 * @param logger        the logger used to log messages related with this
 	 *                      session
+	 * @throws IllegalStateException if no timer was configured. The exception can
+	 *                               be ignored by setting the system property
+	 *                               {@link org.snf4j.core.Constants#IGNORE_NO_SESSION_TIMER_EXCEPTION
+	 *                               IGNORE_NO_SESSION_TIMER_EXCEPTION}
 	 */
 	public EngineDatagramSession(String name, IEngine engine, IDatagramHandler handler, ILogger logger) {
 		this(name, engine, null, handler, logger);
@@ -108,6 +120,10 @@ public class EngineDatagramSession extends DatagramSession implements IEngineDat
 	 * @param handler       the handler that should be associated with this session
 	 * @param logger        the logger used to log messages related with this
 	 *                      session
+	 * @throws IllegalStateException if no timer was configured. The exception can
+	 *                               be ignored by setting the system property
+	 *                               {@link org.snf4j.core.Constants#IGNORE_NO_SESSION_TIMER_EXCEPTION
+	 *                               IGNORE_NO_SESSION_TIMER_EXCEPTION}
 	 */
 	public EngineDatagramSession(IEngine engine, IDatagramHandler handler, ILogger logger) {
 		this(engine, null, handler, logger);

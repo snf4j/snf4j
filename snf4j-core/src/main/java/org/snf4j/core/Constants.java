@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -68,9 +68,36 @@ public class Constants {
 	public final static String SELECTOR_SELECT_TIMEOUT = PROPERTY_PREFIX + "SelectorSelectTimeout";
 	
 	/**
+	 * System property specifying if it will be possible to create engine driven
+	 * datagram-oriented sessions without a session timer. 
+	 * <p>
+	 * The allowed values are:
+	 * <br> 0 - {@code IllegalStateException} will be thrown if no timer is configured,
+	 * <br> 1 - no exception will be thrown, 
+	 * <br> any other value will be interpreted as 0
+	 * <p>
+	 * NOTE: Allowing to create an engine driven datagram-oriented session without a timer
+	 * will make the session not capable of retransmitting lost datagrams and timing out the 
+	 * handshake phase.
+	 * <p>
+	 * The default value for this property is 0
+	 */
+	public final static String IGNORE_NO_SESSION_TIMER_EXCEPTION = PROPERTY_PREFIX + "IgnoreNoSessionTimerException";
+	
+	/**
 	 * Short name for the API.
 	 */
 	public final static String SHORT_NAME = "SNF4J";
+	
+	/**
+	 * Value Yes.
+	 */
+	public final static String YES = "1";
+	
+	/**
+	 * Value No.
+	 */
+	public final static String NO = "0";
 	
 	private Constants() {
 	}
