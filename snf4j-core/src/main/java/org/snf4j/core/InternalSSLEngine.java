@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
 import javax.net.ssl.SSLEngine;
@@ -55,8 +56,12 @@ class InternalSSLEngine implements IEngine {
 		statuses = new Status[SSLEngineResult.Status.values().length];
 		
 		for (HandshakeStatus status: HandshakeStatus.values()) {
-			int ordinal = SSLEngineResult.HandshakeStatus.valueOf(status.name()).ordinal();
-			handshakeStatuses[ordinal] = status;
+			try {
+				int ordinal = SSLEngineResult.HandshakeStatus.valueOf(status.name()).ordinal();
+				handshakeStatuses[ordinal] = status;
+			}
+			catch (IllegalArgumentException e) {
+			}
 		}
 		for (Status status: Status.values()) {
 			int ordinal = SSLEngineResult.Status.valueOf(status.name()).ordinal();
@@ -64,9 +69,19 @@ class InternalSSLEngine implements IEngine {
 		}
 	}
 	
-	InternalSSLEngine(ISessionConfig config, boolean clientMode) throws SSLEngineCreateException {
+	InternalSSLEngine(SocketAddress remoteAddress, ISessionConfig config, boolean clientMode) throws SSLEngineCreateException {
 		this.config = config;
-		this.engine = config.createSSLEngine(clientMode);
+		if (remoteAddress != null) {
+			this.engine = config.createSSLEngine(remoteAddress, clientMode);
+		}
+		else {
+			this.engine = config.createSSLEngine(clientMode);
+		}
+	}
+	
+	InternalSSLEngine(SSLEngine engine, ISessionConfig config) {
+		this.config = config;
+		this.engine = engine;
 	}
 	
 	@Override

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.snf4j.core.InternalEngineHandler.Handshake;
+import org.snf4j.core.AbstractEngineHandler.Handshake;
 import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
@@ -46,7 +46,7 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.timer.DefaultTimer;
 
-public class InternalEngineHandlerTest {
+public class EngineStreamHandlerTest {
 
 	private final static ILogger LOGGER = LoggerFactory.getLogger(SSLSession.class);
 
@@ -92,14 +92,14 @@ public class InternalEngineHandlerTest {
 		Thread.sleep(millis);
 	}
 	
-	ByteBuffer getBuffer(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer getBuffer(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer) field.get(handler);
 	}
 
-	ByteBuffer[] getBuffers(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer[] getBuffers(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
@@ -107,7 +107,7 @@ public class InternalEngineHandlerTest {
 	}
 	
 	void set(Handler handler, String name, Object value) throws Exception {
-		Field field = handler.getClass().getSuperclass().getDeclaredField(name);
+		Field field = AbstractEngineHandler.class.getDeclaredField(name);
 		
 		field.setAccessible(true);
 		field.set(handler, value);
@@ -115,7 +115,7 @@ public class InternalEngineHandlerTest {
 	
 	@Test
 	public void testBuffers() throws Exception {
-		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
+		EngineStreamHandler h = new EngineStreamHandler(engine, handler, LOGGER);
 
 		h.preCreated();
 		assertEquals(APPBUFSIZE, getBuffer(h, "inAppBuffer").capacity());
@@ -205,9 +205,9 @@ public class InternalEngineHandlerTest {
 	
 	@Test 
 	public void testSetAndGetSession() throws Exception {
-		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
-		InternalEngineHandler h2 = new InternalEngineHandler(engine, handler, LOGGER);
-		String prefix = "org.snf4j.core.InternalEngineHandler[session=";
+		EngineStreamHandler h = new EngineStreamHandler(engine, handler, LOGGER);
+		EngineStreamHandler h2 = new EngineStreamHandler(engine, handler, LOGGER);
+		String prefix = "org.snf4j.core.EngineStreamHandler[session=";
 		assertNull(h.getSession());
 		assertEquals(prefix+"null]", h.toString());
 		SSLSession session = new SSLSession(h, false);
@@ -221,7 +221,7 @@ public class InternalEngineHandlerTest {
 	
 	@Test
 	public void testIgnoreRead() throws Exception {
-		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
+		EngineStreamHandler h = new EngineStreamHandler(engine, handler, LOGGER);
 		HandshakeStatus[] status = new HandshakeStatus[1];
 		
 		h.preCreated();
@@ -308,8 +308,8 @@ public class InternalEngineHandlerTest {
 	}
 	
 	@SuppressWarnings("unchecked")
-	AtomicReference<Handshake> getHandshake(InternalEngineHandler handler) throws Exception {
-		Field f = InternalEngineHandler.class.getDeclaredField("handshake");
+	AtomicReference<Handshake> getHandshake(EngineStreamHandler handler) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField("handshake");
 		
 		f.setAccessible(true);
 		return (AtomicReference<Handshake>) f.get(handler);
@@ -317,7 +317,7 @@ public class InternalEngineHandlerTest {
 	
 	@Test
 	public void testBeginHandshake() throws Exception {
-		InternalEngineHandler h = new InternalEngineHandler(engine, handler, LOGGER);
+		EngineStreamHandler h = new EngineStreamHandler(engine, handler, LOGGER);
 		
 		AtomicReference<Handshake> handshake = getHandshake(h);
 		assertEquals(Handshake.NONE, handshake.get());
@@ -333,7 +333,7 @@ public class InternalEngineHandlerTest {
 		assertEquals(Handshake.REQUESTED, handshake.get());
 	}
 	
-	static class Handler extends InternalEngineHandler {
+	static class Handler extends EngineStreamHandler {
 		int runCounter;
 		
 		Handler(IEngine engine, IStreamHandler handler, ILogger logger) throws Exception {

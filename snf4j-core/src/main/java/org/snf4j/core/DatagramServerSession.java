@@ -43,7 +43,7 @@ class DatagramServerSession extends DatagramSession {
 	private AtomicBoolean isClosing = new AtomicBoolean(false);
 	
 	DatagramServerSession(DatagramSession delegate, SocketAddress remoteAddress, IDatagramHandler handler) {
-		super(null, handler, false);
+		super(null, handler);
 		this.delegate = delegate;
 		this.remoteAddress = remoteAddress;
 		setLoop(delegate.loop);
@@ -155,7 +155,28 @@ class DatagramServerSession extends DatagramSession {
 	public boolean isWriteSuspended() {
 		return delegate.isWriteSuspended();
 	}
-
+	
+	@Override
+	long superWrite(DatagramRecord record) {
+		record.address = remoteAddress;
+		return delegate.superWrite(record);
+	}
+	
+	@Override
+	IFuture<Void> superWrite(DatagramRecord record, boolean withFuture) {
+		return delegate.superWrite(record, withFuture);
+	}
+	
+	@Override
+	void superQuickClose() {
+		close0();
+	}
+	
+	@Override
+	void superClose() {
+		close0();
+	}
+	
 	@Override
 	public IFuture<Void> write(byte[] datagram) {
 		if (codec != null) {

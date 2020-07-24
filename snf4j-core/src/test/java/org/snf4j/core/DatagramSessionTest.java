@@ -1126,31 +1126,56 @@ public class DatagramSessionTest {
 		assertOutOfBoundException(session, new byte[10], 0, -1);
 		assertOutOfBoundException(session, new byte[10], 5, 6);
 		assertOutOfBoundException(session, new byte[10], 0x7fffffff, 1);
-		try {
-			session.write(getBuffer(0,90), 11);
-			fail("Exception not thrown");
+		int len = 11;
+		for (int i=0; i<2; ++i) {
+			try {
+				session.write(getBuffer(0,90), len);
+				fail("Exception not thrown");
+			}
+			catch (IndexOutOfBoundsException e) {}
+			try {
+				session.writenf(getBuffer(0,90), len);
+				fail("Exception not thrown");
+			}
+			catch (IndexOutOfBoundsException e) {}	
+			try {
+				session.send(null, getBuffer(0,90), len);
+				fail("Exception not thrown");
+			}
+			catch (IndexOutOfBoundsException e) {}
+			try {
+				session.sendnf(null, getBuffer(0,90), len);
+				fail("Exception not thrown");
+			}
+			catch (IndexOutOfBoundsException e) {}
+			len = -1;
 		}
-		catch (IndexOutOfBoundsException e) {}
-		try {
-			session.writenf(getBuffer(0,90), 11);
-			fail("Exception not thrown");
-		}
-		catch (IndexOutOfBoundsException e) {}	
-		try {
-			session.send(null, getBuffer(0,90), 11);
-			fail("Exception not thrown");
-		}
-		catch (IndexOutOfBoundsException e) {}
-		try {
-			session.sendnf(null, getBuffer(0,90), 11);
-			fail("Exception not thrown");
-		}
-		catch (IndexOutOfBoundsException e) {}	
 		
 		assertIllegalStateException(session, new byte[10], 0, 10);
 		assertIllegalStateException(session, new byte[10], 1, 9);
 		assertIllegalStateException(session, new byte[10], 0, 1);
 
+	}
+	
+	@Test
+	public void testSendWhenConnected() throws Exception {
+		s = new DatagramHandler(PORT); s.startServer();
+		DatagramHandler s2 = new DatagramHandler(PORT+1); s2.startServer();
+		c = new DatagramHandler(PORT); c.startClient();
+
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		s2.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s2.getRecordedData(true));
+		
+		c.getSession().send(s2.getSession().getLocalAddress(), new Packet(PacketType.ECHO).toBytes());
+		waitFor(100);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		assertEquals("DR|$ECHO()|DS|", s.getRecordedData(true));
+		assertEquals("", s2.getRecordedData(true));
+		s2.stop(TIMEOUT);
 	}
 	
 	@Test
@@ -1459,7 +1484,8 @@ public class DatagramSessionTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendWrite();
-		c.getSession().send(address, new Packet(PacketType.ECHO, "33").toBytes());
+		byte[] data = new Packet(PacketType.ECHO, "33").toBytes();
+		c.getSession().send(address, data);
 		assertEquals(2, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
@@ -1472,6 +1498,7 @@ public class DatagramSessionTest {
 		assertEquals(0, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(2, allocator.getReleasedCount());
+		assertEquals(data.length, allocator.getReleased().get(0).capacity());
 
 		//write suspended, releasing
 		c = new DatagramHandler(PORT);
@@ -1480,7 +1507,7 @@ public class DatagramSessionTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendWrite();
-		c.getSession().send(address, new Packet(PacketType.ECHO, "33").toBytes());
+		c.getSession().send(address, data);
 		assertEquals(2, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
@@ -1498,21 +1525,19 @@ public class DatagramSessionTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendWrite();
-		byte[] data = new Packet(PacketType.ECHO, "33").toBytes();
 		c.getSession().send(address, data);
 		assertEquals(2, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
 		c.getSession().resumeWrite();
 		c.waitForDataSent(TIMEOUT);
-		assertEquals(1, allocator.getSize());
+		assertEquals(2, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
-		assertEquals(1, allocator.getReleasedCount());
+		assertEquals(0, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
-		assertEquals(1, allocator.getSize());
+		assertEquals(2, allocator.getSize());
 		assertEquals(2, allocator.getAllocatedCount());
-		assertEquals(1, allocator.getReleasedCount());
-		assertEquals(data.length, allocator.getReleased().get(0).capacity());
+		assertEquals(0, allocator.getReleasedCount());
 		
 		//write suspended, not releasing
 		c = new DatagramHandler(PORT);

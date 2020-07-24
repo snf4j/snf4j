@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@ import javax.net.ssl.SSLEngine;
 
 import org.junit.After;
 import org.junit.Test;
-import org.snf4j.core.InternalEngineHandler.Handshake;
+import org.snf4j.core.AbstractEngineHandler.Handshake;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.logger.LoggerFactory;
@@ -67,7 +67,7 @@ public class EngineSessionTest {
 		
 		f.setAccessible(true);
 		Object o = f.get(session);
-		f = InternalEngineHandler.class.getDeclaredField("engine");
+		f = AbstractEngineHandler.class.getDeclaredField("engine");
 		f.setAccessible(true);
 		
 		return (IEngine) f.get(o);
@@ -100,14 +100,14 @@ public class EngineSessionTest {
 		startAndWaitForReady(server, client, false);
 	}
 	
-	ByteBuffer getBuffer(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer getBuffer(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer) field.get(handler);
 	}
 
-	ByteBuffer[] getBuffers(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer[] getBuffers(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
@@ -118,14 +118,14 @@ public class EngineSessionTest {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffer((InternalEngineHandler) field.get(session), name);
+		return getBuffer((EngineStreamHandler) field.get(session), name);
 	}
 
 	ByteBuffer[] getBuffers(EngineStreamSession session, String name) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffers((InternalEngineHandler) field.get(session), name);
+		return getBuffers((EngineStreamHandler) field.get(session), name);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -134,7 +134,7 @@ public class EngineSessionTest {
 		field.setAccessible(true);
 		Object internal = field.get(session);
 		
-		field = InternalEngineHandler.class.getDeclaredField("handshake");
+		field = AbstractEngineHandler.class.getDeclaredField("handshake");
 		field.setAccessible(true);
 		return (AtomicReference<Handshake>) field.get(internal);
 	}
@@ -429,7 +429,23 @@ public class EngineSessionTest {
 		assertEquals("U3|R789|", s.getTrace(true));
 		assertCapacity(c.getSession(), 10, 10, 10);
 		assertCapacity(s.getSession(), 10, 10, 10);
-	
+
+		//buffer overflow successful update min mix
+		ce.maxAppBufferSize += 1;
+		ce.appBufferSize -= 1;
+		ce.maxNetBufferSize += 2;
+		ce.netBufferSize -= 2;
+		ce.addRecord("W|NT|-|-|BO|-|");
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("W3|W3|", c.getTrace(true));
+		assertEquals("U3|R789|", s.getTrace(true));
+		assertCapacity(c.getSession(), 10, 10, 10);
+		assertCapacity(s.getSession(), 10, 10, 10);
+		assertMinMax(c.getSession(), 10, 10, 8, 12);
+		
 		se.addRecord("W|NH|-|-|C|-|");
 		ce.addRecord("W|NH|-|-|C|-|");
 		c.getSession().close();
@@ -441,6 +457,25 @@ public class EngineSessionTest {
 		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));
 	}
 
+	public void assertMinMax(StreamSession session, int minApp, int maxApp, int minNet, int maxNet) throws Exception {
+		Field f = EngineStreamSession.class.getDeclaredField("internal");
+		
+		f.setAccessible(true);
+		Object o = f.get(session);
+		Field f0 = EngineStreamHandler.class.getDeclaredField("maxAppBufferSize");
+		f0.setAccessible(true);
+		assertEquals(maxApp, f0.getInt(o));
+		f0 = EngineStreamHandler.class.getDeclaredField("maxNetBufferSize");
+		f0.setAccessible(true);
+		assertEquals(maxNet, f0.getInt(o));
+		f0 = AbstractEngineHandler.class.getDeclaredField("minAppBufferSize");
+		f0.setAccessible(true);
+		assertEquals(minApp, f0.getInt(o));
+		f0 = AbstractEngineHandler.class.getDeclaredField("minNetBufferSize");
+		f0.setAccessible(true);
+		assertEquals(minNet, f0.getInt(o));		
+	}
+	
 	@Test
 	public void testUnwrappingBufferOverflow() throws Exception {
 		TestEngine se = createEngine(HandshakeStatus.NOT_HANDSHAKING, 10, 10);
@@ -500,6 +535,22 @@ public class EngineSessionTest {
 		assertEquals("U3|U3|R789|", s.getTrace(true));
 		assertCapacity(c.getSession(), 10, 10, 10);
 		assertCapacity(s.getSession(), 10, 10, 10);
+
+		//buffer overflow update min max
+		se.maxAppBufferSize += 1;
+		se.appBufferSize -= 1;
+		se.maxNetBufferSize += 2;
+		se.netBufferSize -= 2;
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|-|-|BO|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("W3|", c.getTrace(true));
+		assertEquals("U3|U3|R789|", s.getTrace(true));
+		assertCapacity(c.getSession(), 10, 10, 10);
+		assertCapacity(s.getSession(), 10, 10, 10);
+		assertMinMax(s.getSession(), 9, 11, 10, 10);
 		
 		se.addRecord("W|NH|-|-|C|-|");
 		ce.addRecord("W|NH|-|-|C|-|");
@@ -786,6 +837,53 @@ public class EngineSessionTest {
 		
 		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
 		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));		
+		
+		c.stop();
+		s.stop();
+		
+		se = createEngine(HandshakeStatus.NOT_HANDSHAKING, 10, 20);
+		ce = createEngine(HandshakeStatus.NOT_HANDSHAKING, 10, 20);
+		
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce);
+		
+		s.getTrace(true);
+		c.getTrace(true);
+
+		assertCapacity(c.getSession(), 10, 10, 10);
+		assertCapacity(s.getSession(), 10, 10, 10);
+		
+		//update min max
+		se.maxAppBufferSize += 1;
+		se.appBufferSize -= 1;
+		se.maxNetBufferSize += 2;
+		se.netBufferSize -= 2;
+		outNet = getBuffer(c.getSession(), "outNetBuffer");
+		outNet.put("1".getBytes());
+		ce.addRecord("W|NH|-|-|BO|-|");
+		ce.addRecord("W|NH|1122334455|6677889900|OK|-|");
+		se.addRecord("U|NH|16677889900|1627384950|OK|-|");
+		c.getSession().write("1122334455".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		s.resetDataRead();
+		assertEquals("W10|W10|", c.getTrace(true));
+		assertEquals("U11|R1627384950|", s.getTrace(true));
+		assertCapacity(c.getSession(), 10, 10, 20);
+		assertCapacity(s.getSession(), 10, 22, 10);
+		assertMinMax(s.getSession(), 10, 20, 8, 22);
+
+		se.addRecord("W|NH|-|-|C|-|");
+		ce.addRecord("W|NH|-|-|C|-|");
+		c.getSession().close();
+
+		s.waitForFinish(TIMEOUT);
+		c.waitForFinish(TIMEOUT);
+		
+		assertEquals("CO|W0|CL|EN|FIN|", c.getTrace(true));
+		assertEquals("CI|CO|CL|EN|FIN|", s.getTrace(true));		
+	
 	}	
 
 	@Test

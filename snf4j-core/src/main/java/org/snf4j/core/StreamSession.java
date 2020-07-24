@@ -339,7 +339,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	public IFuture<Void> write(ByteBuffer data, int length) {
 		if (data == null) {
 			throw new NullPointerException();
-		} else if (data.remaining() < length) {
+		} else if (data.remaining() < length || length < 0) {
 			throw new IndexOutOfBoundsException();
 		} else if (length == 0) {
 			return futuresController.getSuccessfulFuture();
@@ -360,7 +360,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	public void writenf(ByteBuffer data, int length) {
 		if (data == null) {
 			throw new NullPointerException();
-		} else if (data.remaining() < length) {
+		} else if (data.remaining() < length || length < 0) {
 			throw new IndexOutOfBoundsException();
 		} else if (length > 0) {
 			if (codec != null) {

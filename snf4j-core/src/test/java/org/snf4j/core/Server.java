@@ -71,6 +71,7 @@ import org.snf4j.core.pool.ISelectorLoopPool;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 
 public class Server {
@@ -432,7 +433,7 @@ public class Server {
 				throw new Exception("");
 			}
 			if (ssl) {
-				return new SSLSession(createHandler(channel), false);
+				return new SSLSession(channel.socket().getRemoteSocketAddress(), createHandler(channel), false);
 			}
 			return useTestSession ? new TestStreamSession(createHandler(channel)) : 
 				new StreamSession(createHandler(channel));
@@ -482,6 +483,11 @@ public class Server {
 		@Override
 		public ITimer getTimer() {
 			return timer;
+		}
+
+		@Override
+		public ITimeoutModel getTimeoutModel() {
+			return null;
 		}
 		
 	}

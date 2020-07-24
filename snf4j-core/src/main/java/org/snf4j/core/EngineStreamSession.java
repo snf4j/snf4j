@@ -1,5 +1,5 @@
 /*
-T * -------------------------------- MIT License --------------------------------
+ * -------------------------------- MIT License --------------------------------
  * 
  * Copyright (c) 2019-2020 SNF4J contributors
  * 
@@ -35,16 +35,17 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ILogger;
+import org.snf4j.core.session.IEngineStreamSession;
 
 /**
- * The stream-oriented session that handle protocols driven by customized protocol engines 
+ * A stream-oriented session that handles protocols driven by customized protocol engines 
  * implementing the {@link IEngine} interface.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class EngineStreamSession extends StreamSession {
+public class EngineStreamSession extends StreamSession implements IEngineStreamSession {
 
-	private final InternalEngineHandler internal;
+	private final EngineStreamHandler internal;
 	
 	private volatile Executor executor;
 	
@@ -63,8 +64,8 @@ public class EngineStreamSession extends StreamSession {
 	 *            the logger used to log messages related with this session
 	 */
 	public EngineStreamSession(String name, IEngine engine, IStreamHandler handler, ILogger logger) {
-		super(name, new InternalEngineHandler(engine, handler, logger));
-		internal = (InternalEngineHandler) this.handler;
+		super(name, new EngineStreamHandler(engine, handler, logger));
+		internal = (EngineStreamHandler) this.handler;
 		executor = handler.getFactory().getExecutor();
 	}
 
@@ -80,8 +81,8 @@ public class EngineStreamSession extends StreamSession {
 	 *            the logger used to log messages related with this session
 	 */
 	public EngineStreamSession(IEngine engine, IStreamHandler handler, ILogger logger) {
-		super(new InternalEngineHandler(engine, handler, logger));
-		internal = (InternalEngineHandler) this.handler;
+		super(new EngineStreamHandler(engine, handler, logger));
+		internal = (EngineStreamHandler) this.handler;
 		executor = handler.getFactory().getExecutor();
 	}
 
@@ -93,67 +94,27 @@ public class EngineStreamSession extends StreamSession {
 		return encodeTaskWriter;
 	}
 	
+	@Override
 	IStreamReader superCodec() {
 		return (IStreamReader) handler;
 	}
 	
-	/**
-	 * Sets the executor that will be used to execute delegated tasks required
-	 * by this session to complete operations that block, or may take an
-	 * extended period of time to complete.
-	 * 
-	 * @param executor
-	 *            the new executor, or <code>null</code> to use the executor
-	 *            configured in the selector loop that handles this session.
-	 */
+	@Override
 	public void setExecutor(Executor executor) {
 		this.executor = executor;
 	}
 	
-	/**
-	 * Returns the executor that will be used to execute delegated tasks
-	 * required by this session to complete operations that block, or may take
-	 * an extended period of time to complete.
-	 * <p>
-	 * By default, this method returns the executor configured in the selector 
-	 * loop that handles this session, or <code>null</code>.
-	 * 
-	 * @return the current executor, or <code>null</code> if the executor is
-	 *         undefined (i.e. the session is not associated with the selector 
-	 *         loop and the executor is not set)
-	 */
+	@Override
 	public Executor getExecutor() {
 		return (executor == null && loop != null) ? loop.getExecutor() : executor;
 	}
 	
-	/**
-	 * Initiates handshaking (initial or renegotiation) on the protocol engine
-	 * driving this session. After calling this method the handshake will start
-	 * immediately.
-	 * <p>
-	 * This method is not needed for the initial handshake, as the <code>wrap</code> and 
-	 * <code>unwrap</code> methods of the protocol engine should initiate it if the 
-	 * handshaking has not already begun.
-	 * <p>
-	 * The operation is asynchronous.
-	 */
+	@Override
 	public void beginHandshake() {
 		internal.beginHandshake(false);
 	}
 
-	/**
-	 * Initiates lazy handshaking (initial or renegotiation) on the protocol
-	 * engine driving this session. After calling this method the handshake will
-	 * not start immediately. It will start when new data is received from a
-	 * remote peer or following methods are called: <code>write</code>,
-	 * <code>writenf</code>, <code>beginHandshake</code>.
-	 * <p>
-	 * This method is not needed for the initial handshake, as the
-	 * <code>wrap</code> and <code>unwrap</code> methods of the protocol engine
-	 * should initiate it if the handshaking has not already begun.
-	 * <p>
-	 * The operation is asynchronous.
-	 */
+	@Override
 	public void beginLazyHandshake() {
 		internal.beginHandshake(true);
 	}
@@ -290,7 +251,7 @@ public class EngineStreamSession extends StreamSession {
 	public IFuture<Void> write(ByteBuffer data, int length) {
 		if (data == null) {
 			throw new NullPointerException();
-		} else if (data.remaining() < length) {
+		} else if (data.remaining() < length || length < 0) {
 			throw new IndexOutOfBoundsException();
 		} else if (length == 0) {
 			return futuresController.getSuccessfulFuture();
@@ -305,7 +266,7 @@ public class EngineStreamSession extends StreamSession {
 	public void writenf(ByteBuffer data, int length) {
 		if (data == null) {
 			throw new NullPointerException();
-		} else if (data.remaining() < length) {
+		} else if (data.remaining() < length || length < 0) {
 			throw new IndexOutOfBoundsException();
 		} else if (length > 0) {
 			if (codec != null) {

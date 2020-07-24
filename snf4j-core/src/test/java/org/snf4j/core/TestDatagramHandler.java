@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2018 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,6 +42,13 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 	StringBuilder sb = new StringBuilder();
 
 	volatile TestAllocator allocator;
+	
+	public TestDatagramHandler() {
+	}
+	
+	public TestDatagramHandler(String name) {
+		super(name);
+	}
 	
 	String getEventLog() {
 		String s = sb.toString();

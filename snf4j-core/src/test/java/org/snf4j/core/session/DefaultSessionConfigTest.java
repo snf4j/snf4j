@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,12 +53,16 @@ public class DefaultSessionConfigTest {
 		assertEquals(1, c.getMaxSSLNetworkBufferSizeRatio());
 		assertFalse(c.waitForInboundCloseMessage());
 		assertNull(c.createCodecExecutor());
+		assertEquals(60000, c.getEngineHandshakeTimeout());
+		assertEquals(60000, c.getDatagramServerSessionReopenBlockedInterval());
 
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
 			.setEndingAction(EndingAction.STOP).setCanOwnDataPassedToWriteAndSendMethods(true)
 			.setMaxSSLApplicationBufferSizeRatio(5).setMaxSSLNetworkBufferSizeRatio(6)
-			.setWaitForInboundCloseMessage(true);
+			.setWaitForInboundCloseMessage(true).setEngineHandshakeTimeout(1001)
+			.setDatagramServerSessionReopenBlockedInterval(1002)
+			.getClass();
 
 		assertEquals(10, c.getMinInBufferCapacity());
 		assertEquals(100, c.getMaxInBufferCapacity());
@@ -70,6 +74,8 @@ public class DefaultSessionConfigTest {
 		assertEquals(5, c.getMaxSSLApplicationBufferSizeRatio());
 		assertEquals(6, c.getMaxSSLNetworkBufferSizeRatio());
 		assertTrue(c.waitForInboundCloseMessage());
+		assertEquals(1001, c.getEngineHandshakeTimeout());
+		assertEquals(1002, c.getDatagramServerSessionReopenBlockedInterval());
 		
 		SSLEngine engine = c.createSSLEngine(true);
 		assertNotNull(engine);

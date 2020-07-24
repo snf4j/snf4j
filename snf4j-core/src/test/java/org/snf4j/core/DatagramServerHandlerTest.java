@@ -52,7 +52,10 @@ import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.SessionState;
+import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
+import org.snf4j.core.timer.ITimerTask;
 
 public class DatagramServerHandlerTest {
 	
@@ -101,6 +104,14 @@ public class DatagramServerHandlerTest {
 		f.setAccessible(true);
 		Map<?,? >map = (Map<?, ?>) f.get(handler);
 		return map.size();
+	}
+	
+	@SuppressWarnings("unchecked")
+	Map<SocketAddress, ITimerTask> getTimers(IDatagramHandler handler) throws Exception {
+		Field f = DatagramServerHandler.class.getDeclaredField("timers");
+		f.setAccessible(true);
+		Map<?,? >map = (Map<?, ?>) f.get(handler);
+		return (Map<SocketAddress, ITimerTask>) map;
 	}
 	
 	byte[] nop(String s) {
@@ -155,6 +166,11 @@ public class DatagramServerHandlerTest {
 			
 			@Override
 			public ITimer getTimer() {
+				return null;
+			}
+
+			@Override
+			public ITimeoutModel getTimeoutModel() {
 				return null;
 			}
 			
@@ -217,6 +233,7 @@ public class DatagramServerHandlerTest {
 		s.getSession().send(c.getSession().getLocalAddress(), nop());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		assertEquals(superSession.getRemoteAddress(), c.handlerFactoryRemoteAddress);
 		assertEquals("SCR|SOP|RDY|DR|NOP(Dd)|", c.getRecordedData(true));
 		assertEquals("DS|", s.getRecordedData(true));
 		DatagramServerSession session = (DatagramServerSession) c.getSession();
@@ -384,6 +401,7 @@ public class DatagramServerHandlerTest {
 		assertEquals(0, session.getWrittenBytes());
 		assertEquals(c.getSession().getLocalAddress(), getAddress(session));
 		assertEquals(session.getRemoteAddress(), c.getSession().getLocalAddress());
+		assertEquals(c.getSession().getLocalAddress(), s.handlerFactoryRemoteAddress);
 		codec.sessionId = false;
 		codec2.sessionId = false;
 		
@@ -704,6 +722,20 @@ public class DatagramServerHandlerTest {
 		assertFalse(s.getSession().isOpen());
 		s.stop(TIMEOUT);
 		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline2 = codec();
+		s.codecPipeline2.getPipeline().remove("2");
+		s.startServer();
+		s.throwInRead = true;
+		c.getSession().write(nop());
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|M(NOP[])|EXC|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(1, s.throwInReadCount.get());
+		assertTrue(getDelegate(s.getSession()).isOpen());
+		assertFalse(s.getSession().isOpen());
+		s.stop(TIMEOUT);
+			
 	}
 	
 	@Test
@@ -924,7 +956,6 @@ public class DatagramServerHandlerTest {
 
 			@Override
 			public IDatagramHandler create(SocketAddress remoteAddress) {
-				// TODO Auto-generated method stub
 				return null;
 			}
 		});
@@ -1050,6 +1081,137 @@ public class DatagramServerHandlerTest {
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("SCR|SOP|RDY|DR|NOP()|SCL|SEN|", s.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
+	}
+	
+	class TestTimerTask implements ITimerTask {
+		boolean canceled;
+		
+		@Override
+		public void cancelTask() {
+			canceled = true;
+		}
+	}
+	
+	@Test
+	public void testCloseTimeWaitWithConnectedChannel() throws Exception {
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		c.useDatagramServerHandler = true;
+		c.timer = new DefaultTimer();
+		c.reopenBlockedInterval = 500;
+		s.startServer();
+		c.startClient();
+		Map<SocketAddress, ITimerTask> timers = getTimers(c.getSession().getHandler());
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		waitFor(100);
+		DatagramSession superSession = c.getSession();
+		superSession.write(nop());
+		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
+		assertEquals("DR|$NOP()|", s.getRecordedData(true));
+		assertEquals("", c.getRecordedData(true));
+		SocketAddress address = c.getSession().getLocalAddress();
+		s.getSession().send(address, nop());
+		c.waitForSessionReady(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|SCL|SEN|", c.getRecordedData(true));
+		assertEquals(1, timers.size());
+		s.getSession().send(address, nop());
+		waitFor(300);
+		assertEquals("", c.getRecordedData(true));
+		s.getSession().send(address, nop());
+		waitFor(150);
+		assertEquals("", c.getRecordedData(true));
+		waitFor(60);
+		assertEquals(0, timers.size());
+		s.getSession().send(address, nop());
+		waitFor(10);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", c.getRecordedData(true));
+	}
+	
+	@Test
+	public void testCloseTimeWait() throws Exception {
+		//test wait time
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.reopenBlockedInterval = 500;
+		s.timer = new DefaultTimer();
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		DatagramSession superSession = s.getSession();
+		Map<SocketAddress, ITimerTask> timers = getTimers(s.getSession().getHandler());
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals(0, timers.size());
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		s.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals(1, timers.size());
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		c.getSession().write(nop());
+		waitFor(300);
+		c.getSession().write(nop());
+		waitFor(150);
+		assertEquals("", s.getRecordedData(true));
+		waitFor(60);
+		assertEquals(0, timers.size());
+		c.getSession().write(nop());
+		waitFor(10);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		TestTimerTask task = new TestTimerTask();
+		timers.put(s.getSession().getRemoteAddress(), task);
+		assertEquals(1, timers.size());
+		s.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals(1, timers.size());
+		assertTrue(task.canceled);
+		assertFalse(task == timers.values().iterator().next());
+		s.stop(TIMEOUT);
+		DatagramServerHandler h = (DatagramServerHandler) superSession.getHandler();
+		h.setReopenBlockedTimer(superSession);
+		
+		//test with wait time = 0
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.reopenBlockedInterval = 0;
+		s.timer = new DefaultTimer();
+		s.startServer();
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		s.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		c.getSession().write(nop());
+		waitFor(20);		
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		s.stop(TIMEOUT);
+		
+		//test with no timer
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.reopenBlockedInterval = 500;
+		s.startServer();
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		s.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		c.getSession().write(nop());
+		waitFor(20);		
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		s.stop(TIMEOUT);
+		
 	}
 	
 	class Handler extends AbstractDatagramHandler {

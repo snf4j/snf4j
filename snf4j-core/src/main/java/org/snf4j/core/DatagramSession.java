@@ -71,13 +71,6 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	IEncodeTaskWriter encodeTaskWriter;
 
-	DatagramSession(String name, IDatagramHandler handler, boolean noCodec) {
-		super(name, handler, LOGGER, noCodec);
-		minInBufferCapacity = config.getMinInBufferCapacity();
-		maxInBufferCapacity = config.getMaxInBufferCapacity();
-		ignorePossiblyIncomplete = config.ignorePossiblyIncompleteDatagrams();
-	}
-
 	/**
 	 * Constructs a named datagram-oriented session associated with a handler.
 	 * 
@@ -88,7 +81,10 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	 *            the handler that should be associated with this session
 	 */	
 	public DatagramSession(String name, IDatagramHandler handler) {
-		this(name, handler, false);
+		super(name, handler, LOGGER);
+		minInBufferCapacity = config.getMinInBufferCapacity();
+		maxInBufferCapacity = config.getMaxInBufferCapacity();
+		ignorePossiblyIncomplete = config.ignorePossiblyIncompleteDatagrams();
 	}
 
 	IEncodeTaskWriter getEncodeTaskWriter() {
@@ -151,6 +147,18 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		return socket != null ? socket.getRemoteSocketAddress() : null;
 	}
 
+	long superWrite(DatagramRecord record) {
+		return write0(record);
+	}
+	
+	IFuture<Void> superWrite(DatagramRecord record, boolean withFuture) {
+		if (withFuture) {
+			return write1(record);
+		}
+		write0(record);
+		return null;
+	}
+	
 	private final long write0(DatagramRecord record) {
 		SelectionKey key = checkKey(this.key);
 		long futureExpectedLen;
@@ -174,7 +182,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		return futureExpectedLen;
 	}
 
-	private final long write0(DatagramRecord record, byte[] datagram, int offset, int length) {
+	final DatagramRecord initRecord(DatagramRecord record, byte[] datagram, int offset, int length) {
 		if (canOwnPassedData && allocator.usesArray()) {
 			record.buffer = ByteBuffer.wrap(datagram, offset, length);
 		}
@@ -185,10 +193,10 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			record.buffer = buffer;
 			record.release = true;
 		}
-		return write0(record);
+		return record;
 	}
-
-	private final long write0(DatagramRecord record, ByteBuffer datagram, int length) {
+	
+	final DatagramRecord initRecord(DatagramRecord record, ByteBuffer datagram, int length) {
 		boolean allRemaining = length == datagram.remaining();
 		
 		if (canOwnPassedData && allRemaining) {
@@ -210,7 +218,15 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			record.buffer = buffer;
 			record.release = true;
 		}
-		return write0(record);
+		return record;
+	}
+	
+	private final long write0(DatagramRecord record, byte[] datagram, int offset, int length) {
+		return write0(initRecord(record, datagram, offset, length));
+	}
+
+	private final long write0(DatagramRecord record, ByteBuffer datagram, int length) {
+		return write0(initRecord(record, datagram, length));
 	}
 
 	private IFuture<Void> write1(DatagramRecord record) {
@@ -431,7 +447,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	public IFuture<Void> send(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
 		if (datagram == null) {
 			throw new NullPointerException();
-		} else if (datagram.remaining() < length) {
+		} else if (datagram.remaining() < length || length < 0) {
 			throw new IndexOutOfBoundsException();
 		} else if (length == 0) {
 			return futuresController.getSuccessfulFuture();
@@ -452,7 +468,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
 		if (datagram == null) {
 			throw new NullPointerException();
-		} else if (datagram.remaining() < length) {
+		} else if (datagram.remaining() < length || length < 0) {
 			throw new IndexOutOfBoundsException();
 		} else if (length > 0) {
 			if (codec != null) {
@@ -513,8 +529,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		channel.close();
 	}
 	
-	@Override
-	public void close() {
+	private void close0() {
 		SelectionKey key = this.key;
 		closeCalled.set(true);
 		
@@ -540,9 +555,13 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			quickClose();
 		}
 	}
-
+	
 	@Override
-	public void quickClose() {
+	public void close() {
+		close0();
+	}
+	
+	private void quickClose0() {
 		SelectionKey key = this.key;
 		closeCalled.set(true);
 
@@ -566,8 +585,25 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	}	
 
 	@Override
+	public void quickClose() {
+		quickClose0();
+	}	
+	
+	void superQuickClose() {
+		quickClose0();
+	}
+
+	void superClose() {
+		close0();
+	}
+	
+	@Override
 	public void dirtyClose() {
 		quickClose();
+	}
+	
+	final void superEvent(SessionEvent event) {
+		super.event(event);
 	}
 	
 	/**
@@ -632,7 +668,9 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	}
 	
 	final void release(ByteBuffer buffer) {
-		allocator.release(buffer);
+		if (allocator.isReleasable()) {
+			allocator.release(buffer);
+		}
 	}
 	
 	final Queue<DatagramRecord> getOutQueue() {

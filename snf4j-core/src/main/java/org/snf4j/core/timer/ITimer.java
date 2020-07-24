@@ -42,6 +42,7 @@ public interface ITimer {
 	 *            the task to be scheduled for execution
 	 * @param delay
 	 *            the delay in milliseconds
+	 * @return the timer task
 	 */
 	ITimerTask schedule(Runnable task, long delay);
 	
@@ -55,6 +56,7 @@ public interface ITimer {
 	 *            the delay in milliseconds
 	 * @param period
 	 *            time in milliseconds between successive task executions
+	 * @return the timer task
 	 */
 	ITimerTask schedule(Runnable task, long delay, long period);
 }

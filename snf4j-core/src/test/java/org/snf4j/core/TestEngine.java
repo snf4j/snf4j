@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -322,6 +322,7 @@ public class TestEngine implements IEngine {
 		map.put("NH", HandshakeStatus.NOT_HANDSHAKING);
 		map.put("NW", HandshakeStatus.NEED_WRAP);
 		map.put("NU", HandshakeStatus.NEED_UNWRAP);
+		map.put("NA", HandshakeStatus.NEED_UNWRAP_AGAIN);
 		map.put("NT", HandshakeStatus.NEED_TASK);
 		map.put("OK", Status.OK);
 		map.put("BO", Status.BUFFER_OVERFLOW);

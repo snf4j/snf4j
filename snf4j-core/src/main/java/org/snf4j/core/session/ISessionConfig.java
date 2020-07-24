@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,8 @@
  * -----------------------------------------------------------------------------
  */
 package org.snf4j.core.session;
+
+import java.net.SocketAddress;
 
 import javax.net.ssl.SSLEngine;
 
@@ -130,7 +132,7 @@ public interface ISessionConfig {
 	EndingAction getEndingAction();
 	
 	/**
-	 * Creates a new SSLEngine for the SSL session.
+	 * Creates a new SSLEngine for the SSL/DTLS session.
 	 * 
 	 * @param clientMode
 	 *            <code>true</code> if the engine should start its handshaking
@@ -140,6 +142,21 @@ public interface ISessionConfig {
 	 *             when the SSL engine could not be created
 	 */
 	SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException;
+	
+	/**
+	 * Creates a new SSLEngine for the SSL/DTLS session with known remote peer. It 
+	 * is called when the remote address is known at the moment a session object is 
+	 * created. 
+	 * 
+	 * @param remoteAddress the address of the remote peer
+	 * @param clientMode
+	 *            <code>true</code> if the engine should start its handshaking
+	 *            in client mode
+	 * @return the SSLEngine object
+	 * @throws SSLEngineCreateException
+	 *             when the SSL engine could not be created
+	 */
+	SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException;
 	
 	/**
 	 * Gets the ratio that is used to calculate the maximum size of the SSL
@@ -188,4 +205,30 @@ public interface ISessionConfig {
 	 */
 	ICodecExecutor createCodecExecutor();
 	
+	/**
+	 * Determines how long the SNF4J framework should wait for completion of the
+	 * handshake phase for engine-driven sessions. If the handshake does not
+	 * complete within the timeout interval the
+	 * {@link org.snf4j.core.handler.HandshakeTimeoutException
+	 * HandshakeTimeoutException} will be thrown and the session will be quickly
+	 * closed.
+	 * <p>
+	 * This configuration parameter is supported only by datagram engine-driver
+	 * sessions.
+	 * 
+	 * @return the timeout in milliseconds
+	 */
+	long getEngineHandshakeTimeout();
+	
+	/**
+	 * Determines how long the {@link org.snf4j.core.DatagramServerHandler
+	 * DatagramServerHandler} should block re-opening of a new session for the
+	 * remote peer which session has just been closed. The purpose of it is to
+	 * prevent opening of a new session as a result of receiving some delayed or
+	 * retransmitted datagrams.
+	 * 
+	 * @return the interval in milliseconds or zero if the re-opening should be
+	 *         allowed immediately
+	 */
+	long getDatagramServerSessionReopenBlockedInterval();
 }

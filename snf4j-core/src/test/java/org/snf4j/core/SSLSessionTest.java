@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
@@ -58,7 +59,8 @@ import org.snf4j.core.session.IllegalSessionStateException;
 public class SSLSessionTest {
 	long TIMEOUT = 2000;
 	int PORT = 7777;
-
+	long AFTER_TIMEOUT = 0;
+	
 	Server s;
 	Client c;
 	
@@ -82,12 +84,13 @@ public class SSLSessionTest {
 	@Before
 	public void before() {
 		s = c = null;
+		AFTER_TIMEOUT = 0;
 	}
 	
 	@After
 	public void after() throws InterruptedException {
-		if (c != null) c.stop(TIMEOUT);
-		if (s != null) s.stop(TIMEOUT);
+		if (c != null) c.stop(TIMEOUT+AFTER_TIMEOUT);
+		if (s != null) s.stop(TIMEOUT+AFTER_TIMEOUT);
 	}
 
 	private byte[] getBytes(int size, int value) {
@@ -102,21 +105,21 @@ public class SSLSessionTest {
 		Thread.sleep(millis);
 	}
 	
-	ByteBuffer getBuffer(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer getBuffer(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer) field.get(handler);
 	}
 
-	ByteBuffer[] getBuffers(InternalEngineHandler handler, String name) throws Exception {
+	ByteBuffer[] getBuffers(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer[]) field.get(handler);
 	}
 
-	void setBuffer(InternalEngineHandler handler, String name, ByteBuffer buf) throws Exception {
+	void setBuffer(EngineStreamHandler handler, String name, ByteBuffer buf) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
@@ -127,33 +130,33 @@ public class SSLSessionTest {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffer((InternalEngineHandler) field.get(session), name);
+		return getBuffer((EngineStreamHandler) field.get(session), name);
 	}
 
 	ByteBuffer[] getBuffers(SSLSession session, String name) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return getBuffers((InternalEngineHandler) field.get(session), name);
+		return getBuffers((EngineStreamHandler) field.get(session), name);
 	}
 
 	void setBuffer(EngineStreamSession session, String name, ByteBuffer buf) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		setBuffer((InternalEngineHandler) field.get(session), name, buf);
+		setBuffer((EngineStreamHandler) field.get(session), name, buf);
 	}
 	
-	InternalEngineHandler getInternal(EngineStreamSession session) throws Exception {
+	EngineStreamHandler getInternal(EngineStreamSession session) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
-		return (InternalEngineHandler) field.get(session);
+		return (EngineStreamHandler) field.get(session);
 	}
 
 	TestSSLEngine getSSLEngine(SSLSession session) throws Exception {
-		InternalEngineHandler internal = getInternal(session);
-		Field field = internal.getClass().getDeclaredField("engine");
+		EngineStreamHandler internal = getInternal(session);
+		Field field = AbstractEngineHandler.class.getDeclaredField("engine");
 		
 		field.setAccessible(true);
 		InternalSSLEngine engine = (InternalSSLEngine) field.get(internal);
@@ -170,10 +173,66 @@ public class SSLSessionTest {
 		SSLSession session = new SSLSession(handler, true);
 		assertTrue(handler == session.getHandler());
 		assertEquals("Test1", session.getName());
+		assertEquals("true", handler.engineArguments);
+		
+		session = new SSLSession(handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals("false", handler.engineArguments);
 		
 		session = new SSLSession("Test2", handler, true);
 		assertTrue(handler == session.getHandler());
 		assertEquals("Test2", session.getName());
+		assertEquals("true", handler.engineArguments);
+		
+		session = new SSLSession("Test2", handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals("false", handler.engineArguments);
+
+		InetSocketAddress a = new InetSocketAddress("127.0.0.1", 7000);
+		String s = "" + a;
+		
+		session = new SSLSession(a, handler, true);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals(s+"|true", handler.engineArguments);
+		
+		session = new SSLSession(a, handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals(s+"|false", handler.engineArguments);
+		
+		session = new SSLSession("Test2", a, handler, true);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals(s+"|true", handler.engineArguments);
+		
+		session = new SSLSession("Test2", a, handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals(s+"|false", handler.engineArguments);
+
+		session = new SSLSession((SocketAddress)null, handler, true);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals("true", handler.engineArguments);
+		
+		session = new SSLSession((SocketAddress)null, handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test1", session.getName());
+		assertEquals("false", handler.engineArguments);
+		
+		session = new SSLSession("Test2", (SocketAddress)null, handler, true);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals("true", handler.engineArguments);
+		
+		session = new SSLSession("Test2", (SocketAddress)null, handler, false);
+		assertTrue(handler == session.getHandler());
+		assertEquals("Test2", session.getName());
+		assertEquals("false", handler.engineArguments);
+		
 	}
 	
 	@Test
@@ -281,6 +340,8 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|NOP(567)|DS|SCL|SEN|", s.getRecordedData(true));
+		c.getSession().exception(new Exception());
+		assertEquals("", c.getRecordedData(true));
 		
 		//close already closed session
 		session.close();
@@ -586,8 +647,8 @@ public class SSLSessionTest {
 		session.writenf(getBuffer(10,0), 5);
 		session.closing = ClosingState.NONE;
 
-		InternalEngineHandler internal = getInternal(session);
-		Field field = internal.getClass().getDeclaredField("closing");
+		EngineStreamHandler internal = getInternal(session);
+		Field field = AbstractEngineHandler.class.getDeclaredField("closing");
 		field.setAccessible(true);
 		field.set(internal, ClosingState.SENDING);
 		assertFalse(session.write(new byte[3], 0, 1).isSuccessful());
@@ -667,6 +728,16 @@ public class SSLSessionTest {
 		catch (IndexOutOfBoundsException e) {}
 		try {
 			session.writenf(getBuffer(0,90), 11);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}		
+		try {
+			session.write(getBuffer(0,90), -1);
+			fail("Exception not thrown");
+		}
+		catch (IndexOutOfBoundsException e) {}
+		try {
+			session.writenf(getBuffer(0,90), -1);
 			fail("Exception not thrown");
 		}
 		catch (IndexOutOfBoundsException e) {}		
@@ -1379,6 +1450,7 @@ public class SSLSessionTest {
 		TestOwnSSLSession session = (TestOwnSSLSession) c.getSession();
 		session.sleepHandleClosingInProgress = 4000;
 		session.close();
+		AFTER_TIMEOUT = 4000;
 		
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));

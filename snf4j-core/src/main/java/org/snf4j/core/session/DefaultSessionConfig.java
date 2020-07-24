@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
  */
 package org.snf4j.core.session;
 
+import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
 
 import javax.net.ssl.SSLContext;
@@ -68,6 +69,10 @@ public class DefaultSessionConfig implements ISessionConfig {
 	private int maxSSLNetworkBufferSizeRatio = 1;
 	
 	private boolean waitForInboundCloseMessage; 
+	
+	private long engineHandshakeTimeout = 60000;
+	
+	private long datagramServerSessionReopenBlockedInterval = 60000;
 	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
@@ -240,6 +245,16 @@ public class DefaultSessionConfig implements ISessionConfig {
 	}
 	
 	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it returns value from the {@link #createSSLEngine(boolean)} method.
+	 */
+	@Override
+	public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+		return createSSLEngine(clientMode);
+	}
+	
+	/**
 	 * Sets the ratio that is used to calculate the maximum size of the SSL
 	 * application buffers.
 	 * 
@@ -325,5 +340,58 @@ public class DefaultSessionConfig implements ISessionConfig {
 	@Override
 	public ICodecExecutor createCodecExecutor() {
 		return null;
+	}
+	
+	/**
+	 * Configures how long the SNF4J framework should wait for completion of the
+	 * handshake phase for engine-driven sessions.
+	 * <p>
+	 * This configuration parameter is supported only by datagram engine-driver
+	 * sessions.
+	 * 
+	 * @param timeout the timeout in milliseconds
+	 * @return this session config object
+	 * @see #getEngineHandshakeTimeout()
+	 */
+	public DefaultSessionConfig setEngineHandshakeTimeout(long timeout) {
+		engineHandshakeTimeout = timeout;
+		return this;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>60000</code>
+	 */
+	@Override
+	public long getEngineHandshakeTimeout() {
+		return engineHandshakeTimeout;
+	}
+	
+	/**
+	 * Configures how long the {@link org.snf4j.core.DatagramServerHandler
+	 * DatagramServerHandler} should block re-opening of a new session for the
+	 * remote peer which session has just been closed. The purpose of it is to
+	 * prevent opening of a new session as a result of receiving some delayed or
+	 * retransmitted datagrams.
+	 * 
+	 * @param interval the interval in milliseconds or zero if the re-opening should
+	 *                 be allowed immediately
+	 * @return this session config object
+	 * @see #getDatagramServerSessionReopenBlockedInterval()
+	 */
+	public DefaultSessionConfig setDatagramServerSessionReopenBlockedInterval(long interval) {
+		datagramServerSessionReopenBlockedInterval = interval;
+		return this;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>60000</code>
+	 */
+	@Override
+	public long getDatagramServerSessionReopenBlockedInterval() {
+		return datagramServerSessionReopenBlockedInterval;
 	}
 }

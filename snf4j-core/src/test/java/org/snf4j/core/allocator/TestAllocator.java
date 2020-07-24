@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2018-2019 SNF4J contributors
+ * Copyright (c) 2018-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestAllocator extends DefaultAllocator {
 	
@@ -37,7 +36,7 @@ public class TestAllocator extends DefaultAllocator {
 	
 	final List<ByteBuffer> released = Collections.synchronizedList(new ArrayList<ByteBuffer>());
 	
-	final AtomicInteger allocated = new AtomicInteger(0);
+	final List<ByteBuffer> allocated = Collections.synchronizedList(new ArrayList<ByteBuffer>());
 	
 	final boolean releasable;
 	
@@ -57,6 +56,17 @@ public class TestAllocator extends DefaultAllocator {
 		return buffers.size();
 	}
 	
+	public int getBufferId(ByteBuffer buffer) {
+		int size = allocated.size();
+		
+		for (int i=0; i<size; ++i) {
+			if (allocated.get(i) == buffer) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	
 	public List<ByteBuffer> getReleased() {
 		return released;
 	}
@@ -66,13 +76,24 @@ public class TestAllocator extends DefaultAllocator {
 	}
 
 	public int getAllocatedCount() {
-		return allocated.get();
+		return allocated.size();
+	}
+	
+	private void remove(ByteBuffer buffer) {
+		int size = buffers.size();
+		
+		for (int i=0; i<size; ++i) {
+			if (buffer == buffers.get(i)) {
+				buffers.remove(i);
+				break;
+			}
+		}
 	}
 	
 	@Override
 	public void release(ByteBuffer buffer) {
 		super.release(buffer);
-		buffers.remove(buffer);
+		remove(buffer);
 		released.add(buffer);
 	}
 
@@ -80,7 +101,7 @@ public class TestAllocator extends DefaultAllocator {
 	public ByteBuffer allocate(int capacity) {
 		ByteBuffer b = super.allocate(capacity);
 		buffers.add(b);
-		allocated.incrementAndGet();
+		allocated.add(b);
 		return b;
 	}	
 	
@@ -88,7 +109,7 @@ public class TestAllocator extends DefaultAllocator {
 	public ByteBuffer ensureSome(ByteBuffer buffer, int minCapacity, int maxCapacity) {
 		ByteBuffer b = super.ensureSome(buffer, minCapacity, maxCapacity);
 		if (b != buffer) {
-			buffers.remove(buffer);
+			remove(buffer);
 			buffers.add(b);
 		}
 		return b;
@@ -101,7 +122,7 @@ public class TestAllocator extends DefaultAllocator {
 		}
 		ByteBuffer b = super.ensure(buffer, size, minCapacity, maxCapacity);
 		if (b != buffer) {
-			buffers.remove(buffer);
+			remove(buffer);
 			buffers.add(b);
 		}
 		return b;
@@ -111,7 +132,7 @@ public class TestAllocator extends DefaultAllocator {
 	public ByteBuffer reduce(ByteBuffer buffer, int minCapacity) {
 		ByteBuffer b = super.reduce(buffer, minCapacity);
 		if (b != buffer) {
-			buffers.remove(buffer);
+			remove(buffer);
 			buffers.add(b);
 		}
 		return b;
@@ -121,7 +142,7 @@ public class TestAllocator extends DefaultAllocator {
 	public ByteBuffer extend(ByteBuffer buffer, int maxCapacity) {
 		ByteBuffer b = super.extend(buffer, maxCapacity);
 		if (b != buffer) {
-			buffers.remove(buffer);
+			remove(buffer);
 			buffers.add(b);
 		}
 		return b;

@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -46,6 +47,8 @@ public class TestHandler extends AbstractStreamHandler {
 	StringBuilder events;
 	
 	SSLEngine engine;
+	
+	String engineArguments;
 	
 	int availableBytes;
 	
@@ -91,6 +94,13 @@ public class TestHandler extends AbstractStreamHandler {
 		DefaultSessionConfig config = new DefaultSessionConfig() {
 			@Override
 			public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+				engineArguments = "" + clientMode;
+				return engine;
+			}
+			
+			@Override
+			public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+				engineArguments = "" + remoteAddress + "|" + clientMode;
 				return engine;
 			}
 		};

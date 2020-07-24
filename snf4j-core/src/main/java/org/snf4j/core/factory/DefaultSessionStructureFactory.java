@@ -30,6 +30,7 @@ import java.util.concurrent.Executor;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 
 /**
@@ -86,6 +87,15 @@ public class DefaultSessionStructureFactory implements ISessionStructureFactory 
 	 */
 	@Override
 	public ITimer getTimer() {
+		return null;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @return <code>null</code>, so the default timeout model should be used by the session
+	 */
+	@Override
+	public ITimeoutModel getTimeoutModel() {
 		return null;
 	}
 
