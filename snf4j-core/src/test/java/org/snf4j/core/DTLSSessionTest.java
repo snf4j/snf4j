@@ -1508,4 +1508,64 @@ public class DTLSSessionTest extends DTLSTest {
 		
 	}
 	
+	@Test
+	public void testSendToOtherClient() throws Exception {
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		s2 = new DatagramHandler(PORT+1);
+		s2.startServer();
+		s2.waitForSessionReady(TIMEOUT);
+		SocketAddress a = new InetSocketAddress("127.0.0.1", PORT+1);
+
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		s2.getRecordedData(true);
+		s.getSession().write(nop("1"));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1)|", c.getRecordedData(true));
+		s.getSession().send(a,  nop("2"));
+		s2.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(2)|", s2.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.codecPipeline = codec();
+		s.ssl = true;
+		c.codecPipeline = codec();
+		c.ssl = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(ed)|", s.getRecordedData(true));
+		waitFor(50);
+		c.getRecordedData(true);
+		
+		s.getSession().write(nop("3"));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(3ed)|", c.getRecordedData(true));
+		s.getSession().send(a,  nop("4"));
+		s2.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(4e)|", s2.getRecordedData(true));
+		
+	}
 }

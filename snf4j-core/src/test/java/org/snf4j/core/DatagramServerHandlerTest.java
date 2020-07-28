@@ -34,6 +34,8 @@ import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.NotYetConnectedException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
@@ -50,6 +52,7 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.AbstractDatagramHandler;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionIncident;
+import org.snf4j.core.logger.LoggerRecorder;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.SessionState;
 import org.snf4j.core.timer.DefaultTimer;
@@ -334,6 +337,17 @@ public class DatagramServerHandlerTest {
 
 	}
 	
+	List<String> getErrors(List<String> recording) {
+		List<String> result = new ArrayList<String>();
+		
+		for (String s: recording) {
+			if (s.startsWith("[ERROR]")) {
+				result.add(s);
+			}
+		}
+		return result;
+	}
+	
 	@Test
 	public void testReadWithDecoders() throws Exception {
 		s = new DatagramHandler(PORT);
@@ -358,6 +372,34 @@ public class DatagramServerHandlerTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|NOP(d)|", s.getRecordedData(true));
+		codec.decodeException = new Exception();
+		LoggerRecorder.enableRecording();
+		s.incident = false;
+		c.getSession().write(nop());
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		List<String> recording = getErrors(LoggerRecorder.disableRecording());		
+		assertEquals(1, recording.size());
+		assertTrue(recording.get(0).startsWith("[ERROR] " + SessionIncident.DECODING_PIPELINE_FAILURE.defaultMessage()));
+		assertEquals("DR|DECODING_PIPELINE_FAILURE|", s.getRecordedData(true));
+		codec.decodeException = null;
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(d)|", s.getRecordedData(true));
+		codec.decodeException = new Exception();
+		LoggerRecorder.enableRecording();
+		s.incident = true;
+		c.getSession().write(nop());
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		recording = getErrors(LoggerRecorder.disableRecording());		
+		assertEquals(0, recording.size());
+		assertEquals("DR|DECODING_PIPELINE_FAILURE|", s.getRecordedData(true));
+		codec.decodeException = null;
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(d)|", s.getRecordedData(true));
+		
 		s.stop(TIMEOUT);
 
 		s = new DatagramHandler(PORT);
@@ -368,6 +410,16 @@ public class DatagramServerHandlerTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|NOP(D)|", s.getRecordedData(true));
+		codec2.decodeException = new Exception();
+		c.getSession().write(nop());
+		c.waitForDataSent(TIMEOUT);
+		waitFor(100);
+		assertEquals("DR|DECODING_PIPELINE_FAILURE|", s.getRecordedData(true));
+		codec2.decodeException = null;
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(D)|", s.getRecordedData(true));
+		
 	}
 	
 	@Test
@@ -1212,6 +1264,61 @@ public class DatagramServerHandlerTest {
 		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
 		s.stop(TIMEOUT);
 		
+	}
+	
+	@Test
+	public void testSendToOtherClient() throws Exception {
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.startServer();
+		c.startClient();
+		
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		
+		c2 = new DatagramHandler(PORT+1);
+		c2.startServer();
+		c2.waitForSessionReady(TIMEOUT);
+		SocketAddress a = new InetSocketAddress("127.0.0.1", PORT+1);
+		
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c2.getRecordedData(true);
+		s.getSession().write(nop("1"));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1)|", c.getRecordedData(true));
+		s.getSession().send(a,  nop("2"));
+		c2.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(2)|", c2.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.codecPipeline = codec();
+		c.codecPipeline = codec();
+		s.startServer();
+		c.startClient();
+		
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP(ed)|", s.getRecordedData(true));
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		
+		s.getSession().write(nop("3"));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(3ed)|", c.getRecordedData(true));
+		s.getSession().send(a,  nop("4"));
+		c2.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(4e)|", c2.getRecordedData(true));
 	}
 	
 	class Handler extends AbstractDatagramHandler {

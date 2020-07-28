@@ -108,6 +108,7 @@ public class DatagramHandler {
 	public final AtomicInteger throwInReadCount = new AtomicInteger();
 	public volatile boolean throwInSuperRead;
 	public final AtomicInteger throwInSuperReadCount = new AtomicInteger();
+	public volatile boolean throwInIncident;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
@@ -820,6 +821,10 @@ public class DatagramHandler {
 			if (incidentDirtyClose) {
 				getSession().dirtyClose();
 				return true;
+			}
+			
+			if (DatagramHandler.this.throwInIncident) {
+				throw new IllegalArgumentException();
 			}
 			
 			return DatagramHandler.this.incident;

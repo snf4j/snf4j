@@ -65,8 +65,8 @@ public class DTLSServerHandler extends DatagramServerHandler {
 	 *            the factory used to create datagram handlers the will be
 	 *            associated with newly created sessions for remote hosts
 	 * @param config
-	 *            the configuration for a session associated with this datagram
-	 *            server handler
+	 *            the configuration for a session associated with this handler 
+	 *            or {@code null} to use the default configuration
 	 */
 	public DTLSServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config) {
 		super(handlerFactory, config);
@@ -79,10 +79,12 @@ public class DTLSServerHandler extends DatagramServerHandler {
 	 *            the factory used to create datagram handlers the will be
 	 *            associated with newly created sessions for remote hosts
 	 * @param config
-	 *            the configuration for a session associated with this handler
+	 *            the configuration for a session associated with this handler 
+	 *            or {@code null} to use the default configuration
 	 * @param factory
 	 *            the factory used to configure the internal structure of a
-	 *            session associated with this handler
+	 *            session associated with this handler or {@code null}
+	 *            to use the default structure factory
 	 */
 	public DTLSServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config, ISessionStructureFactory factory) {
 		super(handlerFactory, config, factory);

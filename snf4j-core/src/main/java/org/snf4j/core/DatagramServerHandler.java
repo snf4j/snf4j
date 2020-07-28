@@ -110,14 +110,14 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	
 	/**
 	 * Constructs a datagram server handler with the
-	 * {@link DefaultSessionConfig}.
+	 * {@link DefaultSessionStructureFactory}.
 	 * 
 	 * @param handlerFactory
 	 *            the factory used to create datagram handlers the will be
 	 *            associated with newly created sessions for remote hosts
 	 * @param config
-	 *            the configuration for a session associated with this datagram
-	 *            server handler
+	 *            the configuration for a session associated with this handler 
+	 *            or {@code null} to use the default configuration
 	 */
 	public DatagramServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config) {
 		this(handlerFactory, config, null);
@@ -131,9 +131,11 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	 *            associated with newly created sessions for remote hosts
 	 * @param config
 	 *            the configuration for a session associated with this handler
+	 *            or {@code null} to use the default configuration
 	 * @param factory
 	 *            the factory used to configure the internal structure of a
-	 *            session associated with this handler
+	 *            session associated with this handler or {@code null}
+	 *            to use the default structure factory
 	 */
 	public DatagramServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config, ISessionStructureFactory factory) {
 		if (handlerFactory == null) {
@@ -161,6 +163,13 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		if (session != null) {
 			try {
 				session.superCodec().read(datagram);
+			}
+			catch (PipelineDecodeException e) {
+				SessionIncident incident = SessionIncident.DECODING_PIPELINE_FAILURE;
+				
+				if (!session.incident(incident, e.getCause())) {
+					elogger.error(LOGGER, incident.defaultMessage(), session, e.getCause());
+				}				
 			}
 			catch (Exception e) {
 				fireException(session, e);
