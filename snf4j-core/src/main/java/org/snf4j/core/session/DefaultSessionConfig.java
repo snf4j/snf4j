@@ -72,7 +72,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	
 	private long engineHandshakeTimeout = 60000;
 	
-	private long datagramServerSessionReopenBlockedInterval = 60000;
+	private long datagramServerSessionNoReopenPeriod = 60000;
 	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
@@ -375,13 +375,13 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * prevent opening of a new session as a result of receiving some delayed or
 	 * retransmitted datagrams.
 	 * 
-	 * @param interval the interval in milliseconds or zero if the re-opening should
+	 * @param period the period in milliseconds or zero if the re-opening should
 	 *                 be allowed immediately
 	 * @return this session config object
-	 * @see #getDatagramServerSessionReopenBlockedInterval()
+	 * @see #getDatagramServerSessionNoReopenPeriod()
 	 */
-	public DefaultSessionConfig setDatagramServerSessionReopenBlockedInterval(long interval) {
-		datagramServerSessionReopenBlockedInterval = interval;
+	public DefaultSessionConfig setDatagramServerSessionNoReopenPeriod(long period) {
+		datagramServerSessionNoReopenPeriod = period;
 		return this;
 	}
 	
@@ -391,7 +391,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * The default value is <code>60000</code>
 	 */
 	@Override
-	public long getDatagramServerSessionReopenBlockedInterval() {
-		return datagramServerSessionReopenBlockedInterval;
+	public long getDatagramServerSessionNoReopenPeriod() {
+		return datagramServerSessionNoReopenPeriod;
 	}
 }

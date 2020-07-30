@@ -386,17 +386,17 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		timers.remove(event);
 	}
 	
-	void setReopenBlockedTimer(DatagramSession session) {
-		long delay = session.getConfig().getDatagramServerSessionReopenBlockedInterval();
+	void setNoReopenTimer(DatagramSession session) {
+		long period = session.getConfig().getDatagramServerSessionNoReopenPeriod();
 		
-		if (delay > 0) {
+		if (period > 0) {
 			ISessionTimer timer = getSession().getTimer();
 			
 			if (timer.isSupported()) {
 				SocketAddress remoteAddress = session.getRemoteAddress();
 				
 				if (remoteAddress != null) {
-					ITimerTask task = timers.put(remoteAddress, timer.scheduleEvent(remoteAddress, delay));
+					ITimerTask task = timers.put(remoteAddress, timer.scheduleEvent(remoteAddress, period));
 
 					if (task != null) {
 						task.cancelTask();
@@ -408,7 +408,7 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	
 	void closeSession(DatagramSession session, boolean block) {
 		if (block) {
-			setReopenBlockedTimer(session);
+			setNoReopenTimer(session);
 		}
 		((DatagramServerSession)session).closingFinished();
 		fireEvent(session, SessionEvent.CLOSED);

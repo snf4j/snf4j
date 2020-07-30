@@ -1227,7 +1227,7 @@ public class DatagramServerHandlerTest {
 		assertFalse(task == timers.values().iterator().next());
 		s.stop(TIMEOUT);
 		DatagramServerHandler h = (DatagramServerHandler) superSession.getHandler();
-		h.setReopenBlockedTimer(superSession);
+		h.setNoReopenTimer(superSession);
 		
 		//test with wait time = 0
 		s = new DatagramHandler(PORT);

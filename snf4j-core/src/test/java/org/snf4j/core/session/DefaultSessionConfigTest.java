@@ -54,14 +54,14 @@ public class DefaultSessionConfigTest {
 		assertFalse(c.waitForInboundCloseMessage());
 		assertNull(c.createCodecExecutor());
 		assertEquals(60000, c.getEngineHandshakeTimeout());
-		assertEquals(60000, c.getDatagramServerSessionReopenBlockedInterval());
+		assertEquals(60000, c.getDatagramServerSessionNoReopenPeriod());
 
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
 			.setEndingAction(EndingAction.STOP).setCanOwnDataPassedToWriteAndSendMethods(true)
 			.setMaxSSLApplicationBufferSizeRatio(5).setMaxSSLNetworkBufferSizeRatio(6)
 			.setWaitForInboundCloseMessage(true).setEngineHandshakeTimeout(1001)
-			.setDatagramServerSessionReopenBlockedInterval(1002)
+			.setDatagramServerSessionNoReopenPeriod(1002)
 			.getClass();
 
 		assertEquals(10, c.getMinInBufferCapacity());
@@ -75,7 +75,7 @@ public class DefaultSessionConfigTest {
 		assertEquals(6, c.getMaxSSLNetworkBufferSizeRatio());
 		assertTrue(c.waitForInboundCloseMessage());
 		assertEquals(1001, c.getEngineHandshakeTimeout());
-		assertEquals(1002, c.getDatagramServerSessionReopenBlockedInterval());
+		assertEquals(1002, c.getDatagramServerSessionNoReopenPeriod());
 		
 		SSLEngine engine = c.createSSLEngine(true);
 		assertNotNull(engine);

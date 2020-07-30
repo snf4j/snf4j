@@ -568,7 +568,7 @@ public class DatagramHandler {
 			config.setEndingAction(endingAction);
 			config.setCanOwnDataPassedToWriteAndSendMethods(canOwnPasseData);
 			config.setEngineHandshakeTimeout(handshakeTimeout);
-			config.setDatagramServerSessionReopenBlockedInterval(reopenBlockedInterval);
+			config.setDatagramServerSessionNoReopenPeriod(reopenBlockedInterval);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
 			return config;
 		}
