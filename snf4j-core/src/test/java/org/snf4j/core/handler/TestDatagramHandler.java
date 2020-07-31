@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,11 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 	}
 	
 	@Override
-	public void read(byte[] datagram) {
+	public void read(Object msg) {
 	}
 
 	@Override
-	public void read(SocketAddress remoteAddress, byte[] datagram) {
+	public void read(SocketAddress remoteAddress, Object msg) {
 	}
 
 }

@@ -78,10 +78,11 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 		return (IDatagramSession) super.getSession();
 	}
 	
-	@Override
-	public void read(SocketAddress remoteAddress, Object msg) {
+	@Override 
+	public void read(SocketAddress remoteAddress, byte[] datagram) {
+		read(remoteAddress, (Object)datagram);
 	}
-	
+
 	@Override
 	public void event(SocketAddress remoteAddress, DataEvent event, long length) {
 	}

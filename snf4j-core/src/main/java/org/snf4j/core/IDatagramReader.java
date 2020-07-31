@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -48,15 +48,15 @@ public interface IDatagramReader {
 	void read(byte[] datagram);
 	
 	/**
-	 * Called when a new datagram was received from the remote end that is
-	 * specified by the given remote address. The method is only called for
+	 * Called when a new datagram was received from a remote end that is
+	 * identified by the given remote address. The method is only called for
 	 * sessions created with a disconnected datagram channel.
 	 * <p>
 	 * The passed array can be safely stored or modified by this method as it
 	 * will not be used by the caller.
 	 * 
 	 * @param remoteAddress
-	 *            address of the remote host that is the source of the datagram.
+	 *            address of the remote end.
 	 * @param datagram
 	 *            the datagram received from the remote end.
 	 */

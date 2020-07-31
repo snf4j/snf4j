@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ public class DiscardingClientHandler extends AbstractStreamHandler {
 	private long startTime;
 	
 	@Override
-	public void read(byte[] data) {
+	public void read(Object msg) {
 		//Discarding all read bytes
 	}
 	

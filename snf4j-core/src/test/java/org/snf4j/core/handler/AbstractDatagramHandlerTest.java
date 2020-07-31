@@ -29,11 +29,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+
 import org.junit.Test;
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 
 public class AbstractDatagramHandlerTest {
+	
+	SocketAddress readAddr;
+	
+	Object readMsg;
 	
 	@Test
 	public void testAll() {
@@ -47,5 +54,36 @@ public class AbstractDatagramHandlerTest {
 		assertNull(h.getFactory().getAttributes());
 		assertTrue(DefaultAllocator.DEFAULT == h.getFactory().getAllocator());
 		h.event(null, null, -1);
+	}
+	
+	@Test
+	public void testRead() {
+		AbstractDatagramHandler h = new AbstractDatagramHandler() {
+
+			@Override
+			public void read(SocketAddress remoteAddress, Object msg) {
+				readAddr = remoteAddress;
+				readMsg = msg;
+			}
+
+			@Override
+			public void read(Object msg) {
+				readAddr = null;
+				readMsg = msg;
+			}
+		};
+		
+		SocketAddress a = new InetSocketAddress(555);
+		byte[] b = new byte[3];
+		readAddr = a;
+		h.read(b);
+		assertNull(readAddr);
+		assertTrue(b == readMsg);
+		
+		b = new byte[6];
+		h.read(a, b);
+		assertTrue(readAddr == a);
+		assertTrue(b == readMsg);
+		
 	}
 }

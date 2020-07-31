@@ -56,6 +56,11 @@ import org.snf4j.core.timer.ITimerTask;
  * created {@link DatagramSession} object that will be associated with the
  * datagram handle created by the {@link IDatagramHandlerFactory} passed in the
  * constructor.
+ * <p>
+ * <b>Limitations:</b>: As the session objects created by this handler do not
+ * implement their own I/O functionalities calling to methods suspending read/write
+ * operations will also suspend all other sessions currently handled by this
+ * handler. 
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
@@ -110,14 +115,14 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	
 	/**
 	 * Constructs a datagram server handler with the
-	 * {@link DefaultSessionConfig}.
+	 * {@link DefaultSessionStructureFactory}.
 	 * 
 	 * @param handlerFactory
 	 *            the factory used to create datagram handlers the will be
 	 *            associated with newly created sessions for remote hosts
 	 * @param config
-	 *            the configuration for a session associated with this datagram
-	 *            server handler
+	 *            the configuration for a session associated with this handler 
+	 *            or {@code null} to use the default configuration
 	 */
 	public DatagramServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config) {
 		this(handlerFactory, config, null);
@@ -131,9 +136,11 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	 *            associated with newly created sessions for remote hosts
 	 * @param config
 	 *            the configuration for a session associated with this handler
+	 *            or {@code null} to use the default configuration
 	 * @param factory
 	 *            the factory used to configure the internal structure of a
-	 *            session associated with this handler
+	 *            session associated with this handler or {@code null}
+	 *            to use the default structure factory
 	 */
 	public DatagramServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config, ISessionStructureFactory factory) {
 		if (handlerFactory == null) {
@@ -161,6 +168,13 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		if (session != null) {
 			try {
 				session.superCodec().read(datagram);
+			}
+			catch (PipelineDecodeException e) {
+				SessionIncident incident = SessionIncident.DECODING_PIPELINE_FAILURE;
+				
+				if (!session.incident(incident, e.getCause())) {
+					elogger.error(LOGGER, incident.defaultMessage(), session, e.getCause());
+				}				
 			}
 			catch (Exception e) {
 				fireException(session, e);
@@ -377,17 +391,17 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 		timers.remove(event);
 	}
 	
-	void setReopenBlockedTimer(DatagramSession session) {
-		long delay = session.getConfig().getDatagramServerSessionReopenBlockedInterval();
+	void setNoReopenTimer(DatagramSession session) {
+		long period = session.getConfig().getDatagramServerSessionNoReopenPeriod();
 		
-		if (delay > 0) {
+		if (period > 0) {
 			ISessionTimer timer = getSession().getTimer();
 			
 			if (timer.isSupported()) {
 				SocketAddress remoteAddress = session.getRemoteAddress();
 				
 				if (remoteAddress != null) {
-					ITimerTask task = timers.put(remoteAddress, timer.scheduleEvent(remoteAddress, delay));
+					ITimerTask task = timers.put(remoteAddress, timer.scheduleEvent(remoteAddress, period));
 
 					if (task != null) {
 						task.cancelTask();
@@ -399,7 +413,7 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	
 	void closeSession(DatagramSession session, boolean block) {
 		if (block) {
-			setReopenBlockedTimer(session);
+			setNoReopenTimer(session);
 		}
 		((DatagramServerSession)session).closingFinished();
 		fireEvent(session, SessionEvent.CLOSED);

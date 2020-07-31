@@ -207,6 +207,10 @@ public class EngineServer {
 		}
 
 		@Override
+		public void read(Object msg) {
+		}
+		
+		@Override
 		public void exception(Throwable t) {
 			trace("EX");
 		}

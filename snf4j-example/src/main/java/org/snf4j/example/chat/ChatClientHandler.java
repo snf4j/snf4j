@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,8 +34,8 @@ import org.snf4j.core.session.ISessionConfig;
 public class ChatClientHandler extends AbstractStreamHandler {
 
 	@Override
-	public void read(byte[] data) {
-		System.err.println(new String(data));
+	public void read(Object msg) {
+		System.err.println(new String((byte[])msg));
 	}
 
 	@Override

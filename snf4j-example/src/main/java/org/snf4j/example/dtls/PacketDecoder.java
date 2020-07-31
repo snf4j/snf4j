@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +23,33 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.example.dtls;
 
-import org.snf4j.core.handler.AbstractStreamHandler;
+import java.util.List;
 
-public class DiscardingServerHandler extends AbstractStreamHandler {
+import org.snf4j.core.codec.IDecoder;
+import org.snf4j.core.session.ISession;
+
+public class PacketDecoder implements IDecoder<byte[], Packet> {
 
 	@Override
-	public void read(Object msg) {
-		//Discarding all read bytes
+	public Class<byte[]> getInboundType() {
+		return byte[].class;
+	}
+
+	@Override
+	public Class<Packet> getOutboundType() {
+		return Packet.class;
+	}
+
+	@Override
+	public void decode(ISession session, byte[] data, List<Packet> out)
+			throws Exception {
+		Packet packet = new Packet(data);
+		
+		if (packet != null) {
+			out.add(packet);
+		}
 	}
 
 }

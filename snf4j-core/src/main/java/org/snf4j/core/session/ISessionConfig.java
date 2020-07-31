@@ -227,8 +227,8 @@ public interface ISessionConfig {
 	 * prevent opening of a new session as a result of receiving some delayed or
 	 * retransmitted datagrams.
 	 * 
-	 * @return the interval in milliseconds or zero if the re-opening should be
+	 * @return the period in milliseconds or zero if the re-opening should be
 	 *         allowed immediately
 	 */
-	long getDatagramServerSessionReopenBlockedInterval();
+	long getDatagramServerSessionNoReopenPeriod();
 }

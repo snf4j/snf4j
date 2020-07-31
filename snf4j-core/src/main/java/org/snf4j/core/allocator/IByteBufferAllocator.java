@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -137,8 +137,8 @@ public interface IByteBufferAllocator {
 	 * content of the original buffer must be preserved in the returned buffer.
 	 * <p>
 	 * It is only used to manage the capacity of the input buffer associated
-	 * with the datagram-oriented sessions. The method is called after the 
-	 * received datagram fully filled up the input buffer.
+	 * with the datagram-oriented sessions. The method is called after receiving
+	 * a datagram that fully filled up the input buffer. 
 	 * 
 	 * @param buffer
 	 *            buffer in the write mode (i.e. not flipped yet)

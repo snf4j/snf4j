@@ -2,7 +2,7 @@
 <!--
  ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MIT License ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  ~ 
- ~ Copyright (c) 2017-2019 SNF4J contributors
+ ~ Copyright (c) 2017-2020 SNF4J contributors
  ~ 
  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
  ~ of this software and associated documentation files (the "Software"), to deal
@@ -68,6 +68,31 @@
             </excludes>
           </instrumentation>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${version.resources.plugin}</version>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${basedir}/target/classes</outputDirectory>
+              <resources>          
+                <resource>
+                  <directory>../snf4j-core/src/test/resources</directory>
+                  <includes>
+                    <include>keystore.jks</include>
+                  </includes>
+                </resource>
+              </resources>              
+            </configuration>            
+          </execution>
+        </executions>
       </plugin>
 
     </plugins>    

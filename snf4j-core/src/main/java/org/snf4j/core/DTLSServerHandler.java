@@ -38,7 +38,14 @@ import org.snf4j.core.session.ISessionConfig;
 
 /**
  * DTLS server handler providing functionality to handle multiple remote
- * hosts via a single datagram-orinted session.
+ * hosts via a single datagram-orinted session. The sessions created by this
+ * handler implement {@link org.snf4j.core.session.IEngineDatagramSession 
+ * IEngineDatagramSession}.
+ * <p>
+ * <b>Limitations:</b>: As the session objects created by this handler do not
+ * implement their own I/O functionalities calling to methods suspending read/write
+ * operations will also suspend all other sessions currently handled by this
+ * handler. 
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
@@ -65,8 +72,8 @@ public class DTLSServerHandler extends DatagramServerHandler {
 	 *            the factory used to create datagram handlers the will be
 	 *            associated with newly created sessions for remote hosts
 	 * @param config
-	 *            the configuration for a session associated with this datagram
-	 *            server handler
+	 *            the configuration for a session associated with this handler 
+	 *            or {@code null} to use the default configuration
 	 */
 	public DTLSServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config) {
 		super(handlerFactory, config);
@@ -79,10 +86,12 @@ public class DTLSServerHandler extends DatagramServerHandler {
 	 *            the factory used to create datagram handlers the will be
 	 *            associated with newly created sessions for remote hosts
 	 * @param config
-	 *            the configuration for a session associated with this handler
+	 *            the configuration for a session associated with this handler 
+	 *            or {@code null} to use the default configuration
 	 * @param factory
 	 *            the factory used to configure the internal structure of a
-	 *            session associated with this handler
+	 *            session associated with this handler or {@code null}
+	 *            to use the default structure factory
 	 */
 	public DTLSServerHandler(IDatagramHandlerFactory handlerFactory, ISessionConfig config, ISessionStructureFactory factory) {
 		super(handlerFactory, config, factory);

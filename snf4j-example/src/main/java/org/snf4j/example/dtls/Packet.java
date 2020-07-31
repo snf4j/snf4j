@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +23,63 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.example.dtls;
 
-import org.snf4j.core.handler.AbstractStreamHandler;
+import java.nio.ByteBuffer;
+import java.util.Random;
+import java.util.zip.CRC32;
 
-public class DiscardingServerHandler extends AbstractStreamHandler {
-
-	@Override
-	public void read(Object msg) {
-		//Discarding all read bytes
+class Packet {
+	
+	static final int CRC_SIZE = 8;
+	
+	static final Random RANDOM = new Random(System.currentTimeMillis());
+	
+	final private long sequence;
+	
+	final private byte[] bytes;
+	
+	Packet(long sequence, int size) {
+		this.sequence = sequence;
+		bytes = new byte[size];
+		RANDOM.nextBytes(bytes);
+		
+		ByteBuffer b = ByteBuffer.wrap(bytes);
+		CRC32 crc = new CRC32();
+		
+		b.clear();
+		b.putInt(bytes.length);
+		b.putLong(sequence);
+		crc.update(bytes, 0, bytes.length - CRC_SIZE);
+		b.position(bytes.length - CRC_SIZE);
+		b.putLong(crc.getValue());
 	}
-
+	
+	Packet(byte[] bytes) {
+		this.bytes = bytes;
+		
+		ByteBuffer b = ByteBuffer.wrap(bytes);
+		CRC32 crc = new CRC32();
+		long crcValue;
+		
+		int size = b.getInt();
+		if (size != bytes.length) {
+			throw new IllegalArgumentException();
+		}
+		sequence = b.getLong();
+		b.position(bytes.length - CRC_SIZE);
+		crcValue = b.getLong();
+		crc.update(bytes, 0, bytes.length - CRC_SIZE);
+		if (crcValue != crc.getValue()) {
+			throw new IllegalArgumentException();
+		}
+	}
+	
+	long getSequence() {
+		return sequence;
+	}
+	
+	byte[] toBytes() {
+		return bytes;
+	}
 }

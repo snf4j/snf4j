@@ -72,11 +72,11 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 	}
 	
 	@Override
-	public void read(byte[] datagram) {
+	public void read(Object msg) {
 	}
 
 	@Override
-	public void read(SocketAddress remoteAddress, byte[] datagram) {
+	public void read(SocketAddress remoteAddress, Object msg) {
 	}
 
 	@Override

@@ -81,7 +81,7 @@ public class TestHandler extends AbstractStreamHandler {
 	}
 
 	@Override
-	public void read(byte[] data) {
+	public void read(Object msg) {
 	}
 
 	@Override

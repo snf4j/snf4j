@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +23,35 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.discarding;
+package org.snf4j.example.dtls;
 
-import org.snf4j.core.handler.AbstractStreamHandler;
+import org.snf4j.core.allocator.DefaultDatagramSessionAllocator;
+import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.ITimer;
 
-public class DiscardingServerHandler extends AbstractStreamHandler {
-
+public class SessionStructureFactory extends DefaultSessionStructureFactory {
+	
+	private static final ITimer TIMER = new DefaultTimer(true);
+	
+	private static final IByteBufferAllocator ALLOCATOR = new DefaultDatagramSessionAllocator(
+			false, 
+			10,
+			SessionConfig.MAX_APPLICATION_DATA_SIZE);
+	
+	static final SessionStructureFactory INSTANCE = new SessionStructureFactory();
+	
+	private SessionStructureFactory() {
+	}
+	
 	@Override
-	public void read(Object msg) {
-		//Discarding all read bytes
+	public ITimer getTimer() {
+		return TIMER;
 	}
 
+	@Override
+	public IByteBufferAllocator getAllocator() {
+		return ALLOCATOR;
+	}	
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,11 +41,11 @@ public class ChatServerHandler extends AbstractStreamHandler {
 	static final Map<Long, IStreamSession> sessions = new HashMap<Long, IStreamSession>();
 	
 	@Override
-	public void read(byte[] data) {
-		String msg = new String(data);
+	public void read(Object msg) {
+		String s = new String((byte[])msg);
 		
-		send(msg);
-		if ("bye".equalsIgnoreCase(msg)) {
+		send(s);
+		if ("bye".equalsIgnoreCase(s)) {
 			getSession().close();
 		}
 	}

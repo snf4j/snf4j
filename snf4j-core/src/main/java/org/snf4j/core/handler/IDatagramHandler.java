@@ -60,8 +60,8 @@ public interface IDatagramHandler extends IHandler, IDatagramReader {
 	IDatagramSession getSession();
 	
 	/**
-	 * Called when a new message was received and decoded from the remote end
-	 * that is specified by the given remote address. This method is called when
+	 * Called when a new message was received and decoded from a remote end
+	 * that is identified by the given remote address. This method is called when
 	 * the associated session is configured with a codec pipeline in which the
 	 * last decoder produces outbound object(s) of type different than the
 	 * {@code byte[]}.
@@ -70,7 +70,7 @@ public interface IDatagramHandler extends IHandler, IDatagramReader {
 	 * datagram channel.
 	 * 
 	 * @param remoteAddress
-	 *            address of the remote host that is the source of the message.
+	 *            address of the remote end.
 	 * @param msg
 	 *            the message received from the remote end.
 	 */
