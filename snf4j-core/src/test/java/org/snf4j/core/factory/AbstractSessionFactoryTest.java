@@ -115,7 +115,7 @@ public class AbstractSessionFactoryTest {
 			return new AbstractStreamHandler() {
 
 				@Override
-				public void read(byte[] data) {
+				public void read(Object msg) {
 				}
 				
 				@Override

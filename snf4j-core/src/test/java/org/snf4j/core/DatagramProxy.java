@@ -106,7 +106,11 @@ public class DatagramProxy {
 	class Handler extends AbstractDatagramHandler {
 		
 		@Override
-		public void read(byte[] data) {
+		public void read(Object msg) {
+		}
+		
+		@Override
+		public void read(SocketAddress remoteAddress, Object msg) {
 		}
 
 		@Override

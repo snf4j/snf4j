@@ -56,6 +56,11 @@ import org.snf4j.core.timer.ITimerTask;
  * created {@link DatagramSession} object that will be associated with the
  * datagram handle created by the {@link IDatagramHandlerFactory} passed in the
  * constructor.
+ * <p>
+ * <b>Limitations:</b>: As the session objects created by this handler do not
+ * implement their own I/O functionalities calling to methods suspending read/write
+ * operations will also suspend all other sessions currently handled by this
+ * handler. 
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */

@@ -38,6 +38,8 @@ import org.snf4j.core.session.DefaultSessionConfig;
 
 public class AbstractHandlerTest {
 
+	Object readMsg;
+	
 	@Test
 	public void testAll() {
 		TestHandler h = new TestHandler();
@@ -79,5 +81,21 @@ public class AbstractHandlerTest {
 		assertEquals(0, h.available(a, 0, 0));
 		assertEquals(6, h.available(a, 1, 6));
 		
+	}
+	
+	@Test
+	public void testRead() {
+		AbstractHandler h = new AbstractHandler() {
+
+			@Override
+			public void read(Object msg) {
+				readMsg = msg;
+			}
+			
+		};
+
+		byte[] b = new byte[6];
+		h.read(b);
+		assertTrue(b == readMsg);
 	}
 }

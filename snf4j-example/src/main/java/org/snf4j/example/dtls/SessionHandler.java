@@ -64,11 +64,7 @@ public class SessionHandler extends AbstractDatagramHandler {
 	}
 	
 	@Override
-	public void read(byte[] data) {
-	}
-
-	@Override
-	public void read(SocketAddress remoteAddress, byte[] datagram) {
+	public void read(SocketAddress remoteAddress, Object msg) {
 	}
 
 	@Override

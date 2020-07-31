@@ -1329,11 +1329,11 @@ public class DatagramServerHandlerTest {
 		}
 
 		@Override
-		public void read(byte[] data) {
+		public void read(Object msg) {
 		}
 
 		@Override
-		public void read(SocketAddress remoteAddress, byte[] datagram) {
+		public void read(SocketAddress remoteAddress, Object msg) {
 		}
 		
 		@Override

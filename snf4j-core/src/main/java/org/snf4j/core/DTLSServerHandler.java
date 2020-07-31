@@ -38,7 +38,14 @@ import org.snf4j.core.session.ISessionConfig;
 
 /**
  * DTLS server handler providing functionality to handle multiple remote
- * hosts via a single datagram-orinted session.
+ * hosts via a single datagram-orinted session. The sessions created by this
+ * handler implement {@link org.snf4j.core.session.IEngineDatagramSession 
+ * IEngineDatagramSession}.
+ * <p>
+ * <b>Limitations:</b>: As the session objects created by this handler do not
+ * implement their own I/O functionalities calling to methods suspending read/write
+ * operations will also suspend all other sessions currently handled by this
+ * handler. 
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */

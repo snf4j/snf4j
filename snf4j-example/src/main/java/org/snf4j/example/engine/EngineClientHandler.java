@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,8 @@ import org.snf4j.core.handler.AbstractStreamHandler;
 public class EngineClientHandler extends AbstractStreamHandler {
 
 	@Override
-	public void read(byte[] data) {
-		System.out.print(new String(data));
+	public void read(Object msg) {
+		System.out.print(new String((byte[])msg));
 	}
 
 }

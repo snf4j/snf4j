@@ -111,7 +111,8 @@ public abstract class AbstractHandler implements IHandler {
 	}
 	
 	@Override
-	public void read(Object msg) {
+	public void read(byte[] data) {
+		read((Object)data);
 	}
 
 }
