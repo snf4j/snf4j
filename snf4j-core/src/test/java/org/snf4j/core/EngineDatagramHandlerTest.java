@@ -763,7 +763,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		c.getRecordedData(true);
 		c.getSession().write(nop());
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		assertTrue(c.getRecordedData(true).endsWith("EXC|SCL|SEN|"));
 		assertTrue(c.getSession().getCloseFuture().cause() instanceof HandshakeLoopsThresholdException);
 		
 	}	

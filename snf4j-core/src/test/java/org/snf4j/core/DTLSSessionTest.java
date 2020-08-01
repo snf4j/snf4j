@@ -107,6 +107,8 @@ public class DTLSSessionTest extends DTLSTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -139,6 +141,8 @@ public class DTLSSessionTest extends DTLSTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -150,6 +154,8 @@ public class DTLSSessionTest extends DTLSTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
 	}
 	
 	@Test
