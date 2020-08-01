@@ -1017,6 +1017,19 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		wakeup();
 	}
 	
+	final void execute0(Runnable task) {
+		Task task0 = new Task();
+		
+		task0.task = task;
+		synchronized (registrationLock) {
+			//make sure not to register while stopping
+			if (ending) {
+				return;
+			}
+			tasks.add(task0);
+		}		
+		wakeup();
+	}
 	
 	/**
 	 * Returns a string representation of a channel object. It is provided to
