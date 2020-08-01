@@ -4,8 +4,8 @@
  - Added support for session timer [(#35)](https://github.com/snf4j/snf4j/pull/35)
  - Improved closing in session events [(#36)](https://github.com/snf4j/snf4j/pull/36)
  - Codec improvements for datagram server sessions [(#37)](https://github.com/snf4j/snf4j/pull/37)
- - Support for DTLS [(#37)](https://github.com/snf4j/snf4j/pull/37)
- - Added DTLS server/client example [(#38)](https://github.com/snf4j/snf4j/pull/38)
+ - Support for DTLS [(#38)](https://github.com/snf4j/snf4j/pull/38)
+ - Added DTLS server/client example [(#39)](https://github.com/snf4j/snf4j/pull/39)
 
 #### 1.3.0
  - 2019-12-14 - [changes](https://github.com/snf4j/snf4j/compare/v1.2.0...v1.3.0)
