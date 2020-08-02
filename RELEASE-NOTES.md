@@ -1,5 +1,5 @@
 #### 1.4.0
- - 2019-08-01 - [changes](https://github.com/snf4j/snf4j/compare/v1.3.0...v1.4.0)
+ - 2020-08-02 - [changes](https://github.com/snf4j/snf4j/compare/v1.3.0...v1.4.0)
  - Added datagram server handler [(#34)](https://github.com/snf4j/snf4j/pull/34)
  - Added support for session timer [(#35)](https://github.com/snf4j/snf4j/pull/35)
  - Improved closing in session events [(#36)](https://github.com/snf4j/snf4j/pull/36)
