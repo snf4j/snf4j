@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -2160,6 +2161,38 @@ public class SessionTest {
 		public String toString() {
 			return name;
 		}
+	}
+	
+	@Test
+	public void testTimerExpirationAfterStopping() throws Exception {
+		DefaultTimer timer = new DefaultTimer();
+		s = new Server(PORT);
+		s.timer = timer;
+		c = new Client(PORT);
+		
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		Runnable expiredTask = new Runnable() {
+
+			@Override
+			public void run() {
+				expired.set(true);		
+			}
+		};
+		
+		ITimerTask t = s.getSession().getTimer().scheduleTask(expiredTask, 1000, true);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		waitFor(1100);
+		assertFalse(((TimerTask)t).cancel());
+		assertFalse(expired.get());
+		
+		timer.schedule(expiredTask, 10);
+		waitFor(50);
+		assertTrue(expired.get());
 	}
 	
 	@Test

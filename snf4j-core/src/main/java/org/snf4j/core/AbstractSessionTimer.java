@@ -124,7 +124,7 @@ abstract public class AbstractSessionTimer implements ISessionTimer {
 				}
 			}
 			else {
-				session.loop.executenf(this);
+				session.loop.execute0(this);
 			}
 		}
 	}	

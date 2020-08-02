@@ -494,6 +494,7 @@ public class DatagramServerHandlerTest {
 		assertTrue(f.isFailed());
 		assertTrue(f.cause().getClass() == NotYetConnectedException.class);
 		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
 		assertEquals(SessionState.CLOSING, session.getState());
 		assertEquals(SessionState.CLOSING, superSession.getState());
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
@@ -680,6 +681,7 @@ public class DatagramServerHandlerTest {
 		s.createNullHandler = false;
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		

@@ -1009,6 +1009,7 @@ public class EngineSessionTest {
 		ce.addRecord("W|NH|-|-|OK|F|");
 		
 		startAndWaitForReady(se, ce);
+		waitFor(50);
 		
 		s.getTrace(true);
 		c.getTrace(true);
@@ -1035,6 +1036,7 @@ public class EngineSessionTest {
 		ce.addRecord("W|NH|-|-|OK|F|");
 		
 		startAndWaitForReady(se, ce, true);
+		waitFor(50);
 		
 		s.getTrace(true);
 		c.getTrace(true);

@@ -458,14 +458,14 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			}
 			catch (Exception e) {
 				elogger.error(logger, "Execution of delegated task {} failed for {}: {}" , delegate, session, e);
-				session.loop.executenf(new FailureTask(e));
+				session.loop.execute0(new FailureTask(e));
 				return;
 			}
 			
 			if (trace) {
 				logger.trace("Finished execution of delegated task {} for {}" , delegate, session);
 			}
-			session.loop.executenf(AbstractEngineHandler.this);
+			session.loop.execute0(AbstractEngineHandler.this);
 		}
 		
 		@Override

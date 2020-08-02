@@ -142,6 +142,10 @@ public class SessionHandler extends AbstractDatagramHandler {
 	@Override
 	public void event(SessionEvent event) {
 		switch (event) {
+		case OPENED:
+			log("open");
+			break;
+			
 		case READY:
 			log("ready");
 			if (clientMode) {
