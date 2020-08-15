@@ -53,7 +53,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.allocator.DefaultAllocator;
+import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.IDecoder;
+import org.snf4j.core.codec.zip.GzipDecoder;
+import org.snf4j.core.codec.zip.GzipEncoder;
+import org.snf4j.core.codec.zip.ZlibDecoder;
+import org.snf4j.core.codec.zip.ZlibEncoder;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
@@ -2481,4 +2489,130 @@ public class SessionTest {
 		testCloseInSessionClosedOrEndingEvent(StoppingType.DIRTY, EventType.SESSION_ENDING);
 	}
 	
+	@Test
+	public void testCompressionCodec() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		
+		DefaultCodecExecutor codec = new DefaultCodecExecutor();
+		
+		codec.getPipeline().add("DECODER", new ZlibDecoder());
+		codec.getPipeline().add("PACKET", new PacketDecoder());
+		codec.getPipeline().add("ENCODER", new ZlibEncoder());
+		s.codecPipeline = codec;
+		
+		codec = new DefaultCodecExecutor();
+		codec.getPipeline().add("DECODER", new ZlibDecoder());
+		codec.getPipeline().add("PACKET", new PacketDecoder());
+		codec.getPipeline().add("ENCODER", new ZlibEncoder());
+		c.codecPipeline = codec;
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		
+		byte[] big = new byte[10000];
+		Arrays.fill(big, (byte)'1');
+		String bigStr = new String(big);
+		
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().write(new Packet(PacketType.NOP, bigStr).toBytes()).sync();
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DR|M(NOP["+bigStr+"])|", s.getRecordedData(true));
+		assertEquals("DS|", c.getRecordedData(true));
+		s.getSession().write(new Packet(PacketType.NOP, bigStr).toBytes()).sync();
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|M(NOP["+bigStr+"])|", c.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
+		assertTrue(c.getSession().getWrittenBytes() < 100);
+		assertTrue(s.getSession().getWrittenBytes() < 100);
+		assertTrue(c.getSession().getReadBytes() < 100);
+		assertTrue(s.getSession().getReadBytes() < 100);
+		
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new Server(PORT);
+		c = new Client(PORT);
+		
+		codec = new DefaultCodecExecutor();
+		codec.getPipeline().add("DECODER", new GzipDecoder());
+		codec.getPipeline().add("PACKET", new PacketDecoder());
+		codec.getPipeline().add("ENCODER", new GzipEncoder());
+		s.codecPipeline = codec;
+		
+		codec = new DefaultCodecExecutor();
+		codec.getPipeline().add("DECODER", new GzipDecoder());
+		codec.getPipeline().add("PACKET", new PacketDecoder());
+		codec.getPipeline().add("ENCODER", new GzipEncoder());
+		c.codecPipeline = codec;
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().write(new Packet(PacketType.NOP, bigStr).toBytes()).sync();
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DR|M(NOP["+bigStr+"])|", s.getRecordedData(true));
+		assertEquals("DS|", c.getRecordedData(true));
+		s.getSession().write(new Packet(PacketType.NOP, bigStr).toBytes()).sync();
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|M(NOP["+bigStr+"])|", c.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
+		assertTrue(c.getSession().getWrittenBytes() < 100);
+		assertTrue(s.getSession().getWrittenBytes() < 100);
+		assertTrue(c.getSession().getReadBytes() < 100);
+		assertTrue(s.getSession().getReadBytes() < 100);
+		
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+	}
+	
+	static class PacketDecoder implements IDecoder<ByteBuffer,Packet> {
+		
+		IByteBufferAllocator allocator = DefaultAllocator.DEFAULT;
+		
+		ByteBuffer buffer = allocator.allocate(1000);
+		
+		@Override
+		public void decode(ISession session, ByteBuffer data, List<Packet> out) throws Exception {
+			buffer = allocator.ensure(buffer, data.remaining(), 1000, 64000);
+			buffer.put(data);
+			buffer.flip();
+			
+			byte[] b = buffer.array();
+			int len;
+			
+			while ((len = Packet.available(b, buffer.position(), buffer.remaining())) > 0) {
+				Packet packet = Packet.fromBytes(b, buffer.position(), len);
+				
+				buffer.position(buffer.position() + len);
+				out.add(packet);
+			}
+			buffer.compact();
+		}
+
+		@Override
+		public Class<ByteBuffer> getInboundType() {
+			return ByteBuffer.class;
+		}
+
+		@Override
+		public Class<Packet> getOutboundType() {
+			return Packet.class;
+		}
+	}
 }
