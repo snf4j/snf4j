@@ -544,6 +544,7 @@ public class SSLSessionCodecTest {
 		p.getPipeline().add("3", d);
 		p.getPipeline().add("4", codec.PBE());
 		startWithCodec(p);
+		waitFor(50);
 	
 		long id = c.getSession().getId();
 		assertEquals("A("+id+")|CREATED("+id+")|OPENED("+id+")|READY("+id+")|", ((BBDEv)d).getTrace());
