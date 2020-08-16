@@ -104,7 +104,10 @@ public class ZlibEncoder extends ZlibCodec implements IEncoder<byte[], ByteBuffe
 		if (mode == null) {
 			throw new NullPointerException("mode is null");
 		}
-		deflater = new Deflater(level, mode == Mode.RAW);
+		
+		boolean nowrap = mode == Mode.RAW;
+		
+		deflater = new Deflater(level, nowrap);
 	}
 	
 	/**

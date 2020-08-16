@@ -98,7 +98,9 @@ public class ZlibDecoder extends ZlibCodec implements IDecoder<byte[],ByteBuffer
 			throw new NullPointerException("mode is null");
 		}
 		if (mode != Mode.AUTO) {
-			inflater = new Inflater(mode == Mode.RAW);
+			boolean nowrap = mode == Mode.RAW;
+			
+			inflater = new Inflater(nowrap);
 		}
 		this.dictionary = dictionary;
 	}
