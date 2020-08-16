@@ -35,6 +35,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 public class ZlibDecoderTest extends DecoderTest {
@@ -272,6 +273,7 @@ public class ZlibDecoderTest extends DecoderTest {
 		assertFalse(d.isFinished());
 		d.decode(null, "bb".getBytes(), out);
 		assertTrue(d.isFinished());
+		assertNull(getInflater(d));
 		assertInflate("eebb", 1);
 	}
 	
@@ -331,6 +333,33 @@ public class ZlibDecoderTest extends DecoderTest {
 
 		}
 		
+	}
+	
+	@Test
+	public void testEvents() throws Exception {
+		ZlibDecoder d = new ZlibDecoder();
+		
+		assertFalse(d.isFinished());
+		d.added(null);
+		d.removed(null);
+		d.event(null, SessionEvent.CREATED);
+		assertFalse(d.isFinished());
+		d.event(null, SessionEvent.OPENED);
+		assertFalse(d.isFinished());
+		d.event(null, SessionEvent.READY);
+		assertFalse(d.isFinished());
+		d.event(null, SessionEvent.CLOSED);
+		assertFalse(d.isFinished());
+		assertNotNull(getInflater(d));
+		d.event(null, SessionEvent.ENDING);
+		assertTrue(d.isFinished());
+		assertNull(getInflater(d));
+		
+		d.event(null, SessionEvent.CREATED);
+		d.event(null, SessionEvent.OPENED);
+		d.event(null, SessionEvent.READY);
+		d.event(null, SessionEvent.CLOSED);
+		d.event(null, SessionEvent.ENDING);
 	}
 	
 	static class TestZlibDecoder extends ZlibDecoder {

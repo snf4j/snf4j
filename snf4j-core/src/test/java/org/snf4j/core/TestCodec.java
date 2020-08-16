@@ -29,8 +29,11 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.snf4j.core.codec.IBaseDecoder;
+import org.snf4j.core.codec.ICodec;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
+import org.snf4j.core.codec.IEventDrivenCodec;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 public class TestCodec {
@@ -63,6 +66,8 @@ public class TestCodec {
 	IEncoder<?,?> PBE_E() { return new PBE('E'); }
 	IEncoder<?,?> PBBE() { return new PBBE(); }
 	IEncoder<?,?> BPE() { return new BPE(); }
+	IEncoder<?,?> BBEEv() { return new BBEEv(); }
+	IDecoder<?,?> BBDEv() { return new BBDEv(); }
 	
 	class PPD implements IDecoder<Packet, Packet> {
 		@Override public Class<Packet> getInboundType() {return Packet.class;}
@@ -179,5 +184,60 @@ public class TestCodec {
 		@Override public Class<byte[]> getInboundType() {return byte[].class;}
 		@Override public Class<Packet> getOutboundType() {return Packet.class;}
 	}	
+	
+	class Ev implements ICodec<byte[],byte[]>, IEventDrivenCodec {
+
+		volatile StringBuilder trace = new StringBuilder();
+		
+		String getTrace() {
+			String s=trace.toString();
+			trace.setLength(0);
+			return s;
+		}
+		
+		@Override
+		public void added(ISession session) {
+			trace.append("A("+session.getId()+")|");
+		}
+
+		@Override
+		public void event(ISession session, SessionEvent event) {
+			trace.append(event.toString() + "("+session.getId()+")|");
+		}
+
+		@Override
+		public void removed(ISession session) {
+			trace.append("R("+session.getId()+")|");
+		}
+
+		@Override
+		public Class<byte[]> getInboundType() {
+			return byte[].class;
+		}
+
+		@Override
+		public Class<byte[]> getOutboundType() {
+			return byte[].class;
+		}
+		
+	}
+	
+	class BBEEv extends Ev implements IEncoder<byte[],byte[]> {
+
+		@Override
+		public void encode(ISession session, byte[] data, List<byte[]> out) throws Exception {
+			out.add(data);
+		}
+		
+	}
+	
+	class BBDEv extends Ev implements IDecoder<byte[],byte[]> {
+
+		@Override
+		public void decode(ISession session, byte[] data, List<byte[]> out) throws Exception {
+			out.add(data);
+		}
+		
+	}
 
 }

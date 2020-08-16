@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.zip.Deflater;
 
 import org.snf4j.core.codec.IEncoder;
+import org.snf4j.core.codec.IEventDrivenCodec;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 /**
@@ -38,12 +40,12 @@ import org.snf4j.core.session.ISession;
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class ZlibEncoder extends ZlibCodec implements IEncoder<byte[], ByteBuffer > {
+public class ZlibEncoder extends ZlibCodec implements IEncoder<byte[], ByteBuffer>, IEventDrivenCodec {
     
 	/**
 	 * The compressor used by this class to compress data.
 	 */
-	protected final Deflater deflater;
+	protected Deflater deflater;
 
 	private volatile boolean finish;
 	
@@ -245,6 +247,7 @@ public class ZlibEncoder extends ZlibCodec implements IEncoder<byte[], ByteBuffe
 			}
 			postFinish(session, footer);
 			deflater.end();
+			deflater = null;
 			finished = true;
 			footer.flip();
 			out.add(footer);
@@ -277,6 +280,33 @@ public class ZlibEncoder extends ZlibCodec implements IEncoder<byte[], ByteBuffe
 				break;
 			}
 		}
+	}
+
+	/**
+	 * Does nothing.
+	 */
+	@Override
+	public void added(ISession session) {
+	}
+
+	/**
+	 * Finishes the compression when the associated session is ending
+	 * ({@link SessionEvent#ENDING}).
+	 */
+	@Override
+	public void event(ISession session, SessionEvent event) {
+		if (event == SessionEvent.ENDING && !finished) {
+			deflater.end();
+			deflater = null;
+			finished = true;
+		}
+	}
+
+	/**
+	 * Does nothing.
+	 */
+	@Override
+	public void removed(ISession session) {
 	}
 
 }

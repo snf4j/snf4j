@@ -31,6 +31,8 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import org.snf4j.core.codec.IDecoder;
+import org.snf4j.core.codec.IEventDrivenCodec;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 /**
@@ -39,7 +41,7 @@ import org.snf4j.core.session.ISession;
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class ZlibDecoder extends ZlibCodec implements IDecoder<byte[],ByteBuffer> {
+public class ZlibDecoder extends ZlibCodec implements IDecoder<byte[],ByteBuffer>, IEventDrivenCodec {
 
 	/**
 	 * The decompressor used by this class to decompress data.
@@ -255,6 +257,8 @@ public class ZlibDecoder extends ZlibCodec implements IDecoder<byte[],ByteBuffer
 		
 		if (finishing) {
 			if (finished = postFinish(session, in)) {
+				inflater.end();
+				inflater = null;
 				if (in.hasRemaining()) {
 					out.add(in);
 				}
@@ -264,6 +268,33 @@ public class ZlibDecoder extends ZlibCodec implements IDecoder<byte[],ByteBuffer
 		if (!in.hasRemaining()) {
 			in = null;
 		}
+	}
+
+	/**
+	 * Does nothing.
+	 */
+	@Override
+	public void added(ISession session) {
+	}
+
+	/**
+	 * Finishes the decompression when the associated session is ending
+	 * ({@link SessionEvent#ENDING}).
+	 */
+	@Override
+	public void event(ISession session, SessionEvent event) {
+		if (event == SessionEvent.ENDING && !finished) {
+			inflater.end();
+			inflater = null;
+			finished = true;
+		}
+	}
+
+	/**
+	 * Does nothing.
+	 */
+	@Override
+	public void removed(ISession session) {
 	}
 
 }

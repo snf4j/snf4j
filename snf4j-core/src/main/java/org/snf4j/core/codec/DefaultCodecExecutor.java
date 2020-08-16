@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 /**
@@ -57,6 +58,10 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 	private final Deque<EncoderContext> encoders = new LinkedList<EncoderContext>();
 	
 	private final InternalCodecPipeline pipeline = new InternalCodecPipeline();
+	
+	private int eventCodecsVersion;
+	
+	private IEventDrivenCodec[] eventCodecs;
 	
 	@Override
 	public final void syncDecoders() {
@@ -104,7 +109,82 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 		}		
 	}
 	
+	private static boolean remove(Object o, Object[] objects) {
+		boolean removed = false;
+		
+		if (objects != null) {
+			for (int i=0; i<objects.length; ++i) {
+				if (objects[i] == o) {
+					objects[i] = null;
+					removed = true;
+				}
+			}
+		}
+		return removed;
+	}
 	
+	private static IEventDrivenCodec[] toArrayWithNoDuplicates(List<IEventDrivenCodec> codecs) {
+		if (codecs.isEmpty()) {
+			return null;
+		}
+		Object[] objects = codecs.toArray();
+		Iterator<IEventDrivenCodec> i = codecs.iterator();
+		
+		while (i.hasNext()) {
+			if (!remove(i.next(), objects)) {
+				i.remove();
+			}
+		}
+		return codecs.toArray(new IEventDrivenCodec[codecs.size()]);
+	}
+	
+	@Override
+	public void syncEventDrivenCodecs(ISession session) {
+		if (pipeline.getCodecsVersion() != eventCodecsVersion) {
+			List<IEventDrivenCodec> newCodecs = new ArrayList<IEventDrivenCodec>();
+			
+			synchronized (pipeline.getLock()) {
+				CodecContext ctx = pipeline.getFirstDecoder();
+				ICodec<?,?> codec;
+				
+				while (ctx != null) {
+					codec = ((DecoderContext)ctx).getDecoder();
+					if (codec instanceof IEventDrivenCodec) {
+						newCodecs.add((IEventDrivenCodec) codec);
+					}
+					ctx = ctx.next;
+				}
+				ctx = pipeline.getFirstEncoder();
+				while (ctx != null) {
+					codec = ((EncoderContext)ctx).getEncoder();
+					if (codec instanceof IEventDrivenCodec) {
+						newCodecs.add((IEventDrivenCodec) codec);
+					}
+					ctx = ctx.next;
+				}
+				eventCodecsVersion = pipeline.getCodecsVersion();
+			}
+			
+			IEventDrivenCodec[] removed = eventCodecs;
+			
+			eventCodecs = toArrayWithNoDuplicates(newCodecs);
+			if (eventCodecs != null) {
+				for (IEventDrivenCodec c: eventCodecs) {
+					if (!remove(c, removed)) {
+						c.added(session);
+					}
+				}
+			}
+			if (removed != null) {
+				for (IEventDrivenCodec c: removed) {
+					if (c != null) {
+						c.removed(session);
+					}
+				}
+			}
+		}
+	}
+
 	@Override
 	public final ICodecPipeline getPipeline() {
 		return pipeline;
@@ -328,4 +408,12 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 		return baseDecoder;
 	}
 
+	@Override
+	public void event(ISession session, SessionEvent event) {
+		if (eventCodecs != null) {
+			for (IEventDrivenCodec codec: eventCodecs) {
+				codec.event(session, event);
+			}
+		}
+	}
 }

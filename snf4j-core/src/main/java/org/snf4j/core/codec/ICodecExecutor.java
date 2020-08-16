@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ package org.snf4j.core.codec;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 /**
@@ -71,6 +72,22 @@ public interface ICodecExecutor {
 	 * data need to be encoded and so it should not perform any heavy tasks.
 	 */
 	void syncEncoders();
+	
+	/**
+	 * Informs the codec executor that right now is the best moment to safely
+	 * synchronize any pending changes for event-driven codecs in the associated
+	 * pipeline. An Implementation of this method is responsible for signaling
+	 * following events to event-driven codecs: adding and removing of a codec from
+	 * the associated pipeline.
+	 * <p>
+	 * <b>Performance considerations</b>: This method is called every time the state
+	 * of the associated session is changing so it should not perform any heavy
+	 * tasks.
+	 * 
+	 * @param session the session the codec executor is associated with
+	 * @see IEventDrivenCodec
+	 */
+	void syncEventDrivenCodecs(ISession session);
 	
 	/**
 	 * Gets the base decoder.
@@ -174,4 +191,13 @@ public interface ICodecExecutor {
 	 *             if one of the decoders failed during the decoding
 	 */
 	List<Object> decode(ISession session, byte[] data) throws Exception;
+	
+	/**
+	 * Signals a session event to all event-driven codecs in the associated
+	 * pipeline.
+	 * 
+	 * @param session the session the codec executor is associated with
+	 * @param event the session event
+	 */
+	void event(ISession session, SessionEvent event);
 }

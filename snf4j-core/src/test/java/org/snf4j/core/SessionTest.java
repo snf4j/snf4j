@@ -2278,7 +2278,7 @@ public class SessionTest {
 		assertEquals("", s.getRecordedData(true));
 		waitFor(4);
 		assertEquals("TIM;task3|", s.getRecordedData(true));
-		waitFor(20);
+		waitFor(25);
 		assertEquals("TIM;task3|TIM;task3|", s.getRecordedData(true));
 		task.cancelTask();
 		waitFor(100);
@@ -2536,6 +2536,10 @@ public class SessionTest {
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(((ZlibDecoder)c.codecPipeline.getPipeline().get("DECODER")).isFinished());
+		assertTrue(((ZlibEncoder)c.codecPipeline.getPipeline().get("ENCODER")).isFinished());
+		assertTrue(((ZlibDecoder)s.codecPipeline.getPipeline().get("DECODER")).isFinished());
+		assertTrue(((ZlibEncoder)s.codecPipeline.getPipeline().get("ENCODER")).isFinished());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
@@ -2579,6 +2583,10 @@ public class SessionTest {
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(((GzipDecoder)c.codecPipeline.getPipeline().get("DECODER")).isFinished());
+		assertTrue(((GzipEncoder)c.codecPipeline.getPipeline().get("ENCODER")).isFinished());
+		assertTrue(((GzipDecoder)s.codecPipeline.getPipeline().get("DECODER")).isFinished());
+		assertTrue(((GzipEncoder)s.codecPipeline.getPipeline().get("ENCODER")).isFinished());
 	}
 	
 	static class PacketDecoder implements IDecoder<ByteBuffer,Packet> {

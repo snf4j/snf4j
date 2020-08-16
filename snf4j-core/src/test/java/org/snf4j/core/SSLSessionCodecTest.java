@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,9 @@ import java.nio.ByteBuffer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.TestCodec.BBDEv;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.session.IllegalSessionStateException;
 
@@ -531,4 +533,32 @@ public class SSLSessionCodecTest {
 		codec.encodeDirtyClose = false;
 		
 	}	
+
+	@Test
+	public void testEventDrivenCodec() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		IDecoder<?, ?> d = codec.BBDEv();
+		IDecoder<?, ?> d2 = codec.BBDEv();
+		p.getPipeline().add("1", codec.BasePD());
+		p.getPipeline().add("2", codec.PBD());
+		p.getPipeline().add("3", d);
+		p.getPipeline().add("4", codec.PBE());
+		startWithCodec(p);
+	
+		long id = c.getSession().getId();
+		assertEquals("A("+id+")|CREATED("+id+")|OPENED("+id+")|READY("+id+")|", ((BBDEv)d).getTrace());
+		p.getPipeline().remove("3");
+		p.getPipeline().add("3", d2);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		c.getSession().write(new Packet(PacketType.NOP));
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(e)|", s.getRecordedData(true));
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("R("+id+")|", ((BBDEv)d).getTrace());	
+		assertEquals("A("+id+")|CLOSED("+id+")|ENDING("+id+")|", ((BBDEv)d2).getTrace());	
+	
+	}
 }

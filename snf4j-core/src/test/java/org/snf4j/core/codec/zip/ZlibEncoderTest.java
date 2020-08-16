@@ -28,6 +28,8 @@ package org.snf4j.core.codec.zip;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -35,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.zip.Deflater;
 
 import org.junit.Test;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 public class ZlibEncoderTest extends EncoderTest {
@@ -219,6 +222,7 @@ public class ZlibEncoderTest extends EncoderTest {
 		assertFalse(e.isFinished());
 		e.encode(null, new byte[0], out);
 		assertTrue(e.isFinished());
+		assertNull(getDeflater(e));
 		assertDeflate("", 2, true, false);
 		e.encode(null, "ew".getBytes(), out);
 		assertEquals(3, out.size());
@@ -304,6 +308,33 @@ public class ZlibEncoderTest extends EncoderTest {
 		e.encode(null, "abcdabcd".getBytes(), out);
 		dictionary = dic;
 		assertDeflate("abcdabcd", 1);
+	}
+	
+	@Test
+	public void testEvents() throws Exception {
+		ZlibEncoder d = new ZlibEncoder();
+		
+		assertFalse(d.isFinished());
+		d.added(null);
+		d.removed(null);
+		d.event(null, SessionEvent.CREATED);
+		assertFalse(d.isFinished());
+		d.event(null, SessionEvent.OPENED);
+		assertFalse(d.isFinished());
+		d.event(null, SessionEvent.READY);
+		assertFalse(d.isFinished());
+		d.event(null, SessionEvent.CLOSED);
+		assertFalse(d.isFinished());
+		assertNotNull(getDeflater(d));
+		d.event(null, SessionEvent.ENDING);
+		assertTrue(d.isFinished());
+		assertNull(getDeflater(d));
+		
+		d.event(null, SessionEvent.CREATED);
+		d.event(null, SessionEvent.OPENED);
+		d.event(null, SessionEvent.READY);
+		d.event(null, SessionEvent.CLOSED);
+		d.event(null, SessionEvent.ENDING);
 	}
 	
 	static class TestZlibEncoder extends ZlibEncoder {
