@@ -560,6 +560,12 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		if (isValid(event.type())) {
 			futuresController.event(event);
 			try {
+				if (codec != null) {
+					ICodecExecutor executor = codec.getExecutor();
+					
+					executor.syncEventDrivenCodecs(this);
+					executor.event(this, event);
+				}
 				handler.event(event);
 			}
 			catch (Exception e) {

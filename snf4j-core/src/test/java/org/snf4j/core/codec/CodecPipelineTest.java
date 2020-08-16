@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.junit.Test;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 public class CodecPipelineTest {
@@ -1881,6 +1882,48 @@ public class CodecPipelineTest {
 		
 	}
 	
+	@Test
+	public void testEventDrivenCodecs() {
+		DefaultCodecExecutor e = new DefaultCodecExecutor();
+		ICodecPipeline p = e.getPipeline();
+		
+		e.event(null, SessionEvent.CREATED);
+		e.syncEventDrivenCodecs(null);
+		e.event(null, SessionEvent.CREATED);
+		p.add(1, new SBE());
+		p.add(2, new BSD());
+		e.syncEventDrivenCodecs(null);
+		e.event(null, SessionEvent.CREATED);
+		SSEEv e3 = new SSEEv("3");
+		SSDEv d4 = new SSDEv("4");
+		p.add(3, e3);
+		p.add(4, d4);
+		e.syncEventDrivenCodecs(null);
+		e.event(null, SessionEvent.CREATED);
+		assertEquals("ADD(4)|ADD(3)|CREATED(4)|CREATED(3)|", getTrace());
+		SSEEv e5 = new SSEEv("5");
+		p.add(5, e5);
+		e.event(null, SessionEvent.READY);
+		assertEquals("READY(4)|READY(3)|", getTrace());
+		e.syncEventDrivenCodecs(null);
+		e.event(null, SessionEvent.READY);
+		assertEquals("ADD(5)|READY(4)|READY(3)|READY(5)|", getTrace());
+		p.remove(3);
+		e.syncEventDrivenCodecs(null);
+		e.event(null, SessionEvent.READY);
+		assertEquals("REM(3)|READY(4)|READY(5)|", getTrace());
+		p.add(31, e3);
+		p.add(32, e3);
+		e.syncEventDrivenCodecs(null);
+		e.event(null, SessionEvent.READY);
+		assertEquals("ADD(3)|READY(4)|READY(5)|READY(3)|", getTrace());
+		p.remove(31);
+		p.remove(32);
+		e.syncEventDrivenCodecs(null);
+		e.event(null, SessionEvent.READY);
+		assertEquals("REM(3)|READY(4)|READY(5)|", getTrace());
+	}
+	
 	class BVD implements IDecoder<byte[],Void> {
 		final String name; final boolean read;
 		BVD(String name) {this.name = name; read = false;}
@@ -1991,6 +2034,29 @@ public class CodecPipelineTest {
 		@Override public Class<String> getOutboundType() {return String.class;}
 		@Override public void decode(ISession session, String data, List<String> out) {
 			out.add(data); trace("SSD|");
+		}
+	}
+	
+	class SSDEv extends SSD implements IEventDrivenCodec {
+		String id;
+		
+		SSDEv(String id) {
+			this.id = id;
+		}
+		
+		@Override
+		public void added(ISession session) {
+			trace("ADD("+id+")|");
+		}
+
+		@Override
+		public void event(ISession session, SessionEvent event) {
+			trace(event.toString() + "("+id+")|");
+		}
+
+		@Override
+		public void removed(ISession session) {
+			trace("REM("+id+")|");
 		}
 	}
 	
@@ -2131,6 +2197,29 @@ public class CodecPipelineTest {
 		@Override public void encode(ISession session, String data, List<String> out) {
 			out.add(data);
 			trace("SSE|");
+		}
+	}
+	
+	class SSEEv extends SSE  implements IEventDrivenCodec {
+		String id;
+		
+		SSEEv(String id) {
+			this.id = id;
+		}
+		
+		@Override
+		public void added(ISession session) {
+			trace("ADD("+id+")|");
+		}
+
+		@Override
+		public void event(ISession session, SessionEvent event) {
+			trace(event.toString() + "("+id+")|");
+		}
+
+		@Override
+		public void removed(ISession session) {
+			trace("REM("+id+")|");
 		}
 	}
 }

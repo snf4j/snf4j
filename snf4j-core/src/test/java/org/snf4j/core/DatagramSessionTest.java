@@ -139,6 +139,7 @@ public class DatagramSessionTest {
 		
 		s.getSession().send(c.getSession().getLocalAddress(), new Packet(PacketType.NOP).toBytes()).sync(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|3|NOP()|", c.getRecordedData(true));
 		assertEquals("DS|3;" + c.getSession().getLocalAddress() +"|", s.getRecordedData(true));
 		
