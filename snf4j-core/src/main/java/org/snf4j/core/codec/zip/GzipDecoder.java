@@ -39,14 +39,14 @@ import org.snf4j.core.session.ISession;
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public class GzipDecoder extends ZlibDecoder {
-    
-    private static final int FHCRC = 0x02;
-   
+
+	private static final int FHCRC = 0x02;
+
 	private static final int FEXTRA = 0x04;
-    
+
 	private static final int FNAME = 0x08;
 	
-    private static final int FCOMMENT = 0x10;
+	private static final int FCOMMENT = 0x10;
 
 	private static final int RESERVED = 0xE0;
 
