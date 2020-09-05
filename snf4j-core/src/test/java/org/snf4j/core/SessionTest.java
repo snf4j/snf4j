@@ -1240,6 +1240,7 @@ public class SessionTest {
 		
 		//quick close outside the loop with data to send (closed on other side)
 		s = new Server(PORT); s.start();
+		s.dontReplaceException = true;
 		c = new Client(PORT); c.start();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
@@ -1251,7 +1252,7 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DR|WRITE_AND_WAIT(1000)|DS|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DR|WRITE_AND_WAIT(1000)|DS|EXC|SCL|SEN|", s.getRecordedData(true));
 		s.stop(TIMEOUT); c.stop(TIMEOUT);
 
 		//quick close outside the loop with data to send (closed on the same side)

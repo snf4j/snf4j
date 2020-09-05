@@ -359,23 +359,29 @@ public class SelectorLoop extends InternalSelectorLoop {
 		if (attachment instanceof StreamSession) {
 			StreamSession session = (StreamSession)attachment;
 			
-			if (key.isConnectable()) {
-				handleConnecting(session, key);
-			}
-			if (key.isValid() && key.isReadable()) {
+			if (key.isReadable()) {
 				handleReading(session, key);
+				if (key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0)) {
+					handleWriting(session, key);
+				}
 			}
-			if (key.isValid() && key.isWritable()) {
+			else if (key.isWritable()) {
 				handleWriting(session, key);
 			}	
+			else if (key.isConnectable()) {
+				handleConnecting(session, key);
+			}
 		}
 		else if (attachment instanceof DatagramSession) {
 			DatagramSession session = (DatagramSession)attachment;
 			
 			if (key.isReadable()) {
 				handleReading(session, key);
+				if (key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0)) {
+					handleWriting(session, key);
+				}
 			}
-			if (key.isValid() && key.isWritable()) {
+			else if (key.isWritable()) {
 				handleWriting(session, key);
 			}
 		}
@@ -563,6 +569,12 @@ public class SelectorLoop extends InternalSelectorLoop {
 							session.clearWriteInterestOps(key);
 							session.handleClosingInProgress();
 						}
+					}
+					else {
+						ByteBuffer buf = b[b.length-1];
+						
+						buf.position(buf.limit());
+						buf.limit(buf.capacity());
 					}
 				}
 			}
