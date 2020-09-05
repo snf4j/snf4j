@@ -269,6 +269,56 @@ public class SessionCodecTest {
 	}
 	
 	@Test
+	public void testEncodeInRead() throws Exception {
+		startWithCodec(true);
+		Packet packet = new Packet(PacketType.ECHO_NF, "ABC");
+		StreamSession session = s.getSession();
+
+		session.write(packet.toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO_NF(ABCd)|DS|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCde)|", s.getRecordedData(true));
+		
+		packet = new Packet(PacketType.ECHO, "ABC");
+		session.write(packet.toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO(ABCd)|DS|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(ABCde)|", s.getRecordedData(true));
+		
+		codec.encodeException = new Exception("E1");
+		session.write(packet.toBytes());
+		waitFor(100);
+		assertEquals("DR|ECHO(ABCd)|ENCODING_PIPELINE_FAILURE|", c.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
+		
+		packet = new Packet(PacketType.ECHO_NF, "ABC");
+		session.write(packet.toBytes());
+		waitFor(100);
+		assertEquals("DR|ECHO_NF(ABCd)|ENCODING_PIPELINE_FAILURE|", c.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
+		
+		c.incidentClose = true;
+		session.write(packet.toBytes());
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|ECHO_NF(ABCd)|ENCODING_PIPELINE_FAILURE|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		startWithCodec(true);
+		codec.encodeException = new Exception("E1");
+		c.throwInIncident = true;
+		session = s.getSession();		
+		session.write(packet.toBytes());
+		waitFor(100);
+		assertEquals("DR|ECHO_NF(ABCd)|ENCODING_PIPELINE_FAILURE|", c.getRecordedData(true));
+		assertEquals("DS|", s.getRecordedData(true));
+	}
+	
+	@Test
 	public void testEncodeException() throws Exception {
 		startWithCodec(true);
 		c.incidentRecordException = true;

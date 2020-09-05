@@ -646,6 +646,10 @@ public class Server {
 			case ECHO:
 				getSession().write(new Packet(PacketType.ECHO_RESPONSE, packet.payload).toBytes());
 				break;
+				
+			case ECHO_NF:
+				getSession().writenf(new Packet(PacketType.ECHO_RESPONSE, packet.payload).toBytes());
+				break;
 			
 			case GET_THREAD:
 				getSession().write(new Packet(PacketType.GET_THREAD_RESPONSE, Thread.currentThread().getName()).toBytes());

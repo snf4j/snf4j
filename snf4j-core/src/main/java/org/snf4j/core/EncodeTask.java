@@ -155,7 +155,15 @@ class EncodeTask implements Runnable {
 
 	final void registernf() {
 		InternalSession.checkKey(session.key);
-		session.loop.executenf(this);
+		
+		InternalSelectorLoop loop = session.loop;
+		
+		if (loop.inLoop()) {
+			run();
+		}
+		else {
+			loop.executenf(this);
+		}
 	}
 	
 	final IFuture<Void> register(SocketAddress remoteAddress) {
@@ -166,7 +174,15 @@ class EncodeTask implements Runnable {
 	final IFuture<Void> register() {
 		InternalSession.checkKey(session.key);
 		future = session.futuresController.getDelegatingFuture();
-		session.loop.executenf(this);
+		
+		InternalSelectorLoop loop = session.loop;
+		
+		if (loop.inLoop()) {
+			run();
+		}
+		else {
+			loop.executenf(this);
+		}
 		return future;
 	}
 	
