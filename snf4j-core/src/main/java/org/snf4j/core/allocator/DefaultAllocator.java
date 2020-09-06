@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,10 @@ public class DefaultAllocator implements IByteBufferAllocator {
 	
 	private static final int CALCULATE_CHUNK = 1024 * 1024 * 4;
 
-	private final boolean direct;
+	/**
+	 * Tells if the allocator should allocate direct buffers.
+	 */
+	protected final boolean direct;
 	
 	/**
 	 * Constructs a default allocator.
@@ -90,6 +93,39 @@ public class DefaultAllocator implements IByteBufferAllocator {
 		return ByteBuffer.allocate(capacity);
 	}
 	
+	/**
+	 * Allocates a new buffer that will replace the original empty buffer. 
+	 * 
+	 * @param capacity 
+	 *            the capacity of the allocated buffer
+	 * @param buffer
+	 *            the buffer to be replaced. If the allocator support releasing it
+	 *            can be safely released in this method. 
+	 * @return the new buffer
+	 */
+	protected ByteBuffer allocateEmpty(int capacity, ByteBuffer buffer) {
+		return allocate(capacity, buffer.isDirect());
+	}
+	
+	/**
+	 * Allocates a new buffer that will replace the original not empty buffer. 
+	 * The content of the original buffer must be preserved in the returned buffer.
+	 * 
+	 * @param capacity 
+	 *            the capacity of the allocated buffer
+	 * @param buffer
+	 *            the buffer to be replaced. If the allocator support releasing it
+	 *            can be safely released in this method. 
+	 * @return the new buffer
+	 */
+	protected ByteBuffer allocate(int capacity, ByteBuffer buffer) {
+		ByteBuffer newBuffer = allocate(capacity, buffer.isDirect());
+		
+		buffer.flip();
+		newBuffer.put(buffer);
+		return newBuffer;
+	}
+
 	@Override
 	public ByteBuffer allocate(int capacity) {
 		return allocate(capacity, direct);
@@ -125,12 +161,7 @@ public class DefaultAllocator implements IByteBufferAllocator {
 		
 		if (!buffer.hasRemaining()) {
 			if (bufferCapacity < maxCapacity) {
-				int newCapacity = Math.min(bufferCapacity << 1, maxCapacity);
-			
-				ByteBuffer newBuffer = allocate(newCapacity, buffer.isDirect());
-				
-				buffer.flip();
-				return newBuffer.put(buffer);
+				return allocate(Math.min(bufferCapacity << 1, maxCapacity), buffer);
 			}
 			else {
 				throw new IndexOutOfBoundsException(
@@ -147,10 +178,7 @@ public class DefaultAllocator implements IByteBufferAllocator {
 				}
 				newCapacity = Math.max(minCapacity, newCapacity);
 				if (newCapacity < bufferCapacity) {
-					ByteBuffer newBuffer = allocate(newCapacity, buffer.isDirect());
-
-					buffer.flip();
-					return newBuffer.put(buffer);
+					return allocate(newCapacity, buffer);
 				}
 			}
 		}
@@ -208,10 +236,7 @@ public class DefaultAllocator implements IByteBufferAllocator {
 			}
 			newCapacity = tmpCapacity <= maxCapacity ? tmpCapacity : maxCapacity;
 		}
-		ByteBuffer newBuffer = allocate(newCapacity, buffer.isDirect());
-		
-		buffer.flip();
-		return newBuffer.put(buffer);
+		return allocate(newCapacity, buffer);
 	}	
 	
 	/**
@@ -234,13 +259,10 @@ public class DefaultAllocator implements IByteBufferAllocator {
 	public ByteBuffer reduce(ByteBuffer buffer, int minCapacity) {
 		if (buffer.capacity() > minCapacity) {
 			if (buffer.position() == 0) {
-				return allocate(minCapacity, buffer.isDirect());
+				return allocateEmpty(minCapacity, buffer);
 			}
 			else if (buffer.position() <= minCapacity) {
-				ByteBuffer newBuffer = allocate(minCapacity, buffer.isDirect());
-				
-				buffer.flip();
-				return newBuffer.put(buffer);
+				return allocate(minCapacity, buffer);
 			}
 		}
 		return buffer;
@@ -263,13 +285,10 @@ public class DefaultAllocator implements IByteBufferAllocator {
 			int newCapacity = Math.min(buffer.capacity() << 1, maxCapacity);
 			
 			if (buffer.position() == 0) {
-				return allocate(newCapacity, buffer.isDirect());
+				return allocateEmpty(newCapacity, buffer);
 			}
 			else {
-				ByteBuffer newBuffer = allocate(newCapacity, buffer.isDirect());
-				
-				buffer.flip();
-				return newBuffer.put(buffer);
+				return allocate(newCapacity, buffer);
 			}
 		}
 		return buffer;
