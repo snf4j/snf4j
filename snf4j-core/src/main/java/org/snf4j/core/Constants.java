@@ -110,6 +110,56 @@ public class Constants {
 	 * Value No.
 	 */
 	public final static String NO = "0";
+
+	private final static String ALLOCATOR_PREFIX = PROPERTY_PREFIX + "allocator.";
+	
+	/**
+	 * System property specifying number of caches used by the
+	 * {@link org.snf4j.core.allocator.CachingAllocator CachingAllocator}. Each
+	 * cache is used to hold byte buffers of the specified capacity. This property
+	 * has global effect what means that setting/changing it once the first instance
+	 * of the allocator has been already created will have no effect on newly
+	 * created allocators.
+	 * <p>
+	 * The default value for this property is 8.
+	 */
+	public final static String ALLOCATOR_NUM_OF_CACHES_PROPERTY = ALLOCATOR_PREFIX + "NumberOfCaches";
+	
+	/**
+	 * System property specifying the maximum size of the caches used by the
+	 * {@link org.snf4j.core.allocator.CachingAllocator CachingAllocator}. The
+	 * maximum size determining the max number of byte buffers stored in one cache.
+	 * Setting/changing this property will affect all newly created instances of the
+	 * allocator.
+	 * <p>
+	 * The default value for this property is 256.
+	 */
+	public final static String ALLOCATOR_MAX_CACHE_SIZE_PROPERTY = ALLOCATOR_PREFIX + "MaxCacheSize";
+	
+	/**
+	 * System property specifying the minimum size for the caches used by the
+	 * {@link org.snf4j.core.allocator.CachingAllocator CachingAllocator}. The
+	 * minimum size determining the minimal number of byte buffers that have to be
+	 * stored in one cache (i.e. auto reducing mechanisms will not reduce the size
+	 * below this value). Setting/changing this property will affect all newly
+	 * created instances of the allocator.
+	 * <p>
+	 * The default value for this property is 0.
+	 */
+	public final static String ALLOCATOR_MIN_CACHE_SIZE_PROPERTY = ALLOCATOR_PREFIX + "MinCacheSize";
+	
+	/**
+	 * System property specifying the cache age threshold after reaching which the
+	 * cache should be considered by the
+	 * {@link org.snf4j.core.allocator.CachingAllocator CachingAllocator} for the
+	 * size reduction. The cache age is interpreted as the number of performed
+	 * allocations and releasings the oldest byte buffer survived in the cache.
+	 * Setting/changing this property will affect all newly created instances of the
+	 * allocator.
+	 * <p>
+	 * The default value for this property is 2048.
+	 */
+	public final static String ALLOCATOR_CACHE_AGE_THRESHOLD_PROPERTY = ALLOCATOR_PREFIX + "CacheAgeThreshold";
 	
 	private Constants() {
 	}
