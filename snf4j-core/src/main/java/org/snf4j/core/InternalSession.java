@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -508,6 +509,19 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	public ISessionTimer getTimer() {
 		return timer;
 	}
+	
+	@Override
+	public ByteBuffer allocate(int capacity) {
+		return allocator.allocate(capacity);
+	}
+	
+	@Override
+	public void release(ByteBuffer buffer) {
+		if (allocator.isReleasable()) {
+			allocator.release(buffer);
+		}
+	}
+	
 	
 	final boolean wasException() {
 		return (eventBits & EventType.EXCEPTION_CAUGHT.bitMask()) != 0;

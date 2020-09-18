@@ -2590,6 +2590,35 @@ public class SessionTest {
 		assertTrue(((GzipEncoder)s.codecPipeline.getPipeline().get("ENCODER")).isFinished());
 	}
 	
+	@Test
+	public void testAllocateAndRelease() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.allocator = new TestAllocator(false, false);
+		s.allocator = new TestAllocator(true, true);
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		
+		ByteBuffer b = c.getSession().allocate(16);
+		assertFalse(b.isDirect());
+		assertEquals(16, b.capacity());
+		assertEquals(0, c.allocator.getReleased().size());
+		c.getSession().release(b);
+		assertEquals(0, c.allocator.getReleased().size());
+		
+		b = s.getSession().allocate(32);
+		assertTrue(b.isDirect());
+		assertEquals(32, b.capacity());
+		assertEquals(0, s.allocator.getReleased().size());
+		s.getSession().release(b);
+		assertEquals(1, s.allocator.getReleased().size());
+		assertTrue(b == s.allocator.getReleased().get(0));
+		
+	}
+	
 	static class PacketDecoder implements IDecoder<ByteBuffer,Packet> {
 		
 		IByteBufferAllocator allocator = DefaultAllocator.DEFAULT;

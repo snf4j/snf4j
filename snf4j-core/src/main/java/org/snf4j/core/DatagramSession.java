@@ -667,12 +667,6 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		}
 	}
 	
-	final void release(ByteBuffer buffer) {
-		if (allocator.isReleasable()) {
-			allocator.release(buffer);
-		}
-	}
-	
 	final Queue<DatagramRecord> getOutQueue() {
 		return outQueue;
 	}

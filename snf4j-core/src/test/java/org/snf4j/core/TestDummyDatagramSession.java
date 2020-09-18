@@ -294,4 +294,13 @@ public class TestDummyDatagramSession implements IDatagramSession {
 	@Override
 	public void sendnf(SocketAddress remoteAddress, Object msg) {
 	}
+
+	@Override
+	public ByteBuffer allocate(int capacity) {
+		return null;
+	}
+
+	@Override
+	public void release(ByteBuffer buffer) {
+	}
 }
