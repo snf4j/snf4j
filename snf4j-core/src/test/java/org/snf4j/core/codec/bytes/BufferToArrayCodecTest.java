@@ -28,12 +28,14 @@ package org.snf4j.core.codec.bytes;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import org.junit.Test;
+import org.snf4j.core.TestSession;
 
 public class BufferToArrayCodecTest {
 
@@ -64,6 +66,24 @@ public class BufferToArrayCodecTest {
 		assertEquals(1, out.size());
 		assertFalse(data == out.get(0));
 		assertEquals("2345", new String(out.get(0)));
+		
+		TestSession s = new TestSession();
+		d = new BufferToArrayDecoder(false);
+		in = ByteBuffer.wrap(data);
+		out.clear();
+		d.decode(s, in, out);
+		assertEquals(1, out.size());
+		assertTrue(data == out.get(0));
+		assertNull(s.buffer);
+		d = new BufferToArrayDecoder(true);
+		in = ByteBuffer.wrap(data);
+		in.limit(in.limit()-1);
+		out.clear();
+		d.decode(s, in, out);
+		assertEquals(1, out.size());
+		assertArrayEquals("1234".getBytes(), out.get(0));
+		assertTrue(s.buffer == in);
+		
 	}
 	
 	@Test
@@ -93,5 +113,22 @@ public class BufferToArrayCodecTest {
 		assertEquals(1, out.size());
 		assertFalse(data == out.get(0));
 		assertEquals("2345", new String(out.get(0)));
+		
+		TestSession s = new TestSession();
+		e = new BufferToArrayEncoder(false);
+		in = ByteBuffer.wrap(data);
+		out.clear();
+		e.encode(s, in, out);
+		assertEquals(1, out.size());
+		assertTrue(data == out.get(0));
+		assertNull(s.buffer);
+		e = new BufferToArrayEncoder(true);
+		in = ByteBuffer.wrap(data);
+		in.limit(in.limit()-1);
+		out.clear();
+		e.encode(s, in, out);
+		assertEquals(1, out.size());
+		assertArrayEquals("1234".getBytes(), out.get(0));
+		assertTrue(s.buffer == in);
 	}	
 }

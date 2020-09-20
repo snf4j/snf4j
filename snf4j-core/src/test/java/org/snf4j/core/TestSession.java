@@ -42,6 +42,8 @@ public class TestSession implements ISession {
 
 	String name;
 	
+	public ByteBuffer buffer;
+	
 	public TestSession(String name) {
 		this.name = name;
 	}
@@ -219,11 +221,12 @@ public class TestSession implements ISession {
 
 	@Override
 	public ByteBuffer allocate(int capacity) {
-		return null;
+		return buffer;
 	}
 
 	@Override
 	public void release(ByteBuffer buffer) {
+		this.buffer = buffer;
 	}
 
 }

@@ -38,9 +38,37 @@ import org.snf4j.core.session.ISession;
  */
 public class ArrayToBufferDecoder extends ArrayToBufferCodec implements IDecoder<byte[],ByteBuffer> {
 
+	private final boolean allocate;
+	
+	/**
+	 * Constructs a decoder with a specified allocation mode.
+	 * 
+	 * @param allocate the allocation mode determining if the output buffer should
+	 *                 be allocated by the session's allocator or the buffer should
+	 *                 wrap the input array.
+	 */
+	public ArrayToBufferDecoder(boolean allocate) {
+		this.allocate = allocate;
+	}
+	
+	/**
+	 * Constructs a decoder with no buffer allocation (only by wrapping the input array)
+	 */
+	public ArrayToBufferDecoder() {
+		allocate = false;
+	}
+	
 	@Override
 	public void decode(ISession session, byte[] data, List<ByteBuffer> out) throws Exception {
-		out.add(ByteBuffer.wrap(data));
+		if (allocate) {
+			ByteBuffer b = session.allocate(data.length);
+			
+			b.put(data).flip();
+			out.add(b);
+		}
+		else {
+			out.add(ByteBuffer.wrap(data));
+		}
 	}
 
 }
