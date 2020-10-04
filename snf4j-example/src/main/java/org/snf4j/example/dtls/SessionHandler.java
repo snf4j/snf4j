@@ -185,7 +185,7 @@ public class SessionHandler extends AbstractDatagramHandler {
 	@Override
 	public ISessionConfig getConfig() {
 		return new SessionConfig()
-			.setCanOwnDataPassedToWriteAndSendMethods(true)
+			.setOptimizeDataCopying(true)
 			.setEndingAction(clientMode ? EndingAction.STOP : EndingAction.DEFAULT);
 	}
 	

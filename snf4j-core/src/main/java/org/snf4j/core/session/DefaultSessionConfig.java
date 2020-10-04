@@ -56,9 +56,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/** Determines if possibly incomplete datagrams should be ignored */
 	private boolean ignorePossibleIncompleteDatagrams = true;
 
-	/** Determines if the session object can own the data passed to 
-	 * the write methods */
-	private boolean canOwnDataPassedToWriteAndSendMethods;
+	/** Determines if the data copy optimization should be enabled */
+	private boolean optimizeDataCopying;
 
 	/** Determines the action that should be performed by the selector 
 	 * loop after ending of the associated session. */
@@ -181,17 +180,16 @@ public class DefaultSessionConfig implements ISessionConfig {
 	}
 
 	/**
+	 * Configures if the processing of data should be optimized to reduce data
+	 * copying between byte buffers.
 	 * 
-	 * Configures if the session object can own the data (i.e. byte arrays or byte
-	 * buffers) passed to the write and send methods.
-	 * 
-	 * @param canOwnData <code>true</code> if the session object can own the data
-	 *                   passed in the write methods.
+	 * @param optimize <code>true</code> if the processing of data should be
+	 *                 optimized
 	 * @return this session config object
-	 * @see #canOwnDataPassedToWriteAndSendMethods()
+	 * @see #optimizeDataCopying()
 	 */
-	public DefaultSessionConfig setCanOwnDataPassedToWriteAndSendMethods(boolean canOwnData) {
-		canOwnDataPassedToWriteAndSendMethods = canOwnData;
+	public DefaultSessionConfig setOptimizeDataCopying(boolean optimize) {
+		optimizeDataCopying = optimize;
 		return this;
 	}
 
@@ -201,8 +199,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * The default value is <code>false</code>
 	 */
 	@Override
-	public boolean canOwnDataPassedToWriteAndSendMethods() {
-		return canOwnDataPassedToWriteAndSendMethods;
+	public boolean optimizeDataCopying() {
+		return optimizeDataCopying;
 	}
 
 	/**

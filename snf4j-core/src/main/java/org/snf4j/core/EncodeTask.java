@@ -60,7 +60,7 @@ class EncodeTask implements Runnable {
 	int length;
 	
 	private final void init(final byte[] bytes) {
-		if (session.canOwnPassedData) {
+		if (session.optimizeCopying) {
 			this.bytes = bytes;
 		}
 		else {
@@ -69,7 +69,7 @@ class EncodeTask implements Runnable {
 	}
 	
 	private final void init(final ByteBuffer buffer) {
-		if (session.canOwnPassedData) {
+		if (session.optimizeCopying) {
 			this.buffer = buffer;
 		}
 		else {
@@ -107,7 +107,7 @@ class EncodeTask implements Runnable {
 	EncodeTask(InternalSession session, byte[] bytes, int offset, int length) {
 		this.session = session;
 		this.length = length;
-		if (session.canOwnPassedData) {
+		if (session.optimizeCopying) {
 			this.buffer = ByteBuffer.wrap(bytes, offset, length);
 		}
 		else {
@@ -125,7 +125,7 @@ class EncodeTask implements Runnable {
 	EncodeTask(InternalSession session, ByteBuffer buffer, int length) {
 		this.session = session;
 		this.length = length;
-		if (session.canOwnPassedData && length == buffer.remaining()) {
+		if (session.optimizeCopying && length == buffer.remaining()) {
 			this.buffer = buffer;
 		}
 		else {

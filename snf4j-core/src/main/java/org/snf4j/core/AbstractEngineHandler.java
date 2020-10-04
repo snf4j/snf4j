@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -365,6 +366,10 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 
 	@Override
 	public void read(Object msg) {
+	}
+	
+	@Override
+	public void read(ByteBuffer data) {
 	}
 	
 	@Override

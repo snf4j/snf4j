@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -121,27 +121,30 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 			handler.read(data);
 			return;
 		}
-		if (out.isEmpty()) {
+		read(out, handler);
+	}
+	
+	@Override
+	public void read(ByteBuffer data) {
+		List<Object> out;
+		
+		executor.syncDecoders();
+		try {
+			out = executor.decode(session, data);
+		}
+		catch (Exception e) {
+			throw new PipelineDecodeException((InternalSession) session, e);
+		}
+		
+		IHandler handler = session.getHandler();
+		
+		if (out == null) {
+			handler.read(data);
 			return;
 		}
-		
-		Iterator<Object> i = out.iterator();
-		Object o = i.next();
-		
-		if (o.getClass() == byte[].class) {
-			handler.read((byte[])o);
-			for (;i.hasNext(); o = i.next()) {
-				handler.read((byte[])o);
-			}
-		}
-		else {
-			handler.read(o);
-			for (;i.hasNext(); o = i.next()) {
-				handler.read(o);
-			}
-		}
+		read(out, handler);
 	}
-
+	
 	@Override
 	public void read(SocketAddress remoteAddress, byte[] datagram) throws PipelineDecodeException {
 		List<Object> out;
@@ -169,15 +172,44 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 		
 		if (o.getClass() == byte[].class) {
 			handler.read(remoteAddress, (byte[])o);
-			for (;i.hasNext(); o = i.next()) {
-				handler.read(remoteAddress, (byte[])o);
+			while (i.hasNext()) {
+				handler.read(remoteAddress, (byte[])i.next());
 			}
 		}
 		else {
 			handler.read(remoteAddress, o);
-			for (;i.hasNext(); o = i.next()) {
-				handler.read(remoteAddress, o);
+			while (i.hasNext()) {
+				handler.read(remoteAddress, i.next());
 			}
 		}	
 	}	
+	
+    private void read(List<Object> out, IHandler handler) {
+		if (out.isEmpty()) {
+			return;
+		}
+		
+		Iterator<Object> i = out.iterator();
+		Object o = i.next();
+		
+		if (o.getClass() == byte[].class) {
+			handler.read((byte[])o);
+			while (i.hasNext()) {
+				handler.read((byte[])i.next());
+			}
+		}
+		else if (o instanceof ByteBuffer) {
+			handler.read((ByteBuffer)o);
+			while (i.hasNext()) {
+				handler.read((ByteBuffer)i.next());
+			}
+		}
+		else {
+			handler.read(o);
+			while (i.hasNext()) {
+				handler.read(i.next());
+			}
+		}
+    }	
+    
 }

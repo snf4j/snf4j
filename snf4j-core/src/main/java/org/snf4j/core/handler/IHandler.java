@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.handler;
 
+import java.nio.ByteBuffer;
+
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
@@ -61,7 +63,9 @@ public interface IHandler {
 	String getName();
 	
 	/**
-	 * Called when new bytes were read from the input buffer.	
+	 * Called when new bytes were read from the input buffer. This method is
+	 * called when none of the conditions for calling other {@code read} methods are
+	 * met.	
 	 * <p>
 	 * The passed array can be safely stored or modified by this method as it
 	 * will not be used by the caller.
@@ -72,10 +76,28 @@ public interface IHandler {
 	void read(byte[] data);
 	
 	/**
+	 * Called when new bytes were read from the input buffer. This method is called
+	 * when the associated session is configured with a codec pipeline in which the
+	 * last decoder produces {@link ByteBuffer} objects or when the associated
+	 * session is configured to optimize data copying and uses an allocator
+	 * supporting the releasing of no longer used buffers
+	 * <p>
+	 * The passed byte buffer can be safely stored or modified by this method as it
+	 * will not be used by the caller. However, if the associated session is
+	 * configured to optimize data copying and uses an allocator supporting the
+	 * releasing of no longer used buffers it may be required to release it in this
+	 * method unless the original buffer has been already released by one of the
+	 * associated decoders.
+	 * 
+	 * @param data bytes that was read from the input buffer.
+	 */
+	void read(ByteBuffer data);
+	
+	/**
 	 * Called when a new message was read and decoded from the input buffer.
 	 * This method is called when the associated session is configured with a
 	 * codec pipeline in which the last decoder produces outbound object(s) of
-	 * type different than the {@code byte[]}.
+	 * type different than the {@code byte[]} and {@link ByteBuffer}.
 	 * 
 	 * @param msg
 	 *            the message that was read and decoded from the input buffer.

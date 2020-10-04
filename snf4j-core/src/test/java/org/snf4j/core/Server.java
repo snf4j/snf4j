@@ -101,6 +101,7 @@ public class Server {
 	public volatile boolean recordSessionId;
 	public volatile boolean waitForCloseMessage;
 	public volatile boolean dontReplaceException;
+	public volatile boolean optimizeDataCopying;
 
 	public volatile int availableCounter;
 	
@@ -538,6 +539,7 @@ public class Server {
 			config.setMaxSSLApplicationBufferSizeRatio(1);
 			config.setMaxSSLNetworkBufferSizeRatio(1);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
+			config.setOptimizeDataCopying(optimizeDataCopying);
 			return config;
 		}
 
@@ -595,6 +597,17 @@ public class Server {
 		
 		@Override
 		public void read(Object msg) {
+			
+			if (msg instanceof ByteBuffer) {
+				ByteBuffer bb = (ByteBuffer)msg;
+				byte[] b = new byte[bb.remaining()];
+				
+				bb.get(b);
+				record("BUF");
+				read(b);
+				return;
+			}
+			
 			record("M("+msg.toString()+")");
 			
 			if (msg instanceof Packet) {

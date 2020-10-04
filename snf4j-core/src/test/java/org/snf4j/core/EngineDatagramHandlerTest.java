@@ -200,7 +200,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		
 		stopServerClient();
 		prepareServerClient(false);
-		c.canOwnPasseData = true;
+		c.optimizeDataCopying = true;
 		s.startServer();
 		c.startClient();
 		assertReady(c, s);
@@ -274,7 +274,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 
 		stopServerClient();
 		prepareServerClient(false);
-		c.canOwnPasseData = true;
+		c.optimizeDataCopying = true;
 		s.startServer();
 		c.startClient();
 		assertReady(c, s);

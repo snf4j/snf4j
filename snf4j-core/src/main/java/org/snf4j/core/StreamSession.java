@@ -150,6 +150,24 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return outBuffers;
 	}
 	
+	static ByteBuffer[] putToBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, ByteBuffer data) {
+		int lastIndex = outBuffers.length - 1;
+		ByteBuffer lastBuffer = outBuffers[lastIndex];
+		
+		data.position(data.limit());
+		data.limit(data.capacity());
+		if (lastBuffer.position() == 0) {
+			allocator.release(lastBuffer);
+			outBuffers[lastIndex] = data;
+			return outBuffers;
+		}
+		ByteBuffer[] newBuffers = new ByteBuffer[lastIndex+2];
+		System.arraycopy(outBuffers, 0, newBuffers, 0, outBuffers.length);
+		lastBuffer.flip();
+		newBuffers[lastIndex+1] = data;
+		return newBuffers;
+	}
+	
 	static ByteBuffer[] putToBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, int minOutBufferCapacity, Object data, int offset, int length, boolean buffer) {
 		int lastIndex = outBuffers.length - 1;
 		ByteBuffer lastBuffer = outBuffers[lastIndex];
@@ -207,7 +225,18 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			if (closing != ClosingState.NONE) {
 				return -1;
 			}
-			outBuffers = putToBuffers(outBuffers, allocator, minOutBufferCapacity,  data, offset, length, buffer);
+			
+			boolean optimize = buffer && optimizeBuffers;
+			
+			if (optimize && ((ByteBuffer)data).remaining() == length) {
+				outBuffers = putToBuffers(outBuffers, allocator, (ByteBuffer)data);
+			}
+			else {
+				outBuffers = putToBuffers(outBuffers, allocator, minOutBufferCapacity,  data, offset, length, buffer);
+				if (optimize) {
+					allocator.release((ByteBuffer)data);
+				}
+			}
 			outBuffersSize += length;
 			futureExpectedLen = outBuffersSize + getWrittenBytes();  
 
@@ -625,7 +654,14 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	 * Informs that input buffer has new data that may be ready to consume.
 	 */
 	void consumeInBuffer() {
-		consumeBuffer(inBuffer, superCodec());
+		if (optimizeBuffers) {
+			inBuffer.flip();
+			superCodec().read(inBuffer);
+			inBuffer = allocator.allocate(inBuffer.capacity());
+		}
+		else {
+			consumeBuffer(inBuffer, superCodec());
+		}
 	}
 
 	IStreamReader superCodec() {

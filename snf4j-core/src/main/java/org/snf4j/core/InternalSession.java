@@ -69,17 +69,17 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	private volatile long readBytes;
 	
 	private volatile long writtenBytes;
-    
-    private long lastThroughputCalculationTime;
-    
-    private long lastReadBytes;
-    
-    private long lastWrittenBytes;
-    
+
+	private long lastThroughputCalculationTime;
+
+	private long lastReadBytes;
+
+	private long lastWrittenBytes;
+
 	private volatile double readBytesThroughput;
 	
-    private volatile double writtenBytesThroughput;
-    
+	private volatile double writtenBytesThroughput;
+
 	private final long creationTime;
 	
 	private volatile long lastReadTime;
@@ -114,11 +114,13 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	final CodecExecutorAdapter codec;
 
-	final boolean canOwnPassedData;
+	final boolean optimizeCopying;
+	
+	final boolean optimizeBuffers;
 	
 	private final ISessionTimer timer; 
 
-	protected InternalSession(String name, IHandler handler, ILogger logger, boolean noCodec) {
+	protected InternalSession(String name, IHandler handler, ILogger logger) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
 				name != null ? name : (handler != null ? handler.getName() : null),
@@ -131,18 +133,14 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		this.handler.setSession(this);
 		allocator = handler.getFactory().getAllocator();
 		config = handler.getConfig();
-		canOwnPassedData = config.canOwnDataPassedToWriteAndSendMethods();
+		optimizeCopying = config.optimizeDataCopying();
+		optimizeBuffers = optimizeCopying && allocator.isReleasable();
 		
 		creationTime = System.currentTimeMillis();
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
 		
-		if (noCodec) {
-			codec = null;
-		}
-		else {
-			ICodecExecutor executor = config.createCodecExecutor();
-			codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
-		}
+		ICodecExecutor executor = config.createCodecExecutor();
+		codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
 		
 		ITimer timer = handler.getFactory().getTimer();
 		if (timer == null) {
@@ -151,10 +149,6 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		else {
 			this.timer = new InternalSessionTimer(InternalSession.this, timer);
 		}
-	}
-	
-	protected InternalSession(String name, IHandler handler, ILogger logger) {
-		this(name, handler, logger, false);
 	}
 	
 	abstract IEncodeTaskWriter getEncodeTaskWriter(); 

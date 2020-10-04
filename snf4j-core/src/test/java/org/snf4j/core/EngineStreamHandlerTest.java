@@ -240,6 +240,7 @@ public class EngineStreamHandlerTest {
 		assertTrue(h.unwrap(status));
 		h.read((byte[])null);
 		h.read((Object)null);
+		h.read((ByteBuffer)null);
 
 	}
 	

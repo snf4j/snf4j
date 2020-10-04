@@ -183,7 +183,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	}
 
 	final DatagramRecord initRecord(DatagramRecord record, byte[] datagram, int offset, int length) {
-		if (canOwnPassedData && allocator.usesArray()) {
+		if (optimizeCopying && allocator.usesArray()) {
 			record.buffer = ByteBuffer.wrap(datagram, offset, length);
 		}
 		else {
@@ -199,7 +199,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	final DatagramRecord initRecord(DatagramRecord record, ByteBuffer datagram, int length) {
 		boolean allRemaining = length == datagram.remaining();
 		
-		if (canOwnPassedData && allRemaining) {
+		if (optimizeCopying && allRemaining) {
 			record.buffer = datagram;
 		}
 		else {

@@ -112,16 +112,24 @@ public interface ISessionConfig {
 	boolean ignorePossiblyIncompleteDatagrams();
 	
 	/**
-	 * Determines if the session object can own the data (i.e. byte arrays or byte
-	 * buffers) passed to the write and send methods. Setting this parameter to
-	 * <code>true</code> instructs the write and send methods that the passed data 
-	 * will be no longer used by the caller. In such situation the write and send 
-	 * methods may, if possible, eliminate not needed copy operations what can 
-	 * improve the performance.
+	 * Determines if the processing of data should be optimized to reduce data
+	 * copying between byte buffers.
+	 * <p>
+	 * Setting this parameter to <code>true</code> instructs the write and send
+	 * methods that the passed data will be no longer used by the caller. In such
+	 * situation the write and send methods may, if possible, eliminate not needed
+	 * copy operations what can improve the performance.
+	 * <p>
+	 * In addition, setting this parameter to <code>true</code> when the allocator
+	 * associated with the session supports releasing of no longer used buffers will
+	 * also cause data copy optimization between session's internal byte buffers. In
+	 * such situation user's implementation is responsible for releasing of no
+	 * longer used buffers that was passed to session handlers or codecs by calling
+	 * {@link ISession#release}.
 	 * 
-	 * @return <code>true</code> if the session object can own the passed data
+	 * @return <code>true</code> if the data copy optimization should be enabled
 	 */
-	boolean canOwnDataPassedToWriteAndSendMethods();
+	boolean optimizeDataCopying();
 	
 	/**
 	 * Gets the action that should be performed by the selector

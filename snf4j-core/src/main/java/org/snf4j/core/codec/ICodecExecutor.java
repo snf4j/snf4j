@@ -193,6 +193,24 @@ public interface ICodecExecutor {
 	List<Object> decode(ISession session, byte[] data) throws Exception;
 	
 	/**
+	 * Decodes bytes from a byte buffer.
+	 * <p>
+	 * This method should ignore all changes in the associated pipeline that
+	 * have not been synchronized yet by calling {@link #syncDecoders}.
+	 * 
+	 * @param session
+	 *            the session for which the decoding is performed
+	 * @param data
+	 *            the bytes to decode
+	 * @return a list of produced outbound objects, or {@code null} if the
+	 *         pipeline is empty or has no decoders that produce outbound
+	 *         object(s)
+	 * @throws Exception
+	 *             if one of the decoders failed during the decoding
+	 */
+	List<Object> decode(ISession session, ByteBuffer data) throws Exception;
+	
+	/**
 	 * Signals a session event to all event-driven codecs in the associated
 	 * pipeline.
 	 * 

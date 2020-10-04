@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,102 +23,72 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.handler;
+package org.snf4j.example.echo;
 
 import java.nio.ByteBuffer;
 
+import org.snf4j.core.EndingAction;
+import org.snf4j.core.allocator.CachingAllocator;
+import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
-import org.snf4j.core.session.DefaultSessionConfig;
-import org.snf4j.core.session.ISession;
+import org.snf4j.core.handler.AbstractStreamHandler;
+import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.ISessionConfig;
 
-/**
- * Base implementation of the {@link IHandler} interface.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public abstract class AbstractHandler implements IHandler {
+public class EchoClientHandler extends AbstractStreamHandler {
 
-	private ISession session;
-	
-	private String name;
-	
-	private ISessionConfig config = new DefaultSessionConfig();
-	
-	/**
-	 * Default constructor creating an unnamed handler.
-	 */
-	protected AbstractHandler() {
-	}
-	
-	/**
-	 * Constructor creating a named handler.
-	 * 
-	 * @param name
-	 *            the name for this handler
-	 */
-	protected AbstractHandler(String name) {
-		this.name = name;
-	}
+	private static final IByteBufferAllocator ALLOCATOR = new CachingAllocator(true);
 	
 	@Override
-	public void setSession(ISession session) {
-		this.session = session;
+	public void read(Object msg) {
+		getSession().writenf(msg);
 	}
 	
-	@Override
-	public ISession getSession() {
-		return session;
-	}
-	
-	@Override
-	public String getName() {
-		return name;
-	}
-	
+	@SuppressWarnings("incomplete-switch")
 	@Override
 	public void event(SessionEvent event) {
+		switch (event) {
+		case READY:
+			ByteBuffer msg = getSession().allocate(EchoClient.SIZE);
+			
+			for (int i=0; i<msg.capacity(); ++i) {
+				msg.put((byte)i);
+			}
+			msg.flip();
+			getSession().writenf(msg);
+			break;
+		}
 	}
 	
 	@Override
-	public void event(DataEvent event, long length) {
+	public void exception(Throwable e) {
+		Logger.err(e.toString());
 	}
-
-	@Override
-	public void exception(Throwable t) {
-	}
-
+	
 	@Override
 	public boolean incident(SessionIncident incident, Throwable t) {
-		return false;
-	}
-	
-	@Override
-	public void timer(Object event) {	
-	}
-	
-	@Override
-	public void timer(Runnable task) {
-	}
-	
-	@Override
-	public ISessionStructureFactory getFactory() {
-		return DefaultSessionStructureFactory.DEFAULT;
+		Logger.err(incident + ": " + t.toString());
+		return true;
 	}
 
 	@Override
 	public ISessionConfig getConfig() {
-		return config;
+		return new SessionConfig(EchoClient.PIPELINE_SIZE)
+				.setEndingAction(EndingAction.STOP)
+				.setOptimizeDataCopying(true)
+				.setMinOutBufferCapacity(EchoClient.SIZE << 1);
 	}
 	
 	@Override
-	public void read(byte[] data) {
-		read((Object)data);
-	}
-	
-	@Override
-	public void read(ByteBuffer data) {
-		read((Object)data);
+	public ISessionStructureFactory getFactory() {
+		return new DefaultSessionStructureFactory() {
+			
+			@Override
+			public IByteBufferAllocator getAllocator() {
+				return ALLOCATOR;
+			}
+		};
 	}
 }

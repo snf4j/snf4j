@@ -89,7 +89,7 @@ public class DatagramHandler {
 	TestAllocator allocator;
 	ITimer timer;
 	ITimeoutModel timeoutModel;
-	boolean canOwnPasseData;
+	boolean optimizeDataCopying;
 	volatile boolean useTestSession;
 	DefaultCodecExecutor codecPipeline;
 	DefaultCodecExecutor codecPipeline2;
@@ -566,7 +566,7 @@ public class DatagramHandler {
 			config.setThroughputCalculationInterval(throughputCalcInterval);
 			config.setIgnorePossiblyIncompleteDatagrams(ignorePossiblyIncomplete);
 			config.setEndingAction(endingAction);
-			config.setCanOwnDataPassedToWriteAndSendMethods(canOwnPasseData);
+			config.setOptimizeDataCopying(optimizeDataCopying);
 			config.setEngineHandshakeTimeout(handshakeTimeout);
 			config.setDatagramServerSessionNoReopenPeriod(reopenBlockedInterval);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);

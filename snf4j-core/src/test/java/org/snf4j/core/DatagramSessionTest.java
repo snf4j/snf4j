@@ -1354,7 +1354,7 @@ public class DatagramSessionTest {
 
 		//flag == true, heap buffer
 		s = new DatagramHandler(PORT); s.startServer();
-		c = new DatagramHandler(PORT); c.canOwnPasseData = true; c.startClient();
+		c = new DatagramHandler(PORT); c.optimizeDataCopying = true; c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
@@ -1398,7 +1398,7 @@ public class DatagramSessionTest {
 		//flag == true, direct buffer
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); 
-		c.canOwnPasseData = true;
+		c.optimizeDataCopying = true;
 		c.directAllocator = true;
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
@@ -1560,7 +1560,7 @@ public class DatagramSessionTest {
 		
 		//write suspended, releasing, can own passed data
 		c = new DatagramHandler(PORT);
-		c.canOwnPasseData = true;
+		c.optimizeDataCopying = true;
 		allocator = new TestAllocator(false, true);
 		c.allocator = allocator;
 		c.startClient();
