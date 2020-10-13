@@ -81,7 +81,7 @@
     <log4j2.osgiVersion>2.0.2</log4j2.osgiVersion>
     
     <!-- jar versions -->
-    <version.junit>4.10</version.junit>
+    <version.junit>4.13.1</version.junit>
     <version.slf4j>1.7.21</version.slf4j>
     <version.slf4j.api>${version.slf4j}</version.slf4j.api>
     <version.slf4j.simple>${version.slf4j}</version.slf4j.simple>
