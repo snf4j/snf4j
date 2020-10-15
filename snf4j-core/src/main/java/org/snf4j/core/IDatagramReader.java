@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 
 /**
  * A reader that reads data directly from a datagram channel.
@@ -48,6 +49,20 @@ public interface IDatagramReader {
 	void read(byte[] datagram);
 	
 	/**
+	 * Called when a new datagram was received from the remote end. As the remote
+	 * end is not specified, the method is only called for sessions created with a
+	 * connected datagram channel. In addition, this method is only called when the
+	 * associated session is configured to optimize data copying and uses an
+	 * allocator supporting the releasing of no longer used buffers.
+	 * <p>
+	 * The passed buffer can be safely stored or modified by this method as it will
+	 * not be used by the caller.
+	 * 
+	 * @param datagram the datagram received from the remote end.
+	 */
+	void read(ByteBuffer datagram);
+	
+	/**
 	 * Called when a new datagram was received from a remote end that is
 	 * identified by the given remote address. The method is only called for
 	 * sessions created with a disconnected datagram channel.
@@ -61,4 +76,23 @@ public interface IDatagramReader {
 	 *            the datagram received from the remote end.
 	 */
 	void read(SocketAddress remoteAddress, byte[] datagram);
+	
+	/**
+	 * Called when a new datagram was received from a remote end that is identified
+	 * by the given remote address. The method is only called for sessions created
+	 * with a disconnected datagram channel.
+	 * <p>
+	 * In contrary to the {@code read} method with a byte array argument, this
+	 * method is only called when the associated session is configured to optimize
+	 * data copying and uses an allocator supporting the releasing of no longer used
+	 * buffers.
+	 * <p>
+	 * The passed buffer can be safely stored or modified by this method as it will
+	 * not be used by the caller.
+	 * 
+	 * @param remoteAddress address of the remote end.
+	 * @param datagram      the datagram received from the remote end.
+	 */
+	void read(SocketAddress remoteAddress, ByteBuffer datagram);
+	
 }

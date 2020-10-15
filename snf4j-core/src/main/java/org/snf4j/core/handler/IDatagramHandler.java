@@ -26,6 +26,7 @@
 package org.snf4j.core.handler;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 
 import org.snf4j.core.IDatagramReader;
 import org.snf4j.core.session.IDatagramSession;
@@ -60,11 +61,51 @@ public interface IDatagramHandler extends IHandler, IDatagramReader {
 	IDatagramSession getSession();
 	
 	/**
+	 * Called when a new datagram was received from a remote end that is identified
+	 * by the given remote address. The method is only called for sessions created
+	 * with a disconnected datagram channel.
+	 * <p>
+	 * This method is called when none of the conditions for calling other
+	 * {@code read} methods with specified remote address are met.
+	 * <p>
+	 * The passed array can be safely stored or modified by this method as it will
+	 * not be used by the caller.
+	 * 
+	 * @param remoteAddress address of the remote end.
+	 * @param datagram      the datagram received from the remote end.
+	 */
+	@Override
+	void read(SocketAddress remoteAddress, byte[] datagram);
+	
+	/**
+	 * Called when a new datagram was received from a remote end that is identified
+	 * by the given remote address. The method is only called for sessions created
+	 * with a disconnected datagram channel.
+	 * <p>
+	 * This method is called when the associated session is configured with a codec
+	 * pipeline in which the last decoder produces {@link ByteBuffer} objects or
+	 * when the associated session is configured to optimize data copying and uses
+	 * an allocator supporting the releasing of no longer used buffers.
+	 * <p>
+	 * The passed buffer can be safely stored or modified by this method as it will
+	 * not be used by the caller. However, if the associated session is configured
+	 * to optimize data copying and uses an allocator supporting the releasing of no
+	 * longer used buffers it may be required to release it in this method unless
+	 * the original buffer has been already released by one of the associated
+	 * decoders.
+	 * 
+	 * @param remoteAddress address of the remote end.
+	 * @param datagram      the datagram received from the remote end.
+	 */
+	@Override
+	void read(SocketAddress remoteAddress, ByteBuffer datagram);
+	
+	/**
 	 * Called when a new message was received and decoded from a remote end
 	 * that is identified by the given remote address. This method is called when
 	 * the associated session is configured with a codec pipeline in which the
 	 * last decoder produces outbound object(s) of type different than the
-	 * {@code byte[]}.
+	 * {@code byte[]} and {@link ByteBuffer}.
 	 * <p>
 	 * The method is only called for sessions created with a disconnected
 	 * datagram channel.

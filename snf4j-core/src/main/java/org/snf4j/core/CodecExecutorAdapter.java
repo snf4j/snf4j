@@ -163,6 +163,31 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 			handler.read(remoteAddress, datagram);
 			return;
 		}
+		read(remoteAddress, out, handler);
+	}	
+    
+	@Override
+	public void read(SocketAddress remoteAddress, ByteBuffer datagram) {
+		List<Object> out;
+		
+		executor.syncDecoders();
+		try {
+			out = executor.decode(session, datagram);
+		}
+		catch (Exception e) {
+			throw new PipelineDecodeException((InternalSession) session, e);
+		}
+		
+		IDatagramHandler handler = (IDatagramHandler) session.getHandler();
+		
+		if (out == null) {
+			handler.read(remoteAddress, datagram);
+			return;
+		}
+		read(remoteAddress, out, handler);
+	}	
+	
+	private void read(SocketAddress remoteAddress, List<Object> out, IDatagramHandler handler) {
 		if (out.isEmpty()) {
 			return;
 		}
@@ -176,14 +201,20 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 				handler.read(remoteAddress, (byte[])i.next());
 			}
 		}
+		else if (o instanceof ByteBuffer) {
+			handler.read(remoteAddress, (ByteBuffer)o);
+			while (i.hasNext()) {
+				handler.read(remoteAddress, (ByteBuffer)i.next());
+			}
+		}
 		else {
 			handler.read(remoteAddress, o);
 			while (i.hasNext()) {
 				handler.read(remoteAddress, i.next());
 			}
 		}	
-	}	
-	
+    }
+    
     private void read(List<Object> out, IHandler handler) {
 		if (out.isEmpty()) {
 			return;
@@ -210,6 +241,5 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 				handler.read(i.next());
 			}
 		}
-    }	
-    
+    }
 }

@@ -77,6 +77,13 @@ public class DatagramSessionTest {
 		return ByteBuffer.wrap(getBytes(size, value));
 	}
 	
+	static ByteBuffer getInBuffer(DatagramSession session) throws Exception {
+		Field f = DatagramSession.class.getDeclaredField("inBuffer");
+		
+		f.setAccessible(true);
+		return (ByteBuffer) f.get(session);
+	}
+	
 	@Before
 	public void before() {
 		s = c = null;
@@ -1805,6 +1812,156 @@ public class DatagramSessionTest {
 		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, c.getSession().closing);
 		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingRead() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, true);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		SocketAddress a = c.getSession().getLocalAddress();
+		ByteBuffer b = getInBuffer(c.getSession());
+		assertEquals(1, c.allocator.getAllocatedCount());
+		s.getSession().send(a, new Packet(PacketType.NOP).toBytes());
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|BUF|NOP()|", c.getRecordedData(true));
+		assertEquals(2, c.allocator.getAllocatedCount());
+		assertTrue(b == c.bufferRead);
+		assertFalse(b == getInBuffer(c.getSession()));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.optimizeDataCopying = true;
+		s.allocator = new TestAllocator(false, true);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		b = getInBuffer(s.getSession());
+		assertEquals(1, s.allocator.getAllocatedCount());
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|BUF|$NOP()|", s.getRecordedData(true));
+		assertEquals(2, s.allocator.getAllocatedCount());
+		assertTrue(b == s.bufferRead);
+		assertFalse(b == getInBuffer(s.getSession()));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, false);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		a = c.getSession().getLocalAddress();
+		b = getInBuffer(c.getSession());
+		assertEquals(1, c.allocator.getAllocatedCount());
+		s.getSession().send(a, new Packet(PacketType.NOP).toBytes());
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", c.getRecordedData(true));
+		assertEquals(1, c.allocator.getAllocatedCount());
+		assertTrue(b == getInBuffer(c.getSession()));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	
+		s = new DatagramHandler(PORT);
+		s.optimizeDataCopying = true;
+		s.allocator = new TestAllocator(false, false);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		b = getInBuffer(s.getSession());
+		assertEquals(1, s.allocator.getAllocatedCount());
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|$NOP()|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getAllocatedCount());
+		assertTrue(b == getInBuffer(s.getSession()));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingWrite() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, true);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		DatagramSession session = c.getSession();
+		ByteBuffer b = session.allocate(100);
+		b.put(new Packet(PacketType.NOP).toBytes());
+		b.flip();
+		session.write(b);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|$NOP()|", s.getRecordedData(true));
+		assertEquals(1, c.allocator.getReleasedCount());
+		assertEquals(2, c.allocator.getAllocatedCount());
+		assertTrue(b == c.allocator.getReleased().get(0));
+		c.stop(TIMEOUT);
+		
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, false);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		
+		session = c.getSession();
+		b = session.allocate(100);
+		b.put(new Packet(PacketType.NOP).toBytes());
+		b.flip();
+		session.write(b);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP()|", s.getRecordedData(true));
+		assertEquals(0, c.allocator.getReleasedCount());
+		assertEquals(2, c.allocator.getAllocatedCount());
+		c.stop(TIMEOUT);
+		
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = false;
+		c.allocator = new TestAllocator(false, true);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		
+		session = c.getSession();
+		b = session.allocate(100);
+		b.put(new Packet(PacketType.NOP).toBytes());
+		b.flip();
+		session.write(b);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP()|", s.getRecordedData(true));
+		assertEquals(1, c.allocator.getReleasedCount());
+		assertFalse(b == c.allocator.getReleased().get(0));
+		assertEquals(3, c.allocator.getAllocatedCount());
+		
 	}
 	
 	@Test

@@ -29,6 +29,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.nio.ByteBuffer;
+
 import org.junit.Test;
 import org.snf4j.core.DatagramSession;
 import org.snf4j.core.StreamSession;
@@ -38,6 +40,8 @@ import org.snf4j.core.session.ISession;
 
 public class AbstractStreamHandlerTest {
 
+	Object readMsg;
+	
 	@Test
 	public void testAll() {
 		TestHandler h = new TestHandler();
@@ -59,5 +63,23 @@ public class AbstractStreamHandlerTest {
 		assertNull(h.getFactory().getAttributes());
 		assertTrue(DefaultAllocator.DEFAULT == h.getFactory().getAllocator());
 	}
-	
+
+	@Test
+	public void testRead() {
+		AbstractStreamHandler h = new AbstractStreamHandler() {
+
+			@Override
+			public void read(Object msg) {
+				readMsg = msg;
+			}			
+		};
+		
+		byte[] b = new byte[3];
+		ByteBuffer bb = ByteBuffer.allocate(10);
+		h.read(b);
+		assertTrue(b == readMsg);
+		h.read(bb);
+		assertTrue(bb == readMsg);
+		
+	}	
 }

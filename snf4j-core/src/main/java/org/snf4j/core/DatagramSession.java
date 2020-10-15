@@ -201,6 +201,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		
 		if (optimizeCopying && allRemaining) {
 			record.buffer = datagram;
+			record.release = optimizeBuffers;
 		}
 		else {
 			ByteBuffer buffer = allocator.allocate(length);
@@ -684,13 +685,27 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			inBuffer.flip();
 			if (inBuffer.hasRemaining()) {
 				IDatagramReader handler = superCodec();
-				byte[] data = new byte[inBuffer.remaining()];
-				inBuffer.get(data);
-				if (remoteAddress == null) {
-					handler.read(data);
+				
+				if (optimizeBuffers) {
+					ByteBuffer data = inBuffer;
+					
+					inBuffer = allocator.allocate(data.capacity());
+					if (remoteAddress == null) {
+						handler.read(data);
+					}
+					else {
+						handler.read(remoteAddress, data);
+					}
 				}
 				else {
-					handler.read(remoteAddress, data);
+					byte[] data = new byte[inBuffer.remaining()];
+					inBuffer.get(data);
+					if (remoteAddress == null) {
+						handler.read(data);
+					}
+					else {
+						handler.read(remoteAddress, data);
+					}
 				}
 			}
 		}
@@ -717,6 +732,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		public final IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture) {
 			DatagramRecord record = new DatagramRecord(remoteAddress);
 			record.buffer = buffer;
+			record.release = optimizeBuffers;
 			return write1(record);
 		}
 

@@ -181,7 +181,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		prepareServerClient(true);
 		
 		c.testEngine.wrapConsumed = 3;
-		ByteBuffer bb = ByteBuffer.allocate(1024);
+		ByteBuffer bb = ByteBuffer.allocate(1023);
 		bb.put(nop());
 		bb.put(nop("1")).flip();
 		int base = c.allocator.getReleasedCount();
@@ -214,8 +214,8 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		c.getSession().write(bb).sync(TIMEOUT);
 		waitFor(50);
 		assertEquals("DR|NOP()|DR|NOP(1)|", s.getRecordedData(true));
-		assertEquals("103,1024|104,1024|", getReleased(base, c.allocator));
-		assertReleased(base, c.allocator, id, id+1);
+		assertEquals("7,1023|103,1024|104,1024|", getReleased(base, c.allocator));
+		assertReleased(base, c.allocator, -1, id, id+1);
 		
 		c.getSession().close();
 		s.waitForSessionEnding(TIMEOUT);
@@ -513,6 +513,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		Queue<ByteBuffer> queue = (Queue<ByteBuffer>) f.get(h); 
 		assertEquals(0, queue.size());
 		h.read(null, (Object)null);
+		h.read(null, (ByteBuffer)null);
 		h.event(null, null, 100);
 	}
 	

@@ -112,11 +112,23 @@ public abstract class AbstractHandler implements IHandler {
 		return config;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it simply passes the {@code data} value to the
+	 * {@link IHandler#read(Object)} method.
+	 */
 	@Override
 	public void read(byte[] data) {
 		read((Object)data);
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it simply passes the {@code data} value to the
+	 * {@link IHandler#read(Object)} method.
+	 */
 	@Override
 	public void read(ByteBuffer data) {
 		read((Object)data);

@@ -589,6 +589,10 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	@Override
 	public void read(SocketAddress remoteAddress, Object msg) {
 	}
+	
+	@Override
+	public void read(SocketAddress remoteAddress, ByteBuffer datagram) {
+	}
 
 	@Override
 	public void event(SocketAddress remoteAddress, DataEvent event, long length) {
