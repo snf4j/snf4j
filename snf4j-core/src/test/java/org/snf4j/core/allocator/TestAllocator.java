@@ -52,6 +52,10 @@ public class TestAllocator extends DefaultAllocator {
 		return releasable;
 	}
 	
+	public List<ByteBuffer> get() {
+		return buffers;
+	}
+	
 	public int getSize() {
 		return buffers.size();
 	}
@@ -75,6 +79,10 @@ public class TestAllocator extends DefaultAllocator {
 		return released.size();
 	}
 
+	public List<ByteBuffer> getAllocated() {
+		return allocated;
+	}
+	
 	public int getAllocatedCount() {
 		return allocated.size();
 	}

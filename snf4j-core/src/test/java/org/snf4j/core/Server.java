@@ -92,6 +92,7 @@ public class Server {
 	public Executor executor;
 	public DefaultCodecExecutor codecPipeline;
 	public ISelectorLoopPool pool;
+	volatile ByteBuffer bufferRead;
 	public volatile EndingAction endingAction = EndingAction.DEFAULT;
 	public volatile StringBuilder serverSocketLogs = new StringBuilder();
 	public volatile ServerSocketChannel ssc;
@@ -603,6 +604,7 @@ public class Server {
 				byte[] b = new byte[bb.remaining()];
 				
 				bb.get(b);
+				bufferRead = bb;
 				record("BUF");
 				read(b);
 				return;

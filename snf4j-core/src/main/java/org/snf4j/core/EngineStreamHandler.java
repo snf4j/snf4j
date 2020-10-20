@@ -122,14 +122,28 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 				return false;
 			}
 			finally {
-				inNetBuffer.compact();
+				if (inNetBuffer.hasRemaining()) {
+					inNetBuffer.compact();
+				}
+				else {
+					inNetBuffer.clear();
+				}
 			}
 
 			switch (unwrapResult.getStatus()) {
 				case OK:
 					if (inAppBuffer.position() != 0) {
+						IStreamReader reader = session.codec != null ? session.codec : handler;
+						
 						try {
-							StreamSession.consumeBuffer(inAppBuffer, session.codec != null ? session.codec : handler);
+							if (session.optimizeBuffers) {
+								inAppBuffer.flip();
+								reader.read(inAppBuffer);
+								inAppBuffer = allocator.allocate(inAppBuffer.capacity());
+							}
+							else {
+								StreamSession.consumeBuffer(inAppBuffer, reader);
+							}
 						}
 						catch (PipelineDecodeException e) {
 							elogger.error(logger, SessionIncident.DECODING_PIPELINE_FAILURE.defaultMessage(), session, e.getCause());
@@ -319,8 +333,14 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			boolean skipUpdate = false;
 			outNetBuffer.flip();
 			long futureThreshold = session.write0(outNetBuffer);
-			outNetBuffer.compact();
-
+			
+			if (session.optimizeBuffers) {
+				outNetBuffer = allocator.allocate(minNetBufferSize);
+			}
+			else {
+				outNetBuffer.compact();
+			}
+			
 			//update futures
 			if (polledFuture != null) {
 				if (polledFuture.getFirstThreshold() <= netCounter) {
@@ -372,7 +392,18 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 				}
 				return null;
 			}
-			outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, minAppBufferSize, data, 0, length, true);
+			
+			boolean optimize = session.optimizeBuffers;
+			
+			if (optimize && data.remaining() == length) {
+				outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, data);				
+			}
+			else {
+				outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, minAppBufferSize, data, 0, length, true);
+				if (optimize) {
+					allocator.release(data);
+				}
+			}
 			appCounter += length;
 			if (needFuture) {
 				future = session.futuresController.getEngineWriteFuture(appCounter);
@@ -413,26 +444,50 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			inNetBuffer = null;
 		}
 	}
+	private final boolean ensure(int size) {
+		if (size > inNetBuffer.remaining()) {
+			try {
+				minNetBufferSize = engine.getMinNetworkBufferSize();
+				maxNetBufferSize = engine.getMaxNetworkBufferSize();		
+				inNetBuffer = allocator.ensure(inNetBuffer, size, minNetBufferSize, maxNetBufferSize);
+			}
+			catch (Exception e) {
+				elogger.error(logger, "Reading failed for {}: {}", session, e);
+				fireException(e);
+				return false;
+			}
+		}
+		return true;
+	}
 	
 	@Override
 	public void read(byte[] data) {
 		if (readIgnored) {
 			return;
 		}
-		if (data.length > inNetBuffer.remaining()) {
-			try {
-				minNetBufferSize = engine.getMinNetworkBufferSize();
-				maxNetBufferSize = engine.getMaxNetworkBufferSize();		
-				inNetBuffer = allocator.ensure(inNetBuffer, data.length, minNetBufferSize, maxNetBufferSize);
-			}
-			catch (Exception e) {
-				elogger.error(logger, "Reading failed for {}: {}", session, e);
-				fireException(e);
-				return;
-			}
+		if (ensure(data.length)) {
+			inNetBuffer.put(data);
+			run();	
 		}
-		inNetBuffer.put(data);
-		run();	
+	}
+
+	@Override
+	public void read(ByteBuffer data) {
+		if (readIgnored) {
+			return;
+		}
+		if (inNetBuffer.position() == 0) {
+			allocator.release(inNetBuffer);
+			inNetBuffer = data;
+			data.position(data.limit());
+			data.limit(data.capacity());
+			run();
+		}
+		else if (ensure(data.remaining())) {
+			inNetBuffer.put(data);
+			allocator.release(data);
+			run();	
+		}
 	}
 
 	@Override
