@@ -2716,8 +2716,10 @@ public class SessionTest {
 		b0.flip();
 		session.write(b0, b0.remaining()-1);
 		waitFor(50);
-		assertEquals(4, released.size());
-		assertTrue(b0 == released.get(3));
+		assertEquals(3, released.size());
+		assertTrue(b0 != released.get(0));
+		assertTrue(b0 != released.get(1));
+		assertTrue(b0 != released.get(2));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|NOP(4)|", s.getRecordedData(true));	
 		

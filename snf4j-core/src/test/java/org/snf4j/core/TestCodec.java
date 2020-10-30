@@ -56,6 +56,8 @@ public class TestCodec {
 	volatile boolean encodeFakeClosing;
 	
 	volatile boolean sessionId;
+	
+	volatile boolean nopToNop2;
 
 	IDecoder<?,?> PPD() { return new PPD(); }
 	IDecoder<?,?> PBD() { return new PBD(); }
@@ -68,7 +70,45 @@ public class TestCodec {
 	IEncoder<?,?> BPE() { return new BPE(); }
 	IEncoder<?,?> BBEEv() { return new BBEEv(); }
 	IDecoder<?,?> BBDEv() { return new BBDEv(); }
+	IDecoder<?,?> BBBBD() { return new BBBBD(); }
+	IEncoder<?,?> BBBBE() { return new BBBBE(); }
 	
+	class BBBBD implements IDecoder<ByteBuffer,ByteBuffer> {
+		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
+		@Override public Class<ByteBuffer> getOutboundType() {return ByteBuffer.class;}
+		@Override
+		public void decode(ISession session, ByteBuffer data, List<ByteBuffer> out) throws Exception {
+			if (nopToNop2) {
+				byte[] b = new byte[data.remaining()];
+				data.get(b);
+				if (b[2] == (byte) PacketType.NOP.ordinal()) {
+					b[2] = (byte) PacketType.NOP2.ordinal();
+				}
+				data.clear();
+				data.put(b).flip();
+			}
+			out.add(data);
+		}
+	}
+	
+	class BBBBE implements IEncoder<ByteBuffer,ByteBuffer> {
+		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
+		@Override public Class<ByteBuffer> getOutboundType() {return ByteBuffer.class;}
+		@Override
+		public void encode(ISession session, ByteBuffer data, List<ByteBuffer> out) throws Exception {
+			if (nopToNop2) {
+				byte[] b = new byte[data.remaining()];
+				data.get(b);
+				if (b[2] == (byte) PacketType.NOP.ordinal()) {
+					b[2] = (byte) PacketType.NOP2.ordinal();
+				}
+				data.clear();
+				data.put(b).flip();
+			}
+			out.add(data);
+		}
+	}
+
 	class PPD implements IDecoder<Packet, Packet> {
 		@Override public Class<Packet> getInboundType() {return Packet.class;}
 		@Override public Class<Packet> getOutboundType() {return Packet.class;}

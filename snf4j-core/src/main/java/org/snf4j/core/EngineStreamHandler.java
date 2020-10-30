@@ -400,9 +400,6 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			}
 			else {
 				outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, minAppBufferSize, data, 0, length, true);
-				if (optimize) {
-					allocator.release(data);
-				}
 			}
 			appCounter += length;
 			if (needFuture) {

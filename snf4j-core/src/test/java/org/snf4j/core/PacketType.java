@@ -32,6 +32,7 @@ public enum PacketType {
 	GET_THREAD,
 	GET_THREAD_RESPONSE,
 	NOP,
+	NOP2,
 	CLOSE,
 	QUICK_CLOSE,
 	WRITE_AND_CLOSE,

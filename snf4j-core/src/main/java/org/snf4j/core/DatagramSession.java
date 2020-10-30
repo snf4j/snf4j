@@ -401,6 +401,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		long futureExpectedLen;
 		
 		record.buffer = datagram;
+		record.release = optimizeBuffers;
 		futureExpectedLen = write0(record);
 		if (withFuture) {
 			if (futureExpectedLen == -1) {

@@ -513,7 +513,6 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		Queue<ByteBuffer> queue = (Queue<ByteBuffer>) f.get(h); 
 		assertEquals(0, queue.size());
 		h.read(null, (Object)null);
-		h.read(null, (ByteBuffer)null);
 		h.event(null, null, 100);
 	}
 	
@@ -571,7 +570,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		assertEquals(0, c.allocator.getReleasedCount());
 	}	
 	
-	EngineDatagramHandler getHandler(DatagramSession session) throws Exception {
+	static EngineDatagramHandler getHandler(DatagramSession session) throws Exception {
 		Field wrapper = EngineDatagramSession.class.getDeclaredField("wrapper");
 		Field internal = EngineDatagramWrapper.class.getDeclaredField("internal");
 		

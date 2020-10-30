@@ -785,8 +785,9 @@ public class SessionCodecTest {
 	
 	@Test
 	public void testOptimizedDataCopyingWrite() throws Exception {
+		codec.nopToNop2 = true;
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
-		p.getPipeline().add("1", new BBBBD());
+		p.getPipeline().add("1", codec.BBBBE());
 		optimizeDataCopying = true;
 		allocator = new TestAllocator(false,true);
 		startWithCodec(p);
@@ -799,7 +800,7 @@ public class SessionCodecTest {
 		session.write(b);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		assertEquals("DR|NOP2()|", s.getRecordedData(true));
 		assertEquals(1, session.getOutBuffers().length);
 		assertTrue(b == session.getOutBuffers()[0]);
 		assertEquals(1, allocator.getReleasedCount());
@@ -920,15 +921,6 @@ public class SessionCodecTest {
 		
 	}
 
-	class BBBBD implements IEncoder<ByteBuffer,ByteBuffer> {
-		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
-		@Override public Class<ByteBuffer> getOutboundType() {return ByteBuffer.class;}
-		@Override
-		public void encode(ISession session, ByteBuffer data, List<ByteBuffer> out) throws Exception {
-			out.add(data);
-		}
-	}
-	
 	class DupD implements IDecoder<ByteBuffer,ByteBuffer> {
 		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
 		@Override public Class<ByteBuffer> getOutboundType() {return ByteBuffer.class;}

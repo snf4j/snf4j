@@ -233,9 +233,6 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			}
 			else {
 				outBuffers = putToBuffers(outBuffers, allocator, minOutBufferCapacity,  data, offset, length, buffer);
-				if (optimize) {
-					allocator.release((ByteBuffer)data);
-				}
 			}
 			outBuffersSize += length;
 			futureExpectedLen = outBuffersSize + getWrittenBytes();  

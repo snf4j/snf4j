@@ -173,9 +173,28 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		inNetBuffers.add(ByteBuffer.wrap(datagram));
 		run();
 	}
+
+	@Override
+	public void read(ByteBuffer datagram) {
+		if (readIgnored) {
+			return;
+		}
+		inNetBuffers.add(datagram);
+		run();
+	}
 	
 	@Override
 	public void read(SocketAddress remoteAddress, byte[] datagram) {
+		if (remoteAddress.equals(this.remoteAddress)) {
+			read(datagram);
+		}
+		else {
+			(session.codec != null ? session.codec : handler).read(remoteAddress, datagram);
+		}
+	}
+	
+	@Override
+	public void read(SocketAddress remoteAddress, ByteBuffer datagram) {
 		if (remoteAddress.equals(this.remoteAddress)) {
 			read(datagram);
 		}
@@ -208,6 +227,14 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		return closing == ClosingState.SENDING;
 	}
 
+	private final void pollInNetBuffers() {
+		ByteBuffer b = inNetBuffers.poll();
+		
+		if (session.optimizeBuffers) {
+			allocator.release(b);
+		}
+	}
+	
 	@Override
 	boolean unwrap(HandshakeStatus[] status) {
 		if (traceEnabled) {
@@ -238,7 +265,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 				unwrapResult = engine.unwrap(inNetBuffer, inAppBuffer);
 				if (pollNeeded) {
 					if (inNetBuffer.remaining() == 0) {
-						inNetBuffers.poll();
+						pollInNetBuffers();
 						pollNeeded = false;
 					}
 					else if (unwrapResult.bytesConsumed() > 0) {
@@ -277,10 +304,20 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 					if (inAppBuffer.position() > 0) {
 						inAppBuffer.flip();
 						try {
-							byte[] datagram = new byte[inAppBuffer.remaining()];
+							IDatagramReader reader = session.codec != null ? session.codec : handler;
+							
+							if (session.optimizeBuffers) {
+								ByteBuffer datagram = inAppBuffer;
+								
+								inAppBuffer = allocator.allocate(datagram.capacity());
+								reader.read(datagram);
+							}
+							else {
+								byte[] datagram = new byte[inAppBuffer.remaining()];
 
-							inAppBuffer.get(datagram);
-							(session.codec != null ? session.codec : handler).read(datagram);
+								inAppBuffer.get(datagram);
+								reader.read(datagram);
+							}
 						} 
 						catch (PipelineDecodeException e) {
 							SessionIncident incident = SessionIncident.DECODING_PIPELINE_FAILURE;
@@ -334,7 +371,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 						return false;
 					}
 					else if (pollNeeded) {
-						inNetBuffers.poll();
+						pollInNetBuffers();
 						pollNeeded = false;
 					}
 					return false;
@@ -523,6 +560,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		if (allocator.isReleasable()) {
 			releaseBuffers(outAppBuffers);
 			allocator.release(inAppBuffer);
+			inAppBuffer = null;
 		}
 	}
 	
@@ -590,10 +628,6 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	public void read(SocketAddress remoteAddress, Object msg) {
 	}
 	
-	@Override
-	public void read(SocketAddress remoteAddress, ByteBuffer datagram) {
-	}
-
 	@Override
 	public void event(SocketAddress remoteAddress, DataEvent event, long length) {
 	}

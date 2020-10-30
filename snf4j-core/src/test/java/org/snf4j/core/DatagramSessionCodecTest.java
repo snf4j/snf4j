@@ -908,9 +908,11 @@ public class DatagramSessionCodecTest {
 	
 	@Test
 	public void testOptimizedDataCopyingWrite() throws Exception {
+		codec.nopToNop2 = true;
+		
 		//optimization with release
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
-		p.getPipeline().add("1", new BBBBE());
+		p.getPipeline().add("1", codec.BBBBE());
 		allocator = new TestAllocator(false,true);
 		optimizeDataCopying = true;
 		startWithCodec(true, p);
@@ -923,7 +925,7 @@ public class DatagramSessionCodecTest {
 		session.write(b);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
-		assertEquals("DR|$NOP()|", s.getRecordedData(true));
+		assertEquals("DR|$NOP2()|", s.getRecordedData(true));
 		assertEquals(1, allocator.getReleasedCount());
 		assertTrue(b == allocator.getReleased().get(0));
 		
@@ -931,7 +933,7 @@ public class DatagramSessionCodecTest {
 		session.write(array);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
-		assertEquals("DR|$NOP(1)|", s.getRecordedData(true));
+		assertEquals("DR|$NOP2(1)|", s.getRecordedData(true));
 		assertEquals(2, allocator.getReleasedCount());
 		assertTrue(allocator.getReleased().get(1).hasArray());
 		assertTrue(allocator.getReleased().get(1).array() == array);
@@ -940,7 +942,7 @@ public class DatagramSessionCodecTest {
 		
 		//optimization with no release
 		p = new DefaultCodecExecutor();
-		p.getPipeline().add("1", new BBBBE());
+		p.getPipeline().add("1", codec.BBBBE());
 		allocator = new TestAllocator(false,false);
 		optimizeDataCopying = true;
 		startWithCodec(true, p);
@@ -953,14 +955,14 @@ public class DatagramSessionCodecTest {
 		session.write(b);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
-		assertEquals("DR|$NOP()|", s.getRecordedData(true));
+		assertEquals("DR|$NOP2()|", s.getRecordedData(true));
 		assertEquals(0, allocator.getReleasedCount());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
 		//optimization with release (server side)
 		p = new DefaultCodecExecutor();
-		p.getPipeline().add("1", new BBBBE());
+		p.getPipeline().add("1", codec.BBBBE());
 		allocator = new TestAllocator(false,true);
 		optimizeDataCopying = true;
 		startWithCodec(false, p);
@@ -974,7 +976,7 @@ public class DatagramSessionCodecTest {
 		session.send(a, b);
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP()|", c.getRecordedData(true));
+		assertEquals("DR|NOP2()|", c.getRecordedData(true));
 		assertEquals(1, allocator.getReleasedCount());
 		assertTrue(b == allocator.getReleased().get(0));
 
@@ -982,7 +984,7 @@ public class DatagramSessionCodecTest {
 		session.send(a, array);
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|NOP(1)|", c.getRecordedData(true));
+		assertEquals("DR|NOP2(1)|", c.getRecordedData(true));
 		assertEquals(2, allocator.getReleasedCount());
 		assertTrue(allocator.getReleased().get(1).hasArray());
 		assertTrue(allocator.getReleased().get(1).array() == array);
@@ -992,8 +994,10 @@ public class DatagramSessionCodecTest {
 
 	@Test
 	public void testOptimizedDataCopyingRead() throws Exception {
+		codec.nopToNop2 = true;
+		
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
-		p.getPipeline().add("1", new BBBBD());
+		p.getPipeline().add("1", codec.BBBBD());
 		allocator = new TestAllocator(false,true);
 		optimizeDataCopying = true;
 		startWithCodec(true, p);
@@ -1006,7 +1010,7 @@ public class DatagramSessionCodecTest {
 		session.send(a, new Packet(PacketType.NOP).toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
-		assertEquals("DR|BUF|NOP()|", c.getRecordedData(true));
+		assertEquals("DR|BUF|NOP2()|", c.getRecordedData(true));
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
 		assertTrue(b == c.bufferRead);
@@ -1015,7 +1019,7 @@ public class DatagramSessionCodecTest {
 		s.stop(TIMEOUT);
 		
 		p = new DefaultCodecExecutor();
-		p.getPipeline().add("1", new BBBBD());
+		p.getPipeline().add("1", codec.BBBBD());
 		allocator = new TestAllocator(false,true);
 		optimizeDataCopying = true;
 		startWithCodec(false, p);
@@ -1026,7 +1030,7 @@ public class DatagramSessionCodecTest {
 		session.write(new Packet(PacketType.NOP).toBytes());
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
-		assertEquals("DR|BUF|$NOP()|", s.getRecordedData(true));
+		assertEquals("DR|BUF|$NOP2()|", s.getRecordedData(true));
 		assertEquals(2, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
 		assertTrue(b == s.bufferRead);
@@ -1065,7 +1069,7 @@ public class DatagramSessionCodecTest {
 		s.stop(TIMEOUT);
 		
 		p = new DefaultCodecExecutor();
-		p.getPipeline().add("1", new BBBBD());
+		p.getPipeline().add("1", codec.BBBBD());
 		allocator = new TestAllocator(false,false);
 		optimizeDataCopying = true;
 		startWithCodec(true, p);
@@ -1080,7 +1084,7 @@ public class DatagramSessionCodecTest {
 		s.stop(TIMEOUT);
 		
 		p = new DefaultCodecExecutor();
-		p.getPipeline().add("1", new BBBBD());
+		p.getPipeline().add("1", codec.BBBBD());
 		allocator = new TestAllocator(false,true);
 		optimizeDataCopying = false;
 		startWithCodec(true, p);
@@ -1091,24 +1095,6 @@ public class DatagramSessionCodecTest {
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DR|$NOP()|", s.getRecordedData(true));
 		assertTrue(b == getInBuffer(s.getSession()));
-	}
-	
-	class BBBBE implements IEncoder<ByteBuffer,ByteBuffer> {
-		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
-		@Override public Class<ByteBuffer> getOutboundType() {return ByteBuffer.class;}
-		@Override
-		public void encode(ISession session, ByteBuffer data, List<ByteBuffer> out) throws Exception {
-			out.add(data);
-		}
-	}
-
-	class BBBBD implements IDecoder<ByteBuffer,ByteBuffer> {
-		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
-		@Override public Class<ByteBuffer> getOutboundType() {return ByteBuffer.class;}
-		@Override
-		public void decode(ISession session, ByteBuffer data, List<ByteBuffer> out) throws Exception {
-			out.add(data);
-		}
 	}
 	
 	class DupD implements IDecoder<ByteBuffer,ByteBuffer> {

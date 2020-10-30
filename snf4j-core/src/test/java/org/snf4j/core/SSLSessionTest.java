@@ -52,6 +52,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.LoggerRecorder;
@@ -107,42 +108,42 @@ public class SSLSessionTest {
 		Thread.sleep(millis);
 	}
 	
-	ByteBuffer getBuffer(EngineStreamHandler handler, String name) throws Exception {
+	static ByteBuffer getBuffer(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer) field.get(handler);
 	}
 
-	ByteBuffer[] getBuffers(EngineStreamHandler handler, String name) throws Exception {
+	static ByteBuffer[] getBuffers(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		return (ByteBuffer[]) field.get(handler);
 	}
 
-	void setBuffer(EngineStreamHandler handler, String name, ByteBuffer buf) throws Exception {
+	static void setBuffer(EngineStreamHandler handler, String name, ByteBuffer buf) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
 		field.setAccessible(true);
 		field.set(handler,buf);
 	}
 
-	ByteBuffer getBuffer(SSLSession session, String name) throws Exception {
+	static ByteBuffer getBuffer(SSLSession session, String name) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
 		return getBuffer((EngineStreamHandler) field.get(session), name);
 	}
 
-	ByteBuffer[] getBuffers(SSLSession session, String name) throws Exception {
+	static ByteBuffer[] getBuffers(SSLSession session, String name) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
 		return getBuffers((EngineStreamHandler) field.get(session), name);
 	}
 	
-	ByteBuffer[] getAllBuffers(SSLSession session) throws Exception {
+	static ByteBuffer[] getAllBuffers(SSLSession session) throws Exception {
 		Field f = StreamSession.class.getDeclaredField("outBuffers");
 		
 		f.setAccessible(true);
@@ -167,7 +168,7 @@ public class SSLSessionTest {
 	}
 	
 
-	void setBuffer(EngineStreamSession session, String name, ByteBuffer buf) throws Exception {
+	static void setBuffer(EngineStreamSession session, String name, ByteBuffer buf) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
 		field.setAccessible(true);
@@ -1805,11 +1806,11 @@ public class SSLSessionTest {
 		testCloseInSessionClosedOrEndingEvent(StoppingType.DIRTY, EventType.SESSION_ENDING);
 	}
 	
-	ByteBuffer[] diff(ByteBuffer[] b1, List<ByteBuffer> b2) {
+	static ByteBuffer[] diff(ByteBuffer[] b1, List<ByteBuffer> b2) {
 		return diff(b1, b2.toArray(new ByteBuffer[b2.size()]));
 	}
 	
-	ByteBuffer[] diff(ByteBuffer[] b1, ByteBuffer[] b2) {
+	static ByteBuffer[] diff(ByteBuffer[] b1, ByteBuffer[] b2) {
 		List<ByteBuffer> l = new ArrayList<ByteBuffer>();
 		
 		b1 = b1.clone();
@@ -1844,12 +1845,14 @@ public class SSLSessionTest {
 		return l.toArray(new ByteBuffer[l.size()]);
 	}
 	
-	@Test
-	public void testOptimizedDataCopyingRead() throws Exception {
+	private void testOptimizedDataCopyingRead(DefaultCodecExecutor p) throws Exception {
+		boolean codec = p != null;
+
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
 		s.allocator = new TestAllocator(false, true);
 		s.optimizeDataCopying = true;
+		s.codecPipeline = p;
 		s.start();
 		c.start();
 		s.waitForSessionReady(TIMEOUT);
@@ -1868,7 +1871,7 @@ public class SSLSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
-		assertEquals("DR|BUF|NOP()|", s.getRecordedData(true));
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|BUF|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals(acount+2, s.allocator.getAllocatedCount());
 		ByteBuffer[] bs2 = getAllBuffers(session);
@@ -1896,6 +1899,7 @@ public class SSLSessionTest {
 		c = new Client(PORT, true);
 		s.allocator = new TestAllocator(false, false);
 		s.optimizeDataCopying = true;
+		s.codecPipeline = p;
 		s.start();
 		c.start();
 		s.waitForSessionReady(TIMEOUT);
@@ -1914,7 +1918,7 @@ public class SSLSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
-		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertArrayEquals(bs, getAllBuffers(session));
 		assertEquals(acount, s.allocator.getAllocatedCount());
@@ -1926,6 +1930,7 @@ public class SSLSessionTest {
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
 		s.allocator = new TestAllocator(false, true);
+		s.codecPipeline = p;
 		s.start();
 		c.start();
 		s.waitForSessionReady(TIMEOUT);
@@ -1944,7 +1949,7 @@ public class SSLSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
-		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertArrayEquals(bs, getAllBuffers(session));
 		assertEquals(acount, s.allocator.getAllocatedCount());
@@ -1952,14 +1957,27 @@ public class SSLSessionTest {
 		assertEquals(0, diff(bs, s.allocator.get()).length);
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+		
 	}
 	
 	@Test
-	public void testOptimizedDataCopyingWrite() throws Exception {
+	public void testOptimizedDataCopyingRead() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		TestCodec codec = new TestCodec();
+		codec.nopToNop2 = true;
+		p.getPipeline().add("1", codec.BBBBD());
+		testOptimizedDataCopyingRead(p);
+		testOptimizedDataCopyingRead(null);
+	}
+
+	public void testOptimizedDataCopyingWrite(DefaultCodecExecutor p) throws Exception {
+		boolean codec = p != null;
+		
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
 		c.allocator = new TestAllocator(false, true);
 		c.optimizeDataCopying = true;
+		c.codecPipeline = p;
 		s.start();
 		c.start();
 		s.waitForSessionReady(TIMEOUT);
@@ -1984,7 +2002,7 @@ public class SSLSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
-		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		assertEquals(codec ? "DR|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertTrue(b == bs[0]);
 		assertEquals(rcount+2, c.allocator.getReleasedCount());
@@ -2004,17 +2022,25 @@ public class SSLSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
-		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		assertEquals(codec ? "DR|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
-		assertEquals(rcount+2, c.allocator.getReleasedCount());
 		bs = getBuffers(session, "outAppBuffers");
-		assertTrue(bs[0] == b2);
-		assertTrue(b == c.allocator.getReleased().get(rcount));
+		if (codec) {
+			assertEquals(rcount+2, c.allocator.getReleasedCount());
+			assertFalse(b == c.allocator.getReleased().get(rcount));
+			assertFalse(b == c.allocator.getReleased().get(rcount+1));
+		}
+		else {
+			assertEquals(rcount+1, c.allocator.getReleasedCount());
+			assertTrue(bs[0] == b2);
+			assertFalse(b == c.allocator.getReleased().get(rcount));
+		}
 		c.stop(TIMEOUT);
 
 		c = new Client(PORT, true);
 		c.allocator = new TestAllocator(false, false);
 		c.optimizeDataCopying = true;
+		c.codecPipeline = p;
 		c.start();
 		s.waitForSessionReady(TIMEOUT);
 		c.waitForSessionReady(TIMEOUT);
@@ -2039,7 +2065,7 @@ public class SSLSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
-		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		assertEquals(codec ? "DR|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals(0, c.allocator.getReleasedCount());
 		assertEquals(acount+1, c.allocator.getAllocatedCount());		
@@ -2048,6 +2074,7 @@ public class SSLSessionTest {
 		
 		c = new Client(PORT, true);
 		c.allocator = new TestAllocator(false, true);
+		c.codecPipeline = p;
 		c.start();
 		s.waitForSessionReady(TIMEOUT);
 		c.waitForSessionReady(TIMEOUT);
@@ -2072,11 +2099,22 @@ public class SSLSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
-		assertEquals("DR|NOP()|", s.getRecordedData(true));
+		assertEquals(codec ? "DR|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals(1, c.allocator.getReleasedCount());
 		assertEquals(acount+1, c.allocator.getAllocatedCount());		
 		assertEquals(0, diff(bs, getBuffers(session, "outAppBuffers")).length);
-		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingWrite() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		TestCodec codec = new TestCodec();
+		codec.nopToNop2 = true;
+		p.getPipeline().add("1", codec.BBBBE());
+		testOptimizedDataCopyingWrite(p);
+		testOptimizedDataCopyingWrite(null);
 	}
 }
