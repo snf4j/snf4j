@@ -27,7 +27,7 @@ package org.snf4j.core.allocator;
 
 import java.nio.ByteBuffer;
 
-public class LastCache extends Cache {
+class LastCache extends Cache {
 
 	private volatile int capacity;
 	
@@ -47,11 +47,11 @@ public class LastCache extends Cache {
 	}
 	
 	@Override
-	synchronized void put(ByteBuffer b, long touch) {
+	synchronized boolean put(ByteBuffer b, long touch) {
 		int bc = b.capacity();
 
 		if (capacity > bc) {
-			return;
+			return false;
 		}
 		else if (capacity < bc) {
 			capacity = bc;
@@ -62,7 +62,9 @@ public class LastCache extends Cache {
 		}
 		if (prePut(touch)) {
 			cache[size++] = b;
+			return true;
 		}
+		return false;
 	}
 	
 	@Override

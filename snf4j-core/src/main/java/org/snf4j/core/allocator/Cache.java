@@ -99,13 +99,15 @@ class Cache {
 		}
 	}
 	
-	synchronized void put(ByteBuffer b, long touch) {
+	synchronized boolean put(ByteBuffer b, long touch) {
 		if (capacity != b.capacity()) {
-			return;
+			return false;
 		}
 		if (prePut(touch)) {			
 			cache[size++] = b;
+			return true;
 		}
+		return false;
 	}
 	
 	synchronized ByteBuffer get(int capacity) {

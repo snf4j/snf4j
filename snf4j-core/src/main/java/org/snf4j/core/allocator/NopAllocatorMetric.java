@@ -23,32 +23,45 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.dtls;
+package org.snf4j.core.allocator;
 
-import org.snf4j.core.allocator.CachingAllocator;
-import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.factory.DefaultSessionStructureFactory;
-import org.snf4j.core.timer.DefaultTimer;
-import org.snf4j.core.timer.ITimer;
+class NopAllocatorMetric implements IDefaultAllocatorMetricCollector {
 
-public class SessionStructureFactory extends DefaultSessionStructureFactory {
+	final static NopAllocatorMetric DEFAULT = new NopAllocatorMetric();
 	
-	private static final ITimer TIMER = new DefaultTimer(true);
-	
-	private static final IByteBufferAllocator ALLOCATOR = new CachingAllocator(false);
-	
-	static final SessionStructureFactory INSTANCE = new SessionStructureFactory();
-	
-	private SessionStructureFactory() {
+	private NopAllocatorMetric() {
 	}
 	
 	@Override
-	public ITimer getTimer() {
-		return TIMER;
+	final public void allocating(int capacity) {
 	}
 
 	@Override
-	public IByteBufferAllocator getAllocator() {
-		return ALLOCATOR;
-	}	
+	final public void allocated(int capacity) {
+	}
+
+	@Override
+	final public void releasing(int capacity) {
+	}
+	
+	@Override
+	final public void released(int capacity) {
+	}
+	
+	@Override
+	final public void ensureSome() {
+	}
+
+	@Override
+	final public void ensure() {
+	}
+
+	@Override
+	final public void reduce() {
+	}
+
+	@Override
+	final public void extend() {
+	}
+
 }

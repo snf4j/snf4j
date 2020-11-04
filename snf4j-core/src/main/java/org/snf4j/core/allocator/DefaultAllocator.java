@@ -47,6 +47,8 @@ public class DefaultAllocator implements IByteBufferAllocator {
 	 */
 	protected final boolean direct;
 	
+	final IDefaultAllocatorMetricCollector metric;
+	
 	/**
 	 * Constructs a default allocator.
 	 * 
@@ -57,6 +59,21 @@ public class DefaultAllocator implements IByteBufferAllocator {
 	 */
 	public DefaultAllocator(boolean direct) {
 		this.direct = direct;
+		metric = NopAllocatorMetric.DEFAULT; 
+	}
+	
+	/**
+	 * Constructs a default allocator with specified metric data collector.
+	 * 
+	 * @param direct
+	 *            <code>true</code> if the allocator should allocate direct
+	 *            buffers, or <code>false</code> to allocate non-direct buffers
+	 *            that have a backing array
+	 * @param metric a metric data collector
+	 */
+	public DefaultAllocator(boolean direct, IDefaultAllocatorMetricCollector metric) {
+		this.direct = direct;
+		this.metric = metric == null ? NopAllocatorMetric.DEFAULT : metric; 
 	}
 	
 	@Override
@@ -87,6 +104,8 @@ public class DefaultAllocator implements IByteBufferAllocator {
 	 * @return the new buffer
 	 */
 	protected ByteBuffer allocate(int capacity, boolean direct) {
+		metric.allocating(capacity);
+		metric.allocated(capacity);
 		if (direct) {
 			return ByteBuffer.allocateDirect(capacity);
 		}
@@ -161,6 +180,7 @@ public class DefaultAllocator implements IByteBufferAllocator {
 		
 		if (!buffer.hasRemaining()) {
 			if (bufferCapacity < maxCapacity) {
+				metric.ensureSome();
 				return allocate(Math.min(bufferCapacity << 1, maxCapacity), buffer);
 			}
 			else {
@@ -178,6 +198,7 @@ public class DefaultAllocator implements IByteBufferAllocator {
 				}
 				newCapacity = Math.max(minCapacity, newCapacity);
 				if (newCapacity < bufferCapacity) {
+					metric.ensureSome();
 					return allocate(newCapacity, buffer);
 				}
 			}
@@ -236,6 +257,7 @@ public class DefaultAllocator implements IByteBufferAllocator {
 			}
 			newCapacity = tmpCapacity <= maxCapacity ? tmpCapacity : maxCapacity;
 		}
+		metric.ensure();
 		return allocate(newCapacity, buffer);
 	}	
 	
@@ -259,9 +281,11 @@ public class DefaultAllocator implements IByteBufferAllocator {
 	public ByteBuffer reduce(ByteBuffer buffer, int minCapacity) {
 		if (buffer.capacity() > minCapacity) {
 			if (buffer.position() == 0) {
+				metric.reduce();
 				return allocateEmpty(minCapacity, buffer);
 			}
 			else if (buffer.position() <= minCapacity) {
+				metric.reduce();
 				return allocate(minCapacity, buffer);
 			}
 		}
@@ -284,12 +308,11 @@ public class DefaultAllocator implements IByteBufferAllocator {
 		if (buffer.capacity() < maxCapacity) {
 			int newCapacity = Math.min(buffer.capacity() << 1, maxCapacity);
 			
+			metric.extend();
 			if (buffer.position() == 0) {
 				return allocateEmpty(newCapacity, buffer);
 			}
-			else {
-				return allocate(newCapacity, buffer);
-			}
+			return allocate(newCapacity, buffer);
 		}
 		return buffer;
 	}

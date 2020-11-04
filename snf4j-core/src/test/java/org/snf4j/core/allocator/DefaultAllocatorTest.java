@@ -42,6 +42,27 @@ public class DefaultAllocatorTest {
 	private IByteBufferAllocator direct = new DefaultAllocator(true);
 
 	@Test
+	public void testConstructor() {
+		DefaultAllocator a = new DefaultAllocator(false);
+		assertFalse(a.allocate(10).isDirect());
+		assertTrue(a.metric == NopAllocatorMetric.DEFAULT);
+		a = new DefaultAllocator(true);
+		assertTrue(a.allocate(10).isDirect());
+		assertTrue(a.metric == NopAllocatorMetric.DEFAULT);
+		
+		DefaultAllocatorMetric m = new DefaultAllocatorMetric();
+		a = new DefaultAllocator(false, m);
+		assertFalse(a.allocate(10).isDirect());
+		assertTrue(a.metric == m);
+		a = new DefaultAllocator(true, m);
+		assertTrue(a.allocate(10).isDirect());
+		assertTrue(a.metric == m);
+		a = new DefaultAllocator(false, null);
+		assertFalse(a.allocate(10).isDirect());
+		assertTrue(a.metric == NopAllocatorMetric.DEFAULT);	
+	}
+	
+	@Test
 	public void testIsReleasable() {
 		assertFalse(heap.isReleasable());
 		assertFalse(direct.isReleasable());
@@ -409,6 +430,54 @@ public class DefaultAllocatorTest {
 		assertEquals(16, b2.capacity());
 		((ByteBuffer)b2.flip()).get(out);
 		assertEquals(Arrays.toString(ByteUtils.getBytes("1=1,2=2")), Arrays.toString(out));
+	}
+	
+	@Test
+	public void testMetric() {
+		DefaultAllocatorMetric m = new DefaultAllocatorMetric();
+		DefaultAllocator a = new DefaultAllocator(false, m);
+		
+		DefaultAllocatorMetricTest.assertMetric(m, "00000000", 0);
+		ByteBuffer b = a.allocate(100);
+		DefaultAllocatorMetricTest.assertMetric(m, "11000000", 100);
+		a.release(b);
+		DefaultAllocatorMetricTest.assertMetric(m, "11000000", 100);
+		a.allocate(99);
+		DefaultAllocatorMetricTest.assertMetric(m, "22000000", 100);
+		a.allocate(101);
+		DefaultAllocatorMetricTest.assertMetric(m, "33000000", 101);
+		a.ensureSome(b, 100, 200);
+		DefaultAllocatorMetricTest.assertMetric(m, "33000000", 101);
+		b.position(100);
+		a.ensureSome(b, 100, 150);
+		DefaultAllocatorMetricTest.assertMetric(m, "44001000", 150);
+		b.clear();
+		a.ensureSome(b, 80, 150);
+		DefaultAllocatorMetricTest.assertMetric(m, "55002000", 150);
+		b.clear();
+		a.ensure(b, 40, 100, 150);
+		DefaultAllocatorMetricTest.assertMetric(m, "55002000", 150);
+		a.ensure(b, 101, 100, 150);
+		DefaultAllocatorMetricTest.assertMetric(m, "66002100", 150);
+		b.clear();
+		a.reduce(b, 100);
+		DefaultAllocatorMetricTest.assertMetric(m, "66002100", 150);
+		a.reduce(b, 50);
+		DefaultAllocatorMetricTest.assertMetric(m, "77002110", 150);
+		b.position(10);
+		a.reduce(b, 50);
+		DefaultAllocatorMetricTest.assertMetric(m, "88002120", 150);
+		b.clear();
+		a.extend(b, 100);
+		DefaultAllocatorMetricTest.assertMetric(m, "88002120", 150);
+		a.extend(b, 150);
+		DefaultAllocatorMetricTest.assertMetric(m, "99002121", 150);
+		m = new DefaultAllocatorMetric();
+		a = new DefaultAllocator(false, m);
+		b.clear();
+		b.position(1);
+		a.extend(b, 151);
+		DefaultAllocatorMetricTest.assertMetric(m, "11000001", 151);
 	}
 	
 }

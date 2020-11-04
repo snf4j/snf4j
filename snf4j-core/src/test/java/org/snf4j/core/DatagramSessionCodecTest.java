@@ -44,7 +44,6 @@ import org.snf4j.core.TestCodec.BBDEv;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.codec.IDecoder;
-import org.snf4j.core.codec.IEncoder;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IllegalSessionStateException;

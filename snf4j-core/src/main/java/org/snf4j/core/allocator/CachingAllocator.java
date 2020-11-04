@@ -101,6 +101,21 @@ public class CachingAllocator extends DefaultAllocator {
 	}
 	
 	/**
+	 * Constructs a caching allocator with default minimal capacity (64) and specified
+	 * metric data collector.
+	 * 
+	 * @param direct
+	 *            <code>true</code> if the allocator should allocate direct
+	 *            buffers, or <code>false</code> to allocate non-direct buffers
+	 *            that have a backing array
+	 * @param metric 
+	 *            a metric data collector
+	 */
+	public CachingAllocator(boolean direct, IDefaultAllocatorMetricCollector metric) {
+		this(direct, 64, metric);
+	}
+	
+	/**
 	 * Constructs a caching allocator with default minimal capacity (64).
 	 * 
 	 * @param direct
@@ -113,7 +128,7 @@ public class CachingAllocator extends DefaultAllocator {
 	}
 	
 	/**
-	 * Constructs a caching allocator.
+	 * Constructs a caching allocator with specified metric data collector.
 	 * 
 	 * @param direct
 	 *            <code>true</code> if the allocator should allocate direct
@@ -121,9 +136,10 @@ public class CachingAllocator extends DefaultAllocator {
 	 *            that have a backing array
 	 * @param minCapacity the minimal capacity for buffers allocated by this 
 	 *                    allocator
+	 * @param metric a metric data collector
 	 */
-	public CachingAllocator(boolean direct, int minCapacity) {
-		super(direct);
+	public CachingAllocator(boolean direct, int minCapacity, IDefaultAllocatorMetricCollector metric) {
+		super(direct, metric);
 		
 		int maxCacheSize = Integer.getInteger(Constants.ALLOCATOR_MAX_CACHE_SIZE_PROPERTY, 256);
 		int minCacheSize = Integer.getInteger(Constants.ALLOCATOR_MIN_CACHE_SIZE_PROPERTY, 0);
@@ -148,6 +164,20 @@ public class CachingAllocator extends DefaultAllocator {
 			caches[i] = new Cache(minCapacity << i, minCacheSize, maxCacheSize, cacheAgeThreshold);
 		}
 		caches[i] = new LastCache(minCapacity << i, minCacheSize, maxCacheSize, cacheAgeThreshold);
+	}
+
+	/**
+	 * Constructs a caching allocator.
+	 * 
+	 * @param direct
+	 *            <code>true</code> if the allocator should allocate direct
+	 *            buffers, or <code>false</code> to allocate non-direct buffers
+	 *            that have a backing array
+	 * @param minCapacity the minimal capacity for buffers allocated by this 
+	 *                    allocator
+	 */
+	public CachingAllocator(boolean direct, int minCapacity) {
+		this(direct, minCapacity, null);
 	}
 	
 	final int cacheIdx(int capacity) {
@@ -200,8 +230,13 @@ public class CachingAllocator extends DefaultAllocator {
 	
 	@Override
 	public void release(ByteBuffer buffer) {
+		int capacity = buffer.capacity();
+		
+		metric.releasing(capacity);
 		if (buffer.isDirect() == direct) {
-			cache(buffer.capacity()).put(buffer, touch());
+			if (cache(capacity).put(buffer, touch())) {
+				metric.released(capacity);
+			}
 		}
 	}	
 	
@@ -213,6 +248,7 @@ public class CachingAllocator extends DefaultAllocator {
 			
 			touch();
 			if (buffer != null) {
+				metric.allocating(capacity);
 				return buffer;
 			}
 			return super.allocate(Math.max(cache.capacity(), capacity), direct);

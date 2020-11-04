@@ -106,6 +106,29 @@ public class CachingAllocatorTest {
 		a = new CachingAllocator(true,8);
 		assertEquals(8, a.allocate(1).capacity());
 		assertCaches(10, 50, 1000, a);
+		
+		DefaultAllocatorMetric m = new DefaultAllocatorMetric();
+		a = new CachingAllocator(false, m);
+		assertFalse(a.allocate(10).isDirect());
+		assertTrue(a.metric == m);
+		a = new CachingAllocator(true, m);
+		assertTrue(a.allocate(10).isDirect());
+		assertTrue(a.metric == m);
+		a = new CachingAllocator(false, null);
+		assertFalse(a.allocate(10).isDirect());
+		assertTrue(a.metric == NopAllocatorMetric.DEFAULT);	
+
+		m = new DefaultAllocatorMetric();
+		a = new CachingAllocator(false, 4, m);
+		assertFalse(a.allocate(10).isDirect());
+		assertTrue(a.metric == m);
+		a = new CachingAllocator(true, 4, m);
+		assertTrue(a.allocate(10).isDirect());
+		assertTrue(a.metric == m);
+		a = new CachingAllocator(false, 4, null);
+		assertFalse(a.allocate(10).isDirect());
+		assertTrue(a.metric == NopAllocatorMetric.DEFAULT);	
+		
 	}
 	
 	@Test
@@ -507,4 +530,55 @@ public class CachingAllocatorTest {
 		assertTrue(b1 == a.allocate(8));
 		
 	}
+	
+	@Test
+	public void testMetric() {
+		DefaultAllocatorMetric m = new DefaultAllocatorMetric();
+		CachingAllocator a = new CachingAllocator(false, 2, m);	
+		
+		DefaultAllocatorMetricTest.assertMetric(m, "00000000", 0);	
+		a.allocate(15);
+		DefaultAllocatorMetricTest.assertMetric(m, "11000000", 16);	
+		a.allocate(16);
+		DefaultAllocatorMetricTest.assertMetric(m, "22000000", 16);	
+		ByteBuffer b = a.allocate(17);
+		DefaultAllocatorMetricTest.assertMetric(m, "33000000", 32);	
+		a.release(ByteBuffer.allocateDirect(32));
+		DefaultAllocatorMetricTest.assertMetric(m, "33100000", 32);	
+		a.release(ByteBuffer.allocate(31));
+		DefaultAllocatorMetricTest.assertMetric(m, "33200000", 32);	
+		a.release(b);
+		DefaultAllocatorMetricTest.assertMetric(m, "33310000", 32);	
+		ByteBuffer b2 = a.allocate(30);
+		assertTrue(b2 == b);
+		DefaultAllocatorMetricTest.assertMetric(m, "43310000", 32);	
+		for (int i=0; i<255; ++i) {
+			a.release(b);
+		}
+		DefaultAllocatorMetricTest.assertMetric(m, "4;3;258;256;0;0;0;0", 32);	
+		a.release(b);
+		DefaultAllocatorMetricTest.assertMetric(m, "4;3;259;257;0;0;0;0", 32);	
+		a.release(b);
+		DefaultAllocatorMetricTest.assertMetric(m, "4;3;260;257;0;0;0;0", 32);	
+		
+		b = a.allocate((2 << 7) + 10);
+		a.release(b);
+		DefaultAllocatorMetricTest.assertMetric(m, "5;4;261;258;0;0;0;0", 266);	
+		a.release(a.allocate(267));
+		DefaultAllocatorMetricTest.assertMetric(m, "6;5;262;259;0;0;0;0", 267);	
+		a.release(ByteBuffer.allocate(266));
+		DefaultAllocatorMetricTest.assertMetric(m, "6;5;263;259;0;0;0;0", 267);	
+		
+		m = new DefaultAllocatorMetric();
+		a = new CachingAllocator(false, 2, m);	
+		for (int i=0; i<255; ++i) {
+			a.release(b);
+		}
+		DefaultAllocatorMetricTest.assertMetric(m, "0;0;255;255;0;0;0;0", 0);	
+		a.release(b);
+		DefaultAllocatorMetricTest.assertMetric(m, "0;0;256;256;0;0;0;0", 0);	
+		a.release(b);
+		DefaultAllocatorMetricTest.assertMetric(m, "0;0;257;256;0;0;0;0", 0);	
+		
+	}	
 }
