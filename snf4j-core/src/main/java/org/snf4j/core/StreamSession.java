@@ -595,21 +595,37 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return outBuffers;
 	}
 
-	static void consumeBuffer(ByteBuffer inBuffer, IStreamReader handler) {
+	static ByteBuffer consumeBuffer(ByteBuffer inBuffer, IStreamReader handler, IByteBufferAllocator allocator) {
+		int available = handler.available(inBuffer, false);
+		if (available > 0) {
+			if (available == inBuffer.position()) {
+				inBuffer.flip();
+				handler.read(inBuffer);
+				return allocator.allocate(inBuffer.capacity());
+			}
+			consumeBuffer(inBuffer, handler, available);
+		}
+		return inBuffer;
+	}
+	
+	static void consumeBuffer(ByteBuffer inBuffer, IStreamReader handler, int available) {
 		boolean hasArray = inBuffer.hasArray();
-		int available;
 		byte[] array;
 		int arrayOff;
 		
 		if (hasArray) {
 			array = inBuffer.array();
 			arrayOff = inBuffer.arrayOffset();
-			available = handler.available(array, arrayOff, inBuffer.position());
+			if (available == -1) {
+				available = handler.available(array, arrayOff, inBuffer.position());
+			}
 		}
 		else {
 			array = null;
 			arrayOff = 0;
-			available = handler.available(inBuffer, false);
+			if (available == -1) {
+				available = handler.available(inBuffer, false);
+			}
 		}
 		
 		if (available > 0) {
@@ -652,12 +668,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	 */
 	void consumeInBuffer() {
 		if (optimizeBuffers) {
-			inBuffer.flip();
-			superCodec().read(inBuffer);
-			inBuffer = allocator.allocate(inBuffer.capacity());
+			inBuffer = consumeBuffer(inBuffer, superCodec(), allocator);
 		}
 		else {
-			consumeBuffer(inBuffer, superCodec());
+			consumeBuffer(inBuffer, superCodec(), -1);
 		}
 	}
 

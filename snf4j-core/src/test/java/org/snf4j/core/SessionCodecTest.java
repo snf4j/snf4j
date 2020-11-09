@@ -839,6 +839,7 @@ public class SessionCodecTest {
 		p.getPipeline().add("2", new ArrayToBufferDecoder());
 		optimizeDataCopying = true;
 		allocator = new TestAllocator(false,true);
+		directAllocator = true;
 		startWithCodec(p);
 		
 		s.getSession().write(new Packet(PacketType.NOP).toBytes());

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,24 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 					write0(Utils.randomNopPacket());
 				}
 			}
+		}
+	}
+
+	ByteBuffer buffered = ByteBuffer.allocate(20000);
+	
+	@Override
+	public void read(ByteBuffer data) {
+		buffered.put(data);
+		getSession().release(data);
+
+		int i = Packet.available(buffered, false);
+		if (i > 0) {
+			byte[] b = new byte[i];
+			
+			buffered.flip();
+			buffered.get(b);
+			buffered.compact();
+			read(new Packet(b));
 		}
 	}
 	

@@ -137,12 +137,10 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						
 						try {
 							if (session.optimizeBuffers) {
-								inAppBuffer.flip();
-								reader.read(inAppBuffer);
-								inAppBuffer = allocator.allocate(inAppBuffer.capacity());
+								inAppBuffer = StreamSession.consumeBuffer(inAppBuffer, reader, allocator);
 							}
 							else {
-								StreamSession.consumeBuffer(inAppBuffer, reader);
+								StreamSession.consumeBuffer(inAppBuffer, reader, -1);
 							}
 						}
 						catch (PipelineDecodeException e) {

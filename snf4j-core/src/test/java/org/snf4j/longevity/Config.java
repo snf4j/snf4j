@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -48,6 +48,10 @@ public interface Config {
 	static final int SPLIT_PACKET_RATIO = 50;
 	
 	static final int DIRECT_ALLOCATOR_RATIO = 0;
+	
+	static final int CACHING_ALLOCATOR_RATIO = 50;
+	
+	static final int OPTIMIZE_DATA_COPING_RATIO = 100;
 	
 	static final int SYNC_WITH_TIMEOUT_RATIO = 50;
 	

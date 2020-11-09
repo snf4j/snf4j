@@ -261,6 +261,11 @@ public class SSLSessionTest {
 		assertEquals("Test2", session.getName());
 		assertEquals("false", handler.engineArguments);
 		
+		handler =  new TestHandler("Test1");
+		assertEquals(0, handler.allocatorCount);
+		session = new SSLSession("Test2", (SocketAddress)null, handler, false);
+		assertEquals(1, handler.allocatorCount);
+		assertTrue(getInternal(session).allocator == session.allocator);
 	}
 	
 	@Test
@@ -1853,6 +1858,7 @@ public class SSLSessionTest {
 		s.allocator = new TestAllocator(false, true);
 		s.optimizeDataCopying = true;
 		s.codecPipeline = p;
+		s.ignoreAvailableException = true;
 		s.start();
 		c.start();
 		s.waitForSessionReady(TIMEOUT);
@@ -1881,6 +1887,31 @@ public class SSLSessionTest {
 		assertTrue(bs[4] == s.bufferRead);
 		s.allocator.release(s.bufferRead);
 		assertEquals(0, diff(bs2, s.allocator.get()).length);
+	
+		if (!codec) { 
+			byte[] bytes = new Packet(PacketType.NOP,"10").toBytes();
+			c.getSession().write(bytes, 0, 2);
+			c.waitForDataSent(TIMEOUT);
+			waitFor(50);
+			assertEquals(acount+3, s.allocator.getAllocatedCount());
+			c.getSession().write(bytes, 2, bytes.length-2);
+			s.waitForDataRead(TIMEOUT);
+			c.waitForDataSent(TIMEOUT);
+			assertEquals(acount+5, s.allocator.getAllocatedCount());
+			assertEquals("DS|DS|", c.getRecordedData(true));
+			assertEquals("DR|DR|BUF|NOP(10)|", s.getRecordedData(true));
+			
+			byte[] bytes2 = new byte[bytes.length*2];
+			System.arraycopy(bytes, 0, bytes2, 0, bytes.length);
+			System.arraycopy(bytes, 0, bytes2, bytes.length, bytes.length);
+			c.getSession().write(bytes2);
+			c.waitForDataSent(TIMEOUT);
+			s.waitForDataRead(TIMEOUT);
+			waitFor(50);
+			assertEquals(acount+6, s.allocator.getAllocatedCount());
+			assertEquals("DS|", c.getRecordedData(true));
+			assertEquals("DR|NOP(10)|NOP(10)|", s.getRecordedData(true));
+		}
 		
 		s.allocator.ensureException = true;
 		ByteBuffer bb = session.allocate(2);
@@ -1955,6 +1986,7 @@ public class SSLSessionTest {
 		assertEquals(acount, s.allocator.getAllocatedCount());
 		assertEquals(rcount, s.allocator.getReleasedCount());
 		assertEquals(0, diff(bs, s.allocator.get()).length);
+		
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		

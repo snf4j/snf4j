@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -194,7 +194,9 @@ public class Statistics {
 				"\tmax: " + printTime(longestSession.get()) +
 				"\tspeed: " +printBytes(avgTotalBytes.get()*1000 / (avgTotalTime.get()+1)) + "/s" + 
 				"(" + printBytes(avgSslBytes.get()*1000 / (avgSslTime.get()+1)) +"/s)" +
-				" " + printBytes(totalBytes.get()*1000 / (totalTime.get()+1)) +"/s"
+				" " + printBytes(totalBytes.get()*1000 / (totalTime.get()+1)) +"/s" +
+				"\talloc: " + printBytes(SessionStructureFactory.METRIC.getAllocatingCount()) + "/" +
+				printBytes(SessionStructureFactory.METRIC.getAllocatedCount())
 		);
 	}
 }

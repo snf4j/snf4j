@@ -86,6 +86,7 @@ public class Server {
 	public ISelectorLoopController controller;
 	public long throughputCalcInterval = 1000;
 	public boolean directAllocator;
+	public boolean ignoreAvailableException;
 	public TestAllocator allocator;
 	public ITimer timer;
 	public ConcurrentMap<Object, Object> attributes;
@@ -552,7 +553,7 @@ public class Server {
 		@Override
 		public int available(ByteBuffer buffer, boolean flipped) {
 			++availableCounter;
-			if (!directAllocator) throw new IllegalStateException();
+			if (!directAllocator && !ignoreAvailableException) throw new IllegalStateException();
 
 			ByteBuffer dupBuffer = buffer.duplicate();
 			
@@ -569,7 +570,7 @@ public class Server {
 		@Override
 		public int available(byte[] buffer, int off, int len) {
 			++availableCounter;
-			if (directAllocator) throw new IllegalStateException();
+			if (directAllocator && !ignoreAvailableException) throw new IllegalStateException();
 			return available0(buffer, off, len);
 		}
 

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -85,6 +85,11 @@ public class SessionConfig extends DefaultSessionConfig {
 			engine.setNeedClientAuth(true);
 		}
 		return engine;
+	}
+	
+	@Override
+	public boolean optimizeDataCopying() {
+		return Utils.randomBoolean(Config.OPTIMIZE_DATA_COPING_RATIO);
 	}
 	
 	@Override

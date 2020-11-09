@@ -184,6 +184,12 @@ public class SessionTest {
 		Map<Object,Object> a = s.getAttributes();
 		assertNotNull(a);
 		assertTrue(a == s.getAttributes());
+		
+		handler = new TestHandler("Test1");
+		assertEquals(0, handler.allocatorCount);
+		s = new StreamSession(handler);
+		assertEquals(1, handler.allocatorCount);
+		
 	}
 	
 	@Test
@@ -2625,6 +2631,7 @@ public class SessionTest {
 		c = new Client(PORT);
 		s.allocator = new TestAllocator(false, true);
 		s.optimizeDataCopying = true;
+		s.ignoreAvailableException = true;
 		
 		s.start();
 		c.start();
@@ -2645,9 +2652,61 @@ public class SessionTest {
 		c.getSession().write(new Packet(PacketType.NOP,"1").toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
 		assertFalse(b == session.getInBuffer());
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|BUF|NOP(1)|", s.getRecordedData(true));
+		
+		int acount = s.allocator.getAllocatedCount();
+		b = session.getInBuffer();
+		byte[] bytes = new Packet(PacketType.NOP,"10").toBytes();
+		c.getSession().write(bytes, 0, 2);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		assertEquals(acount, s.allocator.getAllocatedCount());
+		assertTrue(b == session.getInBuffer());
+		c.getSession().write(bytes, 2, bytes.length-2);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals(acount+1, s.allocator.getAllocatedCount());
+		assertFalse(b == session.getInBuffer());		
+		assertEquals("DS|DS|", c.getRecordedData(true));
+		assertEquals("DR|DR|BUF|NOP(10)|", s.getRecordedData(true));
+		
+		byte[] bytes2 = new byte[bytes.length*2];
+		b = session.getInBuffer();
+		System.arraycopy(bytes, 0, bytes2, 0, bytes.length);
+		System.arraycopy(bytes, 0, bytes2, bytes.length, bytes.length);
+		c.getSession().write(bytes2);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(acount+1, s.allocator.getAllocatedCount());
+		assertTrue(b == session.getInBuffer());
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(10)|NOP(10)|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new Server(PORT);
+		c = new Client(PORT);
+		s.allocator = new TestAllocator(true, true);
+		s.optimizeDataCopying = true;
+		s.ignoreAvailableException = true;
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		c.getSession().write(bytes2);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(10)|NOP(10)|", s.getRecordedData(true));
 
 	}
 	

@@ -36,6 +36,7 @@ import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.HandshakeLoopsThresholdException;
+import org.snf4j.core.handler.IAllocatingHandler;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
@@ -45,7 +46,7 @@ import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.ISessionConfig;
 
-abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandler> implements IHandler, Runnable {
+abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandler> implements IHandler, Runnable, IAllocatingHandler {
 	
 	private final static AtomicLong nextDelegatedTaskId = new AtomicLong(0); 
 	
@@ -357,6 +358,11 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 		if (stateChanged) {
 			session.loop.executenf(this);
 		}
+	}
+	
+	@Override
+	public IByteBufferAllocator getAllocator() {
+		return allocator;
 	}
 	
 	@Override
