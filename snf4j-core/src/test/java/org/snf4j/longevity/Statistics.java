@@ -29,7 +29,7 @@ import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.snf4j.core.SSLSession;
+import org.snf4j.core.session.IEngineSession;
 import org.snf4j.core.session.ISession;
 
 public class Statistics {
@@ -89,19 +89,19 @@ public class Statistics {
 		print();
 	}
 	
-	static void incPackets() {
+	public static void incPackets() {
 		totalPackets.incrementAndGet();
 	}
 	
-	static void incNopPackets() {
+	public static void incNopPackets() {
 		nopPackets.incrementAndGet();
 	}
 	
-	static void incExceptions() {
+	public static void incExceptions() {
 		totalExceptions.incrementAndGet();
 	}
 	
-	static void incIncidents() {
+	public static void incIncidents() {
 		totalIncidents.incrementAndGet();
 	}
 	
@@ -128,7 +128,7 @@ public class Statistics {
 				avgTotalTime.addAndGet(-r0.time);
 			}
 		}
-		if (s instanceof SSLSession) {
+		if (s instanceof IEngineSession) {
 			synchronized (avgSslTotals) {
 			avgSslBytes.addAndGet(r.bytes);
 			avgSslTime.addAndGet(r.time);

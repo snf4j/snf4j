@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,7 @@ public class Packet {
 	
 	boolean response;
 	
-	Packet(PacketType type, int length) {
+	public Packet(PacketType type, int length) {
 		this.type = type;
 		if (length < HEADER_SIZE) {
 			length = HEADER_SIZE - LEN_SIZE;
@@ -80,12 +80,12 @@ public class Packet {
 		b.putLong(crc.getValue());
 	}
 	
-	Packet(byte[] data) {
+	public Packet(byte[] data) {
 		this.data = data.clone();
 		ByteBuffer b = ByteBuffer.wrap(data);
 		int length = b.getInt();
 		if (length != b.remaining()) {
-			throw new IllegalArgumentException("Packet: length != b.remaining()");
+			throw new IllegalArgumentException("Packet: length != b.remaining() " + length + "!=" + b.remaining());
 		}
 		long c = b.getLong(data.length - CRC_SIZE);
 		CRC32 crc = new CRC32();
@@ -117,7 +117,7 @@ public class Packet {
 		b.putLong(data.length - CRC_SIZE, crc());
 	}
 	
-	static int available(byte[] buffer, int off, int len) {
+	public static int available(byte[] buffer, int off, int len) {
 		if (len < LEN_SIZE) {
 			return 0;
 		}
@@ -131,7 +131,7 @@ public class Packet {
 		return 0;
 	}
 	
-	static int available(ByteBuffer buffer, boolean flipped) {
+	public static int available(ByteBuffer buffer, boolean flipped) {
 		int len = flipped ? buffer.remaining() : buffer.position();
 
 		if (len < LEN_SIZE) {
@@ -151,21 +151,21 @@ public class Packet {
 		
 	}
 	
-	byte[] getBytes() {
+	public byte[] getBytes() {
 		return data;
 	}
 	
-	void setResponse(boolean response) {
+	public void setResponse(boolean response) {
 		this.response = response;
 		data[RESPOND_POS] = response ? (byte)1 : 0;
 		updateCrc();
 	}
 	
-	boolean isResponse() {
+	public boolean isResponse() {
 		return response;
 	}
 	
-	PacketType getType() {
+	public PacketType getType() {
 		return type;
 	}
 	

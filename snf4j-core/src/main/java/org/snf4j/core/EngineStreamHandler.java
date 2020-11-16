@@ -140,7 +140,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 								inAppBuffer = StreamSession.consumeBuffer(inAppBuffer, reader, allocator);
 							}
 							else {
-								StreamSession.consumeBuffer(inAppBuffer, reader, -1);
+								StreamSession.consumeBuffer(inAppBuffer, reader);
 							}
 						}
 						catch (PipelineDecodeException e) {

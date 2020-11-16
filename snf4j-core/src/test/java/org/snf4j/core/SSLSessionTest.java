@@ -1908,9 +1908,9 @@ public class SSLSessionTest {
 			c.waitForDataSent(TIMEOUT);
 			s.waitForDataRead(TIMEOUT);
 			waitFor(50);
-			assertEquals(acount+6, s.allocator.getAllocatedCount());
+			assertEquals(acount+8, s.allocator.getAllocatedCount());
 			assertEquals("DS|", c.getRecordedData(true));
-			assertEquals("DR|NOP(10)|NOP(10)|", s.getRecordedData(true));
+			assertEquals("DR|BUF|NOP(10)|BUF|NOP(10)|", s.getRecordedData(true));
 		}
 		
 		s.allocator.ensureException = true;

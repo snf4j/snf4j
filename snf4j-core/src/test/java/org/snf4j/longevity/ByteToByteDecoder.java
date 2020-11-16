@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ public class ByteToByteDecoder implements IBaseDecoder<byte[]> {
 
 	final int increment; 
 	
-	ByteToByteDecoder(int increment) {
+	public ByteToByteDecoder(int increment) {
 		this.increment = increment;
 	}
 	

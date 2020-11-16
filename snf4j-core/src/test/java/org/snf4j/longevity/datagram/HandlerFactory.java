@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,50 +23,18 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.longevity;
+package org.snf4j.longevity.datagram;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
+import java.net.SocketAddress;
 
-import org.snf4j.core.allocator.CachingAllocator;
-import org.snf4j.core.allocator.DefaultAllocator;
-import org.snf4j.core.allocator.DefaultAllocatorMetric;
-import org.snf4j.core.allocator.IByteBufferAllocator;
-import org.snf4j.core.factory.ISessionStructureFactory;
-import org.snf4j.core.timer.ITimeoutModel;
-import org.snf4j.core.timer.ITimer;
+import org.snf4j.core.factory.IDatagramHandlerFactory;
+import org.snf4j.core.handler.IDatagramHandler;
 
-public class SessionStructureFactory implements ISessionStructureFactory {
-
-	static final DefaultAllocatorMetric METRIC = new DefaultAllocatorMetric();
-	
-	public static final CachingAllocator CACHING_ALLOCATOR = new CachingAllocator(true, 64, METRIC);
-	
-	@Override
-	public IByteBufferAllocator getAllocator() {
-		if (Utils.randomBoolean(Config.CACHING_ALLOCATOR_RATIO)) {
-			return CACHING_ALLOCATOR;
-		}
-		return new DefaultAllocator(Utils.randomBoolean(Config.DIRECT_ALLOCATOR_RATIO));
-	}
+public class HandlerFactory implements IDatagramHandlerFactory {
 
 	@Override
-	public ConcurrentMap<Object, Object> getAttributes() {
-		return null;
+	public IDatagramHandler create(SocketAddress remoteAddress) {
+		return new ServerHandler();
 	}
 
-	@Override
-	public Executor getExecutor() {
-		return null;
-	}
-
-	@Override
-	public ITimer getTimer() {
-		return null;
-	}
-
-	@Override
-	public ITimeoutModel getTimeoutModel() {
-		return null;
-	}
 }

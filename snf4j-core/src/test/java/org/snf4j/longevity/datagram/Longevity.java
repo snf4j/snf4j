@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,52 +23,29 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.longevity;
+package org.snf4j.longevity.datagram;
 
-public interface Config {
-	
-	static final int FIRST_PORT = 7000;
-	
-	static final int MAX_SESSIONS = 101;
-	
-	static final int MAX_PACKETS_IN_SESSION = 1000;
-	
-	static final int MAX_PACKET_SIZE = 8000;
-	
-	static final int DATAGRAM_MAX_PACKET_SIZE = 512;
-	
-	static final int MAX_WRITE_DELAY = 200;
-	
-	static final int DATAGRAM_MAX_WRITE_DELAY = 50;
-	
-	static final int DELAYED_WRITE_RATIO = 20;
-	
-	static final int SSL_SESSION_RATIO = 20;
-	
-	static final int MULTI_PACKET_RATIO = 20;
-	
-	static final int MAX_MULTI_PACKET = 20;
-	
-	static final int SPLIT_PACKET_RATIO = 50;
-	
-	static final int DIRECT_ALLOCATOR_RATIO = 0;
-	
-	static final int CACHING_ALLOCATOR_RATIO = 50;
-	
-	static final boolean DATAGRAM_CACHING_ALLOCATOR = true;
-	
-	static final int OPTIMIZE_DATA_COPING_RATIO = 50;
-	
-	static final boolean DATAGRAM_OPTIMIZE_DATA_COPING = true;	
-	
-	static final int SYNC_WITH_TIMEOUT_RATIO = 50;
-	
-	static final int CODEC_EXECUTOR_RATIO = 0*50;
+import java.util.concurrent.ExecutionException;
 
-	static final int DEFAULT_EXECUTOR_RATIO = 50;
-	
-	static final int NO_CONNECTION_RATIO = 0;
-	
-	static final String HOST = "127.0.0.1";
+import org.snf4j.core.future.IFuture;
+import org.snf4j.longevity.ClientHandler;
+import org.snf4j.longevity.Utils;
 
+public class Longevity {
+	public static void main(String[] args) throws Exception {
+		Utils.createDatagramListener(false).sync();
+		Utils.createDatagramListener(true).sync();
+		IFuture<Void> f = null;
+		
+		try {
+			f = Utils.createDatagramSession(true).getCloseFuture();
+			f.sync();
+		}
+		catch (ExecutionException e) {
+			if (f.getSession().isOpen() || !f.getSession().getAttributes().containsKey(ClientHandler.NO_CONNECTION_KEY)) {
+				throw e;
+			}
+		}
+		
+	}
 }

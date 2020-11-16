@@ -598,34 +598,48 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	static ByteBuffer consumeBuffer(ByteBuffer inBuffer, IStreamReader handler, IByteBufferAllocator allocator) {
 		int available = handler.available(inBuffer, false);
 		if (available > 0) {
-			if (available == inBuffer.position()) {
-				inBuffer.flip();
+			inBuffer.flip();
+			if (available == inBuffer.remaining()) {
 				handler.read(inBuffer);
 				return allocator.allocate(inBuffer.capacity());
 			}
-			consumeBuffer(inBuffer, handler, available);
+			
+			ByteBuffer dup = inBuffer.duplicate();
+			ByteBuffer data;
+		
+			do {
+				data = allocator.allocate(available);
+				dup.limit(dup.position() + available);
+				data.put(dup);
+				data.flip();
+				inBuffer.position(dup.position());
+				handler.read(data);
+				available = handler.available(inBuffer, true);
+				if (available == inBuffer.remaining()) {
+					handler.read(inBuffer);
+					return allocator.allocate(inBuffer.capacity());
+				}
+			} while (available > 0);
+			inBuffer.compact();
 		}
 		return inBuffer;
 	}
 	
-	static void consumeBuffer(ByteBuffer inBuffer, IStreamReader handler, int available) {
+	static void consumeBuffer(ByteBuffer inBuffer, IStreamReader handler) {
 		boolean hasArray = inBuffer.hasArray();
 		byte[] array;
 		int arrayOff;
+		int available;
 		
 		if (hasArray) {
 			array = inBuffer.array();
 			arrayOff = inBuffer.arrayOffset();
-			if (available == -1) {
-				available = handler.available(array, arrayOff, inBuffer.position());
-			}
+			available = handler.available(array, arrayOff, inBuffer.position());
 		}
 		else {
 			array = null;
 			arrayOff = 0;
-			if (available == -1) {
-				available = handler.available(inBuffer, false);
-			}
+			available = handler.available(inBuffer, false);
 		}
 		
 		if (available > 0) {
@@ -671,7 +685,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			inBuffer = consumeBuffer(inBuffer, superCodec(), allocator);
 		}
 		else {
-			consumeBuffer(inBuffer, superCodec(), -1);
+			consumeBuffer(inBuffer, superCodec());
 		}
 	}
 
