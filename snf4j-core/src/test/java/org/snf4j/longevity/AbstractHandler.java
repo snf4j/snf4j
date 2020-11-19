@@ -198,11 +198,27 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 					byte[] b = p.getBytes();
 					int size = b.length / count;
 					int off = 0;
+					ByteBuffer bb;
+					
 					for (int i=0; i<count-1; ++i) {
-						sync(getSession().write(b, off, size));
+						if (Utils.SPLIT_PACKET_WITH_BUFFER_ALLOCATION) {
+							bb = getSession().allocate(size);
+							bb.put(b, off, size).flip();
+							sync(getSession().write(bb));
+						}
+						else {
+							sync(getSession().write(b, off, size));
+						}
 						off += size;
 					}
-					sync(getSession().write(b, off, b.length-off));
+					if (Utils.SPLIT_PACKET_WITH_BUFFER_ALLOCATION) {
+						bb = getSession().allocate(b.length-off);
+						bb.put(b, off, b.length-off).flip();
+						sync(getSession().write(bb));
+					}
+					else {
+						sync(getSession().write(b, off, b.length-off));
+					}
 				}
 				else {
 					ByteBuffer buffer = allocateBufferIfNeeded(p, true);

@@ -49,7 +49,9 @@ public interface Config {
 	
 	static final int MAX_MULTI_PACKET = 20;
 	
-	static final int SPLIT_PACKET_RATIO = 0;
+	static final int SPLIT_PACKET_RATIO = 50;
+	
+	static final boolean SPLIT_PACKET_WITH_BUFFER_ALLOCATION = true;
 	
 	static final int DIRECT_ALLOCATOR_RATIO = 0;
 	
