@@ -830,6 +830,19 @@ public class SessionCodecTest {
 		assertEquals(1, allocator.getReleasedCount());
 		b.compact();
 		
+		//split packet
+		codec.nopToNop2 = false;
+		session.getCodecPipeline().add("1", codec.BBBBE());
+		byte[] bytes = new Packet(PacketType.NOP , "1234567890").toBytes();
+		session.write(bytes, 0, 5).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|", s.getRecordedData(true));
+		session.write(bytes, 5, bytes.length-5).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));
+		
 	}
 	
 	@Test

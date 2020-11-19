@@ -165,17 +165,31 @@ public class EncodeTaskTest {
 		assertTrue(task.session == session);
 		bytes[1] = 'X';
 		assertEquals("ABC", new String(task.bytes));
+		task = new EncodeTask(session, bytes, 0, 5);
+		assertNotNull(task.bytes);
+		assertNull(task.buffer);
+		assertTrue(task.bytes != bytes);
 		setOptimizeCopying(session, true);
 		task = new EncodeTask(session, bytes, 1, 3);
-		assertNull(task.bytes);
-		assertNotNull(task.buffer);
+		assertNotNull(task.bytes);
+		assertNull(task.buffer);
 		assertNull(task.msg);
-		assertTrue(task.buffer.array() == bytes);
+		assertTrue(task.bytes != bytes);
 		assertTrue(task.session == session);
-		assertEquals("XBC", getString(task.buffer));
+		assertEquals("XBC", new String(task.bytes));
 		bytes[1] = 'Y';
-		assertEquals("YBC", getString(task.buffer));
+		assertEquals("XBC", new String(task.bytes));
 		assertEquals(prefix + " length=3]", task.toString());
+		task = new EncodeTask(session, bytes, 0, 4);
+		assertNotNull(task.bytes);
+		assertEquals("1YBC", new String(task.bytes));
+		task = new EncodeTask(session, bytes, 1, 4);
+		assertNotNull(task.bytes);
+		assertEquals("YBC2", new String(task.bytes));
+		task = new EncodeTask(session, bytes, 0, 5);
+		assertNotNull(task.bytes);
+		assertEquals("1YBC2", new String(task.bytes));
+		assertTrue(task.bytes == bytes);
 		
 		//constructor 3
 		setOptimizeCopying(session, false);

@@ -2067,6 +2067,17 @@ public class SSLSessionTest {
 			assertTrue(bs[0] == b2);
 			assertFalse(b == c.allocator.getReleased().get(rcount));
 		}
+		
+		byte[] bytes = new Packet(PacketType.NOP , "1234567890").toBytes();
+		session.write(bytes, 0, 5).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|", s.getRecordedData(true));
+		session.write(bytes, 5, bytes.length-5).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(1234567890)|" : "DR|NOP(1234567890)|", s.getRecordedData(true));
+		
 		c.stop(TIMEOUT);
 
 		c = new Client(PORT, true);

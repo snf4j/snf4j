@@ -41,11 +41,13 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 
 	static final Timer timer = new Timer();
 	
-	void write0(Packet p, boolean optimize) {
+	ByteBuffer allocateBufferIfNeeded(Packet p, boolean optimize) {
 		if (optimize) {
 			optimize = SessionTest.isOptimized((StreamSession) getSession());
 		}
 		ByteBuffer buffer = null;
+		
+		optimize = optimize && Utils.randomBoolean(Utils.WRITE_ALLOCATED_BUFFER_RATIO);
 		
 		if (optimize) {
 			byte[] bytes = p.getBytes();
@@ -53,9 +55,14 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 			buffer.put(bytes);
 			buffer.flip();
 		}
+		return buffer;
+	}
+	
+	void write0(Packet p, boolean optimize) {
+		ByteBuffer buffer = allocateBufferIfNeeded(p, optimize);
 		
 		if (buffer != null) {
-			getSession().write(buffer);
+			getSession().writenf(buffer);
 		}
 		else {
 			getSession().writenf(p.getBytes());
@@ -74,7 +81,7 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 				int count = Utils.random.nextInt(Utils.MAX_MULTI_PACKET) + 1;
 				
 				for (int i=0; i<count; ++i) {
-					write0(Utils.randomNopPacket(), false);
+					write0(Utils.randomNopPacket(), true);
 				}
 			}
 		}
@@ -198,7 +205,14 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 					sync(getSession().write(b, off, b.length-off));
 				}
 				else {
-					sync(getSession().write(p.getBytes()));
+					ByteBuffer buffer = allocateBufferIfNeeded(p, true);
+					
+					if (buffer != null) {
+						sync(getSession().write(buffer));
+					}
+					else {
+						sync(getSession().write(p.getBytes()));
+					}
 				}
 			} catch (Exception e) {
 				Statistics.incExceptions();

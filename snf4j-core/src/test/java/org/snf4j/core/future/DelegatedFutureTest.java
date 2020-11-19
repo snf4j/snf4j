@@ -134,8 +134,8 @@ public class DelegatedFutureTest {
 	
 	void assertTime(long expected, long savedTime) {
 		savedTime = System.currentTimeMillis() - savedTime;
-		assertTrue("expected " + expected + " but was " + savedTime, savedTime > expected - 10);
-		assertTrue("expected " + expected + " but was " + savedTime, savedTime < expected + 10);
+		assertTrue("expected " + expected + " but was " + savedTime, savedTime > expected - 20);
+		assertTrue("expected " + expected + " but was " + savedTime, savedTime < expected + 20);
 	}
 
 	@Test

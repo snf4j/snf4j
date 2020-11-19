@@ -73,6 +73,8 @@ class AbstractHandler extends AbstractDatagramHandler {
 		}
 		ByteBuffer buffer = null;
 		
+		optimize = optimize && Utils.randomBoolean(Utils.WRITE_ALLOCATED_BUFFER_RATIO);
+		
 		if (optimize) {
 			byte[] bytes = p.getBytes();
 			buffer = getSession().allocate(bytes.length);

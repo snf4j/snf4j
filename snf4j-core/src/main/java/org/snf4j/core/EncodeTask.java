@@ -107,8 +107,8 @@ class EncodeTask implements Runnable {
 	EncodeTask(InternalSession session, byte[] bytes, int offset, int length) {
 		this.session = session;
 		this.length = length;
-		if (session.optimizeCopying) {
-			this.buffer = ByteBuffer.wrap(bytes, offset, length);
+		if (session.optimizeCopying && bytes.length == length) {
+			this.bytes = bytes;
 		}
 		else {
 			this.bytes = new byte[length];

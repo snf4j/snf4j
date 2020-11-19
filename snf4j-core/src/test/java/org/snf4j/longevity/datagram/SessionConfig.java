@@ -41,13 +41,12 @@ import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
+import org.snf4j.longevity.BufferToBufferEncoder;
 import org.snf4j.longevity.ByteToByteDecoder;
-import org.snf4j.longevity.ByteToByteEncoder;
 import org.snf4j.longevity.ByteToPacketDecoder;
 import org.snf4j.longevity.Config;
 import org.snf4j.longevity.ObjectToVoidDecoder;
 import org.snf4j.longevity.ObjectToVoidEncoder;
-import org.snf4j.longevity.PacketToByteEncoder;
 import org.snf4j.longevity.Utils;
 
 public class SessionConfig extends DefaultSessionConfig {
@@ -145,11 +144,10 @@ public class SessionConfig extends DefaultSessionConfig {
 			p.add("v3", new ObjectToVoidDecoder());
 
 			p.add("v4", new ObjectToVoidEncoder());
-			p.add("e1", new ByteToByteEncoder(3));
+			p.add("e1", new BufferToBufferEncoder());
 			p.add("v5", new ObjectToVoidEncoder());
-			p.add("e2", new ByteToByteEncoder(-2));
-			p.add("e3", new ByteToByteEncoder(-1));
-			p.add("e4", new PacketToByteEncoder());
+			p.add("e2", new BufferToBufferEncoder());
+			p.add("e3", new BufferToBufferEncoder());
 			p.add("v6", new ObjectToVoidEncoder());
 
 			return e;
