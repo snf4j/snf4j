@@ -1268,6 +1268,26 @@ public class SSLSessionTest {
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 		
+		c = new Client(PORT, true);
+		c.allocator = new TestAllocator(false, true);
+		c.optimizeDataCopying = true;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+
+		engine = getSSLEngine((SSLSession) c.getSession());
+		engine.wrapException = new SSLException("");
+		((SSLSession) c.getSession()).beginHandshake();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		
+		
 	}
 
 	@Test
@@ -1348,7 +1368,7 @@ public class SSLSessionTest {
 		long time = System.currentTimeMillis();
 		f.sync(TIMEOUT);
 		time = System.currentTimeMillis() - time;
-		assertTrue("expected 500 but was " + time, time > 490 && time < 510);
+		assertTrue("expected 500 but was " + time, time > 490 && time < 520);
 		
 		session.suspendWrite();
 		byte[] data = new byte[20000];
@@ -1358,7 +1378,7 @@ public class SSLSessionTest {
 		time = System.currentTimeMillis();
 		f.sync(TIMEOUT);
 		time = System.currentTimeMillis() - time;
-		assertTrue("expected 500 but was " + time, time > 490 && time < 510);
+		assertTrue("expected 500 but was " + time, time > 490 && time < 520);
 		
 		session.suspendWrite();
 		data = new byte[40000];
@@ -1852,6 +1872,7 @@ public class SSLSessionTest {
 	
 	private void testOptimizedDataCopyingRead(DefaultCodecExecutor p) throws Exception {
 		boolean codec = p != null;
+		ByteBuffer[] nulls = new ByteBuffer[] {null,null,null,null};
 
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
@@ -1867,9 +1888,8 @@ public class SSLSessionTest {
 		SSLSession session = (SSLSession) s.getSession();
 		int acount = s.allocator.getAllocatedCount();
 		int rcount = s.allocator.getReleasedCount();
-		assertEquals(6, s.allocator.getSize());
-		ByteBuffer[] bs = getAllBuffers(session);
-		assertEquals(0, diff(bs, s.allocator.get()).length);
+		assertEquals(0, s.allocator.getSize());
+		assertArrayEquals(nulls, getAllBuffers(session));
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 
@@ -1880,24 +1900,35 @@ public class SSLSessionTest {
 		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|BUF|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals(acount+2, s.allocator.getAllocatedCount());
-		ByteBuffer[] bs2 = getAllBuffers(session);
-		assertEquals(6, bs2.length);
-		assertEquals(6, bs.length);
-		assertTrue(bs[1] == bs2[5]);
-		assertTrue(bs[4] == s.bufferRead);
+		assertEquals(rcount+1, s.allocator.getReleasedCount());
+		assertTrue(s.bufferRead == s.allocator.getAllocated().get(acount+1));
+		assertArrayEquals(nulls, getAllBuffers(session));
+		assertEquals(1, s.allocator.getSize());
 		s.allocator.release(s.bufferRead);
-		assertEquals(0, diff(bs2, s.allocator.get()).length);
+		assertEquals(0, s.allocator.getSize());
 	
+		ByteBuffer[] bs;
 		if (!codec) { 
 			byte[] bytes = new Packet(PacketType.NOP,"10").toBytes();
 			c.getSession().write(bytes, 0, 2);
 			c.waitForDataSent(TIMEOUT);
 			waitFor(50);
-			assertEquals(acount+3, s.allocator.getAllocatedCount());
+			assertEquals(acount+4, s.allocator.getAllocatedCount());
+			assertEquals(rcount+3, s.allocator.getReleasedCount());
+			bs = getAllBuffers(session);
+			assertTrue(bs[2] == s.allocator.getAllocated().get(acount+3));
+			bs[2] = null;
+			assertArrayEquals(nulls, bs);
+			assertEquals(1, s.allocator.getSize());
 			c.getSession().write(bytes, 2, bytes.length-2);
 			s.waitForDataRead(TIMEOUT);
 			c.waitForDataSent(TIMEOUT);
 			assertEquals(acount+5, s.allocator.getAllocatedCount());
+			assertEquals(rcount+4, s.allocator.getReleasedCount());
+			assertArrayEquals(nulls, getAllBuffers(session));
+			assertEquals(1, s.allocator.getSize());
+			session.release(s.bufferRead);
+			assertEquals(0, s.allocator.getSize());
 			assertEquals("DS|DS|", c.getRecordedData(true));
 			assertEquals("DR|DR|BUF|NOP(10)|", s.getRecordedData(true));
 			
@@ -1908,9 +1939,28 @@ public class SSLSessionTest {
 			c.waitForDataSent(TIMEOUT);
 			s.waitForDataRead(TIMEOUT);
 			waitFor(50);
+			assertArrayEquals(nulls, getAllBuffers(session));
 			assertEquals(acount+8, s.allocator.getAllocatedCount());
+			assertEquals(rcount+6, s.allocator.getReleasedCount());
+			assertEquals(2, s.allocator.getSize());
+			session.release(s.bufferRead);
+			assertEquals(1, s.allocator.getSize());
 			assertEquals("DS|", c.getRecordedData(true));
 			assertEquals("DR|BUF|NOP(10)|BUF|NOP(10)|", s.getRecordedData(true));
+			
+			ByteBuffer b = session.allocate(1024);
+			setBuffer(session, "inNetBuffer", b);
+			c.getSession().write(new Packet(PacketType.NOP,"1").toBytes());
+			c.waitForDataSent(TIMEOUT);
+			s.waitForDataRead(TIMEOUT);
+			waitFor(50);
+			assertArrayEquals(nulls, getAllBuffers(session));
+			assertEquals("DS|", c.getRecordedData(true));
+			assertEquals("DR|BUF|NOP(1)|", s.getRecordedData(true));
+			assertEquals(acount+11, s.allocator.getAllocatedCount());
+			assertEquals(2, s.allocator.getSize());
+			session.release(s.bufferRead);
+			assertEquals(1, s.allocator.getSize());
 		}
 		
 		s.allocator.ensureException = true;
@@ -1921,6 +1971,8 @@ public class SSLSessionTest {
 		c.getSession().write(b, 1, 2);
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertArrayEquals(nulls, getAllBuffers(session));
 		assertEquals("DR|EXC|SCL|SEN|", s.getRecordedData(true));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
@@ -2004,6 +2056,7 @@ public class SSLSessionTest {
 
 	public void testOptimizedDataCopyingWrite(DefaultCodecExecutor p) throws Exception {
 		boolean codec = p != null;
+		ByteBuffer[] nulls = new ByteBuffer[] {null,null,null,null};
 		
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
@@ -2018,9 +2071,8 @@ public class SSLSessionTest {
 		SSLSession session = (SSLSession) c.getSession();
 		int acount = c.allocator.getAllocatedCount();
 		int rcount = c.allocator.getReleasedCount();
-		assertEquals(6, c.allocator.getSize());
-		ByteBuffer[] bs = getAllBuffers(session);
-		assertEquals(0, diff(bs, c.allocator.get()).length);
+		assertEquals(0, c.allocator.getSize());
+		assertArrayEquals(nulls, getAllBuffers(session));
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 
@@ -2028,19 +2080,15 @@ public class SSLSessionTest {
 		b.put(new Packet(PacketType.NOP).toBytes());
 		b.flip();
 		assertEquals(acount+1, c.allocator.getAllocatedCount());
-		bs = getBuffers(session, "outAppBuffers");
-		ByteBuffer b2 = bs[0];
 		session.write(b);
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
 		assertEquals(codec ? "DR|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
-		assertTrue(b == bs[0]);
 		assertEquals(rcount+2, c.allocator.getReleasedCount());
-		assertTrue(b2 == c.allocator.getReleased().get(rcount));
-		bs = getAllBuffers(session);
-		assertEquals(0, diff(bs, c.allocator.get()).length);
+		assertArrayEquals(nulls, getAllBuffers(session));
+		assertEquals(0, c.allocator.getSize());
 		
 		b = session.allocate(1025);
 		b.put(new Packet(PacketType.NOP).toBytes(0, 10));
@@ -2048,38 +2096,65 @@ public class SSLSessionTest {
 		assertEquals(acount+3, c.allocator.getAllocatedCount());
 		acount = c.allocator.getAllocatedCount();
 		rcount = c.allocator.getReleasedCount();
-		bs = getBuffers(session, "outAppBuffers");
-		b2 = bs[0];
 		session.write(b, b.remaining()-10);
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
 		assertEquals(codec ? "DR|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
 		assertEquals("DS|", c.getRecordedData(true));
-		bs = getBuffers(session, "outAppBuffers");
+		assertArrayEquals(nulls, getAllBuffers(session));
+		assertEquals(rcount+2, c.allocator.getReleasedCount());
 		if (codec) {
-			assertEquals(rcount+2, c.allocator.getReleasedCount());
-			assertFalse(b == c.allocator.getReleased().get(rcount));
-			assertFalse(b == c.allocator.getReleased().get(rcount+1));
+			assertEquals(acount+1, c.allocator.getAllocatedCount());
 		}
 		else {
-			assertEquals(rcount+1, c.allocator.getReleasedCount());
-			assertTrue(bs[0] == b2);
-			assertFalse(b == c.allocator.getReleased().get(rcount));
+			assertEquals(acount+2, c.allocator.getAllocatedCount());			
 		}
+		assertEquals(1, c.allocator.getSize());
+		session.release(b);
+		assertEquals(0, c.allocator.getSize());
+		
 		
 		byte[] bytes = new Packet(PacketType.NOP , "1234567890").toBytes();
 		session.write(bytes, 0, 5).sync(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		waitFor(50);
 		assertEquals("DR|", s.getRecordedData(true));
+		assertArrayEquals(nulls, getAllBuffers(session));
 		session.write(bytes, 5, bytes.length-5).sync(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals(codec ? "DR|NOP2(1234567890)|" : "DR|NOP(1234567890)|", s.getRecordedData(true));
+		assertArrayEquals(nulls, getAllBuffers(session));
+		assertEquals(rcount+7, c.allocator.getReleasedCount());
+		if (codec) {
+			assertEquals(acount+3, c.allocator.getAllocatedCount());
+		}
+		else {
+			assertEquals(acount+6, c.allocator.getAllocatedCount());			
+		}
+		assertEquals(0, c.allocator.getSize());
+
+		if (!codec) {
+			bytes = new Packet(PacketType.NOP, "12345").toBytes();
+			EngineStreamHandler h = getInternal(session);
+			synchronized (h.writeLock) {
+				b = session.allocate(1024);
+				b.put(bytes, 0, 4);
+				b.flip();
+				session.write(b);
+				b = session.allocate(1024);
+				b.put(bytes, 4, bytes.length-4);
+				b.flip();
+				session.write(b);
+			}
+			s.waitForDataRead(TIMEOUT);
+			assertEquals("DR|NOP(12345)|", s.getRecordedData(true));	
+		}
 		
 		c.stop(TIMEOUT);
 
+		ByteBuffer[] bs;
 		c = new Client(PORT, true);
 		c.allocator = new TestAllocator(false, false);
 		c.optimizeDataCopying = true;

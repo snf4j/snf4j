@@ -797,25 +797,28 @@ public class SessionCodecTest {
 		
 		b.put(new Packet(PacketType.NOP).toBytes());
 		b.flip();
+		assertEquals(0, SessionTest.getOutBuffers(session).length);
 		session.write(b);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP2()|", s.getRecordedData(true));
-		assertEquals(1, session.getOutBuffers().length);
-		assertTrue(b == session.getOutBuffers()[0]);
+		assertEquals(0, SessionTest.getOutBuffers(session).length);
 		assertEquals(1, allocator.getReleasedCount());
-		assertEquals(1024, allocator.getReleased().get(0).capacity());
-		b.compact();
+		assertEquals(1, allocator.getAllocatedCount());
+		assertTrue(allocator.getReleased().get(0) == allocator.getAllocated().get(0));
+		assertTrue(b == allocator.getReleased().get(0));
+		assertEquals(0, allocator.getSize());
+		//b.compact();
 		
 		session.getCodecPipeline().remove("1");
 		session.write(new Packet(PacketType.NOP,"1").toBytes());
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(1)|", s.getRecordedData(true));
-		assertEquals(1, session.getOutBuffers().length);
-		assertTrue(b == session.getOutBuffers()[0]);
-		assertEquals(1, allocator.getReleasedCount());
-		b.compact();
+		assertEquals(0, SessionTest.getOutBuffers(session).length);
+		assertEquals(2, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
+		//b.compact();
 		
 		ByteBuffer b0 = session.allocate(100);
 		b0.put(new Packet(PacketType.NOP,"2").toBytes());
@@ -825,10 +828,11 @@ public class SessionCodecTest {
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(2)|", s.getRecordedData(true));
-		assertEquals(1, session.getOutBuffers().length);
-		assertTrue(b == session.getOutBuffers()[0]);
-		assertEquals(1, allocator.getReleasedCount());
-		b.compact();
+		assertEquals(0, SessionTest.getOutBuffers(session).length);
+		assertEquals(3, allocator.getReleasedCount());
+		assertEquals(1, allocator.getSize());
+		session.release(b0);
+		assertEquals(0, allocator.getSize());
 		
 		//split packet
 		codec.nopToNop2 = false;
@@ -887,15 +891,17 @@ public class SessionCodecTest {
 		allocator = new TestAllocator(false,true);
 		startWithCodec(p);
 		
-		ByteBuffer b = c.getSession().getInBuffer();
+		assertEquals(0, allocator.getAllocatedCount());
+		ByteBuffer b = SessionTest.getInBuffer(c.getSession());
+		assertNull(b);
 		s.getSession().write(new Packet(PacketType.NOP).toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|BUF|NOP()|", c.getRecordedData(true));
 		assertEquals(1, allocator.getReleasedCount());
-		assertTrue(b == allocator.getReleased().get(0));
-		assertFalse(b == c.getSession().getInBuffer());
-		assertEquals(3, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getAllocatedCount());
+		assertTrue(allocator.getAllocated().get(0) == allocator.getReleased().get(0));
+		assertNull(SessionTest.getInBuffer(c.getSession()));
 		
 		c.getSession().getCodecPipeline().remove("1");
 		s.getSession().write(new Packet(PacketType.NOP,"1").toBytes());
@@ -903,7 +909,8 @@ public class SessionCodecTest {
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|BUF|NOP(1)|", c.getRecordedData(true));
 		assertEquals(1, allocator.getReleasedCount());
-		assertEquals(4, allocator.getAllocatedCount());
+		assertEquals(2, allocator.getAllocatedCount());
+		assertTrue(c.bufferRead == allocator.getAllocated().get(1));
 		
 		c.getSession().getCodecPipeline().add("1", new BVD());
 		s.getSession().write(new Packet(PacketType.NOP,"2").toBytes());
@@ -912,7 +919,8 @@ public class SessionCodecTest {
 		assertEquals("DR|BUF|NOP(2)|", c.getRecordedData(true));
 		assertEquals("BVD|", getTrace());
 		assertEquals(1, allocator.getReleasedCount());
-		assertEquals(5, allocator.getAllocatedCount());
+		assertEquals(3, allocator.getAllocatedCount());
+		assertTrue(c.bufferRead == allocator.getAllocated().get(2));
 
 		c.getSession().getCodecPipeline().add("2", new BBVD());
 		s.getSession().write(new Packet(PacketType.NOP,"3").toBytes());
@@ -921,7 +929,8 @@ public class SessionCodecTest {
 		assertEquals("DR|BUF|NOP(3)|", c.getRecordedData(true));
 		assertEquals("BVD|BBVD|", getTrace());
 		assertEquals(1, allocator.getReleasedCount());
-		assertEquals(6, allocator.getAllocatedCount());
+		assertEquals(4, allocator.getAllocatedCount());
+		assertTrue(c.bufferRead == allocator.getAllocated().get(3));
 		
 		c.exceptionRecordException = true;
 		c.getSession().getCodecPipeline().add("3", new ExeD());
@@ -930,8 +939,9 @@ public class SessionCodecTest {
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DR|EXC|(E)|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("BVD|BBVD|", getTrace());
-		assertEquals(3, allocator.getReleasedCount());
-		assertEquals(6, allocator.getAllocatedCount());
+		assertEquals(2, allocator.getReleasedCount());
+		assertEquals(5, allocator.getAllocatedCount());
+		assertEquals(3, allocator.getSize());
 		
 	}
 

@@ -43,7 +43,13 @@ import org.snf4j.core.session.IStreamSession;
 
 class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, IStreamHandler> implements IStreamHandler {
 	
+	private final static ByteBuffer[] EMPTY_ARRAY = new ByteBuffer[0];
+	
+	private static final ByteBuffer EMPTY_BUFFER = ByteBuffer.wrap(new byte[0]);
+	
 	private final ConcurrentLinkedQueue<ITwoThresholdFuture<Void>> pendingFutures = new ConcurrentLinkedQueue<ITwoThresholdFuture<Void>>();
+	
+	private final ByteBuffer[] DEFAULT_ARRAY = new ByteBuffer[1];
 	
 	private ITwoThresholdFuture<Void> polledFuture;
 	
@@ -105,9 +111,14 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		do {
 			repeat = false;
 
-			inNetBuffer.flip();
+			if (inNetBuffer != null) {
+				inNetBuffer.flip();
+			}
 			try {
-				unwrapResult = engine.unwrap(inNetBuffer, inAppBuffer);
+				if (inAppBuffer == null) {
+					inAppBuffer = allocator.allocate(minAppBufferSize);
+				}
+				unwrapResult = engine.unwrap(inNetBuffer == null ? EMPTY_BUFFER : inNetBuffer, inAppBuffer);
 				status[0] = unwrapResult.getHandshakeStatus();
 				if (traceEnabled) {
 					logger.trace(
@@ -122,11 +133,17 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 				return false;
 			}
 			finally {
-				if (inNetBuffer.hasRemaining()) {
-					inNetBuffer.compact();
-				}
-				else {
-					inNetBuffer.clear();
+				if (inNetBuffer != null) {
+					if (inNetBuffer.hasRemaining()) {
+						inNetBuffer.compact();
+					}
+					else if (session.optimizeBuffers) {
+						allocator.release(inNetBuffer);
+						inNetBuffer = null;
+					}
+					else {
+						inNetBuffer.clear();
+					}
 				}
 			}
 
@@ -153,6 +170,10 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 							fireException(e);
 							return false;
 						}
+					}
+					else if (session.optimizeBuffers) {
+						allocator.release(inAppBuffer);
+						inAppBuffer = null;
 					}
 					break;
 
@@ -211,11 +232,16 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		do {
 			repeat = false;
 			
+			if (outNetBuffer == null) {
+				outNetBuffer = allocator.allocate(minNetBufferSize);
+			}
 			synchronized (writeLock) {
 				int lastIndex = outAppBuffers.length - 1;
 
-				outAppBuffers[lastIndex].flip();
-				if (lastIndex > 0 || outAppBuffers[lastIndex].hasRemaining()) {
+				if (lastIndex >= 0) {
+					outAppBuffers[lastIndex].flip();
+				}
+				if (lastIndex != -1 && (lastIndex > 0 || outAppBuffers[lastIndex].hasRemaining())) {
 					int consumed;
 					try {
 						wrapResult = lastIndex == 0 ? engine.wrap(outAppBuffers[0], outNetBuffer) 
@@ -227,7 +253,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						consumed = 0;
 					}
 					if (consumed != 0) {
-						outAppBuffers = StreamSession.compactBuffers(outAppBuffers, allocator, minAppBufferSize);
+						outAppBuffers = StreamSession.compactBuffers(outAppBuffers, allocator, minAppBufferSize, session.optimizeBuffers);
 						netCounter += consumed;
 						if (outAppBuffers.length == 1 && outAppBuffers[0].position() == 0) {
 							if (closing == ClosingState.SENDING) {
@@ -246,13 +272,23 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						closing = ClosingState.FINISHING;
 						engine.closeOutbound();
 					}
-					try {
-						wrapResult = engine.wrap(outAppBuffers[lastIndex], outNetBuffer);
-					} catch (Exception e) {
-						wrapResult = null;
-						ex = e;
+					if (lastIndex >= 0) {
+						try {
+							wrapResult = engine.wrap(outAppBuffers[lastIndex], outNetBuffer);
+						} catch (Exception e) {
+							wrapResult = null;
+							ex = e;
+						}
+						outAppBuffers[lastIndex].clear();
 					}
-					outAppBuffers[lastIndex].clear();
+					else {
+						try {
+							wrapResult = engine.wrap(EMPTY_BUFFER, outNetBuffer);
+						} catch (Exception e) {
+							wrapResult = null;
+							ex = e;
+						}
+					}
 				}
 			}
 
@@ -316,7 +352,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 	
 	@Override
 	final boolean needUnwrap() {
-		return inNetBuffer.position() != 0;
+		return inNetBuffer != null && inNetBuffer.position() != 0;
 	}
 	
 	@Override
@@ -333,7 +369,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			long futureThreshold = session.write0(outNetBuffer);
 			
 			if (session.optimizeBuffers) {
-				outNetBuffer = allocator.allocate(minNetBufferSize);
+				outNetBuffer = null;
 			}
 			else {
 				outNetBuffer.compact();
@@ -366,6 +402,10 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 				}
 				return null;
 			}
+			if (outAppBuffers.length == 0) {
+				outAppBuffers = DEFAULT_ARRAY;
+				outAppBuffers[0] = allocator.allocate(minAppBufferSize);
+			}
 			outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, minAppBufferSize, data, offset, length, false);
 			appCounter += length;
 			if (needFuture) {
@@ -394,9 +434,17 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			boolean optimize = session.optimizeBuffers;
 			
 			if (optimize && data.remaining() == length) {
+				if (outAppBuffers.length == 0) {
+					outAppBuffers = DEFAULT_ARRAY;
+					outAppBuffers[0] = null;
+				}
 				outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, data);				
 			}
 			else {
+				if (outAppBuffers.length == 0) {
+					outAppBuffers = DEFAULT_ARRAY;
+					outAppBuffers[0] = allocator.allocate(minAppBufferSize);
+				}
 				outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, minAppBufferSize, data, 0, length, true);
 			}
 			appCounter += length;
@@ -417,10 +465,16 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		super.preCreated();
 		maxAppBufferSize = engine.getMaxApplicationBufferSize();
 		maxNetBufferSize = engine.getMaxNetworkBufferSize();
-		outAppBuffers = new ByteBuffer[] {allocator.allocate(minAppBufferSize)};
-		inAppBuffer = allocator.allocate(minAppBufferSize);
-		outNetBuffer = allocator.allocate(minNetBufferSize);
-		inNetBuffer = allocator.allocate(minNetBufferSize);
+		if (!session.optimizeBuffers) {
+			outAppBuffers = DEFAULT_ARRAY;
+			outAppBuffers[0] = allocator.allocate(minAppBufferSize);
+			inAppBuffer = allocator.allocate(minAppBufferSize);
+			outNetBuffer = allocator.allocate(minNetBufferSize);
+			inNetBuffer = allocator.allocate(minNetBufferSize);
+		}
+		else {
+			outAppBuffers = EMPTY_ARRAY;
+		}
 	}
 	
 	void postEnding() {
@@ -430,13 +484,19 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 				allocator.release(outAppBuffers[i]);
 				outAppBuffers[i] = null;
 			}
-			allocator.release(inAppBuffer);
-			allocator.release(outNetBuffer);
-			allocator.release(inNetBuffer);
-			outAppBuffers = null;
-			inAppBuffer = null;
-			outNetBuffer = null;
-			inNetBuffer = null;
+			outAppBuffers = EMPTY_ARRAY;
+			if (inAppBuffer != null) {
+				allocator.release(inAppBuffer);
+				inAppBuffer = null;
+			}
+			if (outNetBuffer != null) {
+				allocator.release(outNetBuffer);
+				outNetBuffer = null;
+			}
+			if (inNetBuffer != null) {
+				allocator.release(inNetBuffer);
+				inNetBuffer = null;
+			}
 		}
 	}
 	private final boolean ensure(int size) {
@@ -471,7 +531,13 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		if (readIgnored) {
 			return;
 		}
-		if (inNetBuffer.position() == 0) {
+		if (inNetBuffer == null) {
+			inNetBuffer = data;
+			data.position(data.limit());
+			data.limit(data.capacity());
+			run();
+		}
+		else if (inNetBuffer.position() == 0) {
 			allocator.release(inNetBuffer);
 			inNetBuffer = data;
 			data.position(data.limit());
@@ -498,9 +564,12 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 
 	@Override
 	public int available(ByteBuffer buffer, boolean flipped) {
-		int maxLen = maxNetBufferSize - inNetBuffer.position();
+		int maxLen = maxNetBufferSize;
 		int len = flipped ? buffer.remaining() : buffer.position();
 		
+		if (inNetBuffer != null) {
+			maxLen -= inNetBuffer.position();
+		}
 		if (maxLen >= len || maxLen == 0) {
 			return len;
 		}

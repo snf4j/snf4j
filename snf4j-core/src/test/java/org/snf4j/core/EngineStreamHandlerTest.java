@@ -116,7 +116,8 @@ public class EngineStreamHandlerTest {
 	@Test
 	public void testBuffers() throws Exception {
 		EngineStreamHandler h = new EngineStreamHandler(engine, handler, LOGGER);
-
+		new SSLSession(h, false);
+		
 		h.preCreated();
 		assertEquals(APPBUFSIZE, getBuffer(h, "inAppBuffer").capacity());
 		assertEquals(1, getBuffers(h, "outAppBuffers").length);
@@ -223,9 +224,9 @@ public class EngineStreamHandlerTest {
 	public void testIgnoreRead() throws Exception {
 		EngineStreamHandler h = new EngineStreamHandler(engine, handler, LOGGER);
 		HandshakeStatus[] status = new HandshakeStatus[1];
+		new SSLSession(h, false);
 		
 		h.preCreated();
-		h.setSession(new SSLSession(h, false));
 		
 		//10 bytes to unwrap, ready to read 0
 		sslEngine.unwrapBytes = 10;

@@ -64,8 +64,11 @@ public class DefaultAllocatorMetric implements IDefaultAllocatorMetricCollector 
 				current = maxCapacity.get();
 				if (current < size) {
 					if (maxCapacity.compareAndSet(current, size)) {
-						return;
+						break;
 					}
+				}
+				else {
+					break;
 				}
 			}
 		}

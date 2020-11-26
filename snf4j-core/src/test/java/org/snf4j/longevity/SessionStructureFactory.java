@@ -38,9 +38,9 @@ import org.snf4j.core.timer.ITimer;
 
 public class SessionStructureFactory implements ISessionStructureFactory {
 
-	static final DefaultAllocatorMetric METRIC = new DefaultAllocatorMetric();
+	public static final DefaultAllocatorMetric METRIC = new DefaultAllocatorMetric();
 	
-	public static final CachingAllocator CACHING_ALLOCATOR = new CachingAllocator(true, 64, METRIC);
+	public static final CachingAllocator CACHING_ALLOCATOR = new CachingAllocator(true, 512, METRIC);
 	
 	@Override
 	public IByteBufferAllocator getAllocator() {

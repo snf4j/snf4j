@@ -110,7 +110,7 @@ public class DefaultTimerTest {
 		assertEquals("", getTrace());
 		waitFor(90);
 		assertEquals("", getTrace());
-		waitFor(11);
+		waitFor(20);
 		assertEquals("T1|", getTrace());
 		
 		task = timer.schedule(new Task("T2"), 100);
@@ -119,15 +119,15 @@ public class DefaultTimerTest {
 		waitFor(200);
 		assertEquals("T3|", getTrace());
 		
-		task = timer.schedule(new Task("TT1"), 100, 10);
+		task = timer.schedule(new Task("TT1"), 100, 30);
 		assertEquals("", getTrace());
 		waitFor(90);
 		assertEquals("", getTrace());
-		waitFor(11);
+		waitFor(20);
 		assertEquals("TT1|", getTrace());
 		waitFor(5);
 		assertEquals("", getTrace());
-		waitFor(5);
+		waitFor(35);
 		assertEquals("TT1|", getTrace());
 		task.cancelTask();
 		waitFor(100);

@@ -28,7 +28,9 @@ package org.snf4j.longevity.datagram;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 
+import org.snf4j.core.allocator.CachingAllocator;
 import org.snf4j.core.allocator.DefaultAllocator;
+import org.snf4j.core.allocator.DefaultAllocatorMetric;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.timer.DefaultTimer;
@@ -41,10 +43,14 @@ public class SessionStructureFactory implements ISessionStructureFactory {
 
 	private static final ITimer TIMER = new DefaultTimer(true);
 	
+	static final DefaultAllocatorMetric METRIC = org.snf4j.longevity.SessionStructureFactory.METRIC;
+	
+	public static final CachingAllocator CACHING_ALLOCATOR = new CachingAllocator(true, 64, METRIC);
+
 	@Override
 	public IByteBufferAllocator getAllocator() {
 		if (Config.DATAGRAM_CACHING_ALLOCATOR) {
-			return org.snf4j.longevity.SessionStructureFactory.CACHING_ALLOCATOR;
+			return CACHING_ALLOCATOR;
 		}
 		return new DefaultAllocator(Utils.randomBoolean(Config.DIRECT_ALLOCATOR_RATIO));
 	}

@@ -74,6 +74,8 @@ public class CachingAllocator extends DefaultAllocator {
 	
 	private final static byte[] MAP = new byte[1 << NUM_OF_CACHES];
 	
+	private final static int MASK;
+	
 	private final int touchAllThreshold;
 	
 	private final int minCapacity;
@@ -98,6 +100,7 @@ public class CachingAllocator extends DefaultAllocator {
 			}
 			MAP[i] = cacheIdx;
 		}
+		MASK = mask;
 	}
 	
 	/**
@@ -187,7 +190,7 @@ public class CachingAllocator extends DefaultAllocator {
 		else if (capacity >= maxCapacity) {
 			return NUM_OF_CACHES-1;
 		}
-		return MAP[(capacity-1 >>> shift) & 0xff];
+		return MAP[(capacity-1 >>> shift) & MASK];
 	}
 	
 	final Cache cache(int capacity) {

@@ -54,6 +54,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	private final static ILogger LOGGER = LoggerFactory.getLogger(StreamSession.class);
 	
+	private final static ByteBuffer[] EMPTY_ARRAY = new ByteBuffer[0];
+	
+	private final ByteBuffer[] DEFAULT_ARRAY = new ByteBuffer[1];
+	
 	private ByteBuffer inBuffer;
 	
 	private ByteBuffer[] outBuffers;
@@ -115,7 +119,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return null;
 	}
 	
-	static ByteBuffer[] compactBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, int minOutBufferCapacity) {
+	static ByteBuffer[] compactBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, int minOutBufferCapacity, boolean optimize) {
 		int lastIndex = outBuffers.length - 1;
 		
 		if (lastIndex > 0) {
@@ -145,6 +149,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			lastBuffer.compact();
 			return outBuffers;
 		}
+		if (optimize && outBuffers.length == 1) {
+			allocator.release(lastBuffer);
+			return EMPTY_ARRAY;
+		}
 		lastBuffer.clear();
 		outBuffers[lastIndex] = allocator.reduce(lastBuffer, minOutBufferCapacity);
 		return outBuffers;
@@ -156,6 +164,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		
 		data.position(data.limit());
 		data.limit(data.capacity());
+		if (lastBuffer == null) {
+			outBuffers[lastIndex] = data;
+			return outBuffers;			
+		}
 		if (lastBuffer.position() == 0) {
 			allocator.release(lastBuffer);
 			outBuffers[lastIndex] = data;
@@ -229,9 +241,17 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			boolean optimize = buffer && optimizeBuffers;
 			
 			if (optimize && ((ByteBuffer)data).remaining() == length) {
+				if (outBuffers.length == 0) {
+					outBuffers = DEFAULT_ARRAY;
+					outBuffers[0] = null;
+				}
 				outBuffers = putToBuffers(outBuffers, allocator, (ByteBuffer)data);
 			}
 			else {
+				if (outBuffers.length == 0) {
+					outBuffers = DEFAULT_ARRAY;
+					outBuffers[0] = allocator.allocate(minOutBufferCapacity);
+				}
 				outBuffers = putToBuffers(outBuffers, allocator, minOutBufferCapacity,  data, offset, length, buffer);
 			}
 			outBuffersSize += length;
@@ -549,8 +569,14 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	@Override
 	void preCreated() {
-		inBuffer = allocator.allocate(minInBufferCapacity);
-		outBuffers = new ByteBuffer[] {allocator.allocate(minOutBufferCapacity)};
+		if (optimizeBuffers) {
+			outBuffers = EMPTY_ARRAY;
+		}
+		else {
+			inBuffer = allocator.allocate(minInBufferCapacity);
+			outBuffers = DEFAULT_ARRAY;
+			outBuffers[0] = allocator.allocate(minOutBufferCapacity);
+		}
 	}
 	
 	@Override
@@ -576,7 +602,12 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	 * @return buffer in the write mode (i.e. not flipped yet).
 	 */
 	ByteBuffer getInBuffer() {
-		inBuffer = allocator.ensureSome(inBuffer, minInBufferCapacity, maxInBufferCapacity);
+		if (inBuffer == null) {
+			inBuffer = allocator.allocate(minInBufferCapacity);
+		}
+		else {
+			inBuffer = allocator.ensureSome(inBuffer, minInBufferCapacity, maxInBufferCapacity);
+		}
 		return inBuffer;
 	}
 
@@ -591,7 +622,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	 */
 	ByteBuffer[] getOutBuffers() {
 		//flip only the last one as other ones are already flipped
-		outBuffers[outBuffers.length - 1].flip();
+		if (outBuffers.length > 0) {
+			outBuffers[outBuffers.length - 1].flip();
+		}
 		return outBuffers;
 	}
 
@@ -601,7 +634,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			inBuffer.flip();
 			if (available == inBuffer.remaining()) {
 				handler.read(inBuffer);
-				return allocator.allocate(inBuffer.capacity());
+				return null;
 			}
 			
 			ByteBuffer dup = inBuffer.duplicate();
@@ -617,7 +650,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 				available = handler.available(inBuffer, true);
 				if (available == inBuffer.remaining()) {
 					handler.read(inBuffer);
-					return allocator.allocate(inBuffer.capacity());
+					return null;
 				}
 			} while (available > 0);
 			inBuffer.compact();
@@ -725,8 +758,8 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	 */
 	boolean compactOutBuffers(long consumedBytes) {
 		outBuffersSize -= consumedBytes;
-		outBuffers = compactBuffers(outBuffers, allocator, minOutBufferCapacity);
-		return outBuffers.length == 1 && outBuffers[0].position() == 0;
+		outBuffers = compactBuffers(outBuffers, allocator, minOutBufferCapacity, optimizeBuffers);
+		return outBuffers.length == 0 || (outBuffers.length == 1 && outBuffers[0].position() == 0);
 	}
 
 	private final Socket getSocket() {
