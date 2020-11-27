@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -1667,6 +1668,7 @@ public class DTLSSessionTest extends DTLSTest {
 	
 	private void testOptimizedDataCopyingRead(DefaultCodecExecutor p) throws Exception {
 		boolean codec = p != null;
+		ByteBuffer[] nulls = new ByteBuffer[] {null,null};
 		
 		//client side
 		s = new DatagramHandler(PORT);
@@ -1684,9 +1686,9 @@ public class DTLSSessionTest extends DTLSTest {
 		s.waitForSessionReady(TIMEOUT);
 		waitFor(50);
 		DatagramSession session = c.getSession();
-		assertEquals(2, a.getSize());
+		assertEquals(0, a.getSize());
 		ByteBuffer[] bs = getAllBuffers(session);
-		assertEquals(0, SSLSessionTest.diff(bs, c.allocator.get()).length);
+		assertArrayEquals(nulls, bs);
 		int acount = a.getAllocatedCount();
 		int rcount = a.getReleasedCount();
 		c.getRecordedData(true);
@@ -1708,7 +1710,11 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(50);
 		assertEquals(0, a.getSize());
 		EngineDatagramHandler h = EngineDatagramHandlerTest.getHandler(session);
-		h.read(ByteBuffer.allocate(10));
+		int count = c.allocator.getSize();
+		ByteBuffer b = c.allocator.allocate(100);
+		assertEquals(count+1, c.allocator.getSize());
+		h.read(b);
+		assertEquals(count, c.allocator.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 
@@ -1740,9 +1746,22 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals(acount, a.getAllocatedCount());
 		assertEquals(0, SSLSessionTest.diff(bs, getAllBuffers(session)).length);
 		assertEquals(0, a.getReleasedCount());
+		s.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		h = EngineDatagramHandlerTest.getHandler(session);
+		count = a.getReleasedCount();
+		h.read(ByteBuffer.allocate(100));
+		assertEquals(count, a.getReleasedCount());
+		
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
-	
+		h = EngineDatagramHandlerTest.getHandler(session);
+		count = a.getReleasedCount();
+		h.read(ByteBuffer.allocate(100));
+		assertEquals(count, a.getReleasedCount());
+		
 		s = new DatagramHandler(PORT);
 		c = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
@@ -1791,9 +1810,9 @@ public class DTLSSessionTest extends DTLSTest {
 		s.waitForSessionReady(TIMEOUT);
 		waitFor(50);
 		session = s.getSession();
-		assertEquals(2, a.getSize());
+		assertEquals(0, a.getSize());
 		bs = getAllBuffers(session);
-		assertEquals(0, SSLSessionTest.diff(bs, a.get()).length);
+		assertArrayEquals(nulls, bs);
 		acount = a.getAllocatedCount();
 		rcount = a.getReleasedCount();
 		c.getRecordedData(true);
@@ -1813,10 +1832,9 @@ public class DTLSSessionTest extends DTLSTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		waitFor(50);
-		assertEquals(1, a.getSize());
+		assertEquals(0, a.getSize());
 		bs = getAllBuffers(session);
-		assertNull(bs[1]);
-		assertTrue(bs[0] == a.get().get(0));
+		assertArrayEquals(nulls, bs);
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		waitFor(50);
@@ -1904,24 +1922,24 @@ public class DTLSSessionTest extends DTLSTest {
 		c.startServer();
 		assertReady(c, s);
 		session = c.getSession();
-		assertEquals(2, a.getSize());
+		assertEquals(0, a.getSize());
 		bs = getAllBuffers(session);
-		assertEquals(0, SSLSessionTest.diff(bs, a.get()).length);
+		assertArrayEquals(nulls, bs);
 		acount = a.getAllocatedCount();
 		rcount = a.getReleasedCount();
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		
-		ByteBuffer b = bs[1];
+		b = bs[1];
 		s.getSession().write(nop());
 		c.waitForDataRead(TIMEOUT);
 		waitFor(50);
 		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|BUF|NOP()|", c.getRecordedData(true));
 		bs = getAllBuffers(session);
-		assertEquals(1, SSLSessionTest.diff(bs, a.get()).length);
+		assertArrayEquals(nulls, bs);
+		assertEquals(1, c.allocator.getSize());
 		a.release(c.bufferRead);
-		assertTrue(c.bufferRead == b);
-		assertEquals(0, SSLSessionTest.diff(bs, a.get()).length);
+		assertEquals(0, c.allocator.getSize());
 		assertEquals(acount+2, a.getAllocatedCount());
 		assertEquals(rcount+2, a.getReleasedCount());
 		
@@ -1934,10 +1952,10 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(50);
 		assertEquals(codec ? "DR|BUF|$NOP2(5)|" : "DR|BUF|$NOP(5)|", c.getRecordedData(true));
 		bs = getAllBuffers(session);
-		assertEquals(1, SSLSessionTest.diff(bs, a.get()).length);
+		assertArrayEquals(nulls, bs);
+		assertEquals(1, c.allocator.getSize());
 		a.release(c.bufferRead);
-		assertTrue(c.bufferRead == b);
-		assertEquals(0, SSLSessionTest.diff(bs, a.get()).length);
+		assertEquals(0, c.allocator.getSize());
 		c2.stop(TIMEOUT);
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -1994,7 +2012,7 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals(rcount+2, a.getReleasedCount());
 		assertTrue(a.getAllocated().get(acount) == a.getReleased().get(rcount));
 		assertTrue(a.getAllocated().get(acount+1) == a.getReleased().get(rcount+1));
-		assertEquals(2, a.getSize());
+		assertEquals(0, a.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
@@ -2098,7 +2116,7 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals(rcount+2, a.getReleasedCount());
 		assertTrue(a.getAllocated().get(acount) == a.getReleased().get(rcount));
 		assertTrue(a.getAllocated().get(acount+1) == a.getReleased().get(rcount+1));
-		assertEquals(2, a.getSize());
+		assertEquals(0, a.getSize());
 		
 		b = nop("2", a);
 		session.send(address(PORT+1), b);
@@ -2107,7 +2125,7 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals(acount+3, a.getAllocatedCount());
 		assertEquals(rcount+3, a.getReleasedCount());
 		assertTrue(a.getAllocated().get(acount+2) == a.getReleased().get(rcount+2));
-		assertEquals(2, a.getSize());
+		assertEquals(0, a.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 

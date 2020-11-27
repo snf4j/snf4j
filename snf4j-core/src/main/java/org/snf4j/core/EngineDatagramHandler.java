@@ -177,6 +177,9 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	@Override
 	public void read(ByteBuffer datagram) {
 		if (readIgnored) {
+			if (allocator.isReleasable()) {
+				allocator.release(datagram);
+			}
 			return;
 		}
 		inNetBuffers.add(datagram);
@@ -260,7 +263,12 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 				pollNeeded = true;
 			}
 			
-			inAppBuffer.clear();
+			if (inAppBuffer == null) {
+				inAppBuffer = allocator.allocate(minAppBufferSize);
+			}
+			else {
+				inAppBuffer.clear();
+			}
 			try {
 				unwrapResult = engine.unwrap(inNetBuffer, inAppBuffer);
 				if (pollNeeded) {
@@ -309,7 +317,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 							if (session.optimizeBuffers) {
 								ByteBuffer datagram = inAppBuffer;
 								
-								inAppBuffer = allocator.allocate(datagram.capacity());
+								inAppBuffer = null;
 								reader.read(datagram);
 							}
 							else {
@@ -332,6 +340,10 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 							fireException(e);
 							return false;
 						}
+					}
+					else if (session.optimizeBuffers) {
+						allocator.release(inAppBuffer);
+						inAppBuffer = null;
 					}
 					break;
 					
@@ -538,7 +550,9 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	void preCreated() {
 		super.preCreated();
 		outAppBuffers = new LinkedList<EngineDatagramRecord>();
-		inAppBuffer = allocator.allocate(minAppBufferSize);
+		if (!session.optimizeBuffers) {
+			inAppBuffer = allocator.allocate(minAppBufferSize);
+		}
 		inNetBuffers = new LinkedList<ByteBuffer>();
 	}
 	
@@ -559,8 +573,10 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		super.postEnding();
 		if (allocator.isReleasable()) {
 			releaseBuffers(outAppBuffers);
-			allocator.release(inAppBuffer);
-			inAppBuffer = null;
+			if (inAppBuffer != null) {
+				allocator.release(inAppBuffer);
+				inAppBuffer = null;
+			}
 		}
 	}
 	

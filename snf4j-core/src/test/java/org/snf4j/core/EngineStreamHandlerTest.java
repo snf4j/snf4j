@@ -242,7 +242,12 @@ public class EngineStreamHandlerTest {
 		h.read((byte[])null);
 		h.read((Object)null);
 		h.read((ByteBuffer)null);
-
+		ByteBuffer b = handler.allocator.allocate(100);
+		int count = handler.allocator.getSize();
+		h.read(b);
+		assertEquals(count-1, handler.allocator.getSize());
+		count = handler.allocator.getReleasedCount();
+		assertTrue(b == handler.allocator.getReleased().get(count-1));
 	}
 	
 	@Test

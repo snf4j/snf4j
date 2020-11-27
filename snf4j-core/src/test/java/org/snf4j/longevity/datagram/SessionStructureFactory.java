@@ -45,7 +45,7 @@ public class SessionStructureFactory implements ISessionStructureFactory {
 	
 	static final DefaultAllocatorMetric METRIC = org.snf4j.longevity.SessionStructureFactory.METRIC;
 	
-	public static final CachingAllocator CACHING_ALLOCATOR = new CachingAllocator(true, 64, METRIC);
+	public static final CachingAllocator CACHING_ALLOCATOR = new CachingAllocator(true, 512, METRIC);
 
 	@Override
 	public IByteBufferAllocator getAllocator() {

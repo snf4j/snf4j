@@ -529,6 +529,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 	@Override
 	public void read(ByteBuffer data) {
 		if (readIgnored) {
+			allocator.release(data);
 			return;
 		}
 		if (inNetBuffer == null) {

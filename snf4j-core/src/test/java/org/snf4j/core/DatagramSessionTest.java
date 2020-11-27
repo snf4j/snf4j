@@ -849,6 +849,69 @@ public class DatagramSessionTest {
 	}
 	
 	@Test
+	public void testIgnorePossiblyIncompleteWithOptimize() throws Exception {
+		s = new DatagramHandler(PORT); 
+		s.allocator = new TestAllocator(false, true);
+		s.optimizeDataCopying = true;
+		s.startServer();
+		c = new DatagramHandler(PORT); 
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		int min = s.getSession().getConfig().getMinInBufferCapacity()-3;
+
+		//sending pocket with size that equals the buffer size
+		byte[] bytes = new byte[min];
+		Arrays.fill(bytes, (byte)'B');
+		String payload = new String(bytes);
+		c.write(new Packet(PacketType.NOP, payload));
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataReceived(TIMEOUT);
+		waitFor(100);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getSize());
+		assertTrue(getInBuffer(s.getSession()) == s.allocator.get().get(0));
+		assertNotNull(getInBuffer(s.getSession()));
+		
+		//sending pocket with size that equals than buffer size (retry)
+		bytes = new byte[min];
+		Arrays.fill(bytes, (byte)'B');
+		payload = new String(bytes);
+		c.write(new Packet(PacketType.NOP, payload));
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|$NOP(" + payload + ")|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
+		assertNull(getInBuffer(s.getSession()));
+		
+		//sending pocket with size greater than buffer size
+		bytes = new byte[min+1];
+		Arrays.fill(bytes, (byte)'B');
+		payload = new String(bytes);
+		c.write(new Packet(PacketType.NOP, payload));
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|$NOP(" + payload + ")|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
+		assertNull(getInBuffer(s.getSession()));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+	}
+	
+	@Test
 	public void testIgnorePossiblyIncomplete() throws Exception {
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
@@ -869,14 +932,14 @@ public class DatagramSessionTest {
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|$NOP(" + payload + ")|", s.getRecordedData(true));
 
-		//sending pocket with size that equals than buffer size
+		//sending pocket with size that equals the buffer size
 		bytes = new byte[min];
 		Arrays.fill(bytes, (byte)'B');
 		payload = new String(bytes);
 		c.write(new Packet(PacketType.NOP, payload));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataReceived(TIMEOUT);
-		waitFor(1000);
+		waitFor(200);
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|", s.getRecordedData(true));
 
@@ -887,7 +950,7 @@ public class DatagramSessionTest {
 		c.write(new Packet(PacketType.NOP, payload));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
-		waitFor(1000);
+		waitFor(200);
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|$NOP(" + payload + ")|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
@@ -1574,15 +1637,15 @@ public class DatagramSessionTest {
 		c.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendWrite();
 		c.getSession().send(address, new Packet(PacketType.ECHO, "33").toBytes());
-		assertEquals(1, allocator.getSize());
-		assertEquals(1, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getSize());
+		assertEquals(0, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
 		c.getSession().quickClose();
 		c.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
 		assertEquals(0, allocator.getSize());
-		assertEquals(1, allocator.getAllocatedCount());
-		assertEquals(1, allocator.getReleasedCount());
+		assertEquals(0, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
 		
 		s.stop(TIMEOUT);
 	}
@@ -1826,15 +1889,16 @@ public class DatagramSessionTest {
 		s.waitForSessionReady(TIMEOUT);
 		
 		SocketAddress a = c.getSession().getLocalAddress();
-		ByteBuffer b = getInBuffer(c.getSession());
-		assertEquals(1, c.allocator.getAllocatedCount());
+		assertNull(getInBuffer(c.getSession()));
+		assertEquals(0, c.allocator.getAllocatedCount());
 		s.getSession().send(a, new Packet(PacketType.NOP).toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|BUF|NOP()|", c.getRecordedData(true));
-		assertEquals(2, c.allocator.getAllocatedCount());
-		assertTrue(b == c.bufferRead);
-		assertFalse(b == getInBuffer(c.getSession()));
+		assertEquals(1, c.allocator.getAllocatedCount());
+		c.allocator.release(c.bufferRead);
+		assertNull(getInBuffer(c.getSession()));
+		assertEquals(0, c.allocator.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
@@ -1847,15 +1911,15 @@ public class DatagramSessionTest {
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
 		
-		b = getInBuffer(s.getSession());
-		assertEquals(1, s.allocator.getAllocatedCount());
+		assertEquals(0, s.allocator.getAllocatedCount());
 		c.getSession().write(new Packet(PacketType.NOP).toBytes());
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|BUF|$NOP()|", s.getRecordedData(true));
-		assertEquals(2, s.allocator.getAllocatedCount());
-		assertTrue(b == s.bufferRead);
-		assertFalse(b == getInBuffer(s.getSession()));
+		assertEquals(1, s.allocator.getAllocatedCount());
+		s.allocator.release(s.bufferRead);
+		assertNull(getInBuffer(s.getSession()));
+		assertEquals(0, s.allocator.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
@@ -1869,7 +1933,7 @@ public class DatagramSessionTest {
 		s.waitForSessionReady(TIMEOUT);
 		
 		a = c.getSession().getLocalAddress();
-		b = getInBuffer(c.getSession());
+		ByteBuffer b = getInBuffer(c.getSession());
 		assertEquals(1, c.allocator.getAllocatedCount());
 		s.getSession().send(a, new Packet(PacketType.NOP).toBytes());
 		s.waitForDataSent(TIMEOUT);
@@ -1922,8 +1986,9 @@ public class DatagramSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|$NOP()|", s.getRecordedData(true));
 		assertEquals(1, c.allocator.getReleasedCount());
-		assertEquals(2, c.allocator.getAllocatedCount());
+		assertEquals(1, c.allocator.getAllocatedCount());
 		assertTrue(b == c.allocator.getReleased().get(0));
+		assertEquals(0, c.allocator.getSize());
 		c.stop(TIMEOUT);
 		
 		c = new DatagramHandler(PORT);

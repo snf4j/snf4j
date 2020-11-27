@@ -206,6 +206,9 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 				handleDecodeException(session, e);
 			}
 		}
+		else {
+			getSession().release(datagram);
+		}
 	}
 	
 	@Override

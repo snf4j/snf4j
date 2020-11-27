@@ -1005,15 +1005,18 @@ public class DatagramSessionCodecTest {
 		DatagramSession session = s.getSession();
 		ByteBuffer b = getInBuffer(c.getSession());
 		
-		assertEquals(1, allocator.getAllocatedCount());
+		assertNull(getInBuffer(c.getSession()));
+		assertEquals(0, allocator.getAllocatedCount());
 		session.send(a, new Packet(PacketType.NOP).toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|BUF|NOP2()|", c.getRecordedData(true));
-		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
-		assertTrue(b == c.bufferRead);
-		assertFalse(b == getInBuffer(c.getSession()));
+		assertNull(getInBuffer(c.getSession()));
+		c.getSession().release(c.bufferRead);
+		assertEquals(1, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
@@ -1024,39 +1027,42 @@ public class DatagramSessionCodecTest {
 		startWithCodec(false, p);
 		
 		session = c.getSession();
-		b = getInBuffer(s.getSession());
-		assertEquals(1, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getAllocatedCount());
 		session.write(new Packet(PacketType.NOP).toBytes());
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DR|BUF|$NOP2()|", s.getRecordedData(true));
-		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
-		assertTrue(b == s.bufferRead);
-		assertFalse(b == getInBuffer(s.getSession()));
+		s.getSession().release(s.bufferRead);
+		assertEquals(1, allocator.getReleasedCount());
+		assertNull(getInBuffer(s.getSession()));
+		assertEquals(0, allocator.getSize());
 		
 		p.getPipeline().remove("1");
-		b = getInBuffer(s.getSession());
 		session.write(new Packet(PacketType.NOP).toBytes());
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DR|BUF|$NOP()|", s.getRecordedData(true));
-		assertEquals(3, allocator.getAllocatedCount());
-		assertEquals(0, allocator.getReleasedCount());
-		assertTrue(b == s.bufferRead);
-		assertFalse(b == getInBuffer(s.getSession()));
+		assertEquals(2, allocator.getAllocatedCount());
+		assertEquals(1, allocator.getReleasedCount());
+		s.getSession().release(s.bufferRead);
+		assertEquals(2, allocator.getReleasedCount());
+		assertNull(getInBuffer(s.getSession()));
+		assertEquals(0, allocator.getSize());
 		
 		p.getPipeline().add("1", new DupD());
-		b = getInBuffer(s.getSession());
 		session.write(new Packet(PacketType.NOP).toBytes());
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		waitFor(50);
 		assertEquals("DR|BUF|$NOP()|BUF|$NOP()|", s.getRecordedData(true));
-		assertEquals(4, allocator.getAllocatedCount());
-		assertEquals(0, allocator.getReleasedCount());
-		assertTrue(b == s.bufferRead);
-		assertFalse(b == getInBuffer(s.getSession()));
+		assertEquals(3, allocator.getAllocatedCount());
+		assertEquals(2, allocator.getReleasedCount());
+		s.getSession().release(s.bufferRead);
+		assertEquals(3, allocator.getReleasedCount());
+		assertNull(getInBuffer(s.getSession()));
+		assertEquals(0, allocator.getSize());
 		
 		s.incidentRecordException = true;
 		p.getPipeline().add("2", new ExeD());

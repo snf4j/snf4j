@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -744,6 +745,8 @@ public class DatagramServerSessionTest {
 	
 	@Test
 	public void testOptimizedDataCopyingReadWhenConnected() throws Exception {
+		ByteBuffer[] nulls = new ByteBuffer[] {null};
+		
 		s = new DatagramHandler(PORT);
 		c = new DatagramHandler(PORT);
 		c.useDatagramServerHandler = true;
@@ -761,11 +764,11 @@ public class DatagramServerSessionTest {
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|DR|BUF|NOP()|", c.getRecordedData(true));
 		DatagramSession session = c.getSession();
-		assertEquals(2, c.allocator.getSize());
-		c.allocator.release(c.bufferRead);
 		assertEquals(1, c.allocator.getSize());
+		c.allocator.release(c.bufferRead);
+		assertEquals(0, c.allocator.getSize());
 		ByteBuffer[] bs = getAllBuffers(session);
-		assertEquals(0, SSLSessionTest.diff(bs, c.allocator.get()).length);
+		assertArrayEquals(nulls, bs);
 		int acount = c.allocator.getAllocatedCount();
 		int rcount = c.allocator.getReleasedCount();
 		
@@ -773,18 +776,19 @@ public class DatagramServerSessionTest {
 		c.waitForDataRead(TIMEOUT);
 		waitFor(50);
 		assertEquals("DR|BUF|NOP(1)|", c.getRecordedData(true));
-		assertTrue(bs[0] == c.bufferRead);
-		bs = getAllBuffers(session);
-		assertFalse(bs[0] == c.bufferRead);
-		assertEquals(1, SSLSessionTest.diff(bs, c.allocator.get()).length);
+		assertEquals(1, c.allocator.getSize());
 		c.allocator.release(c.bufferRead);
-		assertEquals(0, SSLSessionTest.diff(bs, c.allocator.get()).length);
+		assertEquals(0, c.allocator.getSize());
+		bs = getAllBuffers(session);
+		assertArrayEquals(nulls, bs);
 		assertEquals(acount+1, c.allocator.getAllocatedCount());
 		assertEquals(rcount+1, c.allocator.getReleasedCount());
 	}
 	
 	@Test
 	public void testOptimizedDataCopyingRead() throws Exception {
+		ByteBuffer[] nulls = new ByteBuffer[] {null};
+		
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
 		s.optimizeDataCopying = true;
@@ -799,11 +803,11 @@ public class DatagramServerSessionTest {
 		waitFor(50);
 		DatagramSession session = s.getSession();
 		assertEquals("SCR|SOP|RDY|DR|BUF|NOP()|", s.getRecordedData(true));
-		assertEquals(2, s.allocator.getSize());
-		s.allocator.release(s.bufferRead);
 		assertEquals(1, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
 		ByteBuffer[] bs = getAllBuffers(session);
-		assertEquals(0, SSLSessionTest.diff(bs, s.allocator.get()).length);
+		assertArrayEquals(nulls, bs);
 		int acount = s.allocator.getAllocatedCount();
 		int rcount = s.allocator.getReleasedCount();
 		
@@ -811,12 +815,13 @@ public class DatagramServerSessionTest {
 		s.waitForDataRead(TIMEOUT);
 		waitFor(50);
 		assertEquals("DR|BUF|NOP(1)|", s.getRecordedData(true));
-		assertTrue(bs[0] == s.bufferRead);
-		bs = getAllBuffers(session);
-		assertFalse(bs[0] == s.bufferRead);
-		assertEquals(1, SSLSessionTest.diff(bs, s.allocator.get()).length);
+		assertEquals(acount+1, s.allocator.getAllocatedCount());
+		assertEquals(acount, s.allocator.getReleasedCount());
 		s.allocator.release(s.bufferRead);
-		assertEquals(0, SSLSessionTest.diff(bs, s.allocator.get()).length);
+		assertEquals(acount+1, s.allocator.getReleasedCount());
+		bs = getAllBuffers(session);
+		assertArrayEquals(nulls, bs);
+		assertEquals(0, s.allocator.getSize());
 		assertEquals(acount+1, s.allocator.getAllocatedCount());
 		assertEquals(rcount+1, s.allocator.getReleasedCount());
 		bs = getAllBuffers(session); 
@@ -828,10 +833,11 @@ public class DatagramServerSessionTest {
 		c.getSession().write(nop());
 		s.waitForSessionEnding(TIMEOUT);
 		waitFor(50);
-		assertEquals(2, s.allocator.getSize());
+		assertEquals(1, s.allocator.getSize());
 		s.stop(TIMEOUT);
 		assertEquals(1, s.allocator.getSize());
-		assertTrue(bs[0] == s.allocator.get().get(0));
+		s.allocator.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
 		assertEquals("DR|BUF|NOP()|EXC|SCL|SEN|", s.getRecordedData(true));
 		
 		
@@ -984,9 +990,9 @@ public class DatagramServerSessionTest {
 		acount = a.getAllocatedCount();
 		rcount = a.getReleasedCount();
 		c.getRecordedData(true);
-		assertEquals(2, a.getSize());
-		a.release(s.bufferRead);
 		assertEquals(1, a.getSize());
+		a.release(s.bufferRead);
+		assertEquals(0, a.getSize());
 
 		b = a.allocate(111);
 		b.put(nop()).flip();
@@ -995,7 +1001,7 @@ public class DatagramServerSessionTest {
 		c.waitForDataRead(TIMEOUT);
 		waitFor(50);
 		assertEquals("DR|NOP()|", c.getRecordedData(true));
-		assertEquals(1, a.getSize());
+		assertEquals(0, a.getSize());
 		assertEquals(acount+1, a.getAllocatedCount());
 		assertEquals(rcount+2, a.getReleasedCount());
 		assertTrue(b == a.getReleased().get(rcount+1));

@@ -44,6 +44,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.IDatagramHandlerFactory;
@@ -1184,6 +1185,41 @@ public class DatagramServerHandlerTest {
 		s.getSession().send(address, nop());
 		waitFor(10);
 		assertEquals("SCR|SOP|RDY|DR|NOP()|", c.getRecordedData(true));
+	}
+
+	@Test
+	public void testCloseTimeWaitWithOptimize() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.reopenBlockedInterval = 500;
+		s.timer = new DefaultTimer();
+		s.allocator = new TestAllocator(false, true);
+		s.optimizeDataCopying = true;
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		Map<SocketAddress, ITimerTask> timers = getTimers(s.getSession().getHandler());
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals(0, s.allocator.getSize());
+		c.getSession().write(nop());
+		s.waitForDataRead(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		assertEquals("SCR|SOP|RDY|DR|BUF|NOP()|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
+		assertEquals(0, timers.size());
+		s.getSession().close();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals(1, timers.size());
+		assertEquals(0, s.allocator.getSize());
+		c.getSession().write(nop());
+		waitFor(300);
+		assertEquals("", s.getRecordedData(true));
+		assertEquals(0, s.allocator.getSize());
 	}
 	
 	@Test

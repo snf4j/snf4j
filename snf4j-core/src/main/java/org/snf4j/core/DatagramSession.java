@@ -58,6 +58,8 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	private ByteBuffer inBuffer;
 	
+	private int inBufferCapacity;
+	
 	private ConcurrentLinkedQueue<DatagramRecord> outQueue;
 
 	/** Number of bytes in the queue */
@@ -82,7 +84,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	 */	
 	public DatagramSession(String name, IDatagramHandler handler) {
 		super(name, handler, LOGGER);
-		minInBufferCapacity = config.getMinInBufferCapacity();
+		minInBufferCapacity = inBufferCapacity = config.getMinInBufferCapacity();
 		maxInBufferCapacity = config.getMaxInBufferCapacity();
 		ignorePossiblyIncomplete = config.ignorePossiblyIncompleteDatagrams();
 	}
@@ -649,7 +651,9 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	@Override
 	void preCreated() {
-		inBuffer = allocator.allocate(minInBufferCapacity);
+		if (!optimizeBuffers) {
+			inBuffer = allocator.allocate(minInBufferCapacity);
+		}
 		outQueue = new ConcurrentLinkedQueue<DatagramRecord>();
 	}
 	
@@ -674,8 +678,13 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	}
 	
 	ByteBuffer getInBuffer() {
+		if (inBuffer == null) {
+			inBuffer = allocator.allocate(inBufferCapacity);
+			return inBuffer;
+		}
 		if (inBuffer.position() == inBuffer.capacity()) {
 			inBuffer = allocator.extend((ByteBuffer) inBuffer.clear(), maxInBufferCapacity);
+			inBufferCapacity = inBuffer.capacity();
 			return inBuffer;
 		}
 		return (ByteBuffer) inBuffer.clear();
@@ -690,7 +699,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 				if (optimizeBuffers) {
 					ByteBuffer data = inBuffer;
 					
-					inBuffer = allocator.allocate(data.capacity());
+					inBuffer = null;
 					if (remoteAddress == null) {
 						handler.read(data);
 					}
