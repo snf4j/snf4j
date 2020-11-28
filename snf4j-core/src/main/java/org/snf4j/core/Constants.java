@@ -132,7 +132,7 @@ public class Constants {
 	 * Setting/changing this property will affect all newly created instances of the
 	 * allocator.
 	 * <p>
-	 * The default value for this property is 256.
+	 * The default value for this property is 512.
 	 */
 	public final static String ALLOCATOR_MAX_CACHE_SIZE_PROPERTY = ALLOCATOR_PREFIX + "MaxCacheSize";
 	
@@ -144,7 +144,7 @@ public class Constants {
 	 * below this value). Setting/changing this property will affect all newly
 	 * created instances of the allocator.
 	 * <p>
-	 * The default value for this property is 0.
+	 * The default value for this property is 256.
 	 */
 	public final static String ALLOCATOR_MIN_CACHE_SIZE_PROPERTY = ALLOCATOR_PREFIX + "MinCacheSize";
 	
@@ -157,7 +157,7 @@ public class Constants {
 	 * Setting/changing this property will affect all newly created instances of the
 	 * allocator.
 	 * <p>
-	 * The default value for this property is 2048.
+	 * The default value for this property is 1000000.
 	 */
 	public final static String ALLOCATOR_CACHE_AGE_THRESHOLD_PROPERTY = ALLOCATOR_PREFIX + "CacheAgeThreshold";
 	

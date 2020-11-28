@@ -144,9 +144,9 @@ public class CachingAllocator extends DefaultAllocator {
 	public CachingAllocator(boolean direct, int minCapacity, IDefaultAllocatorMetricCollector metric) {
 		super(direct, metric);
 		
-		int maxCacheSize = Integer.getInteger(Constants.ALLOCATOR_MAX_CACHE_SIZE_PROPERTY, 256);
-		int minCacheSize = Integer.getInteger(Constants.ALLOCATOR_MIN_CACHE_SIZE_PROPERTY, 0);
-		int cacheAgeThreshold = Integer.getInteger(Constants.ALLOCATOR_CACHE_AGE_THRESHOLD_PROPERTY, 2048);	
+		int maxCacheSize = Integer.getInteger(Constants.ALLOCATOR_MAX_CACHE_SIZE_PROPERTY, 512);
+		int minCacheSize = Integer.getInteger(Constants.ALLOCATOR_MIN_CACHE_SIZE_PROPERTY, 256);
+		int cacheAgeThreshold = Integer.getInteger(Constants.ALLOCATOR_CACHE_AGE_THRESHOLD_PROPERTY, 1000000);	
 		int min = 1;
 		int shift = 0;
 		int i = 0;

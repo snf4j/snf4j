@@ -30,6 +30,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
 import org.junit.Before;
@@ -40,9 +41,9 @@ public class CachingAllocatorTest {
 	
 	@Before
 	public void before() {
-		System.clearProperty(Constants.ALLOCATOR_MIN_CACHE_SIZE_PROPERTY);
-		System.clearProperty(Constants.ALLOCATOR_MAX_CACHE_SIZE_PROPERTY);
-		System.clearProperty(Constants.ALLOCATOR_CACHE_AGE_THRESHOLD_PROPERTY);
+		System.setProperty(Constants.ALLOCATOR_MIN_CACHE_SIZE_PROPERTY, "0");
+		System.setProperty(Constants.ALLOCATOR_MAX_CACHE_SIZE_PROPERTY, "256");
+		System.setProperty(Constants.ALLOCATOR_CACHE_AGE_THRESHOLD_PROPERTY, "2048");
 	}
 	
 	void assertNotIn(ByteBuffer b, ByteBuffer... in) {
@@ -94,7 +95,7 @@ public class CachingAllocatorTest {
 	}
 	
 	@Test
-	public void testConstructor() {
+	public void testConstructor() throws Exception {
 		CachingAllocator a = new CachingAllocator(true);	
 		
 		assertEquals(64, a.allocate(1).capacity());
@@ -129,6 +130,17 @@ public class CachingAllocatorTest {
 		assertFalse(a.allocate(10).isDirect());
 		assertTrue(a.metric == NopAllocatorMetric.DEFAULT);	
 		
+		//test default properties
+		System.clearProperty(Constants.ALLOCATOR_MIN_CACHE_SIZE_PROPERTY);
+		System.clearProperty(Constants.ALLOCATOR_MAX_CACHE_SIZE_PROPERTY);
+		System.setProperty(Constants.ALLOCATOR_CACHE_AGE_THRESHOLD_PROPERTY, "1000");
+		a = new CachingAllocator(true,2);
+		assertCaches(256, 512, 1000, a);
+		System.clearProperty(Constants.ALLOCATOR_CACHE_AGE_THRESHOLD_PROPERTY);
+		a = new CachingAllocator(true,2);
+		Field f = CachingAllocator.class.getDeclaredField("touchAllThreshold");
+		f.setAccessible(true);
+		assertEquals(2000000, f.getInt(a));
 	}
 	
 	@Test
