@@ -73,6 +73,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	
 	private long datagramServerSessionNoReopenPeriod = 60000;
 	
+	private int maxWriteSpinCount = 16;
+	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
 	 * 
@@ -392,4 +394,31 @@ public class DefaultSessionConfig implements ISessionConfig {
 	public long getDatagramServerSessionNoReopenPeriod() {
 		return datagramServerSessionNoReopenPeriod;
 	}
+
+	/**
+	 * Configures the maximum loop count for write operations performed by the
+	 * selector loop before returning control to the NIO selector or to other channel ready
+	 * for I/O operations. The write operations are performed in the loop until the
+	 * channel's write method returns a non-zero value and there is still pending
+	 * data to be written or the maximum loop count is reached.
+	 * <p>
+	 * It improves write throughput depending on the platform that JVM runs on.
+	 * 
+	 * @return this session config object
+	 * @see #getMaxWriteSpinCount()
+	 */
+	public DefaultSessionConfig setMaxWriteSpinCount(int count) {
+		maxWriteSpinCount = count;
+		return this;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>16</code>
+	 */
+	public int getMaxWriteSpinCount() {
+		return maxWriteSpinCount;
+	}
+	
 }

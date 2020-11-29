@@ -660,9 +660,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	static void consumeBuffer(ByteBuffer inBuffer, IStreamReader handler) {
 		boolean hasArray = inBuffer.hasArray();
+		int available;
 		byte[] array;
 		int arrayOff;
-		int available;
 		
 		if (hasArray) {
 			array = inBuffer.array();

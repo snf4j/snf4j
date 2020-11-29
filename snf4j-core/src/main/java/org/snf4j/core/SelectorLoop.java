@@ -358,18 +358,24 @@ public class SelectorLoop extends InternalSelectorLoop {
 		
 		if (attachment instanceof StreamSession) {
 			StreamSession session = (StreamSession)attachment;
+			boolean doWrite = false;
 			
 			if (key.isReadable()) {
 				handleReading(session, key);
-				if (key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0)) {
-					handleWriting(session, key);
-				}
+				doWrite = key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0);
 			}
 			else if (key.isWritable()) {
-				handleWriting(session, key);
+				doWrite = true;
 			}	
 			else if (key.isConnectable()) {
 				handleConnecting(session, key);
+			}
+			if (doWrite) {
+				int spinCount = session.maxWriteSpinCount;
+				
+				do {
+					spinCount = handleWriting(session, key, spinCount);
+				} while (spinCount > 0 && key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0));
 			}
 		}
 		else if (attachment instanceof DatagramSession) {
@@ -528,8 +534,8 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 	}
 	
-	private final void handleWriting(final StreamSession session, final SelectionKey key) {
-		long bytes;
+	private final int handleWriting(final StreamSession session, final SelectionKey key, int spinCount) {
+		long totalBytes = 0;
 
 		if (traceEnabled) {
 			logger.trace("Writting to channel in {}", session);
@@ -537,57 +543,69 @@ public class SelectorLoop extends InternalSelectorLoop {
 
 		try {
 			synchronized (session.getWriteLock()) {
-				ByteBuffer[] b = session.getOutBuffers();
-				
-				//check if buffers has some data
-				boolean areEmpty = true;
-				for (int i = b.length-1; i >= 0; --i) {
-					if (b[i].hasRemaining()) {
-						areEmpty = false;
-						break;
-					}
-				}
-				
-				if (areEmpty) {
-					bytes = 0;
-					if (session.compactOutBuffers(bytes)) {
-						session.clearWriteInterestOps(key);
-						session.handleClosingInProgress();
-					}
-				}
-				else {
-					bytes = ((SocketChannel)key.channel()).write(b);
-					if (bytes > 0) {
-						long currentTime = System.currentTimeMillis();
+				do {
+					ByteBuffer[] b = session.getOutBuffers();
 
-						if (traceEnabled) {
-							logger.trace("{} byte(s) written to channel in {}", bytes, session);
+					//check if buffers has some data
+					boolean areEmpty = true;
+					for (int i = b.length-1; i >= 0; --i) {
+						if (b[i].hasRemaining()) {
+							areEmpty = false;
+							break;
 						}
-						session.calculateThroughput(currentTime, false);
-						session.incWrittenBytes(bytes, currentTime);
-						if (session.compactOutBuffers(bytes)) {
+					}
+
+					if (areEmpty) {
+						if (session.compactOutBuffers(0)) {
 							session.clearWriteInterestOps(key);
 							session.handleClosingInProgress();
 						}
+						break;
 					}
 					else {
-						ByteBuffer buf = b[b.length-1];
-						
-						buf.position(buf.limit());
-						buf.limit(buf.capacity());
+						long bytes = ((SocketChannel)key.channel()).write(b);
+
+						if (bytes > 0) {
+							long currentTime = System.currentTimeMillis();
+							totalBytes += bytes;
+							--spinCount;
+
+							if (traceEnabled) {
+								logger.trace("{} byte(s) written to channel in {}", bytes, session);
+							}
+							session.calculateThroughput(currentTime, false);
+							session.incWrittenBytes(bytes, currentTime);
+							if (session.compactOutBuffers(bytes)) {
+								session.clearWriteInterestOps(key);
+								session.handleClosingInProgress();
+								break;
+							}
+						}
+						else {
+							ByteBuffer buf = b[b.length-1];
+
+							buf.position(buf.limit());
+							buf.limit(buf.capacity());
+							break;
+						}
 					}
-				}
+				} while (spinCount > 0);
 			}
 		}
 		catch (Exception e) {
+			if (totalBytes > 0) {
+				fireEvent(session, DataEvent.SENT, totalBytes);
+			}
 			elogWarnOrError(logger, "Writting to chennel in {} failed: {}", session, e);
 			fireException(session, e);
-			bytes = 0;
+			totalBytes = 0;
 		}
 		
-		if (bytes > 0) {
-			fireEvent(session, DataEvent.SENT, bytes);
+		if (totalBytes > 0) {
+			fireEvent(session, DataEvent.SENT, totalBytes);
+			return spinCount;
 		}
+		return 0;
 	}
 	
 	private final void handleReading(final StreamSession session, final SelectionKey key) {

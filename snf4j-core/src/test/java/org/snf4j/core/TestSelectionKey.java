@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,44 +25,50 @@
  */
 package org.snf4j.core;
 
-import java.nio.ByteBuffer;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 
-import org.snf4j.core.handler.IStreamHandler;
+public class TestSelectionKey extends SelectionKey {
 
-public class TestStreamSession extends StreamSession {
-
-	public volatile boolean getOutBuffersException;
-
-	public volatile int getOutBuffersExceptionDelay;
+	private final SelectableChannel channel;
 	
-	public volatile boolean getInBufferException;
-	
-	public TestStreamSession(String name, IStreamHandler handler) {
-		super(name, handler);
-	}
-
-	public TestStreamSession(IStreamHandler handler) {
-		super(handler);
+	public TestSelectionKey(SelectableChannel channel) {
+		this.channel = channel;
 	}
 	
 	@Override
-	ByteBuffer[] getOutBuffers() {
-		if (getOutBuffersException) {
-			if (getOutBuffersExceptionDelay == 0) {
-				throw new IllegalStateException();
-			}
-			else {
-				getOutBuffersExceptionDelay--;
-			}
-		}
-		return super.getOutBuffers();
+	public SelectableChannel channel() {
+		return channel;
 	}
 
 	@Override
-	ByteBuffer getInBuffer() {
-		if (getInBufferException) {
-			throw new IllegalStateException();
-		}
-		return super.getInBuffer();
+	public Selector selector() {
+		return null;
 	}
+
+	@Override
+	public boolean isValid() {
+		return true;
+	}
+
+	@Override
+	public void cancel() {
+	}
+
+	@Override
+	public int interestOps() {
+		return 0;
+	}
+
+	@Override
+	public SelectionKey interestOps(int ops) {
+		return null;
+	}
+
+	@Override
+	public int readyOps() {
+		return 0;
+	}
+
 }

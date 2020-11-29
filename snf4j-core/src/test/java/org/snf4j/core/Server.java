@@ -104,6 +104,7 @@ public class Server {
 	public volatile boolean waitForCloseMessage;
 	public volatile boolean dontReplaceException;
 	public volatile boolean optimizeDataCopying;
+	public volatile int maxWriteSpinCount = -1;
 
 	public volatile int availableCounter;
 	
@@ -542,6 +543,9 @@ public class Server {
 			config.setMaxSSLNetworkBufferSizeRatio(1);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
 			config.setOptimizeDataCopying(optimizeDataCopying);
+			if (maxWriteSpinCount != -1) {
+				config.setMaxWriteSpinCount(maxWriteSpinCount);
+			}
 			return config;
 		}
 

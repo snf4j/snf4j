@@ -34,6 +34,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -65,6 +66,7 @@ import org.snf4j.core.codec.zip.ZlibEncoder;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
+import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.ISessionTimer;
@@ -2143,6 +2145,176 @@ public class SessionTest {
 		
 	}	
 	
+	public static int countDS(String s) {
+		int off = 0;
+		while (s.startsWith("DS|", off)) {
+			off += 3;
+		}
+		return off/3;
+	}
+	
+	public static int countRDNOP(String s, byte[] payload) {
+		int off = 0;
+		String rdnop = "DR|NOP(" + new String(payload) + ")|";
+		int i;
+		int count = 0;
+		
+		while ((i = s.indexOf(rdnop, off)) != -1) {
+			off = i + rdnop.length();
+			count++;
+		}
+		return count;
+	}
+	
+	@Test
+	public void testWriteSpinCount() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		byte[] payload = new byte[2000];
+		Arrays.fill(payload, (byte)'1');
+		byte[] data = new Packet(PacketType.NOP, new String(payload)).toBytes();
+
+		StreamSession session = c.getSession();
+		session.suspendWrite();
+		for (int i=0; i<100; i++) {
+			session.write(data);
+		}
+		session.write(new Packet(PacketType.CLOSE).toBytes());
+		session.resumeWrite();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		String text = c.getRecordedData(true);
+		assertEquals(100, countRDNOP(s.getRecordedData(true), payload));
+		int count = countDS(text);
+		assertEquals("SCL|SEN|", text.substring(count*3));
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		c.maxWriteSpinCount = 1;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		session = c.getSession();
+		session.suspendWrite();
+		for (int i=0; i<100; i++) {
+			session.write(data);
+		}
+		session.write(new Packet(PacketType.CLOSE).toBytes());
+		session.resumeWrite();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		text = c.getRecordedData(true);
+		assertEquals(100, countRDNOP(s.getRecordedData(true), payload));
+		int count2 = countDS(text);
+		assertEquals("SCL|SEN|", text.substring(count2*3));
+		assertTrue(count2 > count*3);
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		c.useTestSession = true;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		session = c.getSession();
+		((TestStreamSession)session).getOutBuffersException = true;
+		session = c.getSession();
+		session.suspendWrite();
+		for (int i=0; i<100; i++) {
+			session.write(data);
+		}
+		session.write(new Packet(PacketType.CLOSE).toBytes());
+		session.resumeWrite();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		c.useTestSession = true;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		session = c.getSession();
+		((TestStreamSession)session).getOutBuffersException = true;
+		((TestStreamSession)session).getOutBuffersExceptionDelay = 1;
+		session = c.getSession();
+		session.suspendWrite();
+		for (int i=0; i<100; i++) {
+			session.write(data);
+		}
+		session.write(new Packet(PacketType.CLOSE).toBytes());
+		session.resumeWrite();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|EXC|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		c.maxWriteSpinCount = 1;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		session = c.getSession();
+		session.suspendWrite();
+		session.write(new Packet(PacketType.NOP, "123456").toBytes());
+		TestSelectionKey key = new TestSelectionKey(new TestSocketChannel());
+		Method m = SelectorLoop.class.getDeclaredMethod("handleWriting", StreamSession.class, SelectionKey.class, int.class);
+		m.setAccessible(true);
+		m.invoke(c.loop, session, key, 1);
+		session.write(new Packet(PacketType.CLOSE).toBytes());
+		session.resumeWrite();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|NOP(123456)|CLOSE()|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+	
+		TestHandler h = new TestHandler("") {
+			@Override
+			public ISessionConfig getConfig() {
+				return new DefaultSessionConfig().setMaxWriteSpinCount(0);
+			}			
+		};
+		try {
+			new StreamSession(h);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
+		
+		h = new TestHandler("") {
+			@Override
+			public ISessionConfig getConfig() {
+				return new DefaultSessionConfig().setMaxWriteSpinCount(-1);
+			}			
+		};		
+		try {
+			new StreamSession(h);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
+	}
+	
 	@Test
 	public void testDataEventDetails() throws Exception {
 		s = new Server(PORT);
@@ -2336,7 +2508,7 @@ public class SessionTest {
 		assertTrue(expired.get());
 		task.cancelTask();
 		expired.set(false);
-		waitFor(110);
+		waitFor(115);
 		assertFalse(expired.get());
 		
 		s.throwInTimer = true;

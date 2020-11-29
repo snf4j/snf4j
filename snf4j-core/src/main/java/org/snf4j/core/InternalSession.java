@@ -121,6 +121,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	private final ISessionTimer timer; 
 
+	final int maxWriteSpinCount;
+	
 	protected InternalSession(String name, IHandler handler, ILogger logger) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
@@ -141,6 +143,10 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		config = handler.getConfig();
 		optimizeCopying = config.optimizeDataCopying();
 		optimizeBuffers = optimizeCopying && allocator.isReleasable();
+		maxWriteSpinCount = config.getMaxWriteSpinCount();
+		if (maxWriteSpinCount <= 0) {
+			throw new IllegalArgumentException("maxWriteSpinCount is " + maxWriteSpinCount + " (expected 1+)");
+		}
 		
 		creationTime = System.currentTimeMillis();
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
