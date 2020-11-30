@@ -102,6 +102,7 @@ public class DatagramHandler {
 	volatile boolean incidentDirtyClose;
 	volatile boolean exceptionClose;
 	volatile boolean waitForCloseMessage;
+	public volatile int maxWriteSpinCount = -1;
 	public volatile boolean throwInException;
 	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	public volatile boolean throwInEvent;
@@ -122,6 +123,9 @@ public class DatagramHandler {
 	EventType closeInEvent;
 	StoppingType closeType = StoppingType.GENTLE;
 
+	EventType writeInEvent;
+	Packet packetToWriteInEvent;
+	
 	StringBuilder recorder = new StringBuilder();
 	
 	boolean recordDataEventDetails;
@@ -572,6 +576,9 @@ public class DatagramHandler {
 			config.setEngineHandshakeTimeout(handshakeTimeout);
 			config.setDatagramServerSessionNoReopenPeriod(reopenBlockedInterval);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
+			if (maxWriteSpinCount != -1) {
+				config.setMaxWriteSpinCount(maxWriteSpinCount);
+			}
 			return config;
 		}
 
@@ -764,6 +771,12 @@ public class DatagramHandler {
 			default:
 				break;
 
+			}
+			if (writeInEvent == type) {
+				if (packetToWriteInEvent != null) {
+					getSession().write(packetToWriteInEvent.toBytes());
+					packetToWriteInEvent = null;
+				}
 			}
 			
 			if (closeInEvent == type) {

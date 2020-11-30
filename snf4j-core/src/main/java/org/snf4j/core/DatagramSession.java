@@ -718,6 +718,10 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 					}
 				}
 			}
+			else if (optimizeBuffers) {
+				allocator.release(inBuffer);
+				inBuffer = null;
+			}
 		}
 	}
 	

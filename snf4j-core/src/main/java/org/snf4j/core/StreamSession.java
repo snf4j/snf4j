@@ -722,6 +722,13 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		}
 	}
 
+	void consumeInBufferAfterNoRead() {
+		if (optimizeBuffers && inBuffer.position() == 0) {
+			allocator.release(inBuffer);
+			inBuffer = null;
+		}
+	}
+	
 	IStreamReader superCodec() {
 		return codec != null ? codec : (IStreamReader) this.handler;
 	}

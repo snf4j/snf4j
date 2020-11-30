@@ -380,15 +380,21 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 		else if (attachment instanceof DatagramSession) {
 			DatagramSession session = (DatagramSession)attachment;
+			boolean doWrite = false;
 			
 			if (key.isReadable()) {
 				handleReading(session, key);
-				if (key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0)) {
-					handleWriting(session, key);
-				}
+				doWrite = key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0);
 			}
 			else if (key.isWritable()) {
-				handleWriting(session, key);
+				doWrite = true;
+			}
+			if (doWrite) {
+				int spinCount = session.maxWriteSpinCount;
+
+				do {
+					spinCount = handleWriting(session, key, spinCount);
+				} while (spinCount > 0 && key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0));
 			}
 		}
 		else if (key.isAcceptable()) {
@@ -641,6 +647,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 			session.close(true);
 		}
+		else {
+			session.consumeInBufferAfterNoRead();
+		}
 	}
 	
 	final void fireEvent(final DatagramSession session, DataEvent event, long length, SocketAddress remoteAddress) {
@@ -701,14 +710,13 @@ public class SelectorLoop extends InternalSelectorLoop {
 				fireEvent(session, DataEvent.RECEIVED, bytes, remoteAddress);
 			}
 			else {
-				fireEvent(session, DataEvent.RECEIVED, bytes);
-				
+				fireEvent(session, DataEvent.RECEIVED, bytes);				
 			}
-			session.consumeInBuffer(remoteAddress);
 		}
+		session.consumeInBuffer(remoteAddress);
 	}
 	
-	private final void handleWriting(final DatagramSession session, final SelectionKey key) {
+	private final int handleWriting(final DatagramSession session, final SelectionKey key, int spinCount) {
 		long totalBytes = 0;
 		long leftBytes = 0;
 		int bytes;
@@ -724,7 +732,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		boolean isConnected = channel.isConnected();
 		
 		try {
-			while ((record = outQueue.peek()) != null) {
+			while (spinCount > 0 && (record = outQueue.peek()) != null) {
 				long length = record.buffer.remaining();
 				
 				if (isConnected) {
@@ -743,6 +751,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 					}
 					outQueue.poll();
 					totalBytes += bytes;
+					--spinCount;
 					if (record.release) {
 						session.release(record.buffer);
 					}
@@ -754,6 +763,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 					}
 				}
 				else {
+					spinCount = 0;
 					break;
 				}
 			}
@@ -783,7 +793,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 		if (exception != null) {
 			elogWarnOrError(logger, "Writting to chennel in {} failed: {}", session, exception);
 			fireException(session, exception);
+			spinCount = 0;
 		}
+		return spinCount;
 	}
 	
 }

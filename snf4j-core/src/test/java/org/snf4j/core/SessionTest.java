@@ -2940,6 +2940,34 @@ public class SessionTest {
 		s.allocator.release(s.bufferRead);
 		assertEquals(3, s.allocator.getSize());
 		
+		TestSelectionKey key = new TestSelectionKey(new TestSocketChannel());
+		Method m = SelectorLoop.class.getDeclaredMethod("handleReading", StreamSession.class, SelectionKey.class);
+		m.setAccessible(true);
+		m.invoke(s.loop, session, key);
+		assertEquals(3, s.allocator.getSize());
+		assertNull(getInBuffer(session));
+		assertEquals(acount+9, s.allocator.getAllocatedCount());
+		bytes = new Packet(PacketType.NOP, "123455").toBytes();
+		c.getSession().write(bytes, 0, 4);
+		waitFor(50);
+		assertEquals("DR|", s.getRecordedData(true));
+		assertEquals(4, s.allocator.getSize());
+		b = getInBuffer(session);
+		assertNotNull(b);
+		m.invoke(s.loop, session, key);
+		assertTrue(b == getInBuffer(session));
+		assertEquals(4, s.allocator.getSize());
+		c.getSession().write(bytes, 4, bytes.length-4);
+		waitFor(50);
+		assertEquals("DR|BUF|NOP(123455)|", s.getRecordedData(true));
+		
+		session = c.getSession();
+		b = getInBuffer(session);
+		assertNotNull(b);
+		m.invoke(c.loop, session, key);
+		assertTrue(b == getInBuffer(session));
+		
+		
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
