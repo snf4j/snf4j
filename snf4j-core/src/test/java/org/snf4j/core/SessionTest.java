@@ -2173,7 +2173,6 @@ public class SessionTest {
 	public void testWriteSpinCount() throws Exception {
 		s = new Server(PORT);
 		c = new Client(PORT);
-		c.sendBufferSize = 32000;
 		
 		s.start();
 		c.start();
@@ -2185,10 +2184,11 @@ public class SessionTest {
 		byte[] payload = new byte[2000];
 		Arrays.fill(payload, (byte)'1');
 		byte[] data = new Packet(PacketType.NOP, new String(payload)).toBytes();
+		int writeCount = 2000;
 
 		StreamSession session = c.getSession();
 		session.suspendWrite();
-		for (int i=0; i<500; i++) {
+		for (int i=0; i<writeCount; i++) {
 			session.write(data);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
@@ -2196,7 +2196,7 @@ public class SessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		String text = c.getRecordedData(true);
-		assertEquals(500, countRDNOP(s.getRecordedData(true), payload));
+		assertEquals(writeCount, countRDNOP(s.getRecordedData(true), payload));
 		int count = countDS(text);
 		assertEquals("SCL|SEN|", text.substring(count*3));
 		c.stop(TIMEOUT);
@@ -2211,7 +2211,7 @@ public class SessionTest {
 		
 		session = c.getSession();
 		session.suspendWrite();
-		for (int i=0; i<500; i++) {
+		for (int i=0; i<writeCount; i++) {
 			session.write(data);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
@@ -2219,10 +2219,15 @@ public class SessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		text = c.getRecordedData(true);
-		assertEquals(500, countRDNOP(s.getRecordedData(true), payload));
+		assertEquals(writeCount, countRDNOP(s.getRecordedData(true), payload));
 		int count2 = countDS(text);
 		assertEquals("SCL|SEN|", text.substring(count2*3));
-		assertTrue(""+count2+">"+count, count2 > count);
+		if ("true".equalsIgnoreCase(System.getenv("TRAVIS"))) {
+			assertTrue(""+count2+">"+count, count2 > count);
+		}
+		else {
+			assertTrue(""+count2+">"+count, count2 > count*4);
+		}
 		c.stop(TIMEOUT);
 		
 		c = new Client(PORT);
@@ -2237,7 +2242,7 @@ public class SessionTest {
 		((TestStreamSession)session).getOutBuffersException = true;
 		session = c.getSession();
 		session.suspendWrite();
-		for (int i=0; i<100; i++) {
+		for (int i=0; i<writeCount; i++) {
 			session.write(data);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
@@ -2259,7 +2264,7 @@ public class SessionTest {
 		((TestStreamSession)session).getOutBuffersExceptionDelay = 1;
 		session = c.getSession();
 		session.suspendWrite();
-		for (int i=0; i<100; i++) {
+		for (int i=0; i<writeCount; i++) {
 			session.write(data);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
