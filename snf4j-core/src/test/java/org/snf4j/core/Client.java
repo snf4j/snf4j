@@ -43,6 +43,8 @@ public class Client extends Server {
 	
 	boolean reuseAddress;
 	
+	int sendBufferSize;
+	
 	SocketChannel channel;
 	
 	public Client(int port) {
@@ -86,6 +88,20 @@ public class Client extends Server {
 
 		SocketChannel sc = channel == null ? SocketChannel.open() : channel;
 		if (channel == null) {
+			if (sendBufferSize > 0) {
+				int oldSize = sc.socket().getSendBufferSize();
+				int newSize;
+				
+				if (oldSize > sendBufferSize) {
+					sc.socket().setSendBufferSize(sendBufferSize); 
+					newSize = sc.socket().getSendBufferSize();
+				}
+				else {
+					newSize = oldSize;
+				}
+				sendBufferSize = newSize;
+				System.out.println("[INFO] SO_SNDBUF changed requested (old=" + oldSize + ", new=" + newSize+ ")");
+			}
 			if (reuseAddress) {
 				sc.socket().setReuseAddress(true);
 			}

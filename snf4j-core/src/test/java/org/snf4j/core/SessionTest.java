@@ -2173,6 +2173,7 @@ public class SessionTest {
 	public void testWriteSpinCount() throws Exception {
 		s = new Server(PORT);
 		c = new Client(PORT);
+		c.sendBufferSize = 32000;
 		
 		s.start();
 		c.start();
@@ -2187,7 +2188,7 @@ public class SessionTest {
 
 		StreamSession session = c.getSession();
 		session.suspendWrite();
-		for (int i=0; i<100; i++) {
+		for (int i=0; i<500; i++) {
 			session.write(data);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
@@ -2195,7 +2196,7 @@ public class SessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		String text = c.getRecordedData(true);
-		assertEquals(100, countRDNOP(s.getRecordedData(true), payload));
+		assertEquals(500, countRDNOP(s.getRecordedData(true), payload));
 		int count = countDS(text);
 		assertEquals("SCL|SEN|", text.substring(count*3));
 		c.stop(TIMEOUT);
@@ -2210,7 +2211,7 @@ public class SessionTest {
 		
 		session = c.getSession();
 		session.suspendWrite();
-		for (int i=0; i<100; i++) {
+		for (int i=0; i<500; i++) {
 			session.write(data);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
@@ -2218,10 +2219,10 @@ public class SessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		text = c.getRecordedData(true);
-		assertEquals(100, countRDNOP(s.getRecordedData(true), payload));
+		assertEquals(500, countRDNOP(s.getRecordedData(true), payload));
 		int count2 = countDS(text);
 		assertEquals("SCL|SEN|", text.substring(count2*3));
-		assertTrue(""+count2+">"+count, count2 > count*2);
+		assertTrue(""+count2+">"+count, count2 > count);
 		c.stop(TIMEOUT);
 		
 		c = new Client(PORT);
