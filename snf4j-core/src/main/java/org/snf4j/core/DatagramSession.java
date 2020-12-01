@@ -58,6 +58,8 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	private ByteBuffer inBuffer;
 	
+	private int inBufferCapacity;
+	
 	private ConcurrentLinkedQueue<DatagramRecord> outQueue;
 
 	/** Number of bytes in the queue */
@@ -82,7 +84,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	 */	
 	public DatagramSession(String name, IDatagramHandler handler) {
 		super(name, handler, LOGGER);
-		minInBufferCapacity = config.getMinInBufferCapacity();
+		minInBufferCapacity = inBufferCapacity = config.getMinInBufferCapacity();
 		maxInBufferCapacity = config.getMaxInBufferCapacity();
 		ignorePossiblyIncomplete = config.ignorePossiblyIncompleteDatagrams();
 	}
@@ -183,7 +185,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	}
 
 	final DatagramRecord initRecord(DatagramRecord record, byte[] datagram, int offset, int length) {
-		if (canOwnPassedData && allocator.usesArray()) {
+		if (optimizeCopying && allocator.usesArray()) {
 			record.buffer = ByteBuffer.wrap(datagram, offset, length);
 		}
 		else {
@@ -199,8 +201,9 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	final DatagramRecord initRecord(DatagramRecord record, ByteBuffer datagram, int length) {
 		boolean allRemaining = length == datagram.remaining();
 		
-		if (canOwnPassedData && allRemaining) {
+		if (optimizeCopying && allRemaining) {
 			record.buffer = datagram;
+			record.release = optimizeBuffers;
 		}
 		else {
 			ByteBuffer buffer = allocator.allocate(length);
@@ -400,6 +403,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		long futureExpectedLen;
 		
 		record.buffer = datagram;
+		record.release = optimizeBuffers;
 		futureExpectedLen = write0(record);
 		if (withFuture) {
 			if (futureExpectedLen == -1) {
@@ -647,7 +651,9 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	@Override
 	void preCreated() {
-		inBuffer = allocator.allocate(minInBufferCapacity);
+		if (!optimizeBuffers) {
+			inBuffer = allocator.allocate(minInBufferCapacity);
+		}
 		outQueue = new ConcurrentLinkedQueue<DatagramRecord>();
 	}
 	
@@ -667,19 +673,18 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		}
 	}
 	
-	final void release(ByteBuffer buffer) {
-		if (allocator.isReleasable()) {
-			allocator.release(buffer);
-		}
-	}
-	
 	final Queue<DatagramRecord> getOutQueue() {
 		return outQueue;
 	}
 	
 	ByteBuffer getInBuffer() {
+		if (inBuffer == null) {
+			inBuffer = allocator.allocate(inBufferCapacity);
+			return inBuffer;
+		}
 		if (inBuffer.position() == inBuffer.capacity()) {
 			inBuffer = allocator.extend((ByteBuffer) inBuffer.clear(), maxInBufferCapacity);
+			inBufferCapacity = inBuffer.capacity();
 			return inBuffer;
 		}
 		return (ByteBuffer) inBuffer.clear();
@@ -690,14 +695,32 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			inBuffer.flip();
 			if (inBuffer.hasRemaining()) {
 				IDatagramReader handler = superCodec();
-				byte[] data = new byte[inBuffer.remaining()];
-				inBuffer.get(data);
-				if (remoteAddress == null) {
-					handler.read(data);
+				
+				if (optimizeBuffers) {
+					ByteBuffer data = inBuffer;
+					
+					inBuffer = null;
+					if (remoteAddress == null) {
+						handler.read(data);
+					}
+					else {
+						handler.read(remoteAddress, data);
+					}
 				}
 				else {
-					handler.read(remoteAddress, data);
+					byte[] data = new byte[inBuffer.remaining()];
+					inBuffer.get(data);
+					if (remoteAddress == null) {
+						handler.read(data);
+					}
+					else {
+						handler.read(remoteAddress, data);
+					}
 				}
+			}
+			else if (optimizeBuffers) {
+				allocator.release(inBuffer);
+				inBuffer = null;
 			}
 		}
 	}
@@ -723,6 +746,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		public final IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture) {
 			DatagramRecord record = new DatagramRecord(remoteAddress);
 			record.buffer = buffer;
+			record.release = optimizeBuffers;
 			return write1(record);
 		}
 

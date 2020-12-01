@@ -56,9 +56,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/** Determines if possibly incomplete datagrams should be ignored */
 	private boolean ignorePossibleIncompleteDatagrams = true;
 
-	/** Determines if the session object can own the data passed to 
-	 * the write methods */
-	private boolean canOwnDataPassedToWriteAndSendMethods;
+	/** Determines if the data copy optimization should be enabled */
+	private boolean optimizeDataCopying;
 
 	/** Determines the action that should be performed by the selector 
 	 * loop after ending of the associated session. */
@@ -73,6 +72,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	private long engineHandshakeTimeout = 60000;
 	
 	private long datagramServerSessionNoReopenPeriod = 60000;
+	
+	private int maxWriteSpinCount = 16;
 	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
@@ -181,17 +182,16 @@ public class DefaultSessionConfig implements ISessionConfig {
 	}
 
 	/**
+	 * Configures if the processing of data should be optimized to reduce data
+	 * copying between byte buffers.
 	 * 
-	 * Configures if the session object can own the data (i.e. byte arrays or byte
-	 * buffers) passed to the write and send methods.
-	 * 
-	 * @param canOwnData <code>true</code> if the session object can own the data
-	 *                   passed in the write methods.
+	 * @param optimize <code>true</code> if the processing of data should be
+	 *                 optimized
 	 * @return this session config object
-	 * @see #canOwnDataPassedToWriteAndSendMethods()
+	 * @see #optimizeDataCopying()
 	 */
-	public DefaultSessionConfig setCanOwnDataPassedToWriteAndSendMethods(boolean canOwnData) {
-		canOwnDataPassedToWriteAndSendMethods = canOwnData;
+	public DefaultSessionConfig setOptimizeDataCopying(boolean optimize) {
+		optimizeDataCopying = optimize;
 		return this;
 	}
 
@@ -201,8 +201,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * The default value is <code>false</code>
 	 */
 	@Override
-	public boolean canOwnDataPassedToWriteAndSendMethods() {
-		return canOwnDataPassedToWriteAndSendMethods;
+	public boolean optimizeDataCopying() {
+		return optimizeDataCopying;
 	}
 
 	/**
@@ -394,4 +394,31 @@ public class DefaultSessionConfig implements ISessionConfig {
 	public long getDatagramServerSessionNoReopenPeriod() {
 		return datagramServerSessionNoReopenPeriod;
 	}
+
+	/**
+	 * Configures the maximum loop count for write operations performed by the
+	 * selector loop before returning control to the NIO selector or to other channel ready
+	 * for I/O operations. The write operations are performed in the loop until the
+	 * channel's write method returns a non-zero value and there is still pending
+	 * data to be written or the maximum loop count is reached.
+	 * <p>
+	 * It improves write throughput depending on the platform that JVM runs on.
+	 * 
+	 * @return this session config object
+	 * @see #getMaxWriteSpinCount()
+	 */
+	public DefaultSessionConfig setMaxWriteSpinCount(int count) {
+		maxWriteSpinCount = count;
+		return this;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>16</code>
+	 */
+	public int getMaxWriteSpinCount() {
+		return maxWriteSpinCount;
+	}
+	
 }

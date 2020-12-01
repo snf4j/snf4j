@@ -40,7 +40,7 @@ public class Packet {
 	
 	static int available(byte[] buffer, int off, int len) {
 		if (len >= 3) {
-			int expected = (((int)buffer[0] << 8) & 0xff00) | ((int)buffer[1] & 0xff);
+			int expected = (((int)buffer[off] << 8) & 0xff00) | ((int)buffer[off+1] & 0xff);
 			
 			if (expected <= len) {
 				return expected;

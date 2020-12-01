@@ -33,6 +33,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -75,6 +76,13 @@ public class DatagramSessionTest {
 	
 	private ByteBuffer getBuffer(int size, int value) {
 		return ByteBuffer.wrap(getBytes(size, value));
+	}
+	
+	static ByteBuffer getInBuffer(DatagramSession session) throws Exception {
+		Field f = DatagramSession.class.getDeclaredField("inBuffer");
+		
+		f.setAccessible(true);
+		return (ByteBuffer) f.get(session);
 	}
 	
 	@Before
@@ -842,6 +850,69 @@ public class DatagramSessionTest {
 	}
 	
 	@Test
+	public void testIgnorePossiblyIncompleteWithOptimize() throws Exception {
+		s = new DatagramHandler(PORT); 
+		s.allocator = new TestAllocator(false, true);
+		s.optimizeDataCopying = true;
+		s.startServer();
+		c = new DatagramHandler(PORT); 
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		int min = s.getSession().getConfig().getMinInBufferCapacity()-3;
+
+		//sending pocket with size that equals the buffer size
+		byte[] bytes = new byte[min];
+		Arrays.fill(bytes, (byte)'B');
+		String payload = new String(bytes);
+		c.write(new Packet(PacketType.NOP, payload));
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataReceived(TIMEOUT);
+		waitFor(100);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getSize());
+		assertTrue(getInBuffer(s.getSession()) == s.allocator.get().get(0));
+		assertNotNull(getInBuffer(s.getSession()));
+		
+		//sending pocket with size that equals than buffer size (retry)
+		bytes = new byte[min];
+		Arrays.fill(bytes, (byte)'B');
+		payload = new String(bytes);
+		c.write(new Packet(PacketType.NOP, payload));
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|$NOP(" + payload + ")|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
+		assertNull(getInBuffer(s.getSession()));
+		
+		//sending pocket with size greater than buffer size
+		bytes = new byte[min+1];
+		Arrays.fill(bytes, (byte)'B');
+		payload = new String(bytes);
+		c.write(new Packet(PacketType.NOP, payload));
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|$NOP(" + payload + ")|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
+		assertNull(getInBuffer(s.getSession()));
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+	}
+	
+	@Test
 	public void testIgnorePossiblyIncomplete() throws Exception {
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); c.startClient();
@@ -862,14 +933,14 @@ public class DatagramSessionTest {
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|$NOP(" + payload + ")|", s.getRecordedData(true));
 
-		//sending pocket with size that equals than buffer size
+		//sending pocket with size that equals the buffer size
 		bytes = new byte[min];
 		Arrays.fill(bytes, (byte)'B');
 		payload = new String(bytes);
 		c.write(new Packet(PacketType.NOP, payload));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataReceived(TIMEOUT);
-		waitFor(1000);
+		waitFor(200);
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|", s.getRecordedData(true));
 
@@ -880,7 +951,7 @@ public class DatagramSessionTest {
 		c.write(new Packet(PacketType.NOP, payload));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
-		waitFor(1000);
+		waitFor(200);
 		assertEquals("DS|", c.getRecordedData(true));
 		assertEquals("DR|$NOP(" + payload + ")|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
@@ -1354,7 +1425,7 @@ public class DatagramSessionTest {
 
 		//flag == true, heap buffer
 		s = new DatagramHandler(PORT); s.startServer();
-		c = new DatagramHandler(PORT); c.canOwnPasseData = true; c.startClient();
+		c = new DatagramHandler(PORT); c.optimizeDataCopying = true; c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
@@ -1398,7 +1469,7 @@ public class DatagramSessionTest {
 		//flag == true, direct buffer
 		s = new DatagramHandler(PORT); s.startServer();
 		c = new DatagramHandler(PORT); 
-		c.canOwnPasseData = true;
+		c.optimizeDataCopying = true;
 		c.directAllocator = true;
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
@@ -1560,22 +1631,22 @@ public class DatagramSessionTest {
 		
 		//write suspended, releasing, can own passed data
 		c = new DatagramHandler(PORT);
-		c.canOwnPasseData = true;
+		c.optimizeDataCopying = true;
 		allocator = new TestAllocator(false, true);
 		c.allocator = allocator;
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		c.getSession().suspendWrite();
 		c.getSession().send(address, new Packet(PacketType.ECHO, "33").toBytes());
-		assertEquals(1, allocator.getSize());
-		assertEquals(1, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getSize());
+		assertEquals(0, allocator.getAllocatedCount());
 		assertEquals(0, allocator.getReleasedCount());
 		c.getSession().quickClose();
 		c.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
 		assertEquals(0, allocator.getSize());
-		assertEquals(1, allocator.getAllocatedCount());
-		assertEquals(1, allocator.getReleasedCount());
+		assertEquals(0, allocator.getAllocatedCount());
+		assertEquals(0, allocator.getReleasedCount());
 		
 		s.stop(TIMEOUT);
 	}
@@ -1673,6 +1744,107 @@ public class DatagramSessionTest {
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
 		s = null;
 	}	
+	
+	public static int countRDNOP(String s, byte[] payload) {
+		int off = 0;
+		String rdnop = "DR|$NOP(" + new String(payload) + ")|";
+		int i;
+		int count = 0;
+		
+		while ((i = s.indexOf(rdnop, off)) != -1) {
+			off = i + rdnop.length();
+			count++;
+		}
+		return count;
+	}
+	
+	@Test
+	public void testWriteSpinCount() throws Exception {
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.startServer();
+		c.startClient();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		
+		byte[] payload = new byte[1000];
+		Arrays.fill(payload, (byte)'1');
+		byte[] data = new Packet(PacketType.NOP, new String(payload)).toBytes();
+		
+		DatagramSession session = c.getSession();
+		session.suspendWrite();
+		for (int i=0; i<32; i++) {
+			session.write(data);
+		}
+		session.resumeWrite();
+		waitFor(100);
+		assertEquals("DS|DS|", c.getRecordedData(true));
+		assertEquals(32, countRDNOP(s.getRecordedData(true), payload));
+		c.stop(TIMEOUT);
+		
+		c = new DatagramHandler(PORT);
+		c.maxWriteSpinCount = 1;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		session = c.getSession();
+		session.suspendWrite();
+		for (int i=0; i<32; i++) {
+			session.write(data);
+		}
+		session.resumeWrite();
+		waitFor(100);
+		assertEquals("DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|DS|", c.getRecordedData(true));
+		assertEquals(32, countRDNOP(s.getRecordedData(true), payload));
+		c.stop(TIMEOUT);
+		
+		c = new DatagramHandler(PORT);
+		c.maxWriteSpinCount = 16;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		session = c.getSession();
+		session.suspendWrite();
+		session.write(new Packet(PacketType.NOP, "1234").toBytes());
+		TestSelectionKey key = new TestSelectionKey(new TestDatagramChannel());
+		Method m = SelectorLoop.class.getDeclaredMethod("handleWriting", DatagramSession.class, SelectionKey.class, int.class);
+		m.setAccessible(true);
+		assertEquals(new Integer(0), m.invoke(c.loop, session, key, 1));
+		session.resumeWrite();
+		waitFor(50);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|$NOP(1234)|", s.getRecordedData(true));
+		
+		c.closeInEvent = EventType.DATA_SENT;
+		c.closeType = StoppingType.DIRTY;
+		session.suspendWrite();
+		for (int i=0; i<15; i++) {
+			session.write(data);
+		}
+		session.resumeWrite();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		waitFor(100);
+		assertEquals(15, countRDNOP(s.getRecordedData(true), payload));
+		c.stop(TIMEOUT);
+		
+		c = new DatagramHandler(PORT);
+		c.maxWriteSpinCount = 16;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		session = c.getSession();
+		session.suspendWrite();
+		session.write(new Packet(PacketType.NOP, "1234").toBytes());
+		c.writeInEvent = EventType.DATA_SENT;
+		c.packetToWriteInEvent = new Packet(PacketType.NOP, "5678");
+		session.resumeWrite();
+		waitFor(100);
+		assertEquals("DS|DS|", c.getRecordedData(true));
+		assertEquals("DR|$NOP(1234)|DR|$NOP(5678)|", s.getRecordedData(true));
+	}
 	
 	@Test
 	public void testSendWhenChannelIsConnected() throws Exception {
@@ -1805,6 +1977,202 @@ public class DatagramSessionTest {
 		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
 		assertEquals(ClosingState.FINISHED, c.getSession().closing);
 		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingRead() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, true);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		SocketAddress a = c.getSession().getLocalAddress();
+		assertNull(getInBuffer(c.getSession()));
+		assertEquals(0, c.allocator.getAllocatedCount());
+		s.getSession().send(a, new Packet(PacketType.NOP).toBytes());
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|BUF|NOP()|", c.getRecordedData(true));
+		assertEquals(1, c.allocator.getAllocatedCount());
+		c.allocator.release(c.bufferRead);
+		assertNull(getInBuffer(c.getSession()));
+		assertEquals(0, c.allocator.getSize());
+
+		c.getSession().suspendRead();
+		s.getSession().send(a, new Packet(PacketType.NOP, "123456").toBytes());
+		Method m = SelectorLoop.class.getDeclaredMethod("handleReading", DatagramSession.class, SelectionKey.class);
+		m.setAccessible(true);
+		TestSelectionKey key = new TestSelectionKey(new TestDatagramChannel());
+		m.invoke(c.loop, c.getSession(), key);
+		assertEquals(0, c.allocator.getSize());
+		assertNull(getInBuffer(c.getSession()));
+		key = new TestSelectionKey(new TestDatagramChannel(false));
+		m.invoke(c.loop, c.getSession(), key);
+		assertEquals(0, c.allocator.getSize());
+		assertNull(getInBuffer(c.getSession()));
+		c.getSession().resumeRead();
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|BUF|NOP(123456)|", c.getRecordedData(true));
+		assertNull(getInBuffer(c.getSession()));
+		assertEquals(1, c.allocator.getSize());
+		c.allocator.release(c.bufferRead);
+		assertEquals(0, c.allocator.getSize());
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.optimizeDataCopying = true;
+		s.allocator = new TestAllocator(false, true);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		assertEquals(0, s.allocator.getAllocatedCount());
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|BUF|$NOP()|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getAllocatedCount());
+		s.allocator.release(s.bufferRead);
+		assertNull(getInBuffer(s.getSession()));
+		assertEquals(0, s.allocator.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, false);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		a = c.getSession().getLocalAddress();
+		ByteBuffer b = getInBuffer(c.getSession());
+		assertEquals(1, c.allocator.getAllocatedCount());
+		s.getSession().send(a, new Packet(PacketType.NOP).toBytes());
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", c.getRecordedData(true));
+		assertEquals(1, c.allocator.getAllocatedCount());
+		assertTrue(b == getInBuffer(c.getSession()));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	
+		s = new DatagramHandler(PORT);
+		s.optimizeDataCopying = true;
+		s.allocator = new TestAllocator(false, false);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		b = getInBuffer(s.getSession());
+		assertEquals(1, s.allocator.getAllocatedCount());
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|$NOP()|", s.getRecordedData(true));
+		assertEquals(1, s.allocator.getAllocatedCount());
+		assertTrue(b == getInBuffer(s.getSession()));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.optimizeDataCopying = false;
+		s.allocator = new TestAllocator(false, true);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		s.getRecordedData(true);
+		s.getSession().suspendRead();
+		c.getSession().write(new Packet(PacketType.NOP, "12").toBytes());
+		key = new TestSelectionKey(new TestDatagramChannel(false));
+		assertEquals(1, s.allocator.getSize());
+		b = getInBuffer(c.getSession());
+		assertNotNull(b);
+		m.invoke(c.loop, c.getSession(), key);
+		assertEquals(1, s.allocator.getSize());
+		assertTrue(b == getInBuffer(c.getSession()));
+		s.getSession().resumeRead();
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(12)|", s.getRecordedData(true));
+		
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingWrite() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, true);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		DatagramSession session = c.getSession();
+		ByteBuffer b = session.allocate(100);
+		b.put(new Packet(PacketType.NOP).toBytes());
+		b.flip();
+		session.write(b);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|$NOP()|", s.getRecordedData(true));
+		assertEquals(1, c.allocator.getReleasedCount());
+		assertEquals(1, c.allocator.getAllocatedCount());
+		assertTrue(b == c.allocator.getReleased().get(0));
+		assertEquals(0, c.allocator.getSize());
+		c.stop(TIMEOUT);
+		
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, false);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		
+		session = c.getSession();
+		b = session.allocate(100);
+		b.put(new Packet(PacketType.NOP).toBytes());
+		b.flip();
+		session.write(b);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP()|", s.getRecordedData(true));
+		assertEquals(0, c.allocator.getReleasedCount());
+		assertEquals(2, c.allocator.getAllocatedCount());
+		c.stop(TIMEOUT);
+		
+		c = new DatagramHandler(PORT);
+		c.optimizeDataCopying = false;
+		c.allocator = new TestAllocator(false, true);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		
+		session = c.getSession();
+		b = session.allocate(100);
+		b.put(new Packet(PacketType.NOP).toBytes());
+		b.flip();
+		session.write(b);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP()|", s.getRecordedData(true));
+		assertEquals(1, c.allocator.getReleasedCount());
+		assertFalse(b == c.allocator.getReleased().get(0));
+		assertEquals(3, c.allocator.getAllocatedCount());
+		
 	}
 	
 	@Test

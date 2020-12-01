@@ -34,6 +34,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -65,6 +66,7 @@ import org.snf4j.core.codec.zip.ZlibEncoder;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
+import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.ISessionTimer;
@@ -105,6 +107,10 @@ public class SessionTest {
 		return ssc.register(selector, SelectionKey.OP_ACCEPT);
 	}
 	
+	public static boolean isOptimized(StreamSession session) {
+		return session.optimizeBuffers && session.optimizeCopying;
+	}
+	
 	private SelectionKey registerSocketChannel(Selector selector, int port) throws IOException {
 		SocketChannel sc = SocketChannel.open();
 		sc.configureBlocking(false);
@@ -141,6 +147,18 @@ public class SessionTest {
 	
 	private ByteBuffer getBuffer(int size, int value) {
 		return ByteBuffer.wrap(getBytes(size, value));
+	}
+	
+	static ByteBuffer getInBuffer(StreamSession s) throws Exception {
+		Field f = StreamSession.class.getDeclaredField("inBuffer");
+		f.setAccessible(true);
+		return (ByteBuffer) f.get(s);
+	}
+	
+	static ByteBuffer[] getOutBuffers(StreamSession s) throws Exception {
+		Field f = StreamSession.class.getDeclaredField("outBuffers");
+		f.setAccessible(true);
+		return (ByteBuffer[]) f.get(s);
 	}
 	
 	@Test
@@ -184,6 +202,12 @@ public class SessionTest {
 		Map<Object,Object> a = s.getAttributes();
 		assertNotNull(a);
 		assertTrue(a == s.getAttributes());
+		
+		handler = new TestHandler("Test1");
+		assertEquals(0, handler.allocatorCount);
+		s = new StreamSession(handler);
+		assertEquals(1, handler.allocatorCount);
+		
 	}
 	
 	@Test
@@ -1240,6 +1264,7 @@ public class SessionTest {
 		
 		//quick close outside the loop with data to send (closed on other side)
 		s = new Server(PORT); s.start();
+		s.dontReplaceException = true;
 		c = new Client(PORT); c.start();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
@@ -1251,7 +1276,10 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DR|WRITE_AND_WAIT(1000)|DS|SCL|SEN|", s.getRecordedData(true));
+		String r = s.getRecordedData(true);
+		if (!r.equals("DR|WRITE_AND_WAIT(1000)|DS|SCL|SEN|")) {
+			assertEquals("DR|WRITE_AND_WAIT(1000)|DS|EXC|SCL|SEN|", r);
+		}
 		s.stop(TIMEOUT); c.stop(TIMEOUT);
 
 		//quick close outside the loop with data to send (closed on the same side)
@@ -2120,6 +2148,206 @@ public class SessionTest {
 		
 	}	
 	
+	public static int countDS(String s) {
+		int off = 0;
+		while (s.startsWith("DS|", off)) {
+			off += 3;
+		}
+		return off/3;
+	}
+	
+	public static int countRDNOP(String s, byte[] payload) {
+		int off = 0;
+		String rdnop = "DR|NOP(" + new String(payload) + ")|";
+		int i;
+		int count = 0;
+		
+		while ((i = s.indexOf(rdnop, off)) != -1) {
+			off = i + rdnop.length();
+			count++;
+		}
+		return count;
+	}
+	
+	@Test
+	public void testWriteSpinCount() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		
+		StreamSession session;
+		byte[] payload = new byte[2000];
+		Arrays.fill(payload, (byte)'1');
+		byte[] data = new Packet(PacketType.NOP, new String(payload)).toBytes();
+		int writeCount = 2000;
+		boolean travis = "true".equalsIgnoreCase(System.getenv("TRAVIS")) || true;
+		int maxTries = travis ? 10 : 1;
+		StringBuilder sb = new StringBuilder();
+		
+		//In Travis CI we are trying 10 times as it is difficult to predict the size
+		//of data consumed by single execution of channel's write method.
+		for (int t=0; t<maxTries; ++t) {
+			c = new Client(PORT);
+			c.start();
+			c.waitForSessionReady(TIMEOUT);
+			s.waitForSessionReady(TIMEOUT);
+			assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+			assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+
+			session = c.getSession();
+			session.suspendWrite();
+			for (int i=0; i<writeCount; i++) {
+				session.write(data);
+			}
+			session.write(new Packet(PacketType.CLOSE).toBytes());
+			session.resumeWrite();
+			s.waitForSessionEnding(TIMEOUT);
+			c.waitForSessionEnding(TIMEOUT);
+			String text = c.getRecordedData(true);
+			assertEquals(writeCount, countRDNOP(s.getRecordedData(true), payload));
+			int count = countDS(text);
+			assertEquals("SCL|SEN|", text.substring(count*3));
+			c.stop(TIMEOUT);
+
+			c = new Client(PORT);
+			c.maxWriteSpinCount = 1;
+			c.start();
+			c.waitForSessionReady(TIMEOUT);
+			s.waitForSessionReady(TIMEOUT);
+			c.getRecordedData(true);
+			s.getRecordedData(true);
+
+			session = c.getSession();
+			session.suspendWrite();
+			for (int i=0; i<writeCount; i++) {
+				session.write(data);
+			}
+			session.write(new Packet(PacketType.CLOSE).toBytes());
+			session.resumeWrite();
+			s.waitForSessionEnding(TIMEOUT);
+			c.waitForSessionEnding(TIMEOUT);
+			text = c.getRecordedData(true);
+			assertEquals(writeCount, countRDNOP(s.getRecordedData(true), payload));
+			int count2 = countDS(text);
+			assertEquals("SCL|SEN|", text.substring(count2*3));
+			
+			boolean countsOk;
+			if (travis) {
+				countsOk = count2 > count;
+			}
+			else {
+				countsOk = count2 > count*4;
+			}
+			c.stop(TIMEOUT);
+			
+			if (countsOk) {
+				sb.setLength(0);
+				break;
+			}
+			else {
+				sb.append(count2);
+				sb.append(">");
+				sb.append(count);
+				sb.append("; ");
+			}
+		}
+		if (sb.length() > 0) {
+			fail("count2 > count: " + sb.toString());
+		}
+		
+		c = new Client(PORT);
+		c.useTestSession = true;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		session = c.getSession();
+		((TestStreamSession)session).getOutBuffersException = true;
+		session = c.getSession();
+		session.suspendWrite();
+		for (int i=0; i<writeCount; i++) {
+			session.write(data);
+		}
+		session.write(new Packet(PacketType.CLOSE).toBytes());
+		session.resumeWrite();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		c.useTestSession = true;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		session = c.getSession();
+		((TestStreamSession)session).getOutBuffersException = true;
+		((TestStreamSession)session).getOutBuffersExceptionDelay = 1;
+		session = c.getSession();
+		session.suspendWrite();
+		for (int i=0; i<writeCount; i++) {
+			session.write(data);
+		}
+		session.write(new Packet(PacketType.CLOSE).toBytes());
+		session.resumeWrite();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|EXC|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		c.maxWriteSpinCount = 1;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		session = c.getSession();
+		session.suspendWrite();
+		session.write(new Packet(PacketType.NOP, "123456").toBytes());
+		TestSelectionKey key = new TestSelectionKey(new TestSocketChannel());
+		Method m = SelectorLoop.class.getDeclaredMethod("handleWriting", StreamSession.class, SelectionKey.class, int.class);
+		m.setAccessible(true);
+		m.invoke(c.loop, session, key, 1);
+		session.write(new Packet(PacketType.CLOSE).toBytes());
+		session.resumeWrite();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|NOP(123456)|CLOSE()|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+	
+		TestHandler h = new TestHandler("") {
+			@Override
+			public ISessionConfig getConfig() {
+				return new DefaultSessionConfig().setMaxWriteSpinCount(0);
+			}			
+		};
+		try {
+			new StreamSession(h);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
+		
+		h = new TestHandler("") {
+			@Override
+			public ISessionConfig getConfig() {
+				return new DefaultSessionConfig().setMaxWriteSpinCount(-1);
+			}			
+		};		
+		try {
+			new StreamSession(h);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
+	}
+	
 	@Test
 	public void testDataEventDetails() throws Exception {
 		s = new Server(PORT);
@@ -2249,7 +2477,7 @@ public class SessionTest {
 		stimer.scheduleEvent("t1", 100);
 		waitFor(80);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(25);
+		waitFor(40);
 		assertEquals("TIM;t1|", s.getRecordedData(true));
 		stimer.scheduleEvent("t2", 10).cancelTask();
 		waitFor(20);
@@ -2259,7 +2487,7 @@ public class SessionTest {
 		assertEquals("", s.getRecordedData(true));
 		waitFor(4);
 		assertEquals("TIM;t3|", s.getRecordedData(true));
-		waitFor(20);
+		waitFor(25);
 		assertEquals("TIM;t3|TIM;t3|", s.getRecordedData(true));
 		task.cancelTask();
 		waitFor(100);
@@ -2313,7 +2541,7 @@ public class SessionTest {
 		assertTrue(expired.get());
 		task.cancelTask();
 		expired.set(false);
-		waitFor(100);
+		waitFor(115);
 		assertFalse(expired.get());
 		
 		s.throwInTimer = true;
@@ -2587,6 +2815,382 @@ public class SessionTest {
 		assertTrue(((GzipEncoder)c.codecPipeline.getPipeline().get("ENCODER")).isFinished());
 		assertTrue(((GzipDecoder)s.codecPipeline.getPipeline().get("DECODER")).isFinished());
 		assertTrue(((GzipEncoder)s.codecPipeline.getPipeline().get("ENCODER")).isFinished());
+	}
+	
+	@Test
+	public void testAllocateAndRelease() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.allocator = new TestAllocator(false, false);
+		s.allocator = new TestAllocator(true, true);
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		
+		ByteBuffer b = c.getSession().allocate(16);
+		assertFalse(b.isDirect());
+		assertEquals(16, b.capacity());
+		assertEquals(0, c.allocator.getReleased().size());
+		c.getSession().release(b);
+		assertEquals(0, c.allocator.getReleased().size());
+		
+		b = s.getSession().allocate(32);
+		assertTrue(b.isDirect());
+		assertEquals(32, b.capacity());
+		assertEquals(0, s.allocator.getReleased().size());
+		s.getSession().release(b);
+		assertEquals(1, s.allocator.getReleased().size());
+		assertTrue(b == s.allocator.getReleased().get(0));
+		
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingRead() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		s.allocator = new TestAllocator(false, true);
+		s.optimizeDataCopying = true;
+		s.ignoreAvailableException = true;
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		StreamSession session = s.getSession();
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		
+		ByteBuffer b = null;
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		assertEquals(1, s.allocator.getAllocatedCount());
+		assertEquals(1, s.allocator.getSize());
+		session.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals("SCR|SOP|RDY|DS|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|BUF|NOP()|", s.getRecordedData(true));
+		
+		c.getSession().write(new Packet(PacketType.NOP,"1").toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		assertEquals(2, s.allocator.getAllocatedCount());
+		assertEquals(1, s.allocator.getSize());
+		session.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(1)|", s.getRecordedData(true));
+		
+		int acount = s.allocator.getAllocatedCount();
+		byte[] bytes = new Packet(PacketType.NOP,"10").toBytes();
+		c.getSession().write(bytes, 0, 2);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		assertEquals(acount+1, s.allocator.getAllocatedCount());
+		assertEquals(1, s.allocator.getSize());
+		b = getInBuffer(session);
+		assertNotNull(b);
+		assertEquals(2, b.position());
+		assertEquals(0, getOutBuffers(session).length);
+		c.getSession().write(bytes, 2, bytes.length-2);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals(acount+1, s.allocator.getAllocatedCount());
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(1, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(0, s.allocator.getSize());
+		assertEquals("DS|DS|", c.getRecordedData(true));
+		assertEquals("DR|DR|BUF|NOP(10)|", s.getRecordedData(true));
+		
+		byte[] bytes2 = new byte[bytes.length*2];
+		System.arraycopy(bytes, 0, bytes2, 0, bytes.length);
+		System.arraycopy(bytes, 0, bytes2, bytes.length, bytes.length);
+		bytes2[bytes2.length-1]++;
+		c.getSession().write(bytes2);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(acount+3, s.allocator.getAllocatedCount());
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(2, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(1, s.allocator.getSize());
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(10)|BUF|NOP(11)|", s.getRecordedData(true));
+		
+		c.getSession().write(bytes2, 0, 6);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(acount+5, s.allocator.getAllocatedCount());
+		assertEquals(3, s.allocator.getSize());
+		assertNotNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		s.allocator.release(s.bufferRead);
+		assertEquals(2, s.allocator.getSize());
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(10)|", s.getRecordedData(true));
+		c.getSession().write(bytes2, 6, 4);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(acount+5, s.allocator.getAllocatedCount());
+		assertEquals(2, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(1, s.allocator.getSize());
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(11)|", s.getRecordedData(true));
+		assertTrue(b != session.getInBuffer());
+		assertEquals(b.capacity(), session.getInBuffer().capacity());
+
+		byte[] bytes3 = new byte[bytes.length*3];
+		b = session.getInBuffer();
+		System.arraycopy(bytes, 0, bytes3, 0, bytes.length);
+		System.arraycopy(bytes, 0, bytes3, bytes.length, bytes.length);
+		System.arraycopy(bytes, 0, bytes3, bytes.length*2, bytes.length);
+		c.getSession().write(bytes3);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(acount+8, s.allocator.getAllocatedCount());
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(10)|BUF|NOP(10)|BUF|NOP(10)|", s.getRecordedData(true));
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(4, s.allocator.getSize());
+		s.allocator.release(s.bufferRead);
+		assertEquals(3, s.allocator.getSize());
+		
+		TestSelectionKey key = new TestSelectionKey(new TestSocketChannel());
+		Method m = SelectorLoop.class.getDeclaredMethod("handleReading", StreamSession.class, SelectionKey.class);
+		m.setAccessible(true);
+		m.invoke(s.loop, session, key);
+		assertEquals(3, s.allocator.getSize());
+		assertNull(getInBuffer(session));
+		assertEquals(acount+9, s.allocator.getAllocatedCount());
+		bytes = new Packet(PacketType.NOP, "123455").toBytes();
+		c.getSession().write(bytes, 0, 4);
+		waitFor(50);
+		assertEquals("DR|", s.getRecordedData(true));
+		assertEquals(4, s.allocator.getSize());
+		b = getInBuffer(session);
+		assertNotNull(b);
+		m.invoke(s.loop, session, key);
+		assertTrue(b == getInBuffer(session));
+		assertEquals(4, s.allocator.getSize());
+		c.getSession().write(bytes, 4, bytes.length-4);
+		waitFor(50);
+		assertEquals("DR|BUF|NOP(123455)|", s.getRecordedData(true));
+		
+		session = c.getSession();
+		b = getInBuffer(session);
+		assertNotNull(b);
+		m.invoke(c.loop, session, key);
+		assertTrue(b == getInBuffer(session));
+		
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new Server(PORT);
+		c = new Client(PORT);
+		s.allocator = new TestAllocator(true, true);
+		s.optimizeDataCopying = true;
+		s.ignoreAvailableException = true;
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		c.getSession().write(bytes2);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(10)|BUF|NOP(11)|", s.getRecordedData(true));
+
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingWrite() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.allocator = new TestAllocator(false, true);
+		c.optimizeDataCopying = true;
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+		
+		StreamSession session = c.getSession();
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+
+		ByteBuffer b = session.allocate(100);
+		ByteBuffer b0 = null;
+		b.put(new Packet(PacketType.NOP).toBytes());
+		b.flip();
+		session.write(b);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals(1, c.allocator.getAllocatedCount());
+		assertEquals(1, c.allocator.getReleasedCount());
+		assertEquals(0, c.allocator.getSize());
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		List<ByteBuffer> released = c.allocator.getReleased();
+		assertTrue(b == released.get(0));
+		assertEquals("SCR|SOP|RDY|DS|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		
+		session.suspendWrite();
+		session.write(new Packet(PacketType.NOP,"1").toBytes());
+		waitFor(50);
+		assertEquals(2, c.allocator.getAllocatedCount());
+		assertEquals(1, c.allocator.getReleasedCount());
+		assertTrue(c.allocator.getAllocated().get(1) == getOutBuffers(session)[0]);
+		
+		b0 = session.allocate(100);		
+		b0.put(new Packet(PacketType.NOP).toBytes());
+		b0.flip();
+		session.write(b0);
+		session.resumeWrite();
+		waitFor(50);
+		released = c.allocator.getReleased();
+		assertEquals(3, released.size());
+		assertTrue(b0 == released.get(2));
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1)|NOP()|", s.getRecordedData(true));
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(0, c.allocator.getSize());
+		
+		session.write(new Packet(PacketType.NOP,"2").toBytes());
+		waitFor(50);
+		assertEquals(4, released.size());
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(2)|", s.getRecordedData(true));
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(0, c.allocator.getSize());
+
+		b = session.allocate(100);		
+		b.put(new Packet(PacketType.NOP,"3").toBytes());
+		b.flip();
+		session.write(b);
+		waitFor(50);
+		assertEquals(5, released.size());
+		assertTrue(b == released.get(4));
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(3)|", s.getRecordedData(true));	
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(0, c.allocator.getSize());
+		
+		b0 = session.allocate(100);
+		b0.put(new Packet(PacketType.NOP,"4").toBytes());
+		b0.put((byte)0);
+		b0.flip();
+		session.write(b0, b0.remaining()-1);
+		waitFor(50);
+		assertEquals(6, released.size());
+		assertEquals(1, c.allocator.getSize());
+		c.allocator.release(b0);
+		assertEquals(0, c.allocator.getSize());
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(4)|", s.getRecordedData(true));	
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(0, c.allocator.getSize());
+		assertEquals(7, c.allocator.getAllocatedCount());
+		
+		byte[] bytes = new Packet(PacketType.NOP , "1234567890").toBytes();
+		session.write(bytes, 0, 5).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|", s.getRecordedData(true));
+		assertEquals(8, c.allocator.getAllocatedCount());
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(0, c.allocator.getSize());
+		session.write(bytes, 5, bytes.length-5).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));
+		assertEquals(9, c.allocator.getAllocatedCount());
+		assertNull(getInBuffer(session));
+		assertEquals(0, getOutBuffers(session).length);
+		assertEquals(0, c.allocator.getSize());		
+		
+		assertEquals(0, session.getOutBuffers().length);
+		session.suspendWrite();
+		session.write(bytes);
+		assertEquals(1, c.allocator.getSize());
+		ByteBuffer[] bb = getOutBuffers(session);
+		assertEquals(1, bb.length);
+		bb[0] = null;
+		session.dirtyClose();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals(1, c.allocator.getSize());
+		
+	}
+	
+	@Test
+	public void testUpdateOutBuffersForOptimization() {
+		IByteBufferAllocator a = DefaultAllocator.DEFAULT;
+		
+		//remaining data exists but last empty
+		ByteBuffer[] b = new ByteBuffer[] {ByteBuffer.wrap(new byte[10]), ByteBuffer.allocate(10)};
+		b[1].flip();
+		ByteBuffer[] b2 = StreamSession.compactBuffers(b, a, 100, true);
+		assertEquals(2, b2.length);
+		assertEquals(10, b2[0].remaining());
+		assertEquals(0, b2[1].position());
+		
+		//no data exist
+		b[0].clear().flip();
+		b[1].clear().flip();
+		b2 = StreamSession.compactBuffers(b, a, 100, true);
+		assertEquals(0, b2.length);	
+		b[0].clear().flip();
+		b[1].clear().flip();
+		b2 = StreamSession.compactBuffers(b, a, 5, false);
+		assertEquals(1, b2.length);
+		assertEquals(5, b2[0].capacity());
+		
+		//last buffer is empty
+		b = new ByteBuffer[] {ByteBuffer.allocate(10)};
+		ByteBuffer data = ByteBuffer.wrap(new byte[10]);
+		b[0].flip();
+		TestAllocator a2 = new TestAllocator(false, true);
+		data.flip();
+		b2 = StreamSession.putToBuffers(b, a2, data);
+		assertEquals(1, a2.getReleasedCount());
+		assertTrue(data == b2[0]);
+		
+		//last buffer is null
+		b[0] = null;
+		b2 = StreamSession.putToBuffers(b, a2, data);
+		assertEquals(1, a2.getReleasedCount());
+		assertTrue(data == b2[0]);
+		
+		
 	}
 	
 	static class PacketDecoder implements IDecoder<ByteBuffer,Packet> {

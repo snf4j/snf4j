@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -42,6 +43,8 @@ import javax.net.ssl.SSLEngine;
 
 import org.junit.Test;
 import org.snf4j.core.TestCodec.BBDEv;
+import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.future.IFuture;
@@ -75,6 +78,35 @@ public class DTLSSessionTest extends DTLSTest {
 			return super.createSSLEngine(clientMode);
 		}
 	};
+	
+	static ByteBuffer[] getAllBuffers(DatagramSession session) throws Exception {
+		ByteBuffer[] buffers = new ByteBuffer[2];
+		
+		if (session.getParent() == null) {
+			buffers[0] = DatagramSessionTest.getInBuffer(session);
+		}
+		else {
+			buffers[0] = DatagramSessionTest.getInBuffer((DatagramSession) session.getParent());			
+		}
+		Field f = EngineDatagramHandler.class.getDeclaredField("inAppBuffer");
+		f.setAccessible(true);
+		
+		Object h;
+		if (session instanceof EngineDatagramServerSession) {
+			Field wrapper = EngineDatagramServerSession.class.getDeclaredField("wrapper");
+			Field internal = EngineDatagramWrapper.class.getDeclaredField("internal");
+			
+			wrapper.setAccessible(true);
+			internal.setAccessible(true);
+			h = internal.get(wrapper.get(session));
+			
+		}
+		else {
+			h = EngineDatagramHandlerTest.getHandler(session);
+		}
+		buffers[1] = (ByteBuffer) f.get(h);
+		return buffers;
+	}
 	
 	@Test
 	public void testNoSessionTimerException() throws Exception {
@@ -315,7 +347,6 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals("DS|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
-		
 	}
 	
 	@Test
@@ -513,7 +544,6 @@ public class DTLSSessionTest extends DTLSTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		assertEquals(0, ((TestTimer)s.timer).getSize());
-	
 	}
 	
 	@Test
@@ -976,7 +1006,10 @@ public class DTLSSessionTest extends DTLSTest {
 		c.waitForDataSent(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("SCR|SOP|DS|", c.getRecordedData(true));
+		String r = c.getRecordedData(true);
+		if (!r.equals("SCR|SOP|DS|DR|")) {
+			assertEquals("SCR|SOP|DS|", r);
+		}
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
@@ -1018,7 +1051,10 @@ public class DTLSSessionTest extends DTLSTest {
 		c.closeInEvent = EventType.SESSION_READY;
 		c.startClient();
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|DR+|DS+|RDY|DR|DS|SCL|SEN|", getRecordedData(c));
+		String r = getRecordedData(c);
+		if (!r.equals("SCR|SOP|DR+|DS+|RDY|DS|SCL|SEN|")) {
+			assertEquals("SCR|SOP|DR+|DS+|RDY|DR|DS|SCL|SEN|", r);
+		}
 		s.stop(TIMEOUT);
 		assertEquals(0, ((TestTimer)s.timer).getSize());
 	}
@@ -1530,7 +1566,8 @@ public class DTLSSessionTest extends DTLSTest {
 		s2.startServer();
 		s2.waitForSessionReady(TIMEOUT);
 		SocketAddress a = new InetSocketAddress("127.0.0.1", PORT+1);
-
+		
+		waitFor(50);
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 		s2.getRecordedData(true);
@@ -1633,4 +1670,572 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals("A("+id+")|CLOSED("+id+")|ENDING("+id+")|", ((BBDEv)d).getTrace());	
 			
 	}	
+	
+	private void testOptimizedDataCopyingRead(DefaultCodecExecutor p) throws Exception {
+		boolean codec = p != null;
+		ByteBuffer[] nulls = new ByteBuffer[] {null,null};
+		
+		//client side
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		TestAllocator a = c.allocator = new TestAllocator(false, true);
+		c.optimizeDataCopying = true;
+		c.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		DatagramSession session = c.getSession();
+		assertEquals(0, a.getSize());
+		ByteBuffer[] bs = getAllBuffers(session);
+		assertArrayEquals(nulls, bs);
+		int acount = a.getAllocatedCount();
+		int rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		s.getSession().write(new Packet(PacketType.NOP).toBytes());
+		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|BUF|NOP()|", c.getRecordedData(true));
+		bs = getAllBuffers(session);
+		assertEquals(1, SSLSessionTest.diff(bs, a.get()).length);
+		a.release(c.bufferRead);
+		assertEquals(0, SSLSessionTest.diff(bs, a.get()).length);
+		assertEquals(acount+2, a.getAllocatedCount());
+		assertEquals(rcount+2, a.getReleasedCount());
+		s.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals(0, a.getSize());
+		EngineDatagramHandler h = EngineDatagramHandlerTest.getHandler(session);
+		int count = c.allocator.getSize();
+		ByteBuffer b = c.allocator.allocate(100);
+		assertEquals(count+1, c.allocator.getSize());
+		h.read(b);
+		assertEquals(count, c.allocator.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		a = c.allocator = new TestAllocator(false, false);
+		c.optimizeDataCopying = true;
+		c.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = c.getSession();
+		assertEquals(0, a.getReleasedCount());
+		acount = a.getAllocatedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		bs = getAllBuffers(session);
+		s.getSession().write(new Packet(PacketType.NOP).toBytes());
+		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|NOP()|", c.getRecordedData(true));
+		assertEquals(acount, a.getAllocatedCount());
+		assertEquals(0, SSLSessionTest.diff(bs, getAllBuffers(session)).length);
+		assertEquals(0, a.getReleasedCount());
+		s.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		h = EngineDatagramHandlerTest.getHandler(session);
+		count = a.getReleasedCount();
+		h.read(ByteBuffer.allocate(100));
+		assertEquals(count, a.getReleasedCount());
+		
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		h = EngineDatagramHandlerTest.getHandler(session);
+		count = a.getReleasedCount();
+		h.read(ByteBuffer.allocate(100));
+		assertEquals(count, a.getReleasedCount());
+		
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		a = c.allocator = new TestAllocator(false, true);
+		c.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = c.getSession();
+		acount = a.getAllocatedCount();
+		rcount = a.getReleasedCount();
+		assertEquals(2, a.getSize());
+		bs = getAllBuffers(session);
+		assertEquals(0, SSLSessionTest.diff(bs, a.get()).length);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		s.getSession().write(new Packet(PacketType.NOP).toBytes());
+		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|NOP()|", c.getRecordedData(true));
+		assertEquals(acount, a.getAllocatedCount());
+		assertEquals(rcount, a.getReleasedCount());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		//server side
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.waitForCloseMessage = true;
+		a = s.allocator = new TestAllocator(false, true);
+		s.optimizeDataCopying = true;
+		s.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = s.getSession();
+		assertEquals(0, a.getSize());
+		bs = getAllBuffers(session);
+		assertArrayEquals(nulls, bs);
+		acount = a.getAllocatedCount();
+		rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|BUF|NOP()|", s.getRecordedData(true));
+		bs = getAllBuffers(session);
+		assertEquals(1, SSLSessionTest.diff(bs, a.get()).length);
+		a.release(s.bufferRead);
+		assertEquals(0, SSLSessionTest.diff(bs, a.get()).length);
+		assertEquals(acount+2, a.getAllocatedCount());
+		assertEquals(rcount+2, a.getReleasedCount());
+		session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals(0, a.getSize());
+		bs = getAllBuffers(session);
+		assertArrayEquals(nulls, bs);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		waitFor(50);
+		assertEquals(0, a.getSize());
+		
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.waitForCloseMessage = true;
+		a = s.allocator = new TestAllocator(false, false);
+		s.optimizeDataCopying = true;
+		s.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = c.getSession();
+		assertEquals(0, a.getReleasedCount());
+		acount = a.getAllocatedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		bs = getAllBuffers(session);
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
+		assertEquals(acount, a.getAllocatedCount());
+		assertEquals(0, SSLSessionTest.diff(bs, getAllBuffers(session)).length);
+		assertEquals(0, a.getReleasedCount());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.waitForCloseMessage = true;
+		a = s.allocator = new TestAllocator(false, true);
+		s.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = s.getSession();
+		acount = a.getAllocatedCount();
+		rcount = a.getReleasedCount();
+		assertEquals(2, a.getSize());
+		bs = getAllBuffers(session);
+		assertEquals(0, SSLSessionTest.diff(bs, a.get()).length);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		c.getSession().write(new Packet(PacketType.NOP).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|NOP()|", s.getRecordedData(true));
+		assertEquals(acount, a.getAllocatedCount());
+		assertEquals(rcount, a.getReleasedCount());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		//client side with server with connected channel
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.ssl = true;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.sslRemoteAddress = true;
+		c.sslClient = true;
+		c.sslClientMode = true;
+		c.remoteAddress = address(PORT);
+		c.localAddress = address(PORT+1);
+		c.optimizeDataCopying = true;
+		a = c.allocator = new TestAllocator(false, true);
+		c.codecPipeline = p;
+		s.startServer();
+		c.startServer();
+		assertReady(c, s);
+		session = c.getSession();
+		assertEquals(0, a.getSize());
+		bs = getAllBuffers(session);
+		assertArrayEquals(nulls, bs);
+		acount = a.getAllocatedCount();
+		rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		b = bs[1];
+		s.getSession().write(nop());
+		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(codec ? "DR|BUF|NOP2()|" : "DR|BUF|NOP()|", c.getRecordedData(true));
+		bs = getAllBuffers(session);
+		assertArrayEquals(nulls, bs);
+		assertEquals(1, c.allocator.getSize());
+		a.release(c.bufferRead);
+		assertEquals(0, c.allocator.getSize());
+		assertEquals(acount+2, a.getAllocatedCount());
+		assertEquals(rcount+2, a.getReleasedCount());
+		
+		b = bs[0];
+		DatagramHandler c2 = new DatagramHandler(PORT+1);
+		c2.startClient();
+		c2.waitForSessionReady(TIMEOUT);
+		c2.getSession().write(nop("5"));
+		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals(codec ? "DR|BUF|$NOP2(5)|" : "DR|BUF|$NOP(5)|", c.getRecordedData(true));
+		bs = getAllBuffers(session);
+		assertArrayEquals(nulls, bs);
+		assertEquals(1, c.allocator.getSize());
+		a.release(c.bufferRead);
+		assertEquals(0, c.allocator.getSize());
+		c2.stop(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingRead() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		codec = new TestCodec();
+		codec.nopToNop2 = true;
+		p.getPipeline().add("1", codec.BBBBD());
+		testOptimizedDataCopyingRead(p);
+		testOptimizedDataCopyingRead(null);
+	}
+	
+	ByteBuffer nop(String payload, IByteBufferAllocator allocator) {
+		byte[] b = new Packet(PacketType.NOP, payload).toBytes();
+		
+		ByteBuffer bb = allocator != null ? allocator.allocate(100) : ByteBuffer.allocate(100);
+		bb.put(b);
+		bb.flip();
+		return bb;
+	}
+	
+	private void testOptimizedDataCopyingWrite(DefaultCodecExecutor p) throws Exception {
+		boolean codec = p != null;
+		int add = INITIAL_BUFFER_OVERFLOW ? 1 : 0;
+		
+		//client side
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		TestAllocator a = c.allocator = new TestAllocator(false, true);
+		c.optimizeDataCopying = true;
+		c.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		DatagramSession session = c.getSession();
+		int acount = a.getAllocatedCount();
+		int rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		ByteBuffer b = nop("1", a);
+		session.write(b);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s.getRecordedData(true));
+		assertEquals(acount+2+add, a.getAllocatedCount());
+		assertEquals(rcount+2+add, a.getReleasedCount());
+		assertTrue(a.getAllocated().get(acount) == a.getReleased().get(rcount+add));
+		assertTrue(a.getAllocated().get(acount+add) == a.getReleased().get(rcount));
+		assertTrue(a.getAllocated().get(acount+1+add) == a.getReleased().get(rcount+1+add));
+		assertEquals(0, a.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		a = c.allocator = new TestAllocator(false, false);
+		c.optimizeDataCopying = true;
+		c.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = c.getSession();
+		assertEquals(0, a.getReleasedCount());
+		acount = a.getAllocatedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		b = nop("1", a);
+		session.write(b);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s.getRecordedData(true));
+		assertEquals(acount+2+add, a.getAllocatedCount());
+		assertEquals(0, a.getReleasedCount());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		a = c.allocator = new TestAllocator(false, true);
+		c.optimizeDataCopying = false;
+		c.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = c.getSession();
+		rcount = a.getReleasedCount();
+		acount = a.getAllocatedCount();
+		assertEquals(2, a.getSize());
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		b = nop("1", null);
+		session.write(b);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s.getRecordedData(true));
+		if (codec) {
+			assertEquals(acount+1+add, a.getAllocatedCount());
+			assertEquals(rcount+1+add, a.getReleasedCount());
+		}
+		else {
+			assertEquals(acount+2+add, a.getAllocatedCount());
+			assertEquals(rcount+2+add, a.getReleasedCount());
+		}
+		assertEquals(2, a.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertEquals(0, a.getSize());
+		
+		//server side
+		s2 = new DatagramHandler(PORT+1);
+		s2.useDatagramServerHandler = true;
+		s2.startServer();
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.waitForCloseMessage = true;
+		a = s.allocator = new TestAllocator(false, true);
+		s.optimizeDataCopying = true;
+		s.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = s.getSession();
+		acount = a.getAllocatedCount();
+		rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		b = nop("1", a);
+		session.write(b);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", c.getRecordedData(true));
+		assertEquals(acount+2, a.getAllocatedCount());
+		assertEquals(rcount+2, a.getReleasedCount());
+		assertTrue(a.getAllocated().get(acount) == a.getReleased().get(rcount));
+		assertTrue(a.getAllocated().get(acount+1) == a.getReleased().get(rcount+1));
+		assertEquals(0, a.getSize());
+		
+		b = nop("2", a);
+		session.send(address(PORT+1), b);
+		s2.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "SCR|SOP|RDY|DR|NOP2(2)|" : "SCR|SOP|RDY|DR|NOP(2)|", s2.getRecordedData(true));
+		assertEquals(acount+3, a.getAllocatedCount());
+		assertEquals(rcount+3, a.getReleasedCount());
+		assertTrue(a.getAllocated().get(acount+2) == a.getReleased().get(rcount+2));
+		assertEquals(0, a.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.waitForCloseMessage = true;
+		a = s.allocator = new TestAllocator(false, false);
+		s.optimizeDataCopying = true;
+		s.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = s.getSession();
+		acount = a.getAllocatedCount();
+		rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+	
+		b = nop("1", a);
+		session.write(b);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", c.getRecordedData(true));
+		assertEquals(acount+2, a.getAllocatedCount());
+		assertEquals(0, a.getReleasedCount());
+
+		b = nop("2", a);
+		session.send(address(PORT+1), b);
+		s2.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(2)|" : "DR|NOP(2)|", s2.getRecordedData(true));
+		assertEquals(acount+3, a.getAllocatedCount());
+		assertEquals(0, a.getReleasedCount());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.waitForCloseMessage = true;
+		a = s.allocator = new TestAllocator(false, true);
+		s.optimizeDataCopying = false;
+		s.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = s.getSession();
+		acount = a.getAllocatedCount();
+		rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		b = nop("1", null);
+		session.write(b);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", c.getRecordedData(true));
+		if (codec) {
+			assertEquals(acount+1, a.getAllocatedCount());
+			assertEquals(rcount+1, a.getReleasedCount());
+		}
+		else {
+			assertEquals(acount+2, a.getAllocatedCount());
+			assertEquals(rcount+2, a.getReleasedCount());
+		}
+		assertEquals(2, a.getSize());
+
+		b = nop("1", null);
+		session.send(address(PORT+1), b);
+		s2.waitForDataRead(TIMEOUT);
+		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s2.getRecordedData(true));
+		if (codec) {
+			assertEquals(acount+1, a.getAllocatedCount());
+			assertEquals(rcount+1, a.getReleasedCount());
+		}
+		else {
+			assertEquals(acount+3, a.getAllocatedCount());
+			assertEquals(rcount+3, a.getReleasedCount());
+		}
+		assertEquals(2, a.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertEquals(0, a.getSize());
+		
+		s2.stop(TIMEOUT);
+	}	
+	
+	@Test
+	public void testOptimizedDataCopyingWrite() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		codec = new TestCodec();
+		codec.nopToNop2 = true;
+		p.getPipeline().add("1", codec.BBBBE());
+		testOptimizedDataCopyingWrite(p);
+		testOptimizedDataCopyingWrite(null);
+	}
+	
 }

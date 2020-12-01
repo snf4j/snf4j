@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -157,8 +158,26 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 	}
 
 	@Override
+	public void read(ByteBuffer data) {
+		read(NULL_ADDRESS, data);
+	}
+
+	@Override
 	public void read(Object msg) {
 		read(NULL_ADDRESS, msg);
+	}
+	
+	private final void handleDecodeException(DatagramSession session, Exception e) {
+		if (e instanceof PipelineDecodeException) {
+			SessionIncident incident = SessionIncident.DECODING_PIPELINE_FAILURE;
+			
+			if (!session.incident(incident, e.getCause())) {
+				elogger.error(LOGGER, incident.defaultMessage(), session, e.getCause());
+			}				
+		}
+		else {
+			fireException(session, e);
+		}
 	}
 	
 	@Override
@@ -169,19 +188,29 @@ public class DatagramServerHandler extends AbstractDatagramHandler {
 			try {
 				session.superCodec().read(datagram);
 			}
-			catch (PipelineDecodeException e) {
-				SessionIncident incident = SessionIncident.DECODING_PIPELINE_FAILURE;
-				
-				if (!session.incident(incident, e.getCause())) {
-					elogger.error(LOGGER, incident.defaultMessage(), session, e.getCause());
-				}				
-			}
 			catch (Exception e) {
-				fireException(session, e);
+				handleDecodeException(session, e);
 			}
 		}
 	}
-
+	
+	@Override
+	public void read(SocketAddress remoteAddress, ByteBuffer datagram) {
+		DatagramSession session = sessions.get(remoteAddress);
+		
+		if (session != null) {
+			try {
+				session.superCodec().read(datagram);
+			}
+			catch (Exception e) {
+				handleDecodeException(session, e);
+			}
+		}
+		else {
+			getSession().release(datagram);
+		}
+	}
+	
 	@Override
 	public void read(SocketAddress remoteAddress, Object datagram) {
 		DatagramSession session = sessions.get(remoteAddress);

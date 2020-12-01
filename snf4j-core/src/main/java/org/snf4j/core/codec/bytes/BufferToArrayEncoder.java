@@ -38,9 +38,37 @@ import org.snf4j.core.session.ISession;
  */
 public class BufferToArrayEncoder extends BufferToArrayCodec implements IEncoder<ByteBuffer,byte[]> {
 
+	private final boolean release;
+	
+	/**
+	 * Constructs an encoder with a specified buffer releasing mode.
+	 * 
+	 * @param release the releasing mode determining if the input buffer should be
+	 *                released by the session's allocator
+	 */
+	public BufferToArrayEncoder(boolean release) {
+		this.release = release;
+	}
+	
+	/**
+	 * Constructs an encoder with no buffer releasing.
+	 */
+	public BufferToArrayEncoder() {
+		release = false;
+	}
+	
 	@Override
 	public void encode(ISession session, ByteBuffer data, List<byte[]> out) throws Exception {
-		out.add(toArray(data));
+		if (release) {
+			byte[] array = new byte[data.remaining()];
+			
+			data.get(array);
+			out.add(array);
+			session.release(data);
+		}
+		else {
+			out.add(toArray(data));
+		}
 	}
 
 }

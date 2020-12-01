@@ -25,7 +25,7 @@
  */
 package org.snf4j.example.dtls;
 
-import org.snf4j.core.allocator.DefaultDatagramSessionAllocator;
+import org.snf4j.core.allocator.CachingAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.timer.DefaultTimer;
@@ -35,10 +35,7 @@ public class SessionStructureFactory extends DefaultSessionStructureFactory {
 	
 	private static final ITimer TIMER = new DefaultTimer(true);
 	
-	private static final IByteBufferAllocator ALLOCATOR = new DefaultDatagramSessionAllocator(
-			false, 
-			10,
-			SessionConfig.MAX_APPLICATION_DATA_SIZE);
+	private static final IByteBufferAllocator ALLOCATOR = new CachingAllocator(false);
 	
 	static final SessionStructureFactory INSTANCE = new SessionStructureFactory();
 	

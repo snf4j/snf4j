@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.handler;
 
+import java.nio.ByteBuffer;
+
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.session.DefaultSessionConfig;
@@ -110,9 +112,25 @@ public abstract class AbstractHandler implements IHandler {
 		return config;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it simply passes the {@code data} value to the
+	 * {@link IHandler#read(Object)} method.
+	 */
 	@Override
 	public void read(byte[] data) {
 		read((Object)data);
 	}
-
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it simply passes the {@code data} value to the
+	 * {@link IHandler#read(Object)} method.
+	 */
+	@Override
+	public void read(ByteBuffer data) {
+		read((Object)data);
+	}
 }

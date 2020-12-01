@@ -26,6 +26,7 @@
 package org.snf4j.core.session;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentMap;
 
 import org.snf4j.core.codec.ICodecPipeline;
@@ -302,4 +303,19 @@ public interface ISession {
 	 */
 	ISessionTimer getTimer();
 	
+	/**
+	 * Allocates a byte buffer by using the allocator associated with this session.
+	 * 
+	 * @param capacity minimal required capacity
+	 * @return the allocated byte buffer
+	 */
+	ByteBuffer allocate(int capacity);
+	
+	/**
+	 * Release given byte buffer by the allocator associated with this session.
+	 * 
+	 * @param buffer the byte buffer being released
+	 */
+	void release(ByteBuffer buffer);
+
 }

@@ -305,6 +305,7 @@ class EngineDatagramWrapper {
 		public final IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture) {
 			EngineDatagramRecord record = new EngineDatagramRecord(remoteAddress);
 			record.buffer = buffer;
+			record.release = session.optimizeBuffers;
 			if (remoteAddress != null) {
 				return session.superWrite(record, withFuture);
 			}
@@ -313,7 +314,12 @@ class EngineDatagramWrapper {
 
 		@Override
 		public final IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture) {
-			return write(remoteAddress, ByteBuffer.wrap(bytes), withFuture);
+			EngineDatagramRecord record = new EngineDatagramRecord(remoteAddress);
+			record.buffer = ByteBuffer.wrap(bytes);
+			if (remoteAddress != null) {
+				return session.superWrite(record, withFuture);
+			}
+			return write0(record, withFuture);
 		}
 	}
 }

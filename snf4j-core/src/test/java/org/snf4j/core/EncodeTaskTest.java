@@ -90,8 +90,8 @@ public class EncodeTaskTest {
 		if (s != null) s.stop(TIMEOUT);
 	}
 	
-	private void setCanOwnPassedData(InternalSession session, boolean canOwn) throws Exception {
-		Field f = InternalSession.class.getDeclaredField("canOwnPassedData");
+	private void setOptimizeCopying(InternalSession session, boolean canOwn) throws Exception {
+		Field f = InternalSession.class.getDeclaredField("optimizeCopying");
 		
 		f.setAccessible(true);
 		f.setBoolean(session, canOwn);
@@ -132,7 +132,7 @@ public class EncodeTaskTest {
 		String prefix = "org.snf4j.core.EncodeTask[session=" + session;
 		
 		//constructor 1
-		setCanOwnPassedData(session, false);
+		setOptimizeCopying(session, false);
 		byte[] bytes = "ABC".getBytes();
 		EncodeTask task = new EncodeTask(session, bytes);
 		assertNotNull(task.bytes);
@@ -142,7 +142,7 @@ public class EncodeTaskTest {
 		assertTrue(task.session == session);
 		bytes[0] = 'X';
 		assertEquals("ABC", new String(task.bytes));
-		setCanOwnPassedData(session, true);
+		setOptimizeCopying(session, true);
 		task = new EncodeTask(session, bytes);
 		assertNotNull(task.bytes);
 		assertNull(task.buffer);
@@ -155,7 +155,7 @@ public class EncodeTaskTest {
 		assertEquals(prefix + " length=3]", task.toString());
 		
 		//constructor 2
-		setCanOwnPassedData(session, false);
+		setOptimizeCopying(session, false);
 		bytes = "1ABC2".getBytes();
 		task = new EncodeTask(session, bytes, 1, 3);
 		assertNotNull(task.bytes);
@@ -165,20 +165,34 @@ public class EncodeTaskTest {
 		assertTrue(task.session == session);
 		bytes[1] = 'X';
 		assertEquals("ABC", new String(task.bytes));
-		setCanOwnPassedData(session, true);
+		task = new EncodeTask(session, bytes, 0, 5);
+		assertNotNull(task.bytes);
+		assertNull(task.buffer);
+		assertTrue(task.bytes != bytes);
+		setOptimizeCopying(session, true);
 		task = new EncodeTask(session, bytes, 1, 3);
-		assertNull(task.bytes);
-		assertNotNull(task.buffer);
+		assertNotNull(task.bytes);
+		assertNull(task.buffer);
 		assertNull(task.msg);
-		assertTrue(task.buffer.array() == bytes);
+		assertTrue(task.bytes != bytes);
 		assertTrue(task.session == session);
-		assertEquals("XBC", getString(task.buffer));
+		assertEquals("XBC", new String(task.bytes));
 		bytes[1] = 'Y';
-		assertEquals("YBC", getString(task.buffer));
+		assertEquals("XBC", new String(task.bytes));
 		assertEquals(prefix + " length=3]", task.toString());
+		task = new EncodeTask(session, bytes, 0, 4);
+		assertNotNull(task.bytes);
+		assertEquals("1YBC", new String(task.bytes));
+		task = new EncodeTask(session, bytes, 1, 4);
+		assertNotNull(task.bytes);
+		assertEquals("YBC2", new String(task.bytes));
+		task = new EncodeTask(session, bytes, 0, 5);
+		assertNotNull(task.bytes);
+		assertEquals("1YBC2", new String(task.bytes));
+		assertTrue(task.bytes == bytes);
 		
 		//constructor 3
-		setCanOwnPassedData(session, false);
+		setOptimizeCopying(session, false);
 		bytes = "ABC".getBytes();
 		ByteBuffer buffer = ByteBuffer.wrap(bytes);
 		task = new EncodeTask(session, buffer);
@@ -189,7 +203,7 @@ public class EncodeTaskTest {
 		assertTrue(task.session == session);
 		bytes[0] = 'X';
 		assertEquals("ABC", new String(task.bytes));
-		setCanOwnPassedData(session, true);
+		setOptimizeCopying(session, true);
 		buffer = ByteBuffer.wrap(bytes);
 		task = new EncodeTask(session, buffer);
 		assertNull(task.bytes);
@@ -203,7 +217,7 @@ public class EncodeTaskTest {
 		assertEquals(prefix + " length=3]", task.toString());
 		
 		//constructor 4
-		setCanOwnPassedData(session, false);
+		setOptimizeCopying(session, false);
 		bytes = "ABCD".getBytes();
 		buffer = ByteBuffer.wrap(bytes);
 		task = new EncodeTask(session, buffer, 3);
@@ -214,7 +228,7 @@ public class EncodeTaskTest {
 		assertTrue(task.session == session);
 		bytes[0] = 'X';
 		assertEquals("ABC", new String(task.bytes));
-		setCanOwnPassedData(session, true);
+		setOptimizeCopying(session, true);
 		buffer = ByteBuffer.wrap(bytes);
 		task = new EncodeTask(session, buffer, 3);
 		assertNotNull(task.bytes);
@@ -416,7 +430,7 @@ public class EncodeTaskTest {
 		s.waitForSessionReady(TIMEOUT);
 
 		StreamSession session = c.getSession();
-		setCanOwnPassedData(session, true);
+		setOptimizeCopying(session, true);
 		setWriter(session, new Writer());
 		
 		//inbound message

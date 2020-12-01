@@ -30,6 +30,7 @@ import java.io.FileInputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.security.KeyStore;
 import java.util.HashMap;
@@ -89,8 +90,9 @@ public class DatagramHandler {
 	TestAllocator allocator;
 	ITimer timer;
 	ITimeoutModel timeoutModel;
-	boolean canOwnPasseData;
+	boolean optimizeDataCopying;
 	volatile boolean useTestSession;
+	volatile ByteBuffer bufferRead;
 	DefaultCodecExecutor codecPipeline;
 	DefaultCodecExecutor codecPipeline2;
 	volatile boolean incident;
@@ -100,6 +102,7 @@ public class DatagramHandler {
 	volatile boolean incidentDirtyClose;
 	volatile boolean exceptionClose;
 	volatile boolean waitForCloseMessage;
+	public volatile int maxWriteSpinCount = -1;
 	public volatile boolean throwInException;
 	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	public volatile boolean throwInEvent;
@@ -120,6 +123,9 @@ public class DatagramHandler {
 	EventType closeInEvent;
 	StoppingType closeType = StoppingType.GENTLE;
 
+	EventType writeInEvent;
+	Packet packetToWriteInEvent;
+	
 	StringBuilder recorder = new StringBuilder();
 	
 	boolean recordDataEventDetails;
@@ -566,10 +572,13 @@ public class DatagramHandler {
 			config.setThroughputCalculationInterval(throughputCalcInterval);
 			config.setIgnorePossiblyIncompleteDatagrams(ignorePossiblyIncomplete);
 			config.setEndingAction(endingAction);
-			config.setCanOwnDataPassedToWriteAndSendMethods(canOwnPasseData);
+			config.setOptimizeDataCopying(optimizeDataCopying);
 			config.setEngineHandshakeTimeout(handshakeTimeout);
 			config.setDatagramServerSessionNoReopenPeriod(reopenBlockedInterval);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
+			if (maxWriteSpinCount != -1) {
+				config.setMaxWriteSpinCount(maxWriteSpinCount);
+			}
 			return config;
 		}
 
@@ -601,6 +610,18 @@ public class DatagramHandler {
 		
 		@Override
 		public void read(SocketAddress remoteAddress, Object msg) {
+			
+			if (msg instanceof ByteBuffer) {
+				ByteBuffer bb = (ByteBuffer)msg;
+				byte[] b = new byte[bb.remaining()];
+				
+				bb.get(b);
+				record("BUF");
+				bufferRead = bb;
+				read(remoteAddress, b);
+				return;
+			}
+			
 			if (remoteAddress == null) {
 				record("M("+msg.toString()+")");
 			}
@@ -750,6 +771,12 @@ public class DatagramHandler {
 			default:
 				break;
 
+			}
+			if (writeInEvent == type) {
+				if (packetToWriteInEvent != null) {
+					getSession().write(packetToWriteInEvent.toBytes());
+					packetToWriteInEvent = null;
+				}
 			}
 			
 			if (closeInEvent == type) {

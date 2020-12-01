@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentMap;
 
 import org.snf4j.core.codec.ICodecPipeline;
@@ -40,6 +41,8 @@ import org.snf4j.core.session.SessionState;
 public class TestSession implements ISession {
 
 	String name;
+	
+	public ByteBuffer buffer;
 	
 	public TestSession(String name) {
 		this.name = name;
@@ -214,6 +217,16 @@ public class TestSession implements ISession {
 	@Override
 	public IFuture<Void> getEndFuture() {
 		return null;
+	}
+
+	@Override
+	public ByteBuffer allocate(int capacity) {
+		return buffer;
+	}
+
+	@Override
+	public void release(ByteBuffer buffer) {
+		this.buffer = buffer;
 	}
 
 }

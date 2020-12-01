@@ -26,6 +26,7 @@
 package org.snf4j.core.handler;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.ISession;
@@ -78,8 +79,25 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 		return (IDatagramSession) super.getSession();
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it simply passes the {@code remoteAddress} and {@code data} values
+	 * to the {@link IDatagramHandler#read(SocketAddress,Object)} method.
+	 */
 	@Override 
 	public void read(SocketAddress remoteAddress, byte[] datagram) {
+		read(remoteAddress, (Object)datagram);
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * By default it simply passes the {@code remoteAddress} and {@code data} values
+	 * to the {@link IDatagramHandler#read(SocketAddress,Object)} method.
+	 */
+	@Override 
+	public void read(SocketAddress remoteAddress, ByteBuffer datagram) {
 		read(remoteAddress, (Object)datagram);
 	}
 

@@ -60,7 +60,7 @@ class EncodeTask implements Runnable {
 	int length;
 	
 	private final void init(final byte[] bytes) {
-		if (session.canOwnPassedData) {
+		if (session.optimizeCopying) {
 			this.bytes = bytes;
 		}
 		else {
@@ -69,7 +69,7 @@ class EncodeTask implements Runnable {
 	}
 	
 	private final void init(final ByteBuffer buffer) {
-		if (session.canOwnPassedData) {
+		if (session.optimizeCopying) {
 			this.buffer = buffer;
 		}
 		else {
@@ -107,8 +107,8 @@ class EncodeTask implements Runnable {
 	EncodeTask(InternalSession session, byte[] bytes, int offset, int length) {
 		this.session = session;
 		this.length = length;
-		if (session.canOwnPassedData) {
-			this.buffer = ByteBuffer.wrap(bytes, offset, length);
+		if (session.optimizeCopying && bytes.length == length) {
+			this.bytes = bytes;
 		}
 		else {
 			this.bytes = new byte[length];
@@ -125,7 +125,7 @@ class EncodeTask implements Runnable {
 	EncodeTask(InternalSession session, ByteBuffer buffer, int length) {
 		this.session = session;
 		this.length = length;
-		if (session.canOwnPassedData && length == buffer.remaining()) {
+		if (session.optimizeCopying && length == buffer.remaining()) {
 			this.buffer = buffer;
 		}
 		else {
@@ -155,7 +155,15 @@ class EncodeTask implements Runnable {
 
 	final void registernf() {
 		InternalSession.checkKey(session.key);
-		session.loop.executenf(this);
+		
+		InternalSelectorLoop loop = session.loop;
+		
+		if (loop.inLoop()) {
+			run();
+		}
+		else {
+			loop.executenf(this);
+		}
 	}
 	
 	final IFuture<Void> register(SocketAddress remoteAddress) {
@@ -166,7 +174,15 @@ class EncodeTask implements Runnable {
 	final IFuture<Void> register() {
 		InternalSession.checkKey(session.key);
 		future = session.futuresController.getDelegatingFuture();
-		session.loop.executenf(this);
+		
+		InternalSelectorLoop loop = session.loop;
+		
+		if (loop.inLoop()) {
+			run();
+		}
+		else {
+			loop.executenf(this);
+		}
 		return future;
 	}
 	

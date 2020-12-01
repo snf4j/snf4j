@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@ import org.snf4j.core.handler.SessionEvent;
 
 public class ClientHandler extends AbstractHandler {
 
-	final static String NO_CONNECTION_KEY = "NoConnectionKey";
+	public final static String NO_CONNECTION_KEY = "NoConnectionKey";
 	
 	@Override
 	public void read(byte[] data) {

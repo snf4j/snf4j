@@ -181,7 +181,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		prepareServerClient(true);
 		
 		c.testEngine.wrapConsumed = 3;
-		ByteBuffer bb = ByteBuffer.allocate(1024);
+		ByteBuffer bb = ByteBuffer.allocate(1023);
 		bb.put(nop());
 		bb.put(nop("1")).flip();
 		int base = c.allocator.getReleasedCount();
@@ -200,7 +200,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		
 		stopServerClient();
 		prepareServerClient(false);
-		c.canOwnPasseData = true;
+		c.optimizeDataCopying = true;
 		s.startServer();
 		c.startClient();
 		assertReady(c, s);
@@ -214,8 +214,8 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		c.getSession().write(bb).sync(TIMEOUT);
 		waitFor(50);
 		assertEquals("DR|NOP()|DR|NOP(1)|", s.getRecordedData(true));
-		assertEquals("103,1024|104,1024|", getReleased(base, c.allocator));
-		assertReleased(base, c.allocator, id, id+1);
+		assertEquals("7,1023|103,1024|104,1024|", getReleased(base, c.allocator));
+		assertReleased(base, c.allocator, -1, id, id+1);
 		
 		c.getSession().close();
 		s.waitForSessionEnding(TIMEOUT);
@@ -274,7 +274,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 
 		stopServerClient();
 		prepareServerClient(false);
-		c.canOwnPasseData = true;
+		c.optimizeDataCopying = true;
 		s.startServer();
 		c.startClient();
 		assertReady(c, s);
@@ -570,7 +570,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		assertEquals(0, c.allocator.getReleasedCount());
 	}	
 	
-	EngineDatagramHandler getHandler(DatagramSession session) throws Exception {
+	static EngineDatagramHandler getHandler(DatagramSession session) throws Exception {
 		Field wrapper = EngineDatagramSession.class.getDeclaredField("wrapper");
 		Field internal = EngineDatagramWrapper.class.getDeclaredField("internal");
 		

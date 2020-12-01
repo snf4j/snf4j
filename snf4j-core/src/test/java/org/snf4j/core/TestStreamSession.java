@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,8 @@ public class TestStreamSession extends StreamSession {
 
 	public volatile boolean getOutBuffersException;
 
+	public volatile int getOutBuffersExceptionDelay;
+	
 	public volatile boolean getInBufferException;
 	
 	public TestStreamSession(String name, IStreamHandler handler) {
@@ -46,7 +48,12 @@ public class TestStreamSession extends StreamSession {
 	@Override
 	ByteBuffer[] getOutBuffers() {
 		if (getOutBuffersException) {
-			throw new IllegalStateException();
+			if (getOutBuffersExceptionDelay == 0) {
+				throw new IllegalStateException();
+			}
+			else {
+				getOutBuffersExceptionDelay--;
+			}
 		}
 		return super.getOutBuffers();
 	}

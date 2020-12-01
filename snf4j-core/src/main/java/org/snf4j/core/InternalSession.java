@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -38,6 +39,7 @@ import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SessionFuturesController;
 import org.snf4j.core.handler.DataEvent;
+import org.snf4j.core.handler.IAllocatingHandler;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
@@ -68,17 +70,17 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	private volatile long readBytes;
 	
 	private volatile long writtenBytes;
-    
-    private long lastThroughputCalculationTime;
-    
-    private long lastReadBytes;
-    
-    private long lastWrittenBytes;
-    
+
+	private long lastThroughputCalculationTime;
+
+	private long lastReadBytes;
+
+	private long lastWrittenBytes;
+
 	private volatile double readBytesThroughput;
 	
-    private volatile double writtenBytesThroughput;
-    
+	private volatile double writtenBytesThroughput;
+
 	private final long creationTime;
 	
 	private volatile long lastReadTime;
@@ -113,11 +115,15 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	final CodecExecutorAdapter codec;
 
-	final boolean canOwnPassedData;
+	final boolean optimizeCopying;
+	
+	final boolean optimizeBuffers;
 	
 	private final ISessionTimer timer; 
 
-	protected InternalSession(String name, IHandler handler, ILogger logger, boolean noCodec) {
+	final int maxWriteSpinCount;
+	
+	protected InternalSession(String name, IHandler handler, ILogger logger) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
 				name != null ? name : (handler != null ? handler.getName() : null),
@@ -128,20 +134,25 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		this.logger = logger;
 		this.handler = handler;
 		this.handler.setSession(this);
-		allocator = handler.getFactory().getAllocator();
+		if (handler instanceof IAllocatingHandler) {
+			allocator = ((IAllocatingHandler)handler).getAllocator();
+		}
+		else {
+			allocator = handler.getFactory().getAllocator();
+		}
 		config = handler.getConfig();
-		canOwnPassedData = config.canOwnDataPassedToWriteAndSendMethods();
+		optimizeCopying = config.optimizeDataCopying();
+		optimizeBuffers = optimizeCopying && allocator.isReleasable();
+		maxWriteSpinCount = config.getMaxWriteSpinCount();
+		if (maxWriteSpinCount <= 0) {
+			throw new IllegalArgumentException("maxWriteSpinCount is " + maxWriteSpinCount + " (expected 1+)");
+		}
 		
 		creationTime = System.currentTimeMillis();
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
 		
-		if (noCodec) {
-			codec = null;
-		}
-		else {
-			ICodecExecutor executor = config.createCodecExecutor();
-			codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
-		}
+		ICodecExecutor executor = config.createCodecExecutor();
+		codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
 		
 		ITimer timer = handler.getFactory().getTimer();
 		if (timer == null) {
@@ -150,10 +161,6 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		else {
 			this.timer = new InternalSessionTimer(InternalSession.this, timer);
 		}
-	}
-	
-	protected InternalSession(String name, IHandler handler, ILogger logger) {
-		this(name, handler, logger, false);
 	}
 	
 	abstract IEncodeTaskWriter getEncodeTaskWriter(); 
@@ -508,6 +515,19 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	public ISessionTimer getTimer() {
 		return timer;
 	}
+	
+	@Override
+	public ByteBuffer allocate(int capacity) {
+		return allocator.allocate(capacity);
+	}
+	
+	@Override
+	public void release(ByteBuffer buffer) {
+		if (allocator.isReleasable()) {
+			allocator.release(buffer);
+		}
+	}
+	
 	
 	final boolean wasException() {
 		return (eventBits & EventType.EXCEPTION_CAUGHT.bitMask()) != 0;

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,11 @@ public interface Config {
 	
 	static final int MAX_PACKET_SIZE = 8000;
 	
+	static final int DATAGRAM_MAX_PACKET_SIZE = 512;
+	
 	static final int MAX_WRITE_DELAY = 200;
+	
+	static final int DATAGRAM_MAX_WRITE_DELAY = 50;
 	
 	static final int DELAYED_WRITE_RATIO = 20;
 	
@@ -47,7 +51,19 @@ public interface Config {
 	
 	static final int SPLIT_PACKET_RATIO = 50;
 	
+	static final boolean SPLIT_PACKET_WITH_BUFFER_ALLOCATION = true;
+	
 	static final int DIRECT_ALLOCATOR_RATIO = 0;
+	
+	static final int CACHING_ALLOCATOR_RATIO = 100;
+	
+	static final int WRITE_ALLOCATED_BUFFER_RATIO = 100;
+	
+	static final boolean DATAGRAM_CACHING_ALLOCATOR = true;
+	
+	static final int OPTIMIZE_DATA_COPING_RATIO = 100;
+	
+	static final boolean DATAGRAM_OPTIMIZE_DATA_COPING = true;	
 	
 	static final int SYNC_WITH_TIMEOUT_RATIO = 50;
 	

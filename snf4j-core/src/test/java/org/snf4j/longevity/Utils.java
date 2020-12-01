@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package org.snf4j.longevity;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.channels.DatagramChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -35,12 +36,20 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.snf4j.core.DTLSServerHandler;
+import org.snf4j.core.DTLSSession;
+import org.snf4j.core.DatagramServerHandler;
+import org.snf4j.core.DatagramSession;
 import org.snf4j.core.SSLSession;
 import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
+import org.snf4j.core.session.IEngineSession;
 import org.snf4j.core.session.ISession;
+import org.snf4j.longevity.datagram.HandlerFactory;
+import org.snf4j.longevity.datagram.SessionConfig;
+import org.snf4j.longevity.datagram.SessionStructureFactory;
 
 public class Utils implements Config {
 	
@@ -53,7 +62,7 @@ public class Utils implements Config {
 
 	static List<Integer> sslPorts = new ArrayList<Integer>();
 	
-	static Random random = new Random(System.currentTimeMillis());
+	public static Random random = new Random(System.currentTimeMillis());
 	
 	static List<ISession> sessions = new ArrayList<ISession>();
 	
@@ -81,7 +90,7 @@ public class Utils implements Config {
 		System.out.println("Loops stated");
 	}
 	
-	static boolean randomBoolean(int ratio) {
+	public static boolean randomBoolean(int ratio) {
 		int i = random.nextInt(100);
 		
 		return i < ratio;
@@ -91,8 +100,40 @@ public class Utils implements Config {
 		return new Packet(PacketType.ECHO, random.nextInt(MAX_PACKET_SIZE));
 	}
 	
+	public static Packet randomDatagramPacket() {
+		return new Packet(PacketType.ECHO, random.nextInt(DATAGRAM_MAX_PACKET_SIZE));
+	}
+	
 	static Packet randomNopPacket() {
 		return new Packet(PacketType.NOP, random.nextInt(MAX_PACKET_SIZE));
+	}
+	
+	public static Packet randomDatagramNopPacket() {
+		return new Packet(PacketType.NOP, random.nextInt(DATAGRAM_MAX_PACKET_SIZE));
+	}
+	
+	public static IFuture<Void> createDatagramListener(boolean ssl) throws Exception {
+		synchronized (freePorts) {
+			int port = freePorts.remove(0);
+			
+			DatagramChannel channel = DatagramChannel.open();
+			channel.configureBlocking(false);
+			channel.socket().bind(new InetSocketAddress(port));
+			
+			if (ssl) {
+				sslPorts.add(port);
+			}
+			else {
+				ports.add(port);
+			}
+			SessionConfig config = new org.snf4j.longevity.datagram.SessionConfig(true);
+			SessionStructureFactory factory = new org.snf4j.longevity.datagram.SessionStructureFactory();
+			SelectorLoop loop = loops.get(random.nextInt(loops.size()));
+			if (ssl) {
+				return loop.register(channel, new DTLSServerHandler(new HandlerFactory(), config, factory));
+			}
+			return loop.register(channel, new DatagramServerHandler(new HandlerFactory(), config, factory));
+		}
 	}
 	
 	static IFuture<Void> createListener(boolean ssl) throws Exception {
@@ -112,6 +153,43 @@ public class Utils implements Config {
 			
 			SelectorLoop loop = loops.get(random.nextInt(loops.size()));
 			return loop.register(channel, new SessionFactory(ssl));
+		}
+	}
+	
+	public static ISession createDatagramSession(boolean ssl) throws Exception {
+		synchronized (freePorts) {
+			int port;
+			
+			if (ssl) {
+				port = sslPorts.get(random.nextInt(sslPorts.size()));
+			}
+			else {
+				port = ports.get(random.nextInt(ports.size()));
+			}
+			
+			if (randomBoolean(NO_CONNECTION_RATIO)) {
+				port = FIRST_PORT-1;
+			}
+			
+			DatagramChannel channel = DatagramChannel.open();
+			channel.configureBlocking(false);
+			channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), port));
+			
+			DatagramSession s;
+			
+			if (ssl) {
+				s = new DTLSSession(new org.snf4j.longevity.datagram.ClientHandler(), true);
+			}
+			else {
+				s = new DatagramSession(new org.snf4j.longevity.datagram.ClientHandler());
+			}
+			if (port < FIRST_PORT) {
+				s.getAttributes().put(ClientHandler.NO_CONNECTION_KEY, "");
+			}
+			
+			SelectorLoop loop = loops.get(random.nextInt(loops.size()));
+			loop.register(channel, s);
+			return s;
 		}
 	}
 	
@@ -169,6 +247,24 @@ public class Utils implements Config {
 		Statistics.updateLongestSession(max);
 	}
 	
+	public static void datagramSessionCreated(ISession s) {
+		synchronized (sessions) {
+			findLongestSession();
+			sessions.add(s);
+			Statistics.updateSessions(sessions.size());
+			Statistics.incTotalSessions();
+			if (s instanceof IEngineSession) {
+				Statistics.incSslSessions();
+			}
+			if (sessions.size() < MAX_SESSIONS) {
+				try {
+					Utils.createDatagramSession(Utils.randomBoolean(Utils.SSL_SESSION_RATIO));
+				} catch (Exception e) {
+				}
+			}
+		}		
+	}
+	
 	static void sessionCreated(ISession s) {
 		synchronized (sessions) {
 			findLongestSession();
@@ -186,6 +282,21 @@ public class Utils implements Config {
 			}
 		}
 	}
+	
+	public static void datagramSessionEnding(ISession s) {
+		synchronized (sessions) {
+			sessions.remove(s);
+			findLongestSession();
+			Statistics.updateSessions(sessions.size());
+			Statistics.sessionEnding(s);
+			if (sessions.size() < MAX_SESSIONS) {
+				try {
+					Utils.createDatagramSession(Utils.randomBoolean(Utils.SSL_SESSION_RATIO));
+				} catch (Exception e) {
+				}
+			}
+		}
+	}	
 	
 	static void sessionEnding(ISession s) {
 		synchronized (sessions) {

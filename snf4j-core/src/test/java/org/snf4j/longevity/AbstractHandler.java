@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,8 @@ import java.nio.ByteBuffer;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.snf4j.core.SessionTest;
+import org.snf4j.core.StreamSession;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.AbstractStreamHandler;
@@ -39,8 +41,32 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 
 	static final Timer timer = new Timer();
 	
-	void write0(Packet p) {
-		getSession().writenf(p.getBytes());
+	ByteBuffer allocateBufferIfNeeded(Packet p, boolean optimize) {
+		if (optimize) {
+			optimize = SessionTest.isOptimized((StreamSession) getSession());
+		}
+		ByteBuffer buffer = null;
+		
+		optimize = optimize && Utils.randomBoolean(Utils.WRITE_ALLOCATED_BUFFER_RATIO);
+		
+		if (optimize) {
+			byte[] bytes = p.getBytes();
+			buffer = getSession().allocate(bytes.length);
+			buffer.put(bytes);
+			buffer.flip();
+		}
+		return buffer;
+	}
+	
+	void write0(Packet p, boolean optimize) {
+		ByteBuffer buffer = allocateBufferIfNeeded(p, optimize);
+		
+		if (buffer != null) {
+			getSession().writenf(buffer);
+		}
+		else {
+			getSession().writenf(p.getBytes());
+		}
 		Statistics.incPackets();
 	}
 	
@@ -49,15 +75,33 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 			timer.schedule(new WriteTask(p), Utils.random.nextInt(Utils.MAX_WRITE_DELAY));
 		}
 		else {
-			write0(p);
+			write0(p, true);
 			Statistics.incPackets();
 			if (Utils.randomBoolean(Utils.MULTI_PACKET_RATIO)) {
 				int count = Utils.random.nextInt(Utils.MAX_MULTI_PACKET) + 1;
 				
 				for (int i=0; i<count; ++i) {
-					write0(Utils.randomNopPacket());
+					write0(Utils.randomNopPacket(), true);
 				}
 			}
+		}
+	}
+
+	ByteBuffer buffered = ByteBuffer.allocate(20000);
+	
+	@Override
+	public void read(ByteBuffer data) {
+		buffered.put(data);
+		getSession().release(data);
+
+		int i = Packet.available(buffered, false);
+		if (i > 0) {
+			byte[] b = new byte[i];
+			
+			buffered.flip();
+			buffered.get(b);
+			buffered.compact();
+			read(new Packet(b));
 		}
 	}
 	
@@ -69,7 +113,7 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 		case ECHO:
 			if (!p.isResponse()) {
 				p.setResponse(true);
-				write0(p);
+				write0(p, true);
 			}
 			else {
 				SessionContext ctx = (SessionContext) getSession().getAttributes().get(SessionContext.ATTR_KEY);
@@ -154,14 +198,37 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 					byte[] b = p.getBytes();
 					int size = b.length / count;
 					int off = 0;
+					ByteBuffer bb;
+					
 					for (int i=0; i<count-1; ++i) {
-						sync(getSession().write(b, off, size));
+						if (Utils.SPLIT_PACKET_WITH_BUFFER_ALLOCATION) {
+							bb = getSession().allocate(size);
+							bb.put(b, off, size).flip();
+							sync(getSession().write(bb));
+						}
+						else {
+							sync(getSession().write(b, off, size));
+						}
 						off += size;
 					}
-					sync(getSession().write(b, off, b.length-off));
+					if (Utils.SPLIT_PACKET_WITH_BUFFER_ALLOCATION) {
+						bb = getSession().allocate(b.length-off);
+						bb.put(b, off, b.length-off).flip();
+						sync(getSession().write(bb));
+					}
+					else {
+						sync(getSession().write(b, off, b.length-off));
+					}
 				}
 				else {
-					sync(getSession().write(p.getBytes()));
+					ByteBuffer buffer = allocateBufferIfNeeded(p, true);
+					
+					if (buffer != null) {
+						sync(getSession().write(buffer));
+					}
+					else {
+						sync(getSession().write(p.getBytes()));
+					}
 				}
 			} catch (Exception e) {
 				Statistics.incExceptions();

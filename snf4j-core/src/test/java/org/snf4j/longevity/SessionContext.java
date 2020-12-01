@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,15 +28,18 @@ package org.snf4j.longevity;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SessionContext {
-	final static String ATTR_KEY = "SessionContext";
+	public final static String ATTR_KEY = "SessionContext";
 	
 	AtomicLong packetCounter;
 	
-	SessionContext() {
+	final long initialPacketCounter;
+	
+	public SessionContext() {
 		packetCounter = new AtomicLong(Utils.random.nextInt(Config.MAX_PACKETS_IN_SESSION));
+		initialPacketCounter = packetCounter.get();
 	}
 	
-	boolean nextPacket() {
+	public boolean nextPacket() {
 		if (packetCounter.get() > 0) {
 			long c = packetCounter.decrementAndGet();
 			if (c >= 0) {

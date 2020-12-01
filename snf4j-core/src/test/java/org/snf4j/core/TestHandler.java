@@ -58,11 +58,14 @@ public class TestHandler extends AbstractStreamHandler {
 	
 	volatile TestAllocator allocator = new TestAllocator(false, true);
 
+	public volatile int allocatorCount;
+	
 	EventType closeInEvent;
 	
 	ISessionStructureFactory factory = new DefaultSessionStructureFactory() {
 		@Override
 		public IByteBufferAllocator getAllocator() {
+			allocatorCount++;
 			return allocator;
 		}
 	};

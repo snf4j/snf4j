@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.snf4j.core.allocator.DefaultAllocator;
@@ -75,15 +76,24 @@ public class AbstractDatagramHandlerTest {
 		
 		SocketAddress a = new InetSocketAddress(555);
 		byte[] b = new byte[3];
+		ByteBuffer bb = ByteBuffer.allocate(10);
 		readAddr = a;
 		h.read(b);
 		assertNull(readAddr);
 		assertTrue(b == readMsg);
+		readAddr = a;
+		h.read(bb);
+		assertNull(readAddr);
+		assertTrue(bb == readMsg);
 		
 		b = new byte[6];
 		h.read(a, b);
 		assertTrue(readAddr == a);
 		assertTrue(b == readMsg);
+		readAddr = null;
+		h.read(a, bb);
+		assertTrue(readAddr == a);
+		assertTrue(bb == readMsg);
 		
 	}
 }

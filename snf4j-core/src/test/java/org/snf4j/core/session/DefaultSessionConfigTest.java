@@ -48,20 +48,22 @@ public class DefaultSessionConfigTest {
 		assertEquals(3000, c.getThroughputCalculationInterval());
 		assertEquals(true, c.ignorePossiblyIncompleteDatagrams());
 		assertEquals(EndingAction.DEFAULT, c.getEndingAction());
-		assertEquals(false, c.canOwnDataPassedToWriteAndSendMethods());
+		assertEquals(false, c.optimizeDataCopying());
 		assertEquals(1, c.getMaxSSLApplicationBufferSizeRatio());
 		assertEquals(1, c.getMaxSSLNetworkBufferSizeRatio());
 		assertFalse(c.waitForInboundCloseMessage());
 		assertNull(c.createCodecExecutor());
 		assertEquals(60000, c.getEngineHandshakeTimeout());
 		assertEquals(60000, c.getDatagramServerSessionNoReopenPeriod());
+		assertEquals(16, c.getMaxWriteSpinCount());
 
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
-			.setEndingAction(EndingAction.STOP).setCanOwnDataPassedToWriteAndSendMethods(true)
+			.setEndingAction(EndingAction.STOP).setOptimizeDataCopying(true)
 			.setMaxSSLApplicationBufferSizeRatio(5).setMaxSSLNetworkBufferSizeRatio(6)
 			.setWaitForInboundCloseMessage(true).setEngineHandshakeTimeout(1001)
 			.setDatagramServerSessionNoReopenPeriod(1002)
+			.setMaxWriteSpinCount(8)
 			.getClass();
 
 		assertEquals(10, c.getMinInBufferCapacity());
@@ -70,12 +72,13 @@ public class DefaultSessionConfigTest {
 		assertEquals(5000, c.getThroughputCalculationInterval());
 		assertEquals(false, c.ignorePossiblyIncompleteDatagrams());
 		assertEquals(EndingAction.STOP, c.getEndingAction());
-		assertEquals(true, c.canOwnDataPassedToWriteAndSendMethods());
+		assertEquals(true, c.optimizeDataCopying());
 		assertEquals(5, c.getMaxSSLApplicationBufferSizeRatio());
 		assertEquals(6, c.getMaxSSLNetworkBufferSizeRatio());
 		assertTrue(c.waitForInboundCloseMessage());
 		assertEquals(1001, c.getEngineHandshakeTimeout());
 		assertEquals(1002, c.getDatagramServerSessionNoReopenPeriod());
+		assertEquals(8, c.getMaxWriteSpinCount());
 		
 		SSLEngine engine = c.createSSLEngine(true);
 		assertNotNull(engine);

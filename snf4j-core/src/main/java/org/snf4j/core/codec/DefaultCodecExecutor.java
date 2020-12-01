@@ -354,55 +354,114 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	@Override
 	public List<Object> decode(ISession session, byte[] data) throws Exception {
 		Iterator<DecoderContext> i = decoders.iterator();
 		
-		if (i.hasNext()) {
-			DecoderContext ctx = i.next();
+		if (!i.hasNext()) {
+			return null;
+		}
+
+		DecoderContext ctx = i.next();
 			
-			while (ctx.isClogged()) {
-				decode(session, ctx, data, null);
-				if (i.hasNext()) {
-					ctx = i.next();
-				}
-				else {
-					return null;
-				}
-			}
-			
-			List<Object> out = new ArrayList<Object>();
-			
-			decode(session, ctx, data, out);
-			if (out.isEmpty()) {
-				return out;
-			}
-			
-			List<Object> in = new ArrayList<Object>();
-			List<Object> tmp;
-			
-			while (i.hasNext()) {
+		while (ctx.isClogged()) {
+			decode(session, ctx, data, null);
+			if (i.hasNext()) {
 				ctx = i.next();
-				if (ctx.isClogged()) {
-					for (Object o: out) {
-						ctx.getDecoder().decode(session, o, null);
-					}
-					continue;
-				}
-				tmp = in;
-				in = out;
-				out = tmp;
-				for (Object o: in) {
-					ctx.getDecoder().decode(session, o, out);
-				}
-				in.clear();
 			}
+			else {
+				return null;
+			}
+		}
+
+		List<Object> out = new ArrayList<Object>();
+
+		decode(session, ctx, data, out);
+		return decode(session, i, out);
+	}
+	
+	@Override
+	public List<Object> decode(ISession session, ByteBuffer data) throws Exception {
+		Iterator<DecoderContext> i = decoders.iterator();
+		
+		if (!i.hasNext()) {
+			return null;
+		}
+		
+		DecoderContext ctx = i.next();
+
+		while (ctx.isClogged()) {
+			decode(session, ctx, data);
+			if (i.hasNext()) {
+				ctx = i.next();
+			}
+			else {
+				return null;
+			}
+		}
+
+		List<Object> out = new ArrayList<Object>();
+
+		decode(session, ctx, data, out);
+		return decode(session, i, out);
+	}
+	
+	@SuppressWarnings("unchecked")
+	private final void decode(ISession session, DecoderContext ctx, ByteBuffer data, List<Object> out) throws Exception {
+		if (ctx.isInboundByteArray()) {
+			byte[] array = new byte[data.remaining()];
+			
+			data.get(array);
+			session.release(data);
+			ctx.getDecoder().decode(session, array, out);
+		}
+		else {
+			ctx.getDecoder().decode(session, data, out);
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private final void decode(ISession session, DecoderContext ctx, ByteBuffer data) throws Exception {
+		if (ctx.isInboundByteArray()) {
+			byte[] array = new byte[data.remaining()];
+			
+			data.duplicate().get(array);
+			ctx.getDecoder().decode(session, array, null);
+		}
+		else {
+			ctx.getDecoder().decode(session, data, null);
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private final List<Object> decode(ISession session, Iterator<DecoderContext> i, List<Object> out) throws Exception {
+		if (out.isEmpty()) {
 			return out;
 		}
-		return null;
+		
+		List<Object> in = new ArrayList<Object>();
+		List<Object> tmp;
+		DecoderContext ctx;
+		
+		while (i.hasNext()) {
+			ctx = i.next();
+			if (ctx.isClogged()) {
+				for (Object o: out) {
+					ctx.getDecoder().decode(session, o, null);
+				}
+				continue;
+			}
+			tmp = in;
+			in = out;
+			out = tmp;
+			for (Object o: in) {
+				ctx.getDecoder().decode(session, o, out);
+			}
+			in.clear();
+		}
+		return out;
 	}
-
+	
 	@Override
 	public final IBaseDecoder<?> getBaseDecoder() {
 		return baseDecoder;
@@ -416,4 +475,5 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 			}
 		}
 	}
+	
 }

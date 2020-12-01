@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -88,6 +88,11 @@ public class SessionConfig extends DefaultSessionConfig {
 	}
 	
 	@Override
+	public boolean optimizeDataCopying() {
+		return Utils.randomBoolean(Config.OPTIMIZE_DATA_COPING_RATIO);
+	}
+	
+	@Override
 	public ICodecExecutor createCodecExecutor() {
 		
 		if (Utils.randomBoolean(Config.CODEC_EXECUTOR_RATIO)) {
@@ -103,11 +108,10 @@ public class SessionConfig extends DefaultSessionConfig {
 			p.add("v3", new ObjectToVoidDecoder());
 
 			p.add("v4", new ObjectToVoidEncoder());
-			p.add("e1", new ByteToByteEncoder(3));
+			p.add("e1", new BufferToBufferEncoder());
 			p.add("v5", new ObjectToVoidEncoder());
-			p.add("e2", new ByteToByteEncoder(-2));
-			p.add("e3", new ByteToByteEncoder(-1));
-			p.add("e4", new PacketToByteEncoder());
+			p.add("e2", new BufferToBufferEncoder());
+			p.add("e3", new BufferToBufferEncoder());
 			p.add("v6", new ObjectToVoidEncoder());
 
 			return e;

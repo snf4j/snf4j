@@ -86,12 +86,14 @@ public class Server {
 	public ISelectorLoopController controller;
 	public long throughputCalcInterval = 1000;
 	public boolean directAllocator;
+	public boolean ignoreAvailableException;
 	public TestAllocator allocator;
 	public ITimer timer;
 	public ConcurrentMap<Object, Object> attributes;
 	public Executor executor;
 	public DefaultCodecExecutor codecPipeline;
 	public ISelectorLoopPool pool;
+	volatile ByteBuffer bufferRead;
 	public volatile EndingAction endingAction = EndingAction.DEFAULT;
 	public volatile StringBuilder serverSocketLogs = new StringBuilder();
 	public volatile ServerSocketChannel ssc;
@@ -101,6 +103,8 @@ public class Server {
 	public volatile boolean recordSessionId;
 	public volatile boolean waitForCloseMessage;
 	public volatile boolean dontReplaceException;
+	public volatile boolean optimizeDataCopying;
+	public volatile int maxWriteSpinCount = -1;
 
 	public volatile int availableCounter;
 	
@@ -538,6 +542,10 @@ public class Server {
 			config.setMaxSSLApplicationBufferSizeRatio(1);
 			config.setMaxSSLNetworkBufferSizeRatio(1);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
+			config.setOptimizeDataCopying(optimizeDataCopying);
+			if (maxWriteSpinCount != -1) {
+				config.setMaxWriteSpinCount(maxWriteSpinCount);
+			}
 			return config;
 		}
 
@@ -549,7 +557,7 @@ public class Server {
 		@Override
 		public int available(ByteBuffer buffer, boolean flipped) {
 			++availableCounter;
-			if (!directAllocator) throw new IllegalStateException();
+			if (!directAllocator && !ignoreAvailableException) throw new IllegalStateException();
 
 			ByteBuffer dupBuffer = buffer.duplicate();
 			
@@ -566,7 +574,7 @@ public class Server {
 		@Override
 		public int available(byte[] buffer, int off, int len) {
 			++availableCounter;
-			if (directAllocator) throw new IllegalStateException();
+			if (directAllocator && !ignoreAvailableException) throw new IllegalStateException();
 			return available0(buffer, off, len);
 		}
 
@@ -595,6 +603,18 @@ public class Server {
 		
 		@Override
 		public void read(Object msg) {
+			
+			if (msg instanceof ByteBuffer) {
+				ByteBuffer bb = (ByteBuffer)msg;
+				byte[] b = new byte[bb.remaining()];
+				
+				bb.get(b);
+				bufferRead = bb;
+				record("BUF");
+				read(b);
+				return;
+			}
+			
 			record("M("+msg.toString()+")");
 			
 			if (msg instanceof Packet) {
@@ -645,6 +665,10 @@ public class Server {
 			switch (packet.type) {
 			case ECHO:
 				getSession().write(new Packet(PacketType.ECHO_RESPONSE, packet.payload).toBytes());
+				break;
+				
+			case ECHO_NF:
+				getSession().writenf(new Packet(PacketType.ECHO_RESPONSE, packet.payload).toBytes());
 				break;
 			
 			case GET_THREAD:
