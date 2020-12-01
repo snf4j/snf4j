@@ -1008,7 +1008,10 @@ public class DTLSSessionTest extends DTLSTest {
 		c.waitForDataSent(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|SOP|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("SCR|SOP|DS|", c.getRecordedData(true));
+		String r = c.getRecordedData(true);
+		if (!r.equals("SCR|SOP|DS|DR|")) {
+			assertEquals("SCR|SOP|DS|", r);
+		}
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
@@ -1050,7 +1053,10 @@ public class DTLSSessionTest extends DTLSTest {
 		c.closeInEvent = EventType.SESSION_READY;
 		c.startClient();
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|DR+|DS+|RDY|DR|DS|SCL|SEN|", getRecordedData(c));
+		String r = getRecordedData(c);
+		if (!r.equals("SCR|SOP|DR+|DS+|RDY|DS|SCL|SEN|")) {
+			assertEquals("SCR|SOP|DR+|DS+|RDY|DR|DS|SCL|SEN|", r);
+		}
 		s.stop(TIMEOUT);
 		assertEquals(0, ((TestTimer)s.timer).getSize());
 	}
@@ -1562,7 +1568,8 @@ public class DTLSSessionTest extends DTLSTest {
 		s2.startServer();
 		s2.waitForSessionReady(TIMEOUT);
 		SocketAddress a = new InetSocketAddress("127.0.0.1", PORT+1);
-
+		
+		waitFor(50);
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 		s2.getRecordedData(true);
@@ -1982,6 +1989,7 @@ public class DTLSSessionTest extends DTLSTest {
 	
 	private void testOptimizedDataCopyingWrite(DefaultCodecExecutor p) throws Exception {
 		boolean codec = p != null;
+		int add = INITIAL_BUFFER_OVERFLOW ? 1 : 0;
 		
 		//client side
 		s = new DatagramHandler(PORT);
@@ -2008,10 +2016,11 @@ public class DTLSSessionTest extends DTLSTest {
 		session.write(b);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s.getRecordedData(true));
-		assertEquals(acount+2, a.getAllocatedCount());
-		assertEquals(rcount+2, a.getReleasedCount());
-		assertTrue(a.getAllocated().get(acount) == a.getReleased().get(rcount));
-		assertTrue(a.getAllocated().get(acount+1) == a.getReleased().get(rcount+1));
+		assertEquals(acount+2+add, a.getAllocatedCount());
+		assertEquals(rcount+2+add, a.getReleasedCount());
+		assertTrue(a.getAllocated().get(acount) == a.getReleased().get(rcount+add));
+		assertTrue(a.getAllocated().get(acount+add) == a.getReleased().get(rcount));
+		assertTrue(a.getAllocated().get(acount+1+add) == a.getReleased().get(rcount+1+add));
 		assertEquals(0, a.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -2040,7 +2049,7 @@ public class DTLSSessionTest extends DTLSTest {
 		session.write(b);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s.getRecordedData(true));
-		assertEquals(acount+2, a.getAllocatedCount());
+		assertEquals(acount+2+add, a.getAllocatedCount());
 		assertEquals(0, a.getReleasedCount());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -2071,12 +2080,12 @@ public class DTLSSessionTest extends DTLSTest {
 		s.waitForDataRead(TIMEOUT);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s.getRecordedData(true));
 		if (codec) {
-			assertEquals(acount+1, a.getAllocatedCount());
-			assertEquals(rcount+1, a.getReleasedCount());
+			assertEquals(acount+1+add, a.getAllocatedCount());
+			assertEquals(rcount+1+add, a.getReleasedCount());
 		}
 		else {
-			assertEquals(acount+2, a.getAllocatedCount());
-			assertEquals(rcount+2, a.getReleasedCount());
+			assertEquals(acount+2+add, a.getAllocatedCount());
+			assertEquals(rcount+2+add, a.getReleasedCount());
 		}
 		assertEquals(2, a.getSize());
 		c.stop(TIMEOUT);

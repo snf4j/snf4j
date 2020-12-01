@@ -331,6 +331,7 @@ public class SSLSessionCodecTest {
 		session.write(packet).sync(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DS|DR|M(ECHO_RESPONSE[ABCe])|M(ECHO_RESPONSE[ABCe])|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		stop();
 

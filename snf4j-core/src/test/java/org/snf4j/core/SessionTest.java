@@ -1276,7 +1276,10 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DR|WRITE_AND_WAIT(1000)|DS|EXC|SCL|SEN|", s.getRecordedData(true));
+		String r = s.getRecordedData(true);
+		if (!r.equals("DR|WRITE_AND_WAIT(1000)|DS|SCL|SEN|")) {
+			assertEquals("DR|WRITE_AND_WAIT(1000)|DS|EXC|SCL|SEN|", r);
+		}
 		s.stop(TIMEOUT); c.stop(TIMEOUT);
 
 		//quick close outside the loop with data to send (closed on the same side)
@@ -2218,7 +2221,7 @@ public class SessionTest {
 		assertEquals(100, countRDNOP(s.getRecordedData(true), payload));
 		int count2 = countDS(text);
 		assertEquals("SCL|SEN|", text.substring(count2*3));
-		assertTrue(count2 > count*3);
+		assertTrue(""+count2+">"+count, count2 > count*2);
 		c.stop(TIMEOUT);
 		
 		c = new Client(PORT);

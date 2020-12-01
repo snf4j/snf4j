@@ -897,6 +897,7 @@ public class SessionCodecTest {
 		s.getSession().write(new Packet(PacketType.NOP).toBytes());
 		s.waitForDataSent(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|BUF|NOP()|", c.getRecordedData(true));
 		assertEquals(1, allocator.getReleasedCount());
 		assertEquals(1, allocator.getAllocatedCount());

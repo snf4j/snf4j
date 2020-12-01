@@ -66,6 +66,8 @@ public class DTLSTest {
 	
 	static final boolean HANDSHAKING_AFTER_CLOSE = DatagramHandler.JAVA_VER <= 11.0;
 	
+	static final boolean INITIAL_BUFFER_OVERFLOW = DatagramHandler.JAVA_VER >= 9.0;
+	
 	public static void assumeHandshakingAfterClose() {
 		Assume.assumeTrue(DatagramHandler.JAVA_VER >= 9.0 && HANDSHAKING_AFTER_CLOSE);
 	}
