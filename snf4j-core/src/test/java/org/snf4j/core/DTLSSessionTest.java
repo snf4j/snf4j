@@ -544,7 +544,6 @@ public class DTLSSessionTest extends DTLSTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		assertEquals(0, ((TestTimer)s.timer).getSize());
-	
 	}
 	
 	@Test
