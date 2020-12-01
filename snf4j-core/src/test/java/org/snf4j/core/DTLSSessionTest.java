@@ -347,7 +347,6 @@ public class DTLSSessionTest extends DTLSTest {
 		assertEquals("DS|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
-		
 	}
 	
 	@Test
