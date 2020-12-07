@@ -98,7 +98,7 @@ public class CachingAllocatorTest {
 	public void testConstructor() throws Exception {
 		CachingAllocator a = new CachingAllocator(true);	
 		
-		assertEquals(64, a.allocate(1).capacity());
+		assertEquals(512, a.allocate(1).capacity());
 		assertCaches(0, 256, 2048, a);
 		
 		System.setProperty(Constants.ALLOCATOR_MIN_CACHE_SIZE_PROPERTY, "10");
@@ -112,6 +112,7 @@ public class CachingAllocatorTest {
 		a = new CachingAllocator(false, m);
 		assertFalse(a.allocate(10).isDirect());
 		assertTrue(a.metric == m);
+		assertEquals(512, a.allocate(1).capacity());
 		a = new CachingAllocator(true, m);
 		assertTrue(a.allocate(10).isDirect());
 		assertTrue(a.metric == m);
@@ -449,7 +450,7 @@ public class CachingAllocatorTest {
 	
 	@Test
 	public void testEnsure() {
-		CachingAllocator a = new CachingAllocator(false);
+		CachingAllocator a = new CachingAllocator(false,64);
 		
 		ByteBuffer b1 = a.allocate(8);
 		assertEquals(64, b1.capacity());
