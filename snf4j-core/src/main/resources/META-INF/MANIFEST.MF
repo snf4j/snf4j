@@ -4,6 +4,8 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: org.snf4j.core;version=${parsedVersion.osgiVersion},
   org.snf4j.core.allocator;version=${parsedVersion.osgiVersion},
   org.snf4j.core.codec;version=${parsedVersion.osgiVersion},
+  org.snf4j.core.codec.bytes;version=${parsedVersion.osgiVersion},
+  org.snf4j.core.codec.zip;version=${parsedVersion.osgiVersion},
   org.snf4j.core.engine;version=${parsedVersion.osgiVersion},
   org.snf4j.core.factory;version=${parsedVersion.osgiVersion},
   org.snf4j.core.future;version=${parsedVersion.osgiVersion},

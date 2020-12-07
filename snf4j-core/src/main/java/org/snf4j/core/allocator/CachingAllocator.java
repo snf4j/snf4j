@@ -104,7 +104,7 @@ public class CachingAllocator extends DefaultAllocator {
 	}
 	
 	/**
-	 * Constructs a caching allocator with default minimal capacity (64) and specified
+	 * Constructs a caching allocator with default minimal capacity (512) and specified
 	 * metric data collector.
 	 * 
 	 * @param direct
@@ -115,11 +115,11 @@ public class CachingAllocator extends DefaultAllocator {
 	 *            a metric data collector
 	 */
 	public CachingAllocator(boolean direct, IDefaultAllocatorMetricCollector metric) {
-		this(direct, 64, metric);
+		this(direct, 512, metric);
 	}
 	
 	/**
-	 * Constructs a caching allocator with default minimal capacity (64).
+	 * Constructs a caching allocator with default minimal capacity (512).
 	 * 
 	 * @param direct
 	 *            <code>true</code> if the allocator should allocate direct
@@ -127,7 +127,7 @@ public class CachingAllocator extends DefaultAllocator {
 	 *            that have a backing array
 	 */
 	public CachingAllocator(boolean direct) {
-		this(direct, 64);
+		this(direct, 512);
 	}
 	
 	/**

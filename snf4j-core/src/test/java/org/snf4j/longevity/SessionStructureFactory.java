@@ -40,7 +40,7 @@ public class SessionStructureFactory implements ISessionStructureFactory {
 
 	public static final DefaultAllocatorMetric METRIC = new DefaultAllocatorMetric();
 	
-	public static final CachingAllocator CACHING_ALLOCATOR = new CachingAllocator(true, 512, METRIC);
+	public static final CachingAllocator CACHING_ALLOCATOR = new CachingAllocator(true, METRIC);
 	
 	@Override
 	public IByteBufferAllocator getAllocator() {

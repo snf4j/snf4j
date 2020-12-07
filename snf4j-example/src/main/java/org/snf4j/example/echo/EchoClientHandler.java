@@ -41,6 +41,26 @@ public class EchoClientHandler extends AbstractStreamHandler {
 
 	private static final IByteBufferAllocator ALLOCATOR = new CachingAllocator(true);
 	
+	private long startTime;
+	
+	private long totalBytes;
+	
+	boolean read(int size) {
+		totalBytes += size;
+		if (totalBytes >= EchoClient.TOTAL_SIZE) {
+			getSession().close();
+			return false;
+		}
+		return true;
+	}
+	
+	@Override
+	public void read(ByteBuffer data) {
+		if (read(data.remaining())) {
+			super.read(data);
+		}
+	}
+	
 	@Override
 	public void read(Object msg) {
 		getSession().writenf(msg);
@@ -52,12 +72,18 @@ public class EchoClientHandler extends AbstractStreamHandler {
 		switch (event) {
 		case READY:
 			ByteBuffer msg = getSession().allocate(EchoClient.SIZE);
-			
+
+			Logger.inf("starting...");
+			startTime = System.currentTimeMillis();			
 			for (int i=0; i<msg.capacity(); ++i) {
 				msg.put((byte)i);
 			}
 			msg.flip();
 			getSession().writenf(msg);
+			break;
+			
+		case CLOSED:
+			stats();
 			break;
 		}
 	}
@@ -73,6 +99,12 @@ public class EchoClientHandler extends AbstractStreamHandler {
 		return true;
 	}
 
+	private void stats() {
+		long bytesPerSecond = 1000*totalBytes/(System.currentTimeMillis() - startTime);
+		
+		Logger.inf("avg bytes/sec: " + bytesPerSecond);
+	}
+	
 	@Override
 	public ISessionConfig getConfig() {
 		return new SessionConfig(EchoClient.PIPELINE_SIZE)
