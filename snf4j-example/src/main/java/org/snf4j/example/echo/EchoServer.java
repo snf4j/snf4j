@@ -39,7 +39,7 @@ public class EchoServer {
 	static final String PREFIX = "org.snf4j.";
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 	static final int POOL_SIZE = Integer.getInteger(PREFIX+"PoolSize", 8);
-	static final boolean SECURE = Integer.getInteger(PREFIX+"Secure") == null;
+	static final boolean SECURE = Integer.getInteger(PREFIX+"Secure") != null;
 	static final int PIPELINE_SIZE = Integer.getInteger(PREFIX+"PipelineSize", 0);
 
 	public static void main(String[] args) throws Exception {
