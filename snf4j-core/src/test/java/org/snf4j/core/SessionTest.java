@@ -2903,6 +2903,7 @@ public class SessionTest {
 		c.getSession().write(bytes, 2, bytes.length-2);
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
+		waitFor(50);
 		assertEquals(acount+1, s.allocator.getAllocatedCount());
 		assertNull(getInBuffer(session));
 		assertEquals(0, getOutBuffers(session).length);
