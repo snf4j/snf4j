@@ -41,7 +41,6 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.handler.SessionIncidentException;
-import org.snf4j.core.handler.HandshakeTimeoutException;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.IEngineSession;
@@ -61,10 +60,6 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	
 	private Queue<ByteBuffer> inNetBuffers;
 
-	private ITimerTask handshakeTimer;
-
-	private static final Object HANDSHAKE_TIMEOUT_EVENT = new Object();
-	
 	private final SocketAddress remoteAddress;
 	
 	private ITimerTask retransmissionTimer;
@@ -112,40 +107,8 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		}
 	}
 	
-	@Override 
-	void handleBeginHandshake() {
-		ISessionTimer timer = session.getTimer();
-		
-		if (handshakeTimer == null && timer.isSupported()) {
-			long timeout = session.getConfig().getEngineHandshakeTimeout();
-			
-			handshakeTimer = timer.scheduleEvent(HANDSHAKE_TIMEOUT_EVENT, timeout);
-			if (traceEnabled) {
-				logger.trace("Handshake expiration timer scheduled for execution after {} ms for {}", timeout, session);
-			}
-		}
-		super.handleBeginHandshake();
-	}
-	
-	private final void cancelHandshakeTimer() {
-		if (handshakeTimer != null) {
-			handshakeTimer.cancelTask();
-			handshakeTimer = null;
-			if (traceEnabled) {
-				logger.trace("Handshake expiration timer canceled for {}", session);
-			}
-		}
-	}
-	
-	@Override
-	void handleFinished() {
-		cancelHandshakeTimer();
-		super.handleFinished();
-	}
-	
 	@Override
 	void handleClosed() {
-		cancelHandshakeTimer();
 		cancelRetransmissionTimer();
 		super.handleClosed();
 	}
@@ -155,10 +118,6 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		if (event == RETRANSMISSION_TIMEOUT_EVENT) {
 			retransmissionTimer = null;
 			run(new HandshakeStatus[] {HandshakeStatus.NEED_WRAP});
-		}
-		else if (event == HANDSHAKE_TIMEOUT_EVENT) {
-			handshakeTimer = null;
-			fireException(new HandshakeTimeoutException());
 		}
 		else {
 			super.timer(event);

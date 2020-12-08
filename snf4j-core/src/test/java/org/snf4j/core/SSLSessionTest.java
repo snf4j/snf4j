@@ -58,6 +58,7 @@ import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.LoggerRecorder;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.session.IllegalSessionStateException;
+import org.snf4j.core.timer.TestTimer;
 
 public class SSLSessionTest {
 	long TIMEOUT = 2000;
@@ -323,6 +324,50 @@ public class SSLSessionTest {
 		finally {
 			pool1.shutdownNow();
 			pool2.shutdownNow();
+		}
+	}
+	
+	@Test
+	public void testHandshakeTimeout() throws Exception {
+		s = new Server(PORT, false);
+		c = new Client(PORT, true);
+		c.timer = new TestTimer();
+		c.handshakeTimeout = 1000;
+		c.exceptionRecordException = true;
+		s.start();
+		c.start();
+
+		waitFor(900);
+		assertEquals("SCR|SOP|DS|", c.getRecordedData(true));
+		waitFor(200);
+		assertEquals("EXC|(Session handshake timed out)|SCL|SEN|", c.getRecordedData(true));
+		c.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		if (!TLS1_3) {
+			s = new Server(PORT, true);
+			c = new Client(PORT, true);
+			c.timer = new TestTimer();
+			c.handshakeTimeout = 500;
+			c.exceptionRecordException = true;
+			s.start();
+			c.start();
+			c.waitForSessionReady(TIMEOUT);
+			s.waitForSessionReady(TIMEOUT);
+			c.getSession().write(new Packet(PacketType.NOP).toBytes());
+			c.waitForDataSent(TIMEOUT);
+			s.waitForDataRead(TIMEOUT);
+			c.getRecordedData(true);
+
+			s.getSession().suspendRead();
+			((SSLSession)c.getSession()).beginHandshake();
+			waitFor(400);
+			assertEquals("DS|", c.getRecordedData(true));
+			waitFor(200);
+			assertEquals("EXC|(Session handshake timed out)|SCL|SEN|", c.getRecordedData(true));
+			s.getSession().resumeRead();
+			s.waitForSessionEnding(TIMEOUT);
 		}
 	}
 	

@@ -691,7 +691,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		task.cancelTask();
 
 		EngineDatagramHandler h = getHandler(c.getSession());
-		Field f = EngineDatagramHandler.class.getDeclaredField("handshakeTimer");
+		Field f = AbstractEngineHandler.class.getDeclaredField("handshakeTimer");
 		f.setAccessible(true);
 		f.set(h, task);
 		f = EngineDatagramHandler.class.getDeclaredField("retransmissionTimer");
