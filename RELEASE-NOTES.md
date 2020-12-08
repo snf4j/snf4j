@@ -1,5 +1,5 @@
 #### 1.5.0
- - 2020-12-08 - [changes](https://github.com/snf4j/snf4j/compare/v1.4.0...v1.5.0)
+ - 2020-12-09 - [changes](https://github.com/snf4j/snf4j/compare/v1.4.0...v1.5.0)
  - Added ZLIB and GZIP codecs [(#41)](https://github.com/snf4j/snf4j/pull/41)
  - Performance improvements [(#43)](https://github.com/snf4j/snf4j/pull/43)
 
