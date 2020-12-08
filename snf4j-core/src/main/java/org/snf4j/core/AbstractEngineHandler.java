@@ -36,6 +36,7 @@ import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.HandshakeLoopsThresholdException;
+import org.snf4j.core.handler.HandshakeTimeoutException;
 import org.snf4j.core.handler.IAllocatingHandler;
 import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.SessionEvent;
@@ -45,12 +46,16 @@ import org.snf4j.core.logger.ExceptionLogger;
 import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.ISessionTimer;
+import org.snf4j.core.timer.ITimerTask;
 
 abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandler> implements IHandler, Runnable, IAllocatingHandler {
 	
 	private final static AtomicLong nextDelegatedTaskId = new AtomicLong(0); 
 	
 	private final static int MAX_HANDSHAKE_LOOPS_THRESHOLD = Integer.getInteger(Constants.MAX_HANDSHAKE_LOOPS_THRESHOLD, 500);
+	
+	private static final Object HANDSHAKE_TIMEOUT_EVENT = new Object();
 	
 	final ILogger logger;
 	
@@ -85,6 +90,8 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	boolean readIgnored;
 	
 	boolean handshaking;
+
+	private ITimerTask handshakeTimer;
 	
 	int handshakeLoops;
 	
@@ -247,10 +254,32 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	}
 	
 	void handleBeginHandshake() {
+		ISessionTimer timer = session.getTimer();
+		
+		if (handshakeTimer == null && timer.isSupported()) {
+			long timeout = session.getConfig().getEngineHandshakeTimeout();
+			
+			handshakeTimer = timer.scheduleEvent(HANDSHAKE_TIMEOUT_EVENT, timeout);
+			if (traceEnabled) {
+				logger.trace("Handshake expiration timer scheduled for execution after {} ms for {}", timeout, session);
+			}
+		}
+	}
+
+	private final void cancelHandshakeTimer() {
+		if (handshakeTimer != null) {
+			handshakeTimer.cancelTask();
+			handshakeTimer = null;
+			if (traceEnabled) {
+				logger.trace("Handshake expiration timer canceled for {}", session);
+			}
+		}
 	}
 	
 	void handleFinished() {
+		cancelHandshakeTimer();
 	}
+	
 	
 	void handleReady() {
 		fireReady();
@@ -259,6 +288,7 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	void handleClosed() {
 		ClosingState prevClosing;
 		
+		cancelHandshakeTimer();
 		synchronized (writeLock) {
 			prevClosing = closing;
 			closing = ClosingState.FINISHED;
@@ -406,7 +436,13 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 
 	@Override
 	public void timer(Object event) {
-		handler.timer(event);
+		if (event == HANDSHAKE_TIMEOUT_EVENT) {
+			handshakeTimer = null;
+			fireException(new HandshakeTimeoutException());
+		}
+		else {
+			handler.timer(event);
+		}
 	}
 	
 	@Override

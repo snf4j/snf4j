@@ -345,9 +345,6 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/**
 	 * Configures how long the SNF4J framework should wait for completion of the
 	 * handshake phase for engine-driven sessions.
-	 * <p>
-	 * This configuration parameter is supported only by datagram engine-driver
-	 * sessions.
 	 * 
 	 * @param timeout the timeout in milliseconds
 	 * @return this session config object

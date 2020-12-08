@@ -145,6 +145,8 @@ public class Server {
 
 	static volatile SSLContext sslContext = null; 
 	
+	volatile long handshakeTimeout = 5000;
+	
 	static final LinkedList<Server> lastServers = new LinkedList<Server>();
 	
 	static {
@@ -543,6 +545,7 @@ public class Server {
 			config.setMaxSSLNetworkBufferSizeRatio(1);
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
 			config.setOptimizeDataCopying(optimizeDataCopying);
+			config.setEngineHandshakeTimeout(handshakeTimeout);
 			if (maxWriteSpinCount != -1) {
 				config.setMaxWriteSpinCount(maxWriteSpinCount);
 			}

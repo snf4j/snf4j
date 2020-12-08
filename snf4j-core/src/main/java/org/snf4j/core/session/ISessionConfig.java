@@ -220,9 +220,6 @@ public interface ISessionConfig {
 	 * {@link org.snf4j.core.handler.HandshakeTimeoutException
 	 * HandshakeTimeoutException} will be thrown and the session will be quickly
 	 * closed.
-	 * <p>
-	 * This configuration parameter is supported only by datagram engine-driver
-	 * sessions.
 	 * 
 	 * @return the timeout in milliseconds
 	 */
