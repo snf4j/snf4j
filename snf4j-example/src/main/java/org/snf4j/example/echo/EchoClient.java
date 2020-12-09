@@ -38,7 +38,7 @@ public class EchoClient {
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
 	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
-	static final boolean SECURE = Integer.getInteger(PREFIX+"Secure") == null;
+	static final boolean SECURE = Integer.getInteger(PREFIX+"Secure") != null;
 	static final int PIPELINE_SIZE = Integer.getInteger(PREFIX+"PipelineSize", 0);
 	
 	public static void main(String[] args) throws Exception {

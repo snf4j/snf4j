@@ -1,3 +1,8 @@
+#### 1.5.0
+ - 2020-12-09 - [changes](https://github.com/snf4j/snf4j/compare/v1.4.0...v1.5.0)
+ - Added ZLIB and GZIP codecs [(#41)](https://github.com/snf4j/snf4j/pull/41)
+ - Performance improvements [(#43)](https://github.com/snf4j/snf4j/pull/43)
+
 #### 1.4.0
  - 2020-08-02 - [changes](https://github.com/snf4j/snf4j/compare/v1.3.0...v1.4.0)
  - Added datagram server handler [(#34)](https://github.com/snf4j/snf4j/pull/34)

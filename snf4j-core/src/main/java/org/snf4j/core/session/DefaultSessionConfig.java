@@ -401,6 +401,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * <p>
 	 * It improves write throughput depending on the platform that JVM runs on.
 	 * 
+	 * @param count the maximum loop count
 	 * @return this session config object
 	 * @see #getMaxWriteSpinCount()
 	 */

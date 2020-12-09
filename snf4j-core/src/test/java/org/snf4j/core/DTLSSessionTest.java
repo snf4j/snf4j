@@ -2197,6 +2197,7 @@ public class DTLSSessionTest extends DTLSTest {
 		b = nop("1", null);
 		session.write(b);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", c.getRecordedData(true));
 		if (codec) {
 			assertEquals(acount+1, a.getAllocatedCount());
@@ -2211,6 +2212,7 @@ public class DTLSSessionTest extends DTLSTest {
 		b = nop("1", null);
 		session.send(address(PORT+1), b);
 		s2.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s2.getRecordedData(true));
 		if (codec) {
 			assertEquals(acount+1, a.getAllocatedCount());
