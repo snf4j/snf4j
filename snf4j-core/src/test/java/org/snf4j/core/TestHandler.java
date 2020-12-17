@@ -62,6 +62,8 @@ public class TestHandler extends AbstractStreamHandler {
 	
 	EventType closeInEvent;
 	
+	boolean optimizeDataCopy;
+	
 	ISessionStructureFactory factory = new DefaultSessionStructureFactory() {
 		@Override
 		public IByteBufferAllocator getAllocator() {
@@ -113,6 +115,7 @@ public class TestHandler extends AbstractStreamHandler {
 		config.setThroughputCalculationInterval(1000);
 		config.setMaxSSLApplicationBufferSizeRatio(maxAppBufRatio);
 		config.setMaxSSLNetworkBufferSizeRatio(maxNetBufRatio);
+		config.setOptimizeDataCopying(optimizeDataCopy);
 		return config;
 	}
 	

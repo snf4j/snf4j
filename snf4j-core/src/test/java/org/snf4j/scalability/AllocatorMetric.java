@@ -25,7 +25,6 @@
  */
 package org.snf4j.scalability;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.core.allocator.DefaultAllocatorMetric;
@@ -34,19 +33,8 @@ public class AllocatorMetric extends DefaultAllocatorMetric {
 	
 	AtomicLong allocatedSize = new AtomicLong(0);
 	
-	AtomicInteger maxCapacity = new AtomicInteger(0);
-	
 	@Override
 	public void allocated(int capacity) {
-		int max = maxCapacity.get();
-		
-		if (capacity > max) {
-			if (!maxCapacity.compareAndSet(max, capacity)) {
-				do {
-					max = maxCapacity.get();
-				} while (capacity > max && !maxCapacity.compareAndSet(max, capacity));
-			}
-		}
 		allocatedSize.addAndGet(capacity);
 		super.allocated(capacity);
 	}
@@ -55,7 +43,4 @@ public class AllocatorMetric extends DefaultAllocatorMetric {
 		return allocatedSize.get();
 	}
 	
-	public int getMaxCapacity() {
-		return maxCapacity.get();
-	}
 }

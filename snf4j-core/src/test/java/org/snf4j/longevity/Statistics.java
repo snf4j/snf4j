@@ -196,7 +196,8 @@ public class Statistics {
 				"(" + printBytes(avgSslBytes.get()*1000 / (avgSslTime.get()+1)) +"/s)" +
 				" " + printBytes(totalBytes.get()*1000 / (totalTime.get()+1)) +"/s" +
 				"\talloc: " + printBytes(SessionStructureFactory.METRIC.getAllocatingCount()) + "/" +
-				printBytes(SessionStructureFactory.METRIC.getAllocatedCount())
+				printBytes(SessionStructureFactory.METRIC.getAllocatedCount()) + " (" +
+				printBytes(SessionStructureFactory.METRIC.getMaxCapacity()) + ")"
 		);
 	}
 }

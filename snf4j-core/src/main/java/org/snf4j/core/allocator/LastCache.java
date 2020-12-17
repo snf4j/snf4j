@@ -31,9 +31,12 @@ class LastCache extends Cache {
 
 	private volatile int capacity;
 	
+	private final int capacityThreshold;
+	
 	LastCache(int capacity, int minSize, int maxSize, int reduceThreshold) {
 		super(capacity, minSize, maxSize, reduceThreshold);
 		this.capacity = capacity;
+		this.capacityThreshold = capacity << 1;
 	}
 	
 	int capacity() {
@@ -73,7 +76,9 @@ class LastCache extends Cache {
 			ByteBuffer b = super.get(capacity);
 			
 			if (b != null && size == 0) {
-				this.capacity = capacity;
+				if (this.capacity > capacityThreshold) {
+					this.capacity = capacityThreshold;
+				}
 			}
 			return b;
 		}
