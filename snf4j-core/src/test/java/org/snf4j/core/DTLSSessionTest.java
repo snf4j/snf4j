@@ -2013,6 +2013,7 @@ public class DTLSSessionTest extends DTLSTest {
 		ByteBuffer b = nop("1", a);
 		session.write(b);
 		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s.getRecordedData(true));
 		assertEquals(acount+2+add, a.getAllocatedCount());
 		assertEquals(rcount+2+add, a.getReleasedCount());
