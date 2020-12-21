@@ -27,65 +27,24 @@ package org.snf4j.core.allocator;
 
 import java.nio.ByteBuffer;
 
-class LastCache extends Cache {
+class SyncCache extends Cache {
 
-	private int capacity;
-	
-	private final int capacityThreshold;
-	
-	LastCache(int capacity, int minSize, int maxSize, int reduceThreshold, Cache[] group) {
-		super(capacity, minSize, maxSize, reduceThreshold, group);
-		this.capacity = capacity;
-		this.capacityThreshold = capacity << 1;
+	SyncCache(int capacity, int minSize, int maxSize, int ageThreshold, Cache[] group) {
+		super(capacity, minSize, maxSize, ageThreshold, group);
 	}
-	
+
 	@Override
-	int capacity() {
-		return capacity;
-	}
-	
-	@Override
-	void purge() {
+	synchronized void purge() {
 		super.purge();
-		capacity = super.capacity;
 	}
 	
 	@Override
-	boolean put(ByteBuffer b, long touch, long touchAll) {
-		int bc = b.capacity();
-
-		touchAll(touch, touchAll);
-		if (capacity > bc) {
-			return false;
-		}
-		else if (capacity < bc) {
-			capacity = bc;
-			for (int i=1; i<size; ++i) {
-				cache[i] = null;
-			}
-			size = 0;
-		}
-		if (prePut(touch)) {
-			cache[size++] = b;
-			return true;
-		}
-		return false;
+	synchronized boolean put(ByteBuffer b, long touch, long touchAll) {
+		return super.put(b, touch, touchAll);
 	}
 	
 	@Override
-	ByteBuffer get(int capacity, long touch, long touchAll) {
-		if (capacity <= this.capacity) {
-			ByteBuffer b = super.get(capacity, touch, touchAll);
-			
-			if (b != null && size == 0) {
-				if (this.capacity > capacityThreshold) {
-					this.capacity = capacityThreshold;
-				}
-			}
-			return b;
-		}
-		touchAll(touch, touchAll);
-		return null;
+	synchronized ByteBuffer get(int capacity, long touch, long touchAll) {
+		return super.get(capacity, touch, touchAll);
 	}
-
 }

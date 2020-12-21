@@ -1,9 +1,36 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2020 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
 package org.snf4j.core.thread;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import java.lang.reflect.Field;
 
 import org.junit.Test;
 
@@ -60,6 +87,13 @@ public class FastThreadLocalTest {
 	volatile String v1;
 	volatile String v2;
 	
+	int index(FastThreadLocal<?> local) throws Exception {
+		Field f = FastThreadLocal.class.getDeclaredField("index");
+		
+		f.setAccessible(true);
+		return f.getInt(local);
+	}
+	
 	@Test
 	public void testGet() throws Exception {		
 		FastThreadLocalThread t = new FastThreadLocalThread() {
@@ -78,9 +112,9 @@ public class FastThreadLocalTest {
 		t.start();
 		t.join(1000);
 		assertEquals("V1", v1);
-		assertEquals("V1", t.getFastThreadLocal(0));
+		assertEquals("V1", t.getFastThreadLocal(index(V1)));
 		assertEquals("V2", v2);
-		assertEquals("V2", t.getFastThreadLocal(1));
+		assertEquals("V2", t.getFastThreadLocal(index(V2)));
 		
 		t = new FastThreadLocalThread() {
 			
@@ -90,8 +124,8 @@ public class FastThreadLocalTest {
 				v2 = V2.get();
 			}
 		};
-		t.setFastThreadLocal(0, "V1C");
-		t.setFastThreadLocal(1, "V2C");
+		t.setFastThreadLocal(index(V1), "V1C");
+		t.setFastThreadLocal(index(V2), "V2C");
 		t.start();
 		t.join(1000);
 		assertEquals("V1C", v1);
@@ -117,8 +151,8 @@ public class FastThreadLocalTest {
 		assertFalse(V4.isForAllThreads());
 		t.start();
 		t.join(1000);
-		assertEquals("V1S", t.getFastThreadLocal(0));
-		assertEquals("V2S", t.getFastThreadLocal(1));
+		assertEquals("V1S", t.getFastThreadLocal(index(V1)));
+		assertEquals("V2S", t.getFastThreadLocal(index(V2)));
 		assertEquals("V1S", v1);
 		assertEquals("V2S", v2);		
 		assertEquals("V3", V3.get());
@@ -151,9 +185,9 @@ public class FastThreadLocalTest {
 		V6.set("V6R");
 		t.start();
 		t.join();
-		assertEquals("V1", t.getFastThreadLocal(0));
+		assertEquals("V1", t.getFastThreadLocal(index(V1)));
 		assertEquals("V1", v1);
-		assertEquals("V2", t.getFastThreadLocal(1));
+		assertEquals("V2", t.getFastThreadLocal(index(V2)));
 		assertEquals("V2", v2);
 		assertEquals("V5R", V5.get());
 		assertNull(V6.get());

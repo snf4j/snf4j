@@ -56,7 +56,11 @@ public class Controller implements Config {
 	
 	public final static Random random = new Random(System.currentTimeMillis());
 	
+	static int clients;
+	
 	static final List<ISession> sessions = new ArrayList<ISession>();
+	
+	static ISession longestSession = null;
 
 	static {
 		for (int i=0; i<LISTENER_COUNT; ++i) {
@@ -155,9 +159,16 @@ public class Controller implements Config {
 		boolean create;
 		
 		synchronized (sessions) {
+			if (client) {
+				clients++;
+			}
+			if (longestSession == null || longestSession.getCreationTime() > s.getCreationTime()) {
+				longestSession = s;
+				Metric.longestSession(s);
+			}
 			sessions.add(s);
 			Metric.sessionCreated(s);
-			create = client && sessions.size() < MAX_SESSIONS;
+			create = client && clients < MAX_SESSIONS/2;
 		}
 		if (create) {
 			try {
@@ -173,9 +184,26 @@ public class Controller implements Config {
 		boolean create;
 		
 		synchronized (sessions) {
+			if (client) {
+				clients--;
+			}
 			sessions.remove(s);
+			if (longestSession == s) {
+				long longest = Long.MAX_VALUE;
+				int count = Math.min(sessions.size(), 20);
+				
+				for (int i=0; i<count; ++i) {
+					long t = sessions.get(i).getCreationTime();
+					
+					if (t < longest) {
+						longestSession = sessions.get(i);
+						longest = t;
+					}
+				}
+				Metric.longestSession(longestSession);
+			}
 			Metric.sessionEnding(s);
-			create = client && sessions.size() < MAX_SESSIONS;
+			create = client && clients < MAX_SESSIONS/2;
 		}
 		if (create) {
 			try {

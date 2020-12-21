@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2020 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,8 @@ package org.snf4j.core.factory;
 
 import java.util.concurrent.ThreadFactory;
 
+import org.snf4j.core.thread.FastThreadLocalThread;
+
 /**
  * Default implementation of the {@link java.util.concurrent.ThreadFactory} interface that is
  * used by the API.
@@ -47,12 +49,13 @@ public class DefaultThreadFactory implements ThreadFactory {
 	 * Returns a new thread the will be created in the following way:
 	 * 
 	 * <pre>
-	 * return new Thread(target, target.toString())
+	 * return new FastThreadLocalThread(target, target.toString())
 	 * </pre>
+	 * @see FastThreadLocalThread
 	 */
 	@Override
 	public Thread newThread(Runnable target) {
-		return new Thread(target, target.toString());
+		return new FastThreadLocalThread(target, target.toString());
 	}
 
 }

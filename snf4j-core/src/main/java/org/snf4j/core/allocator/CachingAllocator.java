@@ -55,6 +55,11 @@ import org.snf4j.core.Constants;
  * <p>
  * It implements cache aging mechanism to reduce size of caches that are not
  * used for longer time. 
+ * <p>
+ * <b>Performance and Scalability</b>: 
+ * <br>It uses one set of caches so it can significantly reduce memory 
+ * consumption but on the other hand, due to a need for cache synchronization,
+ * it can introduce latency issues in multi-thread applications.
  * 
  * <p>The behavior of the allocator can be customized by
  * setting following system properties:
@@ -84,7 +89,7 @@ public class CachingAllocator extends DefaultAllocator {
 	
 	private final int shift;
 	
-	private final Cache[] caches = new Cache[NUM_OF_CACHES];
+	final Cache[] caches = new Cache[NUM_OF_CACHES];
 	
 	private final AtomicLong touch = new AtomicLong(0);
 	
@@ -164,9 +169,9 @@ public class CachingAllocator extends DefaultAllocator {
 		touchAllThreshold = cacheAgeThreshold * 2;
 		touchAll = new AtomicLong(touchAllThreshold);
 		for (; i<NUM_OF_CACHES-1; ++i) {
-			caches[i] = new Cache(minCapacity << i, minCacheSize, maxCacheSize, cacheAgeThreshold);
+			caches[i] = new SyncCache(minCapacity << i, minCacheSize, maxCacheSize, cacheAgeThreshold, caches);
 		}
-		caches[i] = new LastCache(minCapacity << i, minCacheSize, maxCacheSize, cacheAgeThreshold);
+		caches[i] = new SyncLastCache(minCapacity << i, minCacheSize, maxCacheSize, cacheAgeThreshold, caches);
 	}
 
 	/**
@@ -193,7 +198,7 @@ public class CachingAllocator extends DefaultAllocator {
 		return MAP[(capacity-1 >>> shift) & MASK];
 	}
 	
-	final Cache cache(int capacity) {
+	Cache cache(int capacity) {
 		return caches[cacheIdx(capacity)];
 	}
 	
@@ -215,17 +220,6 @@ public class CachingAllocator extends DefaultAllocator {
 		}
 	}
 	
-	final long touch() {
-		long t = touch.incrementAndGet();
-		
-		if (touchAll.compareAndSet(t, touchAll.get() + touchAllThreshold)) {
-			for (int i=0; i<NUM_OF_CACHES; ++i) {
-				caches[i].touch(t);
-			}
-		}
-		return t;
-	}
-	
 	@Override
 	public boolean isReleasable() {
 		return true;
@@ -237,7 +231,14 @@ public class CachingAllocator extends DefaultAllocator {
 		
 		metric.releasing(capacity);
 		if (buffer.isDirect() == direct) {
-			if (cache(capacity).put(buffer, touch())) {
+			long t = touch.incrementAndGet();
+			long tAll = touchAll.get();
+
+			if (touchAll.compareAndSet(t, tAll + touchAllThreshold)) {
+				tAll += touchAllThreshold;
+			}
+			
+			if (cache(capacity).put(buffer, t, tAll)) {
 				metric.released(capacity);
 			}
 		}
@@ -247,9 +248,15 @@ public class CachingAllocator extends DefaultAllocator {
 	protected ByteBuffer allocate(int capacity, boolean direct) {
 		if (this.direct == direct) {
 			Cache cache = cache(capacity);
-			ByteBuffer buffer = cache.get(capacity);
+			long t = touch.incrementAndGet();
+			long tAll = touchAll.get();
+
+			if (touchAll.compareAndSet(t, tAll + touchAllThreshold)) {
+				tAll += touchAllThreshold;
+			}
 			
-			touch();
+			ByteBuffer buffer = cache.get(capacity, t, tAll);
+			
 			if (buffer != null) {
 				metric.allocating(capacity);
 				return buffer;

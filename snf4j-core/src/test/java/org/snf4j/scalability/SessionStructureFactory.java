@@ -27,6 +27,7 @@ package org.snf4j.scalability;
 
 import org.snf4j.core.allocator.CachingAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.ThreadLocalCachingAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.timer.DefaultTimer;
 import org.snf4j.core.timer.ITimer;
@@ -41,16 +42,29 @@ public class SessionStructureFactory extends DefaultSessionStructureFactory impl
 	
 	static {
 		int minCapacity = ALLOCATOR_MIN_CAPACITY;
-		
-		if (ENABLE_ALLOCATOR_METRIC) {
-			SERVER_ALLOCATOR = new CachingAllocator(true, minCapacity, Metric.ALLOCATOR_METRIC);
-			CLIENT_ALLOCATOR = SINGLE_ALLOCATOR ? SERVER_ALLOCATOR 
-					: new CachingAllocator(true, minCapacity, Metric.ALLOCATOR_METRIC);
+		if (ENABLE_THREAD_LOCAL_ALLOCATOR) {
+			if (ENABLE_ALLOCATOR_METRIC) {
+				SERVER_ALLOCATOR = new ThreadLocalCachingAllocator(true, minCapacity, Metric.ALLOCATOR_METRIC);
+				CLIENT_ALLOCATOR = SINGLE_ALLOCATOR ? SERVER_ALLOCATOR 
+						: new ThreadLocalCachingAllocator(true, minCapacity, Metric.ALLOCATOR_METRIC);
+			}
+			else {
+				SERVER_ALLOCATOR = new ThreadLocalCachingAllocator(true, minCapacity);
+				CLIENT_ALLOCATOR = SINGLE_ALLOCATOR ? SERVER_ALLOCATOR 
+						: new ThreadLocalCachingAllocator(true, minCapacity);
+			}
 		}
 		else {
-			SERVER_ALLOCATOR = new CachingAllocator(true, minCapacity);
-			CLIENT_ALLOCATOR = SINGLE_ALLOCATOR ? SERVER_ALLOCATOR 
-					: new CachingAllocator(true, minCapacity);
+			if (ENABLE_ALLOCATOR_METRIC) {
+				SERVER_ALLOCATOR = new CachingAllocator(true, minCapacity, Metric.ALLOCATOR_METRIC);
+				CLIENT_ALLOCATOR = SINGLE_ALLOCATOR ? SERVER_ALLOCATOR 
+						: new CachingAllocator(true, minCapacity, Metric.ALLOCATOR_METRIC);
+			}
+			else {
+				SERVER_ALLOCATOR = new CachingAllocator(true, minCapacity);
+				CLIENT_ALLOCATOR = SINGLE_ALLOCATOR ? SERVER_ALLOCATOR 
+						: new CachingAllocator(true, minCapacity);
+			}
 		}
 	}
 	

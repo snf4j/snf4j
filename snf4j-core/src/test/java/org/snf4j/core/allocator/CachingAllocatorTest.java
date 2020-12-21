@@ -107,6 +107,11 @@ public class CachingAllocatorTest {
 		a = new CachingAllocator(true,8);
 		assertEquals(8, a.allocate(1).capacity());
 		assertCaches(10, 50, 1000, a);
+		for (int i=0; i<7; ++i) {
+			assertTrue(SyncCache.class == a.caches[i].getClass());
+		}
+		assertTrue(SyncLastCache.class == a.caches[7].getClass());
+		
 		
 		DefaultAllocatorMetric m = new DefaultAllocatorMetric();
 		a = new CachingAllocator(false, m);
