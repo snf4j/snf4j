@@ -23,24 +23,10 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.scalability;
 
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.snf4j.core.allocator.DefaultAllocatorMetric;
-
-public class AllocatorMetric extends DefaultAllocatorMetric {
-	
-	AtomicLong allocatedSize = new AtomicLong(0);
-	
-	@Override
-	public void allocated(int capacity) {
-		allocatedSize.addAndGet(capacity);
-		super.allocated(capacity);
-	}
-	
-	public long getAllocatedSize() {
-		return allocatedSize.get();
-	}
-	
-}
+/**
+ * Provides classes and interfaces used for thread customizations.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+package org.snf4j.core.thread;

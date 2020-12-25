@@ -23,24 +23,36 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.scalability;
+package org.snf4j.core.thread;
 
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.snf4j.core.allocator.DefaultAllocatorMetric;
-
-public class AllocatorMetric extends DefaultAllocatorMetric {
+/**
+ * An interface for thread supporting fast thread-local variables.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ *
+ */
+public interface IFastThreadLocalThread {
 	
-	AtomicLong allocatedSize = new AtomicLong(0);
+	/**
+	 * Returns a fast thread-local variable that is stored at the given index.
+	 * 
+	 * @param index the index the variable is stored at
+	 * @return the fast thread-local variable
+	 */
+	Object getFastThreadLocal(int index);
 	
-	@Override
-	public void allocated(int capacity) {
-		allocatedSize.addAndGet(capacity);
-		super.allocated(capacity);
-	}
+	/**
+	 * Stores a fast thread-local variable at the given index.
+	 * 
+	 * @param index the index the variable is to be stored at
+	 * @param value the fast thread-local variable
+	 */
+	void setFastThreadLocal(int index, Object value);
 	
-	public long getAllocatedSize() {
-		return allocatedSize.get();
-	}
-	
+	/**
+	 * Removes a fast thread-local variable that is stored at the given index.
+	 * 
+	 * @param index the index the variable is stored at
+	 */
+	void removeFastThreadLocal(int index);
 }

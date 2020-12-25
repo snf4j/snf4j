@@ -98,7 +98,7 @@ public class CachingAllocatorTest {
 	public void testConstructor() throws Exception {
 		CachingAllocator a = new CachingAllocator(true);	
 		
-		assertEquals(512, a.allocate(1).capacity());
+		assertEquals(128, a.allocate(1).capacity());
 		assertCaches(0, 256, 2048, a);
 		
 		System.setProperty(Constants.ALLOCATOR_MIN_CACHE_SIZE_PROPERTY, "10");
@@ -107,12 +107,17 @@ public class CachingAllocatorTest {
 		a = new CachingAllocator(true,8);
 		assertEquals(8, a.allocate(1).capacity());
 		assertCaches(10, 50, 1000, a);
+		for (int i=0; i<7; ++i) {
+			assertTrue(SyncCache.class == a.caches[i].getClass());
+		}
+		assertTrue(SyncLastCache.class == a.caches[7].getClass());
+		
 		
 		DefaultAllocatorMetric m = new DefaultAllocatorMetric();
 		a = new CachingAllocator(false, m);
 		assertFalse(a.allocate(10).isDirect());
 		assertTrue(a.metric == m);
-		assertEquals(512, a.allocate(1).capacity());
+		assertEquals(128, a.allocate(1).capacity());
 		a = new CachingAllocator(true, m);
 		assertTrue(a.allocate(10).isDirect());
 		assertTrue(a.metric == m);
@@ -351,6 +356,13 @@ public class CachingAllocatorTest {
 		a.purge();
 		assertEquals(8 << 7, a.allocate(8 << 7).capacity());
 		
+		ByteBuffer b = a.allocate(8 << 8);
+		a.release(b);
+		b = a.allocate(8 << 7);
+		assertEquals(8 << 8, b.capacity());
+		a.purge();
+		b = a.allocate(8 << 7);
+		assertEquals(8 << 7, b.capacity());
 	}
 	
 	@Test
@@ -395,6 +407,7 @@ public class CachingAllocatorTest {
 		
 		
 		int lastCapacity = 8 << 7;
+		int lastCapacityThreshold = lastCapacity << 1;
 		
 		assertEquals(lastCapacity, a.allocate(lastCapacity-1).capacity());
 		assertEquals(lastCapacity, a.allocate(lastCapacity).capacity());
@@ -417,7 +430,7 @@ public class CachingAllocatorTest {
 		assertTrue(b3 == a.allocate(lastCapacity-2));
 		b = a.allocate(lastCapacity);
 		assertNotIn(b,b1,b2);
-		assertEquals(lastCapacity, b.capacity());
+		assertEquals(lastCapacity+1, b.capacity());
 		
 		a.release(b3);
 		b = a.allocate(lastCapacity+2);
@@ -430,6 +443,18 @@ public class CachingAllocatorTest {
 		assertTrue(b3 == a.allocate(lastCapacity-3));
 		assertNotIn(a.allocate(lastCapacity-3),b1,b2);
 		
+		b = a.allocate(lastCapacity);
+		assertEquals(lastCapacity+1, b.capacity());
+		b = a.allocate(lastCapacityThreshold);
+		a.release(b);
+		assertTrue(b == a.allocate(lastCapacity));
+		assertEquals(lastCapacityThreshold, a.allocate(lastCapacity).capacity());
+		
+		b = a.allocate(lastCapacityThreshold + 1);
+		assertEquals(lastCapacityThreshold + 1, b.capacity());
+		a.release(b);
+		assertTrue(b == a.allocate(lastCapacity));
+		assertEquals(lastCapacityThreshold, a.allocate(lastCapacity).capacity());
 	}
 	
 	@Test

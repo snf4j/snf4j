@@ -35,6 +35,8 @@ public class Metric implements Config {
 
 	static AtomicLong sessions = new AtomicLong(0);
 	
+	static AtomicLong longestSession = new AtomicLong();
+	
 	static AtomicLong bytesReceived = new AtomicLong(0);
 	
 	static AtomicLong bytesSent = new AtomicLong(0);
@@ -64,6 +66,10 @@ public class Metric implements Config {
 			sessions.decrementAndGet();
 			avgSessionReceived.add(s.getReadBytes(), s.getLastReadTime() - s.getCreationTime());
 		}
+	}
+	
+	static void longestSession(ISession s) {	
+		longestSession.set(s.getCreationTime());
 	}
 	
 	static void dataReceived(ISession s, long size) {
@@ -97,6 +103,8 @@ public class Metric implements Config {
 	
 	static String[] bytesUnit = {"", "k", "m", "g", "t"};
 	
+	static String[] timeUnit = {"", "s", "k", "m", "g", "t"};
+	
 	static String print(long t, String[] units) {
 		int i=0;
 		for (; i<units.length; ++i) {
@@ -117,6 +125,10 @@ public class Metric implements Config {
 	
 	static String printBytes(long t) {
 		return print(t, bytesUnit);
+	}
+	
+	static String printTime(long t) {
+		return print(t, timeUnit);
 	}
 
 	static void print() {
@@ -143,6 +155,10 @@ public class Metric implements Config {
 		sb.append(" (");
 		sb.append(printBytes(avgTotalReceived.value()));
 		sb.append("/s)\t");
+		
+		sb.append("max: ");
+		sb.append(printTime(System.currentTimeMillis() - longestSession.get()));
+		sb.append("\t");
 		
 		sb.append("alloc: ");
 		sb.append(printBytes(ALLOCATOR_METRIC.getAllocatingCount()));

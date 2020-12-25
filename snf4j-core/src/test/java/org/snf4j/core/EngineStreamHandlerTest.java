@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -99,6 +100,13 @@ public class EngineStreamHandlerTest {
 		return (ByteBuffer) field.get(handler);
 	}
 
+	void setBuffer(EngineStreamHandler handler, String name, ByteBuffer buffer) throws Exception {
+		Field field = handler.getClass().getDeclaredField(name);
+		
+		field.setAccessible(true);
+		field.set(handler, buffer);
+	}
+	
 	ByteBuffer[] getBuffers(EngineStreamHandler handler, String name) throws Exception {
 		Field field = handler.getClass().getDeclaredField(name);
 		
@@ -126,6 +134,63 @@ public class EngineStreamHandlerTest {
 		assertEquals(NETBUFSIZE, getBuffer(h, "outNetBuffer").capacity());
 	}
 
+	@Test
+	public void testTryReleaseOutNetBuffer() throws Exception {
+		TestHandler h0 = new TestHandler("Test");
+		EngineStreamHandler h = new EngineStreamHandler(engine, h0, LOGGER);
+		new SSLSession(h, false);
+		h.preCreated();
+		h.tryReleaseOutNetBuffer();
+		assertNotNull(getBuffer(h, "outNetBuffer"));
+		assertEquals(0, h0.allocator.getReleasedCount());
+		
+		h0.optimizeDataCopy = true;
+		h = new EngineStreamHandler(engine, h0, LOGGER);
+		new SSLSession(h, false);
+		h.preCreated();
+		assertNull(getBuffer(h, "outNetBuffer"));
+		ByteBuffer b = ByteBuffer.allocate(100);
+		setBuffer(h, "outNetBuffer", b);
+		assertNotNull(getBuffer(h, "outNetBuffer"));
+		b.put((byte) 0);
+		h.tryReleaseOutNetBuffer();
+		assertNotNull(getBuffer(h, "outNetBuffer"));
+		assertEquals(0, h0.allocator.getReleasedCount());
+		b.clear();
+		h.tryReleaseOutNetBuffer();
+		assertNull(getBuffer(h, "outNetBuffer"));
+		assertEquals(1, h0.allocator.getReleasedCount());
+	}
+	
+	@Test
+	public void testTryReleaseInAppBuffer() throws Exception {
+		TestHandler h0 = new TestHandler("Test");
+		EngineStreamHandler h = new EngineStreamHandler(engine, h0, LOGGER);
+		new SSLSession(h, false);
+		h.preCreated();
+		h.tryReleaseInAppBuffer();
+		assertNotNull(getBuffer(h, "inAppBuffer"));
+		assertEquals(0, h0.allocator.getReleasedCount());
+		
+		h0.optimizeDataCopy = true;
+		h = new EngineStreamHandler(engine, h0, LOGGER);
+		new SSLSession(h, false);
+		h.preCreated();
+		assertNull(getBuffer(h, "inAppBuffer"));
+		ByteBuffer b = ByteBuffer.allocate(100);
+		setBuffer(h, "inAppBuffer", b);
+		assertNotNull(getBuffer(h, "inAppBuffer"));
+		b.put((byte) 0);
+		h.tryReleaseInAppBuffer();
+		assertNotNull(getBuffer(h, "inAppBuffer"));
+		assertEquals(0, h0.allocator.getReleasedCount());
+		b.clear();
+		h.tryReleaseInAppBuffer();
+		assertNull(getBuffer(h, "inAppBuffer"));
+		assertEquals(1, h0.allocator.getReleasedCount());
+		
+	}
+	
 	@Test
 	public void testCloseMethods() throws Exception {
 		s = new Server(PORT, true);

@@ -35,6 +35,8 @@ public interface Config {
 	
 	static final boolean ENABLE_METRIC_PRINT = true;
 	
+	static final boolean ENABLE_THREAD_LOCAL_ALLOCATOR = true;
+	
 	static final boolean SINGLE_ALLOCATOR = true;
 	
 	static final int ALLOCATOR_MIN_CAPACITY = 128;

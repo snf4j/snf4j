@@ -28,8 +28,8 @@ package org.snf4j.example.echo;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.EndingAction;
-import org.snf4j.core.allocator.CachingAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.ThreadLocalCachingAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractStreamHandler;
@@ -39,7 +39,7 @@ import org.snf4j.core.session.ISessionConfig;
 
 public class EchoClientHandler extends AbstractStreamHandler {
 
-	private static final IByteBufferAllocator ALLOCATOR = new CachingAllocator(true);
+	private static final IByteBufferAllocator ALLOCATOR = new ThreadLocalCachingAllocator(true);
 	
 	private long startTime;
 	

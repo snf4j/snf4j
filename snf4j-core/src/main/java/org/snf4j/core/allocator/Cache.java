@@ -29,13 +29,15 @@ import java.nio.ByteBuffer;
 
 class Cache {
 	
-	private final int maxSize;
+	final int maxSize;
 	
-	private final int minSize;
+	final int minSize;
 	
-	private final int ageThreshold;
+	final int ageThreshold;
 	
 	final int capacity;
+	
+	final Cache[] group;
 	
 	ByteBuffer[] cache;
 	
@@ -43,11 +45,15 @@ class Cache {
 	
 	long age;
 	
-	Cache(int capacity, int minSize, int maxSize, int ageThreshold) {
+	long touchThreshold;
+	
+	Cache(int capacity, int minSize, int maxSize, int ageThreshold, Cache[] group) {
 		this.capacity = capacity;
 		this.minSize = minSize;
 		this.maxSize = maxSize;
 		this.ageThreshold = ageThreshold;
+		this.group = group;
+		touchThreshold = ageThreshold * 2;
 	}
 	
 	final boolean prePut(long touch) {
@@ -72,7 +78,7 @@ class Cache {
 		return capacity;
 	}
 	
-	final void reduce(long touch) {
+	private final void reduce(long touch) {
 		int prevSize = size;
 		
 		if (prevSize > minSize) {
@@ -84,12 +90,12 @@ class Cache {
 		}
 	}
 	
-	synchronized void purge() {
+	void purge() {
 		cache = null;
 		size = 0;
 	}
 	
-	synchronized void touch(long touch) {
+	private final void touch(long touch) {
 		if (cache != null) {
 			long threshold = touch - age;
 			
@@ -99,7 +105,17 @@ class Cache {
 		}
 	}
 	
-	synchronized boolean put(ByteBuffer b, long touch) {
+	final void touchAll(long touch, long touchThreshold) {
+		if (touchThreshold > this.touchThreshold) {
+			this.touchThreshold = touchThreshold;
+			for (int i=0; i<group.length; ++i) {
+				group[i].touch(touch);
+			}
+		}
+	}
+	
+	boolean put(ByteBuffer b, long touch, long touchAll) {
+		touchAll(touch, touchAll);
 		if (capacity != b.capacity()) {
 			return false;
 		}
@@ -110,14 +126,16 @@ class Cache {
 		return false;
 	}
 	
-	synchronized ByteBuffer get(int capacity) {
+	ByteBuffer get(int capacity, long touch, long touchAll) {
 		if (size > 0) {
 			ByteBuffer b = cache[--size];
 			
 			cache[size] = null;
 			b.clear();
+			touchAll(touch, touchAll);
 			return b;
 		}
+		touchAll(touch, touchAll);
 		return null;
 	}
 }

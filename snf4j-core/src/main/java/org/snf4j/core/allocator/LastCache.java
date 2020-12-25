@@ -29,27 +29,32 @@ import java.nio.ByteBuffer;
 
 class LastCache extends Cache {
 
-	private volatile int capacity;
+	private int capacity;
 	
-	LastCache(int capacity, int minSize, int maxSize, int reduceThreshold) {
-		super(capacity, minSize, maxSize, reduceThreshold);
+	private final int capacityThreshold;
+	
+	LastCache(int capacity, int minSize, int maxSize, int reduceThreshold, Cache[] group) {
+		super(capacity, minSize, maxSize, reduceThreshold, group);
 		this.capacity = capacity;
+		this.capacityThreshold = capacity << 1;
 	}
 	
+	@Override
 	int capacity() {
 		return capacity;
 	}
 	
 	@Override
-	synchronized void purge() {
+	void purge() {
 		super.purge();
 		capacity = super.capacity;
 	}
 	
 	@Override
-	synchronized boolean put(ByteBuffer b, long touch) {
+	boolean put(ByteBuffer b, long touch, long touchAll) {
 		int bc = b.capacity();
 
+		touchAll(touch, touchAll);
 		if (capacity > bc) {
 			return false;
 		}
@@ -68,15 +73,18 @@ class LastCache extends Cache {
 	}
 	
 	@Override
-	synchronized ByteBuffer get(int capacity) {
+	ByteBuffer get(int capacity, long touch, long touchAll) {
 		if (capacity <= this.capacity) {
-			ByteBuffer b = super.get(capacity);
+			ByteBuffer b = super.get(capacity, touch, touchAll);
 			
 			if (b != null && size == 0) {
-				this.capacity = capacity;
+				if (this.capacity > capacityThreshold) {
+					this.capacity = capacityThreshold;
+				}
 			}
 			return b;
 		}
+		touchAll(touch, touchAll);
 		return null;
 	}
 

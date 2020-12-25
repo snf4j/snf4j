@@ -54,24 +54,11 @@ public class DefaultAllocatorMetric implements IDefaultAllocatorMetricCollector 
 	private final AtomicInteger maxCapacity = new AtomicInteger();
 
 	private final void setMaxCapacity(final int size) {
-		int current = maxCapacity.get();
+		int current;
 		
-		if (current < size) {
-			if (maxCapacity.compareAndSet(current, size)) {
-				return;
-			}
-			for (;;) {
-				current = maxCapacity.get();
-				if (current < size) {
-					if (maxCapacity.compareAndSet(current, size)) {
-						break;
-					}
-				}
-				else {
-					break;
-				}
-			}
-		}
+		do {
+			current = maxCapacity.get();
+		} while (size > current && !maxCapacity.compareAndSet(current, size));
 	}
 	
 	@Override
@@ -200,7 +187,7 @@ public class DefaultAllocatorMetric implements IDefaultAllocatorMetricCollector 
 	}
 
 	/**
-	 * Gets the max capacity of a buffer allocated by the associated allocator.
+	 * Gets the capacity of the biggest buffer allocated by the associated allocator.
 	 * 
 	 * @return the max capacity
 	 */

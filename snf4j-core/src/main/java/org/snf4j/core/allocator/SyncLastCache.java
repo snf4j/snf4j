@@ -23,24 +23,34 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.scalability;
+package org.snf4j.core.allocator;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.nio.ByteBuffer;
 
-import org.snf4j.core.allocator.DefaultAllocatorMetric;
+class SyncLastCache extends LastCache {
 
-public class AllocatorMetric extends DefaultAllocatorMetric {
-	
-	AtomicLong allocatedSize = new AtomicLong(0);
-	
+	SyncLastCache(int capacity, int minSize, int maxSize, int ageThreshold, Cache[] group) {
+		super(capacity, minSize, maxSize, ageThreshold, group);
+	}
+
 	@Override
-	public void allocated(int capacity) {
-		allocatedSize.addAndGet(capacity);
-		super.allocated(capacity);
+	synchronized int capacity() {
+		return super.capacity();
 	}
 	
-	public long getAllocatedSize() {
-		return allocatedSize.get();
+	@Override
+	synchronized void purge() {
+		super.purge();
+	}
+	
+	@Override
+	synchronized boolean put(ByteBuffer b, long touch, long touchAll) {
+		return super.put(b, touch, touchAll);
+	}
+	
+	@Override
+	synchronized ByteBuffer get(int capacity, long touch, long touchAll) {
+		return super.get(capacity, touch, touchAll);
 	}
 	
 }

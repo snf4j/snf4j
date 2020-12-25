@@ -99,8 +99,8 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		return closing == ClosingState.SENDING;
 	}
 	
-	private final void releaseInAppBuffer() {
-		if (session.optimizeBuffers) {
+	final void tryReleaseInAppBuffer() {
+		if (session.optimizeBuffers && inAppBuffer.position() == 0) {
 			allocator.release(inAppBuffer);
 			inAppBuffer = null;
 		}
@@ -137,7 +137,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			} catch (Exception e) {
 				elogger.error(logger, "Unwrapping failed for {}: {}", session, e);
 				fireException(e);
-				releaseInAppBuffer();
+				tryReleaseInAppBuffer();
 				return false;
 			}
 			finally {
@@ -197,7 +197,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 					catch (Exception e) {
 						elogger.error(logger, "Unwrapping overflow failed for {}: {}", session, e);
 						fireException(e);
-						releaseInAppBuffer();
+						tryReleaseInAppBuffer();
 						return false;
 					}
 					repeat = true;
@@ -207,7 +207,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 					if (traceEnabled) {
 						logger.debug("Unwrapping underflow, more data needed for {}", session);
 					}
-					releaseInAppBuffer();
+					tryReleaseInAppBuffer();
 					return false;
 
 				case CLOSED:
@@ -216,13 +216,13 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						logger.debug("Unwrapping has been closed for {}", session);
 					}
 					if (!engine.isOutboundDone()) {
-						releaseInAppBuffer();
+						tryReleaseInAppBuffer();
 						return true;
 					}
 					else {
 						superQuickClose();
 					}
-					releaseInAppBuffer();
+					tryReleaseInAppBuffer();
 					return false;
 			}
 		} while (repeat);
@@ -230,8 +230,8 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		return true;
 	}
 
-	private final void releaseOutNetBuffer() {
-		if (session.optimizeBuffers) {
+	final void tryReleaseOutNetBuffer() {
+		if (session.optimizeBuffers && outNetBuffer.position() == 0) {
 			allocator.release(outNetBuffer);
 			outNetBuffer = null;
 		}
@@ -314,7 +314,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			if (wrapResult == null) {
 				elogger.error(logger, "Wrapping failed for {}: {}", session, ex);
 				fireException(ex);
-				releaseOutNetBuffer();
+				tryReleaseOutNetBuffer();
 				return false;
 			}
 
@@ -344,7 +344,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 					catch (Exception e) {
 						elogger.error(logger, "Wrapping overflow failed for {}: {}", session, e);
 						fireException(e);
-						releaseOutNetBuffer();
+						tryReleaseOutNetBuffer();
 						return false;
 					}
 					repeat = true;

@@ -197,7 +197,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		}
 	}
 	
-	private final void releaseInAppBuffer() {
+	private final void tryReleaseInAppBuffer() {
 		if (session.optimizeBuffers) {
 			allocator.release(inAppBuffer);
 			inAppBuffer = null;
@@ -270,7 +270,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 			catch (Exception e) {
 				elogger.error(logger, "Unwrapping failed for {}: {}", session, e);
 				fireException(e);
-				releaseInAppBuffer();
+				tryReleaseInAppBuffer();
 				return false;
 			}
 			
@@ -334,7 +334,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 						
 						elogger.error(logger, "Unwrapping overflow failed for {}: {}", session, e);
 						fireException(e);
-						releaseInAppBuffer();
+						tryReleaseInAppBuffer();
 						return false;
 					}
 					break;
@@ -348,14 +348,14 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 						
 						elogger.error(logger, "Unwrapping overflow failed for {}: {}", session, e);
 						fireException(e);
-						releaseInAppBuffer();
+						tryReleaseInAppBuffer();
 						return false;
 					}
 					else if (pollNeeded) {
 						pollInNetBuffers();
 						pollNeeded = false;
 					}
-					releaseInAppBuffer();
+					tryReleaseInAppBuffer();
 					return false;
 					
 				case CLOSED:
@@ -364,13 +364,13 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 						logger.debug("Unwrapping has been closed for {}", session);
 					}
 					if (!engine.isOutboundDone()) {
-						releaseInAppBuffer();
+						tryReleaseInAppBuffer();
 						return true;
 					}
 					else {
 						session.superQuickClose();
 					}
-					releaseInAppBuffer();
+					tryReleaseInAppBuffer();
 					return false;
 			}
 			
