@@ -79,13 +79,8 @@ import org.snf4j.core.handler.SessionIncidentException;
  * <p>
  * <b>Concurrency Notes</b>: Considering the way the interface is used by the
  * framework it is not required, in general, for an implementation to be thread
- * safe however there are two concurrency issues to be aware of:
+ * safe however there is one concurrency issue to be aware of:
  * <ol>
- * <li>The methods returning minimum and maximum buffer sizes are the only ones
- * that are not fully controlled by the SNF4J framework. However, each of them is
- * called only once by the constructor of the
- * {@link org.snf4j.core.EngineStreamSession EngineStreamSession} class. All
- * other methods from this interface are always executed in the same thread.
  * <li>Tasks returned by the <code>getDelegatedTask()</code> will be executed in
  * a separate thread what may enforce a thread-safe architecture.
  * </ol>

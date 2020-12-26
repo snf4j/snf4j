@@ -52,9 +52,9 @@ public class TestHandler extends AbstractStreamHandler {
 	
 	int availableBytes;
 	
-	int maxAppBufRatio = 1;
+	int maxAppBufRatio = 100;
 	
-	int maxNetBufRatio = 1;
+	int maxNetBufRatio = 100;
 	
 	volatile TestAllocator allocator = new TestAllocator(false, true);
 

@@ -133,12 +133,22 @@ class InternalSSLEngine implements IEngine {
 
 	@Override
 	public final int getMaxApplicationBufferSize() {
-		return getMinApplicationBufferSize() * config.getMaxSSLApplicationBufferSizeRatio();
+		int ratio = config.getMaxSSLApplicationBufferSizeRatio();
+		
+		if (ratio < 100) {
+			ratio = 100;
+		}
+		return getMinApplicationBufferSize() * ratio / 100;
 	}
 
 	@Override
 	public final int getMaxNetworkBufferSize() {
-		return getMinNetworkBufferSize() * config.getMaxSSLNetworkBufferSizeRatio();
+		int ratio = config.getMaxSSLNetworkBufferSizeRatio();
+			
+		if (ratio < 100) {
+			ratio = 100;
+		}
+		return getMinNetworkBufferSize() * ratio / 100;
 	}
 	
 	@Override
