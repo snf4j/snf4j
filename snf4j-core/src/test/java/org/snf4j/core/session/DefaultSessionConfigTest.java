@@ -30,6 +30,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import javax.net.ssl.SSLEngine;
 
@@ -49,8 +50,8 @@ public class DefaultSessionConfigTest {
 		assertEquals(true, c.ignorePossiblyIncompleteDatagrams());
 		assertEquals(EndingAction.DEFAULT, c.getEndingAction());
 		assertEquals(false, c.optimizeDataCopying());
-		assertEquals(1, c.getMaxSSLApplicationBufferSizeRatio());
-		assertEquals(1, c.getMaxSSLNetworkBufferSizeRatio());
+		assertEquals(100, c.getMaxSSLApplicationBufferSizeRatio());
+		assertEquals(100, c.getMaxSSLNetworkBufferSizeRatio());
 		assertFalse(c.waitForInboundCloseMessage());
 		assertNull(c.createCodecExecutor());
 		assertEquals(60000, c.getEngineHandshakeTimeout());
@@ -60,7 +61,7 @@ public class DefaultSessionConfigTest {
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
 			.setEndingAction(EndingAction.STOP).setOptimizeDataCopying(true)
-			.setMaxSSLApplicationBufferSizeRatio(5).setMaxSSLNetworkBufferSizeRatio(6)
+			.setMaxSSLApplicationBufferSizeRatio(500).setMaxSSLNetworkBufferSizeRatio(600)
 			.setWaitForInboundCloseMessage(true).setEngineHandshakeTimeout(1001)
 			.setDatagramServerSessionNoReopenPeriod(1002)
 			.setMaxWriteSpinCount(8)
@@ -73,8 +74,8 @@ public class DefaultSessionConfigTest {
 		assertEquals(false, c.ignorePossiblyIncompleteDatagrams());
 		assertEquals(EndingAction.STOP, c.getEndingAction());
 		assertEquals(true, c.optimizeDataCopying());
-		assertEquals(5, c.getMaxSSLApplicationBufferSizeRatio());
-		assertEquals(6, c.getMaxSSLNetworkBufferSizeRatio());
+		assertEquals(500, c.getMaxSSLApplicationBufferSizeRatio());
+		assertEquals(600, c.getMaxSSLNetworkBufferSizeRatio());
 		assertTrue(c.waitForInboundCloseMessage());
 		assertEquals(1001, c.getEngineHandshakeTimeout());
 		assertEquals(1002, c.getDatagramServerSessionNoReopenPeriod());
@@ -86,6 +87,27 @@ public class DefaultSessionConfigTest {
 		engine = c.createSSLEngine(false);
 		assertNotNull(engine);
 		assertFalse(engine.getUseClientMode());
+		
+		c.setMaxSSLApplicationBufferSizeRatio(101);
+		assertEquals(101, c.getMaxSSLApplicationBufferSizeRatio());
+		c.setMaxSSLApplicationBufferSizeRatio(100);
+		assertEquals(100, c.getMaxSSLApplicationBufferSizeRatio());
+		try {
+			c.setMaxSSLApplicationBufferSizeRatio(99);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
+		c.setMaxSSLNetworkBufferSizeRatio(101);
+		assertEquals(101, c.getMaxSSLNetworkBufferSizeRatio());
+		c.setMaxSSLNetworkBufferSizeRatio(100);
+		assertEquals(100, c.getMaxSSLNetworkBufferSizeRatio());
+		try {
+			c.setMaxSSLNetworkBufferSizeRatio(99);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
 		
 	}
 }

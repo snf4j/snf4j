@@ -63,9 +63,9 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * loop after ending of the associated session. */
 	private EndingAction endingAction = EndingAction.DEFAULT;
 
-	private int maxSSLApplicationBufferSizeRatio = 1;
+	private int maxSSLApplicationBufferSizeRatio = 100;
 	
-	private int maxSSLNetworkBufferSizeRatio = 1;
+	private int maxSSLNetworkBufferSizeRatio = 100;
 	
 	private boolean waitForInboundCloseMessage; 
 	
@@ -261,9 +261,13 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * @param ratio
 	 *            the ratio
 	 * @return this session config object
+	 * @throws IllegalArgumentException if the ratio is less than 100
 	 * @see #getMaxSSLApplicationBufferSizeRatio()
 	 */
 	public DefaultSessionConfig setMaxSSLApplicationBufferSizeRatio(int ratio) {
+		if (ratio < 100) {
+			throw new IllegalArgumentException("ratio is less than 100");
+		}
 		maxSSLApplicationBufferSizeRatio = ratio;
 		return this;
 	}
@@ -271,7 +275,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The default value is 1
+	 * The default value is 100
 	 */
 	@Override
 	public int getMaxSSLApplicationBufferSizeRatio() {
@@ -285,9 +289,13 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * @param ratio
 	 *            the ratio
 	 * @return this session config object
+	 * @throws IllegalArgumentException if the ratio is less than 100
 	 * @see #getMaxSSLNetworkBufferSizeRatio()
 	 */
 	public DefaultSessionConfig setMaxSSLNetworkBufferSizeRatio(int ratio) {
+		if (ratio < 100) {
+			throw new IllegalArgumentException("ratio is less than 100");
+		}
 		maxSSLNetworkBufferSizeRatio = ratio;
 		return this;
 	}
@@ -296,7 +304,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The default value is 1
+	 * The default value is 100
 	 */
 	@Override
 	public int getMaxSSLNetworkBufferSizeRatio() {

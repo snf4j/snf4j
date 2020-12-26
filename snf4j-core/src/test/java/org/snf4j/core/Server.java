@@ -28,6 +28,7 @@ package org.snf4j.core;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -148,6 +149,9 @@ public class Server {
 	volatile long handshakeTimeout = 5000;
 	
 	static final LinkedList<Server> lastServers = new LinkedList<Server>();
+	
+	volatile int maxSSLAppBufRatio = 100;
+	volatile int maxSSLNetBufRatio = 100;
 	
 	static {
 		eventMapping.put(EventType.SESSION_CREATED, "SCR");
@@ -541,8 +545,16 @@ public class Server {
 			config.setMinOutBufferCapacity(minOutBufferCapacity);
 			config.setThroughputCalculationInterval(throughputCalcInterval);
 			config.setEndingAction(endingAction);
-			config.setMaxSSLApplicationBufferSizeRatio(1);
-			config.setMaxSSLNetworkBufferSizeRatio(1);
+			try {
+				Field f = DefaultSessionConfig.class.getDeclaredField("maxSSLApplicationBufferSizeRatio");
+				f.setAccessible(true);
+				f.setInt(config, maxSSLAppBufRatio);
+				f = DefaultSessionConfig.class.getDeclaredField("maxSSLNetworkBufferSizeRatio");
+				f.setAccessible(true);
+				f.setInt(config, maxSSLNetBufRatio);
+			}
+			catch (Exception e) {
+			}
 			config.setWaitForInboundCloseMessage(waitForCloseMessage);
 			config.setOptimizeDataCopying(optimizeDataCopying);
 			config.setEngineHandshakeTimeout(handshakeTimeout);

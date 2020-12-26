@@ -169,7 +169,11 @@ public interface ISessionConfig {
 	/**
 	 * Gets the ratio that is used to calculate the maximum size of the SSL
 	 * application buffers. The base for the calculation is the maximum SSL 
-	 * application packet size. 
+	 * application packet size that is determined by the <code>SSLEngine</code>. 
+	 * <p>
+	 * As the maximum size of the SSL application buffers cannot be less than
+	 * the maximum SSL application packet size all values less than 100 will
+	 * be silently ignored and treated as 100.
 	 * 
 	 * @return the ratio
 	 * @see javax.net.ssl.SSLSession#getApplicationBufferSize()
@@ -179,7 +183,11 @@ public interface ISessionConfig {
 	/**
 	 * Gets the ratio that is used to calculate the maximum size of the SSL
 	 * network buffers. The base for the calculation is the maximum SSL 
-	 * network packet size that is determined by <code>SSLEngine</code>.
+	 * network packet size that is determined by the <code>SSLEngine</code>.
+	 * <p>
+	 * As the maximum size of the SSL network buffers cannot be less than
+	 * the maximum SSL network packet size all values less than 100 will
+	 * be silently ignored and treated as 100.
 	 * 
 	 * @return the ratio
 	 * @see javax.net.ssl.SSLSession#getPacketBufferSize()

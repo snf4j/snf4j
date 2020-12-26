@@ -53,6 +53,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.LoggerRecorder;
@@ -279,6 +280,43 @@ public class SSLSessionTest {
 		
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|SOP|DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.getRecordedData(true));
+	}
+	
+	@Test
+	public void testBufferMaxRanges() throws Exception {
+		s = new Server(PORT, true);
+		s.maxSSLAppBufRatio = 100;
+		s.maxSSLNetBufRatio = 100;
+		c = new Client(PORT, true);
+		c.maxSSLAppBufRatio = 150;
+		c.maxSSLNetBufRatio = 170;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		
+		IEngine engine = EngineSessionTest.getEngine((SSLSession)s.getSession());
+		assertEquals(engine.getMinApplicationBufferSize(), engine.getMaxApplicationBufferSize());
+		assertEquals(engine.getMinNetworkBufferSize(), engine.getMaxNetworkBufferSize());
+		engine = EngineSessionTest.getEngine((SSLSession)c.getSession());
+		assertEquals(engine.getMinApplicationBufferSize()*150/100, engine.getMaxApplicationBufferSize());
+		assertEquals(engine.getMinNetworkBufferSize()*170/100, engine.getMaxNetworkBufferSize());
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+
+		c = new Client(PORT, true);
+		c.maxSSLAppBufRatio = 99;
+		c.maxSSLNetBufRatio = -1;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		engine = EngineSessionTest.getEngine((SSLSession)c.getSession());
+		assertEquals(engine.getMinApplicationBufferSize(), engine.getMaxApplicationBufferSize());
+		assertEquals(engine.getMinNetworkBufferSize(), engine.getMaxNetworkBufferSize());
+		
+		
 	}
 	
 	@Test

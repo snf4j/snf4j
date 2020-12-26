@@ -164,7 +164,7 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 	
 	@Override
 	public ISessionConfig getConfig() {
-		return new SessionConfig().setMaxSSLApplicationBufferSizeRatio(2);
+		return new SessionConfig().setMaxSSLApplicationBufferSizeRatio(200);
 	}
 	
 	@Override

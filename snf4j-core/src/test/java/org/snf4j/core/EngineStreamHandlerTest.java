@@ -61,8 +61,8 @@ public class EngineStreamHandlerTest {
 	
 	private final static int APPBUFSIZE = 100;
 	private final static int NETBUFSIZE = 200;
-	private final static int APPBUFRATIO = 2;
-	private final static int NETBUFRATIO = 3;
+	private final static int APPBUFRATIO = 200;
+	private final static int NETBUFRATIO = 300;
 	
 	TestHandler handler = new TestHandler("Test");
 	
