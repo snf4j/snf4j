@@ -78,6 +78,10 @@ class EngineDatagramWrapper {
 		internal.beginHandshake(true);
 	}
 	
+	final Object getEngineSession() {
+		return internal.getEngineSession();
+	}
+	
 	final IDatagramHandler getHandler() {
 		return internal.getHandler();
 	}

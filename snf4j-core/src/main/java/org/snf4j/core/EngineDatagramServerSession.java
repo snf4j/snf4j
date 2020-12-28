@@ -83,6 +83,11 @@ class EngineDatagramServerSession extends DatagramServerSession implements IEngi
 	}
 	
 	@Override
+	public Object getEngineSession() {
+		return wrapper.getEngineSession();
+	}
+	
+	@Override
 	public IDatagramHandler getHandler() {
 		return wrapper.getHandler();
 	}	

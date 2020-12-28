@@ -273,6 +273,27 @@ public class EngineDatagramWrapperTest extends DTLSTest {
 	}
 	
 	@Test
+	public void testGetEngineSession() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		s.testEngine = new TestDTLSEngine();
+		s.startServer();
+
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.testEngine = new TestDTLSEngine();
+		c.startClient();
+		assertReady(c, s);
+		
+		assertNotNull(s.testEngine.getSession());
+		assertNotNull(c.testEngine.getSession());
+		assertTrue(s.testEngine.getSession() == ((IEngineSession)s.getSession()).getEngineSession());
+		assertTrue(c.testEngine.getSession() == ((IEngineSession)c.getSession()).getEngineSession());
+	}
+	
+	@Test
 	public void testBeginHandshake() throws Exception {
 		assumeFailingOrNoRehandshake();
 		
@@ -288,6 +309,7 @@ public class EngineDatagramWrapperTest extends DTLSTest {
 		c.testEngine = new TestDTLSEngine();
 		c.startClient();
 		assertReady(c, s);
+		
 		
 		assertEquals(0, s.testEngine.handshakeCount);
 		assertEquals(0, c.testEngine.handshakeCount);

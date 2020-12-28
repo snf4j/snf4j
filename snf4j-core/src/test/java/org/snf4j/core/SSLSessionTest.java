@@ -409,6 +409,57 @@ public class SSLSessionTest {
 		}
 	}
 	
+	@Test
+	public void testSessionResumtion() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		s.start();
+		c.sslRemoteAddress = true;
+		c.start();
+
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		javax.net.ssl.SSLSession session1 = getSSLEngine((SSLSession) c.getSession()).getSession();
+		assertTrue(session1 == ((SSLSession)c.getSession()).getEngineSession());
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		c.getSession().write(new Packet(PacketType.ECHO, "1").toBytes());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(1)|", c.getRecordedData(true));
+		assertEquals("DR|ECHO(1)|DS|", s.getRecordedData(true));
+		
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT, true);
+		c.sslRemoteAddress = true;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		javax.net.ssl.SSLSession session2 = getSSLEngine((SSLSession) c.getSession()).getSession();
+		assertTrue(session2 == ((SSLSession)c.getSession()).getEngineSession());
+		if (!TLS1_3) {
+			assertTrue(session2 == session1);
+		}
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		c.getSession().write(new Packet(PacketType.ECHO, "2").toBytes());
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
+		assertEquals("DR|ECHO(2)|DS|", s.getRecordedData(true));
+			
+	}
+	
 	@Test 
 	public void testClose() throws Exception {
 		TestHandler handler = new TestHandler("Test1");

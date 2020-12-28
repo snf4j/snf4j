@@ -92,4 +92,14 @@ public interface IEngineSession extends ISession {
 	 */
 	void beginLazyHandshake();
 	
+	/**
+	 * Returns an object representing a session in the protocol engine driving this
+	 * session.
+	 * 
+	 * @return an object representing a session.
+	 * @throws UnsupportedOperationException if the protocol engine driving this
+	 *                                       session does not support a session.
+	 */
+	Object getEngineSession();
+	
 }

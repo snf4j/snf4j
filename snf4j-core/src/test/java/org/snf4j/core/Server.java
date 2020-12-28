@@ -82,6 +82,7 @@ public class Server {
 	public StreamSession session;
 	public volatile SocketAddress sessionLocal;
 	public volatile SocketAddress sessionRemote;
+	public volatile boolean sslRemoteAddress;
 	public StreamSession initSession;
 	public ThreadFactory threadFactory;
 	public ISelectorLoopController controller;
@@ -521,10 +522,18 @@ public class Server {
 		public ISessionConfig getConfig() {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
 				@Override
-				public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+				public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
 					SSLEngine engine;
 					try {
-						engine = getSSLContext().createSSLEngine();
+						if (clientMode && remoteAddress instanceof InetSocketAddress) {
+							String host = ((InetSocketAddress)remoteAddress).getHostString();
+							int port = ((InetSocketAddress)remoteAddress).getPort();
+							
+							engine = getSSLContext().createSSLEngine(host, port);
+						}
+						else {
+							engine = getSSLContext().createSSLEngine();
+						}
 					} catch (Exception e) {
 						throw new SSLEngineCreateException(e);
 					}
@@ -533,6 +542,11 @@ public class Server {
 						engine.setNeedClientAuth(true);
 					}
 					return new TestSSLEngine(engine);
+				}
+				
+				@Override
+				public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+					return createSSLEngine(null, clientMode);
 				}
 				
 				@Override

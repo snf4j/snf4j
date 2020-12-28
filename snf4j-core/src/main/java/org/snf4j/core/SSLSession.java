@@ -118,5 +118,15 @@ public class SSLSession extends EngineStreamSession {
 	public SSLSession(IStreamHandler handler, boolean clientMode) throws SSLEngineCreateException {
 		super(new InternalSSLEngine(null, handler.getConfig(), clientMode), handler , LOGGER);
 	}
-	
+
+	/**
+	 * Returns the {@link javax.net.ssl.SSLSession SSLSession} in use in the
+	 * {@link javax.net.ssl.SSLEngine SSLEngine} driving this session.
+	 * 
+	 * @return the {@code SSLSession}
+	 */
+	@Override
+	public javax.net.ssl.SSLSession getEngineSession() {
+		return (javax.net.ssl.SSLSession) super.getEngineSession();
+	}
 }
