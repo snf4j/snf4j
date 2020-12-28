@@ -171,6 +171,11 @@ public class EngineDatagramSession extends DatagramSession implements IEngineDat
 	}
 	
 	@Override
+	public Object getEngineSession() {
+		return wrapper.getEngineSession();
+	}
+	
+	@Override
 	public IDatagramHandler getHandler() {
 		return wrapper.getHandler();
 	}	

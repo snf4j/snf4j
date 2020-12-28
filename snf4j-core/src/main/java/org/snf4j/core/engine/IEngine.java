@@ -223,6 +223,16 @@ public interface IEngine {
 	HandshakeStatus getHandshakeStatus();
 
 	/**
+	 * Returns an object representing a session in use in an {@link IEngine}
+	 * implementation.
+	 * 
+	 * @return an object representing a session.
+	 * @throws UnsupportedOperationException if the current implementation does not
+	 *                                       support a session.
+	 */
+	Object getSession();
+	
+	/**
 	 * Returns a delegated <code>Runnable</code> task for an {@link IEngine}
 	 * implementation.
 	 * <p>

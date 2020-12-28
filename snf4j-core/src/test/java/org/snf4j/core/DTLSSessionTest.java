@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLSession;
 
 import org.junit.Test;
 import org.snf4j.core.TestCodec.BBDEv;
@@ -106,6 +107,17 @@ public class DTLSSessionTest extends DTLSTest {
 		}
 		buffers[1] = (ByteBuffer) f.get(h);
 		return buffers;
+	}
+	
+	TestSSLEngine getSSLEngine(DTLSSession session) throws Exception {
+		EngineDatagramHandler h = EngineDatagramHandlerTest.getHandler(session);
+		Field field = AbstractEngineHandler.class.getDeclaredField("engine");
+		
+		field.setAccessible(true);
+		InternalSSLEngine engine = (InternalSSLEngine) field.get(h);
+		field = InternalSSLEngine.class.getDeclaredField("engine");
+		field.setAccessible(true);
+		return (TestSSLEngine) field.get(engine);
 	}
 	
 	@Test
@@ -433,6 +445,55 @@ public class DTLSSessionTest extends DTLSTest {
 	public void testNotConnectedToNotConnected() throws Exception {
 		testNotConnectedToNotConnected(codec());
 		testNotConnectedToNotConnected(null);
+	}
+	
+	@Test
+	public void testSessionResumtion() throws Exception {
+		assumeJava9();
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.ssl = true;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		c.remoteAddress = address(PORT);
+		c.sslRemoteAddress = true;
+		s.startServer();
+		c.startClient();
+		assertReady(c, s);
+		c.getSession().write(new Packet(PacketType.ECHO, "1").toBytes());
+		s.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO(1)|DS|", s.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(1)|", c.getRecordedData(true));
+		SSLSession session1 = getSSLEngine((DTLSSession) c.getSession()).getSession();
+		assertTrue(session1 == ((DTLSSession) c.getSession()).getEngineSession());
+		assertTrue(((IEngineSession) s.getSession()).getEngineSession() instanceof SSLSession);
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		
+		c.remoteAddress = address(PORT);
+		c.sslRemoteAddress = true;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.getSession().write(new Packet(PacketType.ECHO, "2").toBytes());
+		s.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO(2)|DS|", s.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
+		SSLSession session2 = getSSLEngine((DTLSSession) c.getSession()).getSession();
+		assertTrue(session2 == ((DTLSSession) c.getSession()).getEngineSession());
+		assertTrue(((IEngineSession) s.getSession()).getEngineSession() instanceof SSLSession);
+		assertTrue(session1 == session2);
 	}
 	
 	@Test

@@ -120,6 +120,11 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 	}
 	
 	@Override
+	public Object getEngineSession() {
+		return internal.getEngineSession();
+	}
+	
+	@Override
 	public IStreamHandler getHandler() {
 		return internal.getHandler();
 	}	

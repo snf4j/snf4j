@@ -132,6 +132,11 @@ public class TestEngine implements IEngine {
 	}
 	
 	@Override
+	public Object getSession() {
+		throw new UnsupportedOperationException();
+	}
+	
+	@Override
 	public boolean isOutboundDone() {
 		return outboundDone;
 	}

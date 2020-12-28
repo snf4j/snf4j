@@ -253,6 +253,10 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 		run();
 	}
 	
+	Object getEngineSession() {
+		return engine.getSession();
+	}
+	
 	void handleBeginHandshake() {
 		ISessionTimer timer = session.getTimer();
 		

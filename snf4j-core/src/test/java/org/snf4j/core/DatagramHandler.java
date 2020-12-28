@@ -524,7 +524,10 @@ public class DatagramHandler {
 		public ISessionConfig getConfig() {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
 				@Override
-				public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+				public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+					if (remoteAddress != null) {
+						engineArguments = "" + remoteAddress + "|" + clientMode;
+					}
 					if (nullEngine) {
 						return null;
 					}
@@ -540,7 +543,15 @@ public class DatagramHandler {
 					}
 					
 					try {
-						engine = engine == null ? getSSLContext().createSSLEngine() : engine;
+						if (clientMode && remoteAddress instanceof InetSocketAddress) {
+							String host = ((InetSocketAddress)remoteAddress).getHostString();
+							int port = ((InetSocketAddress)remoteAddress).getPort();
+							
+							engine = engine == null ? getSSLContext().createSSLEngine(host, port) : engine;
+						}
+						else {
+							engine = engine == null ? getSSLContext().createSSLEngine() : engine;
+						}
 					} catch (Exception e) {
 						throw new SSLEngineCreateException(e);
 					}
@@ -553,9 +564,8 @@ public class DatagramHandler {
 				}
 				
 				@Override
-				public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
-					engineArguments = "" + remoteAddress + "|" + clientMode;
-					return createSSLEngine(clientMode);
+				public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+					return createSSLEngine(null, clientMode);
 				}
 				
 				@Override

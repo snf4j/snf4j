@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLSession;
 
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
@@ -95,6 +96,11 @@ class InternalSSLEngine implements IEngine {
 	@Override
 	public void beginHandshake() throws Exception {
 		engine.beginHandshake();
+	}
+	
+	@Override 
+	public SSLSession getSession() {
+		return engine.getSession();
 	}
 	
 	@Override
