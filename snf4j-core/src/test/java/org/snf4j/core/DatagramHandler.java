@@ -75,6 +75,7 @@ public class DatagramHandler {
 	public boolean sslClient;
 	public boolean sslClientMode = true;
 	public boolean sslRemoteAddress;
+	public boolean enableCreateSSLEngine2;
 	public boolean proxyAction;
 	volatile DatagramSession session;
 	volatile DatagramChannel channel;
@@ -543,7 +544,7 @@ public class DatagramHandler {
 					}
 					
 					try {
-						if (clientMode && remoteAddress instanceof InetSocketAddress) {
+						if (enableCreateSSLEngine2 && clientMode && remoteAddress instanceof InetSocketAddress) {
 							String host = ((InetSocketAddress)remoteAddress).getHostString();
 							int port = ((InetSocketAddress)remoteAddress).getPort();
 							

@@ -458,9 +458,14 @@ public class DTLSSessionTest extends DTLSTest {
 		c.ssl = true;
 		c.remoteAddress = address(PORT);
 		c.sslRemoteAddress = true;
+		c.enableCreateSSLEngine2 = true;
 		s.startServer();
 		c.startClient();
-		assertReady(c, s);
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
 		c.getSession().write(new Packet(PacketType.ECHO, "1").toBytes());
 		s.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
