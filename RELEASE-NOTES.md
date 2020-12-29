@@ -1,3 +1,10 @@
+#### 1.6.0
+ - 2020-12-30 - [changes](https://github.com/snf4j/snf4j/compare/v1.5.0...v1.6.0)
+ - Improved handling of empty buffers in engine handlers [(#48)](https://github.com/snf4j/snf4j/pull/48)
+ - Added thread-local caching allocator [(#51)](https://github.com/snf4j/snf4j/pull/51)
+ - Improved SSL/TLS max buffer size configuration [(#52)](https://github.com/snf4j/snf4j/pull/52)
+ - Access to engine's internal session from engine-driven sessions [(#53)](https://github.com/snf4j/snf4j/pull/53)
+
 #### 1.5.0
  - 2020-12-09 - [changes](https://github.com/snf4j/snf4j/compare/v1.4.0...v1.5.0)
  - Added ZLIB and GZIP codecs [(#41)](https://github.com/snf4j/snf4j/pull/41)
