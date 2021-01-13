@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@
  */
 package org.snf4j.core;
 
-import java.nio.channels.SocketChannel;
+import java.nio.channels.SelectableChannel;
 
 public class TestSelectorLoopController implements ISelectorLoopController {
 	final static int DEFAULT = 0;
@@ -36,7 +36,7 @@ public class TestSelectorLoopController implements ISelectorLoopController {
 	volatile int connect = DEFAULT;
 	
 	@Override
-	public boolean processAccepted(SocketChannel channel) {
+	public boolean processAccepted(SelectableChannel channel) {
 		switch (accept) {
 		case BLOCK:
 			return false;
@@ -51,7 +51,7 @@ public class TestSelectorLoopController implements ISelectorLoopController {
 	}
 
 	@Override
-	public boolean processConnection(SocketChannel channel) {
+	public boolean processConnection(SelectableChannel channel) {
 		switch (connect) {
 		case BLOCK:
 			return false;

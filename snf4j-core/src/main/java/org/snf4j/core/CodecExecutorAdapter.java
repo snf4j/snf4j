@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,9 +39,9 @@ import org.snf4j.core.session.ISession;
 
 class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	
-	private final ICodecExecutor executor;
+	final ICodecExecutor executor;
 	
-	private final ISession session;
+	ISession session;
 	
 	private final boolean datagram;
 	
@@ -49,6 +49,11 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 		this.executor = executor;
 		this.session = session;
 		datagram = session instanceof IDatagramSession;
+	}
+	
+	protected CodecExecutorAdapter(ICodecExecutor executor) {
+		this.executor = executor;
+		datagram = false;
 	}
 	
 	final List<Object> encode(ByteBuffer data) throws Exception {

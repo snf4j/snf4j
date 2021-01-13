@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1013,21 +1013,6 @@ public class DatagramSessionTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
-	}
-	
-	@Test
-	public void testToString() throws Exception {
-		SelectorLoop loop = new SelectorLoop();
-		
-		SocketChannel sc = SocketChannel.open();
-		assertEquals(sc.toString(), loop.toString(sc));
-		DatagramChannel dc = DatagramChannel.open();
-		assertEquals("sun.nio.ch.DatagramChannelImpl[local=unknown]", loop.toString(dc));
-		dc.socket().bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 7788));
-		assertEquals("sun.nio.ch.DatagramChannelImpl[local=/127.0.0.1:7788]", loop.toString(dc));
-		dc.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.2"), 7789));
-		assertEquals("sun.nio.ch.DatagramChannelImpl[local=/127.0.0.1:7788,remote=/127.0.0.2:7789]", loop.toString(dc));
-		assertNull(loop.toString(null));
 	}
 	
 	@Test

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,11 +29,9 @@ import java.io.IOException;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ClosedSelectorException;
-import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -47,7 +45,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.ISelectorLoopStructureFactory;
-import org.snf4j.core.factory.IStreamSessionFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.IFutureExecutor;
 import org.snf4j.core.future.RegisterFuture;
@@ -196,17 +193,17 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			SelectableChannel channel = key.channel();
 			
 			if (key.isValid() && channel.keyFor(newSelector) == null) {
-				Object attachment = key.attachment();
+				ChannelContext<?> ctx = (ChannelContext<?>) key.attachment();
 				
 				try {
-					if (attachment instanceof InternalSession) {
-						InternalSession session = (InternalSession)attachment;
+					if (ctx.isSession()) {
+						InternalSession session = ctx.getSession();
 						
 						synchronized (session.writeLock) {
 							int ops = key.interestOps();
 							
 							key.cancel();
-							SelectionKey newKey = channel.register(getUnderlyingSelector(newSelector), ops, attachment);
+							SelectionKey newKey = channel.register(getUnderlyingSelector(newSelector), ops, ctx);
 							session.setSelectionKey(newKey);
 						}
 					}
@@ -214,24 +211,24 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 						int ops = key.interestOps();
 						
 						key.cancel();
-						channel.register(getUnderlyingSelector(newSelector), ops, attachment);
+						channel.register(getUnderlyingSelector(newSelector), ops, ctx);
 					}
 					
 				}
 				catch (Exception e) {
-					elogger.error(logger, "Failed to re-register channel {} to new selector during rebuilding process: {}" , toString(channel), e);
+					elogger.error(logger, "Failed to re-register channel {} to new selector during rebuilding process: {}" , ctx.toString(channel), e);
 					try {
-						if (attachment instanceof IStreamSessionFactory) {
+						if (ctx.isServer()) {
 							fireException(key, e);
 							channel.close();
-							((IStreamSessionFactory)attachment).closed((ServerSocketChannel) channel);
+							ctx.postClose(channel);
 						}
 						else {
 							handleInvalidKey(key, stoppingKeys, true);
 						}
 					}
 					catch (Exception e2) {
-						elogger.error(logger, "Failed to close channel {} during rebuilding process: {}", toString(channel), e2);
+						elogger.error(logger, "Failed to close channel {} during rebuilding process: {}", ctx.toString(channel), e2);
 					}
 				}
 			}
@@ -513,8 +510,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 				if (stoppingRequested.compareAndSet(true, false)) {
 					stoppingKeys = new HashSet<SelectionKey>();
 					for (SelectionKey key: selector.keys()) {
-						if (key.attachment() instanceof ISession) {
-							ISession session = (ISession) key.attachment();
+						ChannelContext<?> ctx = (ChannelContext<?>) key.attachment();
+						
+						if (ctx.isSession()) {
+							ISession session = ctx.getSession();
 							
 							stoppingKeys.add(key);
 							switch (stopping.get()) {
@@ -534,13 +533,13 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 						else {
 							try {
 								if (debugEnabled) {
-									logger.debug("Closing of channel {}", toString(key.channel()));
+									logger.debug("Closing of channel {}", ctx.toString(key.channel()));
 								}
 								key.channel().close();
-								((IStreamSessionFactory)key.attachment()).closed((ServerSocketChannel) key.channel());
+								ctx.postClose(key.channel());
 							}
 							catch (Exception e) {
-								elogWarnOrError(logger, "Closing of channel {} failed: {}", toString(key.channel()), e);
+								elogWarnOrError(logger, "Closing of channel {} failed: {}", ctx.toString(key.channel()), e);
 							}
 						}
 					}
@@ -638,6 +637,8 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 					SelectableChannel channel = reg.channel; 
 					
 					if (channel.keyFor(selector) == null) {
+						ChannelContext<?> ctx = reg.ctx;
+						
 						try {
 							channel.configureBlocking(false);
 							
@@ -645,15 +646,15 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 							if (stopping.get() != null) {
 
 								if (debugEnabled) {
-									logger.debug("Aborting pending registration for channel {}", toString(channel));
+									logger.debug("Aborting pending registration for channel {}", ctx.toString(channel));
 								}
 								abortRegistration(reg, true, null);
 							}
 							else {
-								SelectionKey key = channel.register(getUnderlyingSelector(selector), reg.ops, reg.attachment);
+								SelectionKey key = channel.register(getUnderlyingSelector(selector), reg.ops, ctx);
 								
 								if (debugEnabled) {
-									logger.debug("Channel {} registered with options {}", toString(channel), reg.ops);
+									logger.debug("Channel {} registered with options {}", ctx.toString(channel), reg.ops);
 								}
 								handleRegistration(key, reg);
 							}
@@ -668,7 +669,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 								abortRegistration(reg, true, null);
 								throw new ClosedSelectorException();
 							}
-							elogger.error(logger, "Registering of channel {} failed: {}", toString(channel), e);
+							elogger.error(logger, "Registering of channel {} failed: {}", ctx.toString(channel), e);
 							abortRegistration(reg, true, e);
 						}
 					}
@@ -703,7 +704,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		PendingRegistration reg;
 		while((reg = registrations.poll()) != null) {
 			if (debugEnabled) {
-				logger.debug("Aborting pending registration for channel {}", toString(reg.channel));
+				logger.debug("Aborting pending registration for channel {}", reg.ctx.toString(reg.channel));
 			}
 			abortRegistration(reg, true, null);
 		}
@@ -754,30 +755,29 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	}
 	
 	private final void handleRegistration(SelectionKey key, PendingRegistration reg) {
-		if (reg.attachment instanceof InternalSession) {
-			handleRegisteredKey(key, reg.channel, (InternalSession)reg.attachment);
+		if (reg.ctx.isSession()) {
+			handleRegisteredKey(key, reg);
 		}
 		else {
-			((IStreamSessionFactory) reg.attachment).registered((ServerSocketChannel) reg.channel);
+			reg.ctx.postRegistration(reg.channel);
 		}	
 		reg.future.success();
 	}
 	
 	private final void abortRegistration(PendingRegistration reg, boolean closeChannel, Throwable cause) {
+		final ChannelContext<?> ctx = reg.ctx;
+		
 		if (closeChannel) {
 			try {
-				if (reg.channel instanceof DatagramChannel) {
-					((DatagramChannel)reg.channel).disconnect();
-				}
-				reg.channel.close();
+				ctx.close(reg.channel);
 			}
 			catch (IOException e) {
-				elogger.warn(logger, "Closing of channel {} during aborting registration failed: {}", toString(reg.channel), e);
+				elogger.warn(logger, "Closing of channel {} during aborting registration failed: {}", ctx.toString(reg.channel), e);
 			}
 		}
 		
-		if (reg.attachment instanceof InternalSession) {
-			InternalSession session = (InternalSession) reg.attachment;
+		if (ctx.isSession()) {
+			InternalSession session = ctx.getSession();
 			
 			if (session.isCreated()) {
 				fireEndingEvent(session, false);
@@ -788,7 +788,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			}
 		}
 		else {
-			((IStreamSessionFactory) reg.attachment).closed((ServerSocketChannel) reg.channel);
+			ctx.postClose(reg.channel);
 		}	
 		reg.future.abort(cause);
 	}
@@ -908,7 +908,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	 *             if a bit in ops does not correspond to an operation that is
 	 *             supported by this channel
 	 */
-	IFuture<Void> register(SelectableChannel channel, int ops, Object attachment) throws ClosedChannelException {
+	IFuture<Void> register(SelectableChannel channel, int ops, ChannelContext<?> ctx) throws ClosedChannelException {
 		if (channel == null) {
 			throw new IllegalArgumentException("channel is null");
 		}
@@ -928,14 +928,14 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		PendingRegistration reg = new PendingRegistration();
 
 		if (logger.isDebugEnabled()) {
-			logger.debug("Registering channel {} with options {}", toString(channel), ops);
+			logger.debug("Registering channel {} with options {}", ctx.toString(channel), ops);
 		}
 		
 		reg.channel = channel;
 		reg.ops = ops;
-		reg.attachment = attachment;
-		if (attachment instanceof InternalSession) {
-			InternalSession session = (InternalSession)attachment; 
+		reg.ctx = ctx;
+		if (ctx.isSession()) {
+			InternalSession session = ctx.getSession(); 
 			if (session.isCreated()) {
 				throw new IllegalArgumentException("session cannot be reused");
 			}
@@ -1029,42 +1029,6 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			tasks.add(task0);
 		}		
 		wakeup();
-	}
-	
-	/**
-	 * Returns a string representation of a channel object. It is provided to
-	 * customize the way channel objects are formatted in the messages logged by
-	 * the selector loop objects.
-	 * 
-	 * @param channel
-	 *            the channel
-	 * @return a string representation of a channel object
-	 */
-	protected String toString(SelectableChannel channel) {
-		if (channel instanceof DatagramChannel) {
-			StringBuilder sb = new StringBuilder(100);
-			
-			sb.append(channel.getClass().getName());
-			sb.append("[local=");
-			try {
-				sb.append(((DatagramChannel)channel).socket().getLocalSocketAddress().toString());
-			}
-			catch (Exception e) {
-				sb.append("unknown");
-			}
-			if (((DatagramChannel)channel).isConnected()) {
-				sb.append(",remote=");
-				try {
-					sb.append(((DatagramChannel)channel).socket().getRemoteSocketAddress().toString());
-				}
-				catch (Exception e) {
-					sb.append("unknown");
-				}
-			}
-			sb.append("]");
-			return sb.toString();
-		}
-		return channel != null ? channel.toString() : null;
 	}
 	
 	/**
@@ -1175,13 +1139,13 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	}
 
 	final void fireException(final SelectionKey key, Throwable t) {
-		Object attachment = key.attachment();
+		final ChannelContext<?> ctx = (ChannelContext<?>) key.attachment();
 		
-		if (attachment instanceof InternalSession) {
-			fireException((InternalSession)attachment, t);
+		if (ctx.isSession()) {
+			fireException(ctx.getSession(), t);
 		}
-		else if (attachment instanceof IStreamSessionFactory) {
-			((IStreamSessionFactory)attachment).exception((ServerSocketChannel) key.channel(), t);
+		else if (ctx.isServer()) {
+			ctx.exception(key.channel(), t);
 		}
 	}
 
@@ -1199,8 +1163,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		if (stoppingKeys != null) {
 			stoppingKeys.remove(key);
 		}
-		if (key.attachment() instanceof InternalSession) {
-			InternalSession session = (InternalSession) key.attachment();
+		
+		ChannelContext<?> ctx = (ChannelContext<?>) key.attachment();
+		
+		if (ctx.isSession()) {
+			InternalSession session = ctx.getSession();
 
 			try {
 				session.close(key.channel());
@@ -1216,7 +1183,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		handleInvalidKey(key, stoppingKeys, false);
 	}
 	
-	abstract void handleRegisteredKey(SelectionKey key, SelectableChannel channel, InternalSession session);
+	abstract void handleRegisteredKey(SelectionKey key, PendingRegistration reg);
 	
 	abstract SelectionKey handleSelectedKey(SelectionKey key);
 	
@@ -1227,7 +1194,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	static final class PendingRegistration {
 		SelectableChannel channel;
 		int ops;
-		Object attachment;
+		ChannelContext<?> ctx;
 		RegisterFuture<Void> future;
 	}
 	

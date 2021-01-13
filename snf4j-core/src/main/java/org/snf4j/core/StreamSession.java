@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -64,8 +64,6 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	/** Number of bytes in outBuffers */
 	private long outBuffersSize;
-	
-	private volatile boolean isEOS;
 	
 	private final int minInBufferCapacity;
 	
@@ -460,61 +458,6 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		close(false);
 	}
 	
-	void close(boolean isEos) {
-		SelectionKey key = this.key;
-		
-		if (key != null && key.isValid()) {
-			try {
-				synchronized (writeLock) {
-					key = detectRebuild(key);
-					if (closing == ClosingState.NONE) {
-						int ops = key.interestOps();
-						
-						this.isEOS = isEos;
-						if ((ops & SelectionKey.OP_WRITE) != 0) {
-							//To enable gentle close OP_READ must be set 
-							if (isEos) {
-								key.interestOps(ops & ~SelectionKey.OP_READ);
-							} 
-							else if ((ops & SelectionKey.OP_READ) == 0) {
-								key.interestOps(ops | SelectionKey.OP_READ);
-								lazyWakeup();
-							}
-							closing = ClosingState.SENDING;
-						}
-						else {
-							if (isEos) {
-								//Executed in the selector loop thread, so we can skip sending events now
-								closing = ClosingState.FINISHED;
-								key.channel().close();
-							}
-							else {
-								//To enable gentle close OP_READ must be set 
-								if ((ops & SelectionKey.OP_READ) == 0) {
-									key.interestOps(ops | SelectionKey.OP_READ);
-									lazyWakeup();
-								}
-								closing = ClosingState.FINISHING;
-								((SocketChannel)key.channel()).socket().shutdownOutput();
-							}
-						}
-					}
-					else if (isEos) {
-						closing = ClosingState.FINISHED;
-						key.channel().close();
-					}
-
-					if (!key.isValid()) {
-						loop.finishInvalidatedKey(key);
-					}
-				}
-			} catch (Exception e) {
-			}
-		}
-		else {
-			quickClose();
-		}
-	}
 	
 	@Override
 	public void quickClose() {
@@ -731,28 +674,6 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	IStreamReader superCodec() {
 		return codec != null ? codec : (IStreamReader) this.handler;
-	}
-	
-	/**
-	 * Handles closing operation being in progress. It should be executed only
-	 * when the output buffers have no more data after compacting. It should be executed inside 
-	 * the same synchronized block as the compacting method
-	 * @see compactOutBuffers
-	 */
-	void handleClosingInProgress() {
-		if (closing == ClosingState.SENDING) {
-			try {
-				if (isEOS) {
-					closing = ClosingState.FINISHED;
-					key.channel().close();
-				}
-				else {
-					closing = ClosingState.FINISHING;
-					((SocketChannel)key.channel()).socket().shutdownOutput();
-				}
-			} catch (Exception e) {
-			}
-		}
 	}
 	
 	/**

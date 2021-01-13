@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,40 +27,38 @@ package org.snf4j.core;
 
 import java.nio.channels.SelectableChannel;
 
-/**
- * Default controller that determines behavior of the associated selector loop. It permits
- * all controlled operations.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class DefaultSelectorLoopController implements ISelectorLoopController {
+abstract class SessionChannelContext<T extends InternalSession> extends ChannelContext<T> {
 
-	/**
-	 * Default controller that permits all controlled operations.
-	 */
-	public static final DefaultSelectorLoopController DEFAULT = new DefaultSelectorLoopController();
-	
-	/**
-	 * Constructs the default controller.
-	 */
-	protected DefaultSelectorLoopController() {
+	SessionChannelContext(T session) {
+		super(session);
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 * @return always <code>true</code>
-	 */
 	@Override
-	public boolean processAccepted(SelectableChannel channel) {
+	abstract ChannelContext<T> wrap(InternalSession session);
+
+	@Override
+	final boolean isServer() {
+		return false;
+	}
+	
+	@Override
+	final boolean isSession() {
 		return true;
+	}
+	
+	@Override
+	final T getSession() {
+		return context;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @return always <code>true</code>
-	 */
 	@Override
-	public boolean processConnection(SelectableChannel channel) {
-		return true;
+	final SelectableChannel accept(SelectableChannel channel) throws Exception {
+		throw new UnsupportedOperationException("accept is not supported");
 	}
+	
+	@Override
+	final InternalSession create(SelectableChannel channel) throws Exception {
+		throw new UnsupportedOperationException("create is not supported");
+	}
+	
 }

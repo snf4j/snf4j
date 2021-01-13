@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -606,7 +606,7 @@ public class StreamSelectorLoopTest {
 		
 		SocketChannel sc = SocketChannel.open();
 		try {
-			loop1.register(sc, SelectionKey.OP_ACCEPT, h);
+			loop1.register(sc, SelectionKey.OP_ACCEPT, null);
 			fail ("options have to be valid");
 		}
 		catch (IllegalArgumentException e) {
@@ -876,7 +876,7 @@ public class StreamSelectorLoopTest {
 		s.waitForSessionOpen(TIMEOUT);
 		c.waitForSessionOpen(TIMEOUT);
 		StreamSession session = new StreamSession(new TestHandler("Test1"));
-		c.loop.register(c.getSession().channel, SelectionKey.OP_CONNECT, session);
+		c.loop.register(c.getSession().channel, SelectionKey.OP_CONNECT, new SocketChannelContext(session));
 		waitFor(GET_SIZE_DELAY);
 		assertEquals(1, c.loop.getSize());
 		c.stop(TIMEOUT);
@@ -1111,7 +1111,7 @@ public class StreamSelectorLoopTest {
 		assertEquals("R|", s.getServerSocketLogs());
 		SelectionKey key = c.getSession().key;
 		Object attachment = key.attachment();
-		key.attach(new Integer(0));
+		key.attach(new ChannelContextTest.TestChannelContext(new Integer(0)));
 		s.loop.fireException(key, new Exception());
 		s.loop.fireException(key, null);
 		key.attach(attachment);
@@ -1648,7 +1648,10 @@ public class StreamSelectorLoopTest {
 		}
 		assertEquals("", handler.getEvents());
 		
-		s.loop.handleRegisteredKey(null, channel, session);
+		InternalSelectorLoop.PendingRegistration reg = new InternalSelectorLoop.PendingRegistration();
+		reg.channel = channel;
+		reg.ctx = new SocketChannelContext(session);
+		s.loop.handleRegisteredKey(null, reg);
 		assertEquals("SESSION_CREATED|SESSION_ENDING|", handler.getEvents());
 		assertEquals(ClosingState.FINISHED, session.closing);
 	
@@ -1667,7 +1670,10 @@ public class StreamSelectorLoopTest {
 		}
 		assertEquals("", handler.getEvents());
 		
-		s.loop.handleRegisteredKey(null, channel, session);
+		reg = new InternalSelectorLoop.PendingRegistration();
+		reg.channel = channel;
+		reg.ctx = new SocketChannelContext(session);
+		s.loop.handleRegisteredKey(null, reg);
 		assertEquals("SESSION_CREATED|SESSION_ENDING|", handler.getEvents());
 		assertEquals(ClosingState.FINISHED, session.closing);
 		

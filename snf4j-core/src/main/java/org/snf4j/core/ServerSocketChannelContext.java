@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,41 +26,44 @@
 package org.snf4j.core;
 
 import java.nio.channels.SelectableChannel;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 
-/**
- * Default controller that determines behavior of the associated selector loop. It permits
- * all controlled operations.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class DefaultSelectorLoopController implements ISelectorLoopController {
+import org.snf4j.core.factory.IStreamSessionFactory;
 
-	/**
-	 * Default controller that permits all controlled operations.
-	 */
-	public static final DefaultSelectorLoopController DEFAULT = new DefaultSelectorLoopController();
-	
-	/**
-	 * Constructs the default controller.
-	 */
-	protected DefaultSelectorLoopController() {
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return always <code>true</code>
-	 */
-	@Override
-	public boolean processAccepted(SelectableChannel channel) {
-		return true;
+class ServerSocketChannelContext extends ServerChannelContext<IStreamSessionFactory>{
+
+	ServerSocketChannelContext(IStreamSessionFactory factory) {
+		super(factory);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @return always <code>true</code>
-	 */
 	@Override
-	public boolean processConnection(SelectableChannel channel) {
-		return true;
+	final void postClose(SelectableChannel channel) {
+		context.closed((ServerSocketChannel) channel);
+	}
+	
+	@Override
+	final void postRegistration(SelectableChannel channel) {
+		context.registered((ServerSocketChannel) channel);
+	}
+	
+	@Override
+	final void exception(SelectableChannel channel, Throwable t) {
+		context.exception((ServerSocketChannel) channel, t);
+	}
+	
+	@Override
+	final InternalSession create(SelectableChannel channel) throws Exception {
+		return context.create((SocketChannel) channel);
+	}
+
+	@Override
+	final SelectableChannel accept(SelectableChannel channel) throws Exception {
+		return ((ServerSocketChannel) channel).accept();
+	}	
+	
+	@Override
+	final ChannelContext<StreamSession> wrap(InternalSession session) {
+		return new SocketChannelContext((StreamSession) session);
 	}
 }

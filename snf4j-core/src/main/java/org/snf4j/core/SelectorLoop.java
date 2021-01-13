@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -190,7 +190,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	public IFuture<Void> register(SocketChannel channel, IStreamHandler handler) throws ClosedChannelException {
 		StreamSession session = new StreamSession(handler);
 		
-		return super.register(channel, 0, session);
+		return super.register(channel, 0, new SocketChannelContext(session));
 	}
 	
 	/**
@@ -221,7 +221,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 */
 	public IFuture<Void> register(SocketChannel channel, StreamSession session) throws ClosedChannelException {
 		if (session == null) throw new IllegalArgumentException("session is null");
-		return super.register(channel, 0, session);
+		return super.register(channel, 0, new SocketChannelContext(session));
 	}
 
 	/**
@@ -249,7 +249,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	public IFuture<Void> register(DatagramChannel channel, IDatagramHandler handler) throws ClosedChannelException {
 		DatagramSession session = new DatagramSession(handler);
 		
-		return super.register(channel, SelectionKey.OP_READ, session);
+		return super.register(channel, SelectionKey.OP_READ, new DatagramChannelContext(session));
 	}
 
 	/**
@@ -280,7 +280,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 */
 	public IFuture<Void> register(DatagramChannel channel, DatagramSession session) throws ClosedChannelException {
 		if (session == null) throw new IllegalArgumentException("session is null");
-		return super.register(channel, SelectionKey.OP_READ, session);
+		return super.register(channel, SelectionKey.OP_READ, new DatagramChannelContext(session));
 	}
 	
 	/**
@@ -311,34 +311,24 @@ public class SelectorLoop extends InternalSelectorLoop {
 	 */
 	public IFuture<Void> register(ServerSocketChannel channel, IStreamSessionFactory factory) throws ClosedChannelException {
 		if (factory == null) throw new IllegalArgumentException("factory is null");
-		return super.register(channel, SelectionKey.OP_ACCEPT, factory);
+		return super.register(channel, SelectionKey.OP_ACCEPT, new ServerSocketChannelContext(factory));
 	}
 	
 	@Override
-	void handleRegisteredKey(SelectionKey key, SelectableChannel channel, InternalSession session) {
+	void handleRegisteredKey(SelectionKey key, PendingRegistration reg) {
+		SelectableChannel channel = reg.channel;
+		ChannelContext<?> ctx = reg.ctx;
 		
-		if (channel instanceof SocketChannel) {
-			SocketChannel sc = (SocketChannel) channel;
-
-			if (sc.isConnected()) {
-				key.interestOps(SelectionKey.OP_READ);
-			}
-			else if (sc.isConnectionPending() || sc.isOpen()) {
-				key.interestOps(SelectionKey.OP_CONNECT);
-				return;
-			}
-			else {
-				//If the channel is closed notify session
-				fireCreatedEvent(session, channel);
-				fireEndingEvent(session, false);
-				return;
-			}
+		if (!ctx.completeRegistration(this, key, channel)) {
+			return;
 		}
+		
+		InternalSession session = ctx.getSession();
 		
 		if (fireCreatedEvent(session, channel)) {
 			session.setSelectionKey(key);
 			if (debugEnabled) {
-				logger.debug("Channel {} associated with {}", toString(channel), session);
+				logger.debug("Channel {} associated with {}", ctx.toString(channel), session);
 			}
 			fireEvent(session, SessionEvent.OPENED);
 			if (session.closeCalled.get()) {
@@ -354,51 +344,13 @@ public class SelectorLoop extends InternalSelectorLoop {
 
 	@Override
 	SelectionKey handleSelectedKey(SelectionKey key) {
-		Object attachment = key.attachment();
+		ChannelContext<?> ctx = (ChannelContext<?>) key.attachment();
 		
-		if (attachment instanceof StreamSession) {
-			StreamSession session = (StreamSession)attachment;
-			boolean doWrite = false;
-			
-			if (key.isReadable()) {
-				handleReading(session, key);
-				doWrite = key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0);
-			}
-			else if (key.isWritable()) {
-				doWrite = true;
-			}	
-			else if (key.isConnectable()) {
-				handleConnecting(session, key);
-			}
-			if (doWrite) {
-				int spinCount = session.maxWriteSpinCount;
-				
-				do {
-					spinCount = handleWriting(session, key, spinCount);
-				} while (spinCount > 0 && key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0));
-			}
-		}
-		else if (attachment instanceof DatagramSession) {
-			DatagramSession session = (DatagramSession)attachment;
-			boolean doWrite = false;
-			
-			if (key.isReadable()) {
-				handleReading(session, key);
-				doWrite = key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0);
-			}
-			else if (key.isWritable()) {
-				doWrite = true;
-			}
-			if (doWrite) {
-				int spinCount = session.maxWriteSpinCount;
-
-				do {
-					spinCount = handleWriting(session, key, spinCount);
-				} while (spinCount > 0 && key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0));
-			}
+		if (ctx.isSession()) {
+			ctx.handle(this, key);
 		}
 		else if (key.isAcceptable()) {
-			return handleAccepting((IStreamSessionFactory)key.attachment(), key);
+			return handleAccepting(key);
 		}
 		return key;
 	}
@@ -417,26 +369,27 @@ public class SelectorLoop extends InternalSelectorLoop {
 		return parentPool != null;
 	}
 	
-	private final SelectionKey handleAccepting(final IStreamSessionFactory factory, final SelectionKey key) {
-		SocketChannel channel = null;
-
+	private final SelectionKey handleAccepting(final SelectionKey key) {
+		SelectableChannel channel = null;
+		ChannelContext<?> ctx = (ChannelContext<?>)key.attachment();
+		
 		if (debugEnabled) {
-			logger.debug("Accepting from channel {}", toString(key.channel()));
+			logger.debug("Accepting from channel {}", ctx.toString(key.channel()));
 		}
 		
 		try {
-			channel = ((ServerSocketChannel)key.channel()).accept();
+			channel = ctx.accept(key.channel());
 			channel.configureBlocking(false);
 			if (!controller.processAccepted(channel)) {
 				channel.close();
 				channel = null;
 			}
 			if (debugEnabled) {
-				logger.debug("Accepted channel {}", toString(channel));
+				logger.debug("Accepted channel {}", ctx.toString(channel));
 			}
 		}
 		catch (Exception e) {
-			elogWarnOrError(logger, "Accepting from channel {} failed: {}", toString(key.channel()), e);
+			elogWarnOrError(logger, "Accepting from channel {} failed: {}", ctx.toString(key.channel()), e);
 			if (channel != null) {
 				try {
 					channel.close();
@@ -448,25 +401,25 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 		
 		if (channel != null) {
-			StreamSession session = null; 
+			InternalSession session = null; 
 			SelectionKey acceptedKey = null;
 			
 			try {
-				session = factory.create(channel);
+				session = ctx.create(channel);
 				ISelectorLoopPool pool = this.pool;
 				SelectorLoop loop = pool != null ? pool.getLoop(channel) : null;
 				if (loop != null) {
 					if (debugEnabled) {
-						logger.debug("Moving registration of channel {} to other selector loop {}", toString(channel), loop);
+						logger.debug("Moving registration of channel {} to other selector loop {}", ctx.toString(channel), loop);
 					}
-					loop.register(channel, SelectionKey.OP_READ, session);
+					loop.register(channel, SelectionKey.OP_READ, ctx.wrap(session));
 					return key;
 				}
-				acceptedKey = channel.register(getUnderlyingSelector(selector), SelectionKey.OP_READ, session);
+				acceptedKey = channel.register(getUnderlyingSelector(selector), SelectionKey.OP_READ, ctx.wrap(session));
 			}
 			catch (Exception e) {
 				if (session == null) {
-					elogger.error(logger, "Unable to create session for accepted channel {}: {}", toString(channel), e);
+					elogger.error(logger, "Unable to create session for accepted channel {}: {}", ctx.toString(channel), e);
 					try {
 						channel.close();
 					}
@@ -475,7 +428,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 					}
 					return key;
 				}
-				elogger.error(logger, "Unable to register channel {} with selector: {}", toString(channel), e);
+				elogger.error(logger, "Unable to register channel {} with selector: {}", ctx.toString(channel), e);
 				fireCreatedEvent(session, channel);
 				fireException(session, e);
 			}
@@ -483,7 +436,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 			if (acceptedKey != null) {
 				if (fireCreatedEvent(session, channel)) {
 					if (debugEnabled) {
-						logger.debug("Channel {} is associated with {}", toString(channel), session);
+						logger.debug("Channel {} is associated with {}", ctx.toString(channel), session);
 					}
 					session.setSelectionKey(acceptedKey);
 					fireEvent(session, SessionEvent.OPENED);
@@ -508,31 +461,33 @@ public class SelectorLoop extends InternalSelectorLoop {
 		return key;
 	}
 	
-	private final void handleConnecting(final StreamSession session, final SelectionKey key) {
+	final void handleConnecting(final InternalSession session, final SelectionKey key) {
+		ChannelContext<?> ctx = (ChannelContext<?>)key.attachment();
+		
 		if (debugEnabled) {
-			logger.debug("Finishing connection of channel {}", toString(key.channel()));
+			logger.debug("Finishing connection of channel {}", ctx.toString(key.channel()));
 		}
 
 		boolean finished = false;
 		
 		if (fireCreatedEvent(session, key.channel())) {
 			try {
-				if (controller.processConnection((SocketChannel)key.channel())) {
-					finished = ((SocketChannel)key.channel()).finishConnect();
+				if (controller.processConnection(key.channel())) {
+					finished = ctx.finishConnect(key.channel());
 				}
 				else {
 					key.channel().close();
 				}
 			}
 			catch (Exception e) {
-				elogWarnOrError(logger, "Finishing connection of channel {} failed: {}", toString(key.channel()), e);
+				elogWarnOrError(logger, "Finishing connection of channel {} failed: {}", ctx.toString(key.channel()), e);
 				fireException(session, e);
 			}
 		}
 		
 		if (finished) {
 			if (debugEnabled) {
-				logger.debug("Channel {} associated with {}", toString(key.channel()), session);
+				logger.debug("Channel {} associated with {}", ctx.toString(key.channel()), session);
 			}
 			key.interestOps(SelectionKey.OP_READ);
 			session.setSelectionKey(key);
@@ -540,7 +495,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 	}
 	
-	private final int handleWriting(final StreamSession session, final SelectionKey key, int spinCount) {
+	final int handleWriting(final StreamSession session, final SelectionKey key, int spinCount) {
 		long totalBytes = 0;
 
 		if (traceEnabled) {
@@ -614,7 +569,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		return 0;
 	}
 	
-	private final void handleReading(final StreamSession session, final SelectionKey key) {
+	final void handleReading(final StreamSession session, final SelectionKey key) {
 		int bytes;
 
 		if (traceEnabled) {
@@ -662,7 +617,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 	}
 	
-	private final void handleReading(final DatagramSession session, final SelectionKey key) {
+	final void handleReading(final DatagramSession session, final SelectionKey key) {
 		int bytes;
 		
 		if (traceEnabled) {
@@ -716,7 +671,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		session.consumeInBuffer(remoteAddress);
 	}
 	
-	private final int handleWriting(final DatagramSession session, final SelectionKey key, int spinCount) {
+	final int handleWriting(final DatagramSession session, final SelectionKey key, int spinCount) {
 		long totalBytes = 0;
 		long leftBytes = 0;
 		int bytes;

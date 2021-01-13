@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,40 +27,28 @@ package org.snf4j.core;
 
 import java.nio.channels.SelectableChannel;
 
-/**
- * Default controller that determines behavior of the associated selector loop. It permits
- * all controlled operations.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class DefaultSelectorLoopController implements ISelectorLoopController {
+abstract class ServerChannelContext<T> extends ChannelContext<T> {
 
-	/**
-	 * Default controller that permits all controlled operations.
-	 */
-	public static final DefaultSelectorLoopController DEFAULT = new DefaultSelectorLoopController();
-	
-	/**
-	 * Constructs the default controller.
-	 */
-	protected DefaultSelectorLoopController() {
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return always <code>true</code>
-	 */
-	@Override
-	public boolean processAccepted(SelectableChannel channel) {
-		return true;
+	ServerChannelContext(T context) {
+		super(context);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @return always <code>true</code>
-	 */
 	@Override
-	public boolean processConnection(SelectableChannel channel) {
+	final boolean isServer() {
 		return true;
+	}
+	
+	@Override
+	final boolean isSession() {
+		return false;
+	}
+	
+	@Override
+	final InternalSession getSession() {
+		return null;
+	}
+	
+	@Override
+	final void shutdown(SelectableChannel channel) {
 	}
 }

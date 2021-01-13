@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,42 +25,57 @@
  */
 package org.snf4j.core;
 
+import java.io.IOException;
 import java.nio.channels.SelectableChannel;
+import java.nio.channels.SelectionKey;
 
-/**
- * Default controller that determines behavior of the associated selector loop. It permits
- * all controlled operations.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class DefaultSelectorLoopController implements ISelectorLoopController {
-
-	/**
-	 * Default controller that permits all controlled operations.
-	 */
-	public static final DefaultSelectorLoopController DEFAULT = new DefaultSelectorLoopController();
+abstract class ChannelContext<T> {
 	
-	/**
-	 * Constructs the default controller.
-	 */
-	protected DefaultSelectorLoopController() {
+	final T context;
+	
+	ChannelContext(T context) {
+		this.context = context;
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 * @return always <code>true</code>
-	 */
-	@Override
-	public boolean processAccepted(SelectableChannel channel) {
+	abstract boolean isServer();
+	
+	abstract boolean isSession();
+	
+	abstract InternalSession getSession();
+	
+	abstract ChannelContext<?> wrap(InternalSession session);
+	
+	abstract SelectableChannel accept(SelectableChannel channel) throws Exception;
+	
+	abstract InternalSession create(SelectableChannel channel) throws Exception;
+	
+	abstract void shutdown(SelectableChannel channel) throws Exception;
+	
+	void close(SelectableChannel channel) throws IOException {	
+		channel.close();
+	}
+	
+	void postClose(SelectableChannel channel) {
+	}
+	
+	void postRegistration(SelectableChannel channel) {
+	}
+	
+	boolean finishConnect(SelectableChannel channel) throws Exception {
 		return true;
 	}
-
-	/**
-	 * {@inheritDoc}
-	 * @return always <code>true</code>
-	 */
-	@Override
-	public boolean processConnection(SelectableChannel channel) {
+	
+	boolean completeRegistration(SelectorLoop loop, SelectionKey key, SelectableChannel channel) {
 		return true;
+	}
+	
+	void handle(SelectorLoop loop, SelectionKey key) {	
+	}
+	
+	void exception(SelectableChannel channel, Throwable t) {
+	}
+	
+	String toString(SelectableChannel channel) {
+		return channel != null ? channel.toString() : null;
 	}
 }
