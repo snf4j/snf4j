@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@
  */
 package org.snf4j.core;
 
-import java.nio.channels.SocketChannel;
+import java.nio.channels.SelectableChannel;
 
 /**
  * A controller that determines behavior of the associated selector loop.
@@ -43,7 +43,7 @@ public interface ISelectorLoopController {
 	 *            the channel that was accepted
 	 * @return <code>true</code> if the accepted channel can be processed
 	 */
-	boolean processAccepted(SocketChannel channel);
+	boolean processAccepted(SelectableChannel channel);
 	
 	/**
 	 * Called to determine if the calling selector loop is permitted to process
@@ -54,5 +54,5 @@ public interface ISelectorLoopController {
 	 *            the connecting channel
 	 * @return <code>true</code> if the connecting channel can be processed
 	 */
-	boolean processConnection(SocketChannel channel);
+	boolean processConnection(SelectableChannel channel);
 }

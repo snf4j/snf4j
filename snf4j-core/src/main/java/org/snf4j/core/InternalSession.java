@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -104,6 +104,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	volatile SelectableChannel channel;
 	
 	volatile InternalSelectorLoop loop;
+	
+	volatile boolean isEOS;
 
 	/** Used to synchronize write operations and changing key's selection interests */
 	final Object writeLock = new Object();
@@ -123,7 +125,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 
 	final int maxWriteSpinCount;
 	
-	protected InternalSession(String name, IHandler handler, ILogger logger) {
+	protected InternalSession(String name, IHandler handler, CodecExecutorAdapter codec, ILogger logger) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
 				name != null ? name : (handler != null ? handler.getName() : null),
@@ -151,8 +153,13 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		creationTime = System.currentTimeMillis();
 		lastReadTime = lastWriteTime = lastIoTime = lastThroughputCalculationTime = creationTime; 
 		
-		ICodecExecutor executor = config.createCodecExecutor();
-		codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
+		if (codec == null) {
+			ICodecExecutor executor = config.createCodecExecutor();
+			this.codec = executor != null ? new CodecExecutorAdapter(executor, this) : null;
+		}
+		else {
+			this.codec = codec;
+		}
 		
 		ITimer timer = handler.getFactory().getTimer();
 		if (timer == null) {
@@ -161,6 +168,10 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		else {
 			this.timer = new InternalSessionTimer(InternalSession.this, timer);
 		}
+	}
+	
+	protected InternalSession(String name, IHandler handler, ILogger logger) {
+		this(name, handler, null, logger);
 	}
 	
 	abstract IEncodeTaskWriter getEncodeTaskWriter(); 
@@ -355,6 +366,84 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 		return false;
 	}
+
+	void close(boolean isEos) {
+		SelectionKey key = this.key;
+		
+		if (key != null && key.isValid()) {
+			try {
+				synchronized (writeLock) {
+					key = detectRebuild(key);
+					if (closing == ClosingState.NONE) {
+						int ops = key.interestOps();
+						
+						this.isEOS = isEos;
+						if ((ops & SelectionKey.OP_WRITE) != 0) {
+							//To enable gentle close OP_READ must be set 
+							if (isEos) {
+								key.interestOps(ops & ~SelectionKey.OP_READ);
+							} 
+							else if ((ops & SelectionKey.OP_READ) == 0) {
+								key.interestOps(ops | SelectionKey.OP_READ);
+								lazyWakeup();
+							}
+							closing = ClosingState.SENDING;
+						}
+						else {
+							if (isEos) {
+								//Executed in the selector loop thread, so we can skip sending events now
+								closing = ClosingState.FINISHED;
+								key.channel().close();
+							}
+							else {
+								//To enable gentle close OP_READ must be set 
+								if ((ops & SelectionKey.OP_READ) == 0) {
+									key.interestOps(ops | SelectionKey.OP_READ);
+									lazyWakeup();
+								}
+								closing = ClosingState.FINISHING;
+								((ChannelContext<?>)key.attachment()).shutdown(key.channel());
+							}
+						}
+					}
+					else if (isEos) {
+						closing = ClosingState.FINISHED;
+						key.channel().close();
+					}
+
+					if (!key.isValid()) {
+						loop.finishInvalidatedKey(key);
+					}
+				}
+			} catch (Exception e) {
+			}
+		}
+		else {
+			quickClose();
+		}
+	}
+	
+	/**
+	 * Handles closing operation being in progress. It should be executed only
+	 * when the output buffers have no more data after compacting. It should be executed inside 
+	 * the same synchronized block as the compacting method
+	 * @see compactOutBuffers
+	 */
+	void handleClosingInProgress() {
+		if (closing == ClosingState.SENDING) {
+			try {
+				if (isEOS) {
+					closing = ClosingState.FINISHED;
+					key.channel().close();
+				}
+				else {
+					closing = ClosingState.FINISHING;
+					((ChannelContext<?>)key.attachment()).shutdown(key.channel());
+				}
+			} catch (Exception e) {
+			}
+		}
+	}	
 
 	/**
 	 * Resumes read, write or both if session is not in closing state. It should

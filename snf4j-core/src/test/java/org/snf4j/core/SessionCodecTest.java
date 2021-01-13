@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -43,6 +44,7 @@ import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.CompoundDecoder;
 import org.snf4j.core.codec.CompoundEncoder;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
@@ -129,6 +131,25 @@ public class SessionCodecTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 	}
+	
+	@Test
+	public void testCodecAdapterProtectedConstructor() throws Exception {
+		DefaultCodecExecutor executor = new DefaultCodecExecutor();
+		TestCodecAdapter adapter = new TestCodecAdapter(executor);
+		
+		assertTrue(executor == adapter.executor);
+		assertNull(adapter.session);
+		Field f = CodecExecutorAdapter.class.getDeclaredField("datagram");
+		f.setAccessible(true);
+		assertFalse(f.getBoolean(adapter));
+	}
+	
+	static class TestCodecAdapter extends CodecExecutorAdapter { 
+		protected TestCodecAdapter(ICodecExecutor executor) {
+			super(executor);
+		}
+	}
+	
 	@Test
 	public void testGetCodecPipeline() throws Exception {
 		DefaultCodecExecutor p = new DefaultCodecExecutor();

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,8 @@ class EncodeTask implements Runnable {
 	SocketAddress remoteAddress;
 	
 	int length;
+	
+	private IEncodeTaskWriter writer;	
 	
 	private final void init(final byte[] bytes) {
 		if (session.optimizeCopying) {
@@ -186,32 +188,65 @@ class EncodeTask implements Runnable {
 		return future;
 	}
 	
-	private final IFuture<Void> write(final IEncodeTaskWriter writer, final List<Object> out, boolean withFuture) {
+	protected void setWriter(IEncodeTaskWriter writer) {
+		this.writer = writer;
+	}
+	
+	protected IFuture<Void> write(byte[] data, boolean withFuture) {
+		return writer.write(remoteAddress, data, withFuture);
+	}
+
+	protected IFuture<Void> write(ByteBuffer data, boolean withFuture) {
+		return writer.write(remoteAddress, data, withFuture);
+	}
+	
+	private final IFuture<Void> write(final List<Object> out, boolean withFuture) {
 		Iterator<Object> i = out.iterator();
 		Object data = i.next();
 	
 		if (data.getClass() == byte[].class) {
 			for (;;) {
 				if (i.hasNext()) {
-					writer.write(remoteAddress, (byte[])data, false);
+					write((byte[])data, false);
 					data = i.next();
 				}
 				else {
-					return writer.write(remoteAddress, (byte[])data, withFuture);
+					return write((byte[])data, withFuture);
 				}
 			}
 		}
 		else {
 			for (;;) {
 				if (i.hasNext()) {
-					writer.write(remoteAddress, (ByteBuffer)data, false);
+					write((ByteBuffer)data, false);
 					data = i.next();
 				}
 				else {
-					return writer.write(remoteAddress, (ByteBuffer)data, withFuture);
+					return write((ByteBuffer)data, withFuture);
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Returns {@code null} if there is no encoder
+	 */
+	protected List<Object> encode(Object msg) throws Exception {
+		return session.codec.encode(msg);
+	}
+	
+	/**
+	 * Returns {@code null} if there is no encoder
+	 */
+	protected List<Object> encode(byte[] bytes) throws Exception {
+		return session.codec.encode(bytes);
+	}
+	
+	/**
+	 * Returns {@code null} if there is no encoder
+	 */
+	protected List<Object> encode(ByteBuffer buffer) throws Exception {
+		return session.codec.encode(buffer);
 	}
 	
 	@Override
@@ -223,7 +258,7 @@ class EncodeTask implements Runnable {
 		
 		try  {
 			if (msg != null) {
-				out = session.codec.encode(msg);
+				out = encode(msg);
 				if (out == null) {
 					if (withFuture) {
 						future.setDelegate(futures.getCancelledFuture());
@@ -232,11 +267,11 @@ class EncodeTask implements Runnable {
 				}
 			}
 			else if (bytes != null) {
-				out = session.codec.encode(bytes);
+				out = encode(bytes);
 				isBuffer = false;
 			}
 			else {
-				out = session.codec.encode(buffer);
+				out = encode(buffer);
 				isBuffer = true;
 			}
 		}
@@ -252,7 +287,7 @@ class EncodeTask implements Runnable {
 			return;
 		}
 
-		IEncodeTaskWriter writer = session.getEncodeTaskWriter();
+		setWriter(session.getEncodeTaskWriter());
 		IFuture<Void> tmpFuture;
 		
 		try {
@@ -261,14 +296,14 @@ class EncodeTask implements Runnable {
 					tmpFuture = withFuture ? futures.getSuccessfulFuture() : null;
 				}
 				else {
-					tmpFuture = write(writer, out, withFuture);
+					tmpFuture = write(out, withFuture);
 				}
 			}
 			else if (isBuffer) {
-				tmpFuture = writer.write(remoteAddress, buffer, withFuture);
+				tmpFuture = write(buffer, withFuture);
 			}
 			else {
-				tmpFuture = writer.write(remoteAddress, bytes, withFuture);
+				tmpFuture = write(bytes, withFuture);
 			}
 		}
 		catch (Exception e) {
