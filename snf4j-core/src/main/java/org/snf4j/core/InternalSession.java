@@ -423,6 +423,39 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 	
+	@Override
+	public void quickClose() {
+		SelectionKey key = this.key;
+		closeCalled.set(true);
+		
+		if (key != null && key.isValid()) {
+			try {
+				synchronized (writeLock) {
+					key = detectRebuild(key);
+					closing = ClosingState.FINISHED;
+					key.channel().close();
+				}
+			}
+			catch (Exception e) {
+			}
+		}
+		else if (channel != null) {
+			try {
+				close(channel);
+			} catch (IOException e) {
+			}
+		}
+
+		if (key != null) {
+			loop.finishInvalidatedKey(key);
+		}
+	}
+
+	@Override
+	public void dirtyClose() {
+		quickClose();
+	}
+	
 	/**
 	 * Handles closing operation being in progress. It should be executed only
 	 * when the output buffers have no more data after compacting. It should be executed inside 
