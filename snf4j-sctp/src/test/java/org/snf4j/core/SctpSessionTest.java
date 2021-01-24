@@ -28,12 +28,18 @@ public class SctpSessionTest {
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
-		assertEquals("", c.getTrace());
-		assertEquals("", s.getTrace());
+		assertEquals("SCR|SOP|RDY|", c.getTrace());
+		assertEquals("SCR|SOP|RDY|", s.getTrace());
 	}
 	
 	@Test
 	public void testSimpleConnection() throws Exception {
 		startClientServer();
+		
+		c.session.close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getTrace());
+		assertEquals("SCL|SEN|", s.getTrace());
 	}
 }

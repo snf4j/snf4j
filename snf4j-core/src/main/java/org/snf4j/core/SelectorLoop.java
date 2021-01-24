@@ -315,7 +315,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	}
 	
 	@Override
-	void handleRegisteredKey(SelectionKey key, PendingRegistration reg) {
+	void handleRegisteredKey(SelectionKey key, PendingRegistration reg) throws Exception {
 		SelectableChannel channel = reg.channel;
 		ChannelContext<?> ctx = reg.ctx;
 		

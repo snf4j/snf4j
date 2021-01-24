@@ -65,7 +65,7 @@ abstract class ChannelContext<T> {
 		return true;
 	}
 	
-	boolean completeRegistration(SelectorLoop loop, SelectionKey key, SelectableChannel channel) {
+	boolean completeRegistration(SelectorLoop loop, SelectionKey key, SelectableChannel channel) throws Exception {
 		return true;
 	}
 	

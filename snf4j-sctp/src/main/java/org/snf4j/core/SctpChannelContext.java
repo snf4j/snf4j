@@ -7,10 +7,16 @@ import java.util.Queue;
 
 import org.snf4j.core.SctpSession.SctpRecord;
 import org.snf4j.core.handler.DataEvent;
-import org.snf4j.core.handler.ISctpHandler;
 
+import com.sun.nio.sctp.AbstractNotificationHandler;
+import com.sun.nio.sctp.AssociationChangeNotification;
+import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.MessageInfo;
+import com.sun.nio.sctp.Notification;
+import com.sun.nio.sctp.PeerAddressChangeNotification;
 import com.sun.nio.sctp.SctpChannel;
+import com.sun.nio.sctp.SendFailedNotification;
+import com.sun.nio.sctp.ShutdownNotification;
 
 public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 
@@ -22,6 +28,26 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 	public boolean finishConnect(SelectableChannel channel) throws Exception {
 		return ((SctpChannel)channel).finishConnect();
 	}
+	
+	@Override
+	final boolean completeRegistration(SelectorLoop loop, SelectionKey key, SelectableChannel channel) throws Exception {
+		SctpChannel sc = (SctpChannel) channel;
+
+		if (!sc.getRemoteAddresses().isEmpty()) {
+			key.interestOps(SelectionKey.OP_READ);
+		}
+		else if (sc.isConnectionPending() || sc.isOpen()) {
+			key.interestOps(SelectionKey.OP_CONNECT);
+			return false;
+		}
+		else {
+			//If the channel is closed notify session
+			loop.fireCreatedEvent(getSession(), channel);
+			loop.fireEndingEvent(getSession(), false);
+			return false;
+		}
+		return true;
+	}	
 	
 	@Override
 	ChannelContext<SctpSession> wrap(InternalSession session) {
@@ -36,8 +62,11 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 			handleReading(loop, context, key);
 			doWrite = key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0);
 		}
-		else {
+		else if (key.isWritable()) {
 			doWrite = key.isWritable();
+		}
+		else if (key.isConnectable()) {
+			loop.handleConnecting(context, key);
 		}
 		if (doWrite) {
 			int spinCount = context.maxWriteSpinCount;
@@ -48,6 +77,37 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 		}
 	}	
 	
+	final private static AbstractNotificationHandler<SctpSession> HANDLER = new AbstractNotificationHandler<SctpSession>() {
+		
+		@Override
+		public HandlerResult handleNotification(PeerAddressChangeNotification notification, SctpSession session) {
+			return HandlerResult.CONTINUE;
+		}
+		
+		@Override
+		public HandlerResult handleNotification(AssociationChangeNotification notification, SctpSession session) {
+			if (notification.event() == AssociationChangeNotification.AssocChangeEvent.SHUTDOWN) {
+				session.markShutdown();
+			}
+			return HandlerResult.CONTINUE;
+		}
+		
+		@Override
+		public HandlerResult handleNotification(Notification notification, SctpSession session) {
+			return HandlerResult.CONTINUE;
+		}
+		
+		@Override
+		public HandlerResult handleNotification(SendFailedNotification notification, SctpSession session) {
+			return HandlerResult.CONTINUE;
+		}
+		
+		@Override
+		public HandlerResult handleNotification(ShutdownNotification notification, SctpSession session) {
+			return HandlerResult.CONTINUE;
+		}
+	};
+	
 	private final void handleReading(final SelectorLoop loop, final SctpSession session, final SelectionKey key) {
 		boolean traceEnabled = loop.traceEnabled;
 		MessageInfo minfo;
@@ -57,10 +117,7 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 		}
 		
 		try {
-			ISctpHandler handler = session.getHandler();
-			minfo = ((SctpChannel)key.channel()).receive(session.getInBuffer(), 
-					handler.getNotificationAttachment(), 
-					handler.getNotificationHandler());
+			minfo = ((SctpChannel)key.channel()).receive(session.getInBuffer(), session, HANDLER);
 		} catch (IOException e) {
 			loop.elogWarnOrError(loop.logger, "Reading from channel in {} failed: {}", session, e);
 			loop.fireException(session, e);
@@ -83,13 +140,18 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 			}
 			else if (bytes < 0) {
 				if (loop.debugEnabled) {
-					loop.logger.debug("Closing channel in {} after reaching end-of-stream", session);
+					loop.logger.debug("Channel in {} reached end-of-stream", session);
 				}
-				session.close(true);
 			}
 			else {
 				session.consumeInBufferAfterNoRead();
 			}
+		}	
+		if (session.markedShutdown()) {
+			if (loop.debugEnabled) {
+				loop.logger.debug("Closing channel in {} after shutdown", session);
+			}
+			session.close(true);
 		}
 	}
 	

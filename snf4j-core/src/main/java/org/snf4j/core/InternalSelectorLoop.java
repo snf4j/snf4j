@@ -754,7 +754,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		}
 	}
 	
-	private final void handleRegistration(SelectionKey key, PendingRegistration reg) {
+	private final void handleRegistration(SelectionKey key, PendingRegistration reg) throws Exception {
 		if (reg.ctx.isSession()) {
 			handleRegisteredKey(key, reg);
 		}
@@ -1183,7 +1183,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		handleInvalidKey(key, stoppingKeys, false);
 	}
 	
-	abstract void handleRegisteredKey(SelectionKey key, PendingRegistration reg);
+	abstract void handleRegisteredKey(SelectionKey key, PendingRegistration reg) throws Exception;
 	
 	abstract SelectionKey handleSelectedKey(SelectionKey key);
 	

@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.ISctpHandler;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.ISctpSession;
@@ -36,6 +37,8 @@ public class SctpSession extends InternalSession implements ISctpSession {
 	
 	private final int maxInBufferCapacity;
 	
+	private boolean shutdown;
+	
 	ISctpEncodeTaskWriter encodeTaskWriter;
 	
 	public SctpSession(String name, ISctpHandler handler) {
@@ -56,6 +59,14 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		ICodecExecutor executor = handler.getConfig().createCodecExecutor();
 		
 		return executor != null ? new SctpCodecExecutorAdapter(executor, handler) : null;
+	}
+	
+	void markShutdown() {
+		shutdown = true;
+	}
+	
+	boolean markedShutdown() {
+		return shutdown;
 	}
 	
 	@Override
@@ -182,6 +193,20 @@ public class SctpSession extends InternalSession implements ISctpSession {
 	@Override
 	public SocketAddress getRemoteAddress() {
 		return null;
+	}
+	
+	@Override
+	void event(SessionEvent event) {
+		super.event(event);
+		if (event == SessionEvent.OPENED && !closeCalled.get()) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Firing event {} for {}", EventType.SESSION_READY, this);
+			}
+			super.event(SessionEvent.READY);
+			if (logger.isTraceEnabled()) {
+				logger.trace("Ending event {} for {}", EventType.SESSION_READY, this);
+			}
+		}
 	}
 
 	@Override
