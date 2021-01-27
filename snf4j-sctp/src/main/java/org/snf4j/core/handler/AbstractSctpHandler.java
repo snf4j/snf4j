@@ -7,8 +7,9 @@ import org.snf4j.core.session.ISctpSession;
 import org.snf4j.core.session.ISctpSessionConfig;
 import org.snf4j.core.session.ISession;
 
+import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.MessageInfo;
-import com.sun.nio.sctp.NotificationHandler;
+import com.sun.nio.sctp.Notification;
 
 abstract public class AbstractSctpHandler extends AbstractHandler implements ISctpHandler {
 	
@@ -55,12 +56,8 @@ abstract public class AbstractSctpHandler extends AbstractHandler implements ISc
 	}
 	
 	@Override
-	public Object getNotificationAttachment() {
-		return null;
+	public HandlerResult notification(Notification notification, SctpNotificationType type) {
+		return HandlerResult.CONTINUE;
 	}
-	
-	@Override
-	public NotificationHandler<Object> getNotificationHandler() {
-		return null;
-	}
+
 }

@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.ISctpHandler;
+import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
@@ -17,7 +18,9 @@ import org.snf4j.core.session.ISctpSession;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
 
+import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.MessageInfo;
+import com.sun.nio.sctp.Notification;
 
 public class SctpSession extends InternalSession implements ISctpSession {
 	
@@ -209,6 +212,10 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		}
 	}
 
+	HandlerResult notification(Notification notification, SctpNotificationType type) {
+		return ((ISctpHandler)handler).notification(notification, type);
+	}
+	
 	@Override
 	void preCreated() {
 		if (!optimizeBuffers) {

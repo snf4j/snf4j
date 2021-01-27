@@ -9,14 +9,16 @@ import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.ISctpHandler;
+import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefalutSctpSessionConfig;
 import org.snf4j.core.session.ISctpSessionConfig;
 import org.snf4j.core.session.ISession;
 
+import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.MessageInfo;
-import com.sun.nio.sctp.NotificationHandler;
+import com.sun.nio.sctp.Notification;
 
 public class TestSctpHandler implements ISctpHandler {
 
@@ -154,12 +156,8 @@ public class TestSctpHandler implements ISctpHandler {
 	}
 
 	@Override
-	public Object getNotificationAttachment() {
-		return null;
-	}
-
-	@Override
-	public NotificationHandler<Object> getNotificationHandler() {
+	public HandlerResult notification(Notification notification, SctpNotificationType type) {
+		trace("N|" + notification.getClass().getSimpleName()+"|"+type+"|");
 		return null;
 	}
 

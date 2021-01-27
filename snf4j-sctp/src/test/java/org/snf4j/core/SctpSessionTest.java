@@ -3,7 +3,10 @@ package org.snf4j.core;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Test;
+
+import com.sun.nio.sctp.SctpChannel;
 
 public class SctpSessionTest {
 	
@@ -14,6 +17,25 @@ public class SctpSessionTest {
 	SctpServer s;
 	
 	SctpClient c;
+	
+	public final static boolean SUPPORTED;
+	
+	static {
+		boolean supported;
+		
+		try {
+			SctpChannel.open();
+			supported = true;
+		}
+		catch (Exception e) {
+			supported = false;
+		}
+		SUPPORTED = supported;
+	}
+	
+	public static void assumeSupported() {
+		Assume.assumeTrue(SUPPORTED);
+	}
 	
 	@After
 	public void after() throws Exception {
@@ -34,6 +56,7 @@ public class SctpSessionTest {
 	
 	@Test
 	public void testSimpleConnection() throws Exception {
+		assumeSupported();
 		startClientServer();
 		
 		c.session.close();

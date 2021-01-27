@@ -7,6 +7,7 @@ import java.util.Queue;
 
 import org.snf4j.core.SctpSession.SctpRecord;
 import org.snf4j.core.handler.DataEvent;
+import org.snf4j.core.handler.SctpNotificationType;
 
 import com.sun.nio.sctp.AbstractNotificationHandler;
 import com.sun.nio.sctp.AssociationChangeNotification;
@@ -81,7 +82,7 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 		
 		@Override
 		public HandlerResult handleNotification(PeerAddressChangeNotification notification, SctpSession session) {
-			return HandlerResult.CONTINUE;
+			return session.notification(notification, SctpNotificationType.PEER_ADDRESS_CHANGE);
 		}
 		
 		@Override
@@ -89,22 +90,22 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 			if (notification.event() == AssociationChangeNotification.AssocChangeEvent.SHUTDOWN) {
 				session.markShutdown();
 			}
-			return HandlerResult.CONTINUE;
+			return session.notification(notification, SctpNotificationType.ASSOCIATION_CHANGE);
 		}
 		
 		@Override
 		public HandlerResult handleNotification(Notification notification, SctpSession session) {
-			return HandlerResult.CONTINUE;
+			return session.notification(notification, SctpNotificationType.GENERIC);
 		}
 		
 		@Override
 		public HandlerResult handleNotification(SendFailedNotification notification, SctpSession session) {
-			return HandlerResult.CONTINUE;
+			return session.notification(notification, SctpNotificationType.SEND_FAILED);
 		}
 		
 		@Override
 		public HandlerResult handleNotification(ShutdownNotification notification, SctpSession session) {
-			return HandlerResult.CONTINUE;
+			return session.notification(notification, SctpNotificationType.SHUTDOWN);
 		}
 	};
 	
