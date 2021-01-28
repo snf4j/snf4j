@@ -3,8 +3,6 @@ package org.snf4j.core.session;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.ISctpHandler;
 
-import com.sun.nio.sctp.MessageInfo;
-
 public interface ISctpSession extends ISession {
 	
 	@Override
@@ -13,7 +11,7 @@ public interface ISctpSession extends ISession {
 	@Override
 	ISctpSession getParent();
 
-	IFuture<Void> write(byte[] data, MessageInfo msgInfo);
+	IFuture<Void> write(byte[] msg, SctpWriteInfo info);
 	
-	void writenf(byte[] data, MessageInfo msgInfo);
+	void writenf(byte[] msg, SctpWriteInfo info);
 }

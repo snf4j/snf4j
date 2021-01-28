@@ -16,6 +16,7 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.ISctpSession;
 import org.snf4j.core.session.IllegalSessionStateException;
+import org.snf4j.core.session.SctpWriteInfo;
 import org.snf4j.core.session.SessionState;
 
 import com.sun.nio.sctp.HandlerResult;
@@ -247,12 +248,20 @@ public class SctpSession extends InternalSession implements ISctpSession {
 	}
 	
 	@Override
-	public IFuture<Void> write(byte[] data, MessageInfo msgInfo) {
+	public IFuture<Void> write(byte[] msg, SctpWriteInfo info) {
+		if (msg == null) {
+			throw new NullPointerException();
+		} else if (msg.length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+		if (codec != null) {
+		}
+		
 		return null;
 	}
 
 	@Override
-	public void writenf(byte[] data, MessageInfo msgInfo) {
+	public void writenf(byte[] msg, SctpWriteInfo info) {
 	}
 
 	static class SctpRecord {
