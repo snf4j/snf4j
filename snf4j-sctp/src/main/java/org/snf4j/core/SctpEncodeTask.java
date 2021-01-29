@@ -5,11 +5,9 @@ import java.util.List;
 
 import org.snf4j.core.future.IFuture;
 
-import com.sun.nio.sctp.MessageInfo;
-
 public class SctpEncodeTask extends EncodeTask {
 	
-	MessageInfo msgInfo;
+	ImmutableSctpMessageInfo msgInfo;
 	
 	private ISctpEncodeTaskWriter writer;
 	
@@ -33,12 +31,12 @@ public class SctpEncodeTask extends EncodeTask {
 		super(session, msg);
 	}
 	
-	final void registernf(MessageInfo msgInfo) {
+	final void registernf(ImmutableSctpMessageInfo msgInfo) {
 		this.msgInfo = msgInfo;
 		registernf();
 	}
 	
-	final IFuture<Void> register(MessageInfo msgInfo) {
+	final IFuture<Void> register(ImmutableSctpMessageInfo msgInfo) {
 		this.msgInfo = msgInfo;
 		return register();
 	}

@@ -9,7 +9,6 @@ import org.snf4j.core.handler.AbstractSctpHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.ISctpHandler;
 import org.snf4j.core.handler.SessionEvent;
-import org.snf4j.core.session.SctpWriteInfo;
 
 import com.sun.nio.sctp.MessageInfo;
 import com.sun.nio.sctp.SctpChannel;
@@ -118,8 +117,8 @@ public class SctpServer {
 			SctpServer.this.trace(s);
 		}
 		
-		SctpWriteInfo respMsgInfo(MessageInfo msgInfo) {
-			return SctpWriteInfo.create(msgInfo.streamNumber());
+		ImmutableSctpMessageInfo respMsgInfo(MessageInfo msgInfo) {
+			return ImmutableSctpMessageInfo.create(msgInfo.streamNumber());
 		}
 		
 		@Override

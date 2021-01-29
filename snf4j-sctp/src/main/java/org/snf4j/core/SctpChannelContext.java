@@ -174,7 +174,7 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 			while (spinCount > 0 && (record = outQueue.peek()) != null) {
 				long length = record.buffer.remaining();
 				
-				bytes = channel.send(record.buffer, record.msgInfo);
+				bytes = channel.send(record.buffer, record.msgInfo.unwrap());
 				
 				if (bytes == length) {
 					if (traceEnabled) {

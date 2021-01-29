@@ -106,7 +106,7 @@ public class SctpEncodeTaskTest {
 	
 	@Test
 	public void testRegister() throws Exception {
-		MessageInfo msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 10);
+		ImmutableSctpMessageInfo msgInfo = ImmutableSctpMessageInfo.create(new InetSocketAddress(100), 10);
 		SctpSession s = prepareSession(null);	
 		
 		SctpEncodeTask task = new SctpEncodeTask(s, "1234".getBytes());
@@ -122,7 +122,7 @@ public class SctpEncodeTaskTest {
 	
 	@Test
 	public void testWrite() throws Exception {
-		MessageInfo msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 10);
+		ImmutableSctpMessageInfo msgInfo = ImmutableSctpMessageInfo.create(new InetSocketAddress(100), 10);
 		SctpSession s = prepareSession(null);	
 		
 		SctpEncodeTask task = new SctpEncodeTask(s, "1234".getBytes());
@@ -156,7 +156,7 @@ public class SctpEncodeTaskTest {
 	
 	@Test
 	public void testEncodeMsg() throws Exception {
-		MessageInfo msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 10);
+		ImmutableSctpMessageInfo msgInfo = ImmutableSctpMessageInfo.create(new InetSocketAddress(100), 10);
 		DefaultCodecExecutor codec = new DefaultCodecExecutor();
 		codec.getPipeline().add("1", new MsgEncoder());
 
@@ -170,7 +170,7 @@ public class SctpEncodeTaskTest {
 
 	@Test
 	public void testEncodeBytes() throws Exception {
-		MessageInfo msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 10);
+		ImmutableSctpMessageInfo msgInfo = ImmutableSctpMessageInfo.create(new InetSocketAddress(100), 10);
 		DefaultCodecExecutor codec = new DefaultCodecExecutor();
 		codec.getPipeline().add("1", new MsgEncoder());
 		codec.getPipeline().add("2", new BytesEncoder());
@@ -185,7 +185,7 @@ public class SctpEncodeTaskTest {
 	
 	@Test
 	public void testEncodeBuffer() throws Exception {
-		MessageInfo msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 10);
+		ImmutableSctpMessageInfo msgInfo = ImmutableSctpMessageInfo.create(new InetSocketAddress(100), 10);
 		DefaultCodecExecutor codec = new DefaultCodecExecutor();
 		codec.getPipeline().add("1", new MsgEncoder());
 		codec.getPipeline().add("2", new BufferEncoder());
@@ -212,11 +212,8 @@ public class SctpEncodeTaskTest {
 		assertEquals(prefix + "Session-S1 length=7]", task.toString());
 		task.future = s.futuresController.getDelegatingFuture();
 		assertEquals(prefix + "Session-S1 length=7 future]", task.toString());
-		task.msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 10);
-		task.msgInfo.payloadProtocolID(2);
+		task.msgInfo = ImmutableSctpMessageInfo.create(new InetSocketAddress(100), 10, 2);
 		assertEquals(prefix + "Session-S1 length=7 future stream=10 protocol=2]", task.toString());
-		
-		
 	}
 	
 	class MsgEncoder implements IEncoder<String, byte[]> {
@@ -303,7 +300,7 @@ public class SctpEncodeTaskTest {
 		}
 
 		@Override
-		public IFuture<Void> write(MessageInfo msgInfo, ByteBuffer buffer, boolean withFuture) {
+		public IFuture<Void> write(ImmutableSctpMessageInfo msgInfo, ByteBuffer buffer, boolean withFuture) {
 			this.msgInfo = msgInfo;
 			this.buffer = buffer;
 			this.bytes = null;
@@ -311,7 +308,7 @@ public class SctpEncodeTaskTest {
 		}
 
 		@Override
-		public IFuture<Void> write(MessageInfo msgInfo, byte[] bytes, boolean withFuture) {
+		public IFuture<Void> write(ImmutableSctpMessageInfo msgInfo, byte[] bytes, boolean withFuture) {
 			this.msgInfo = msgInfo;
 			this.buffer = null;
 			this.bytes = bytes;

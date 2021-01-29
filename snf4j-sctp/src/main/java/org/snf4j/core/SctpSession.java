@@ -16,7 +16,6 @@ import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.ISctpSession;
 import org.snf4j.core.session.IllegalSessionStateException;
-import org.snf4j.core.session.SctpWriteInfo;
 import org.snf4j.core.session.SessionState;
 
 import com.sun.nio.sctp.HandlerResult;
@@ -101,10 +100,10 @@ public class SctpSession extends InternalSession implements ISctpSession {
 				if (closing != ClosingState.NONE) {
 					return -1;
 				}
-				outQueue.add(record);
-				setWriteInterestOps(key);
 				outQueueSize += record.buffer.remaining();
 				futureExpectedLen = outQueueSize + getWrittenBytes();
+				outQueue.add(record);
+				setWriteInterestOps(key);
 			}
 		}
 		catch (CancelledKeyException e) {
@@ -247,29 +246,66 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		return outQueue;
 	}
 	
+	private IFuture<Void> writeFuture(long expectedLen) {
+		if (expectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(expectedLen);
+	}
+	
+	private SctpRecord createRecord(ImmutableSctpMessageInfo msgInfo, byte[] msg, int offset, int length) {
+		SctpRecord record = new SctpRecord(msgInfo);
+		
+		if (optimizeCopying && allocator.usesArray()) {
+			record.buffer = ByteBuffer.wrap(msg, offset, length);
+		}
+		else {
+			ByteBuffer buffer = allocator.allocate(length);
+			
+			buffer.put(msg, offset, length).flip();
+			record.buffer = buffer;
+			record.release = true;
+		}
+		return record;
+	}
+	
+	private long write0(ImmutableSctpMessageInfo msgInfo, byte[] msg, int offset, int length) {
+		return write0(createRecord(msgInfo, msg, offset, length));
+	}
+	
 	@Override
-	public IFuture<Void> write(byte[] msg, SctpWriteInfo info) {
+	public IFuture<Void> write(byte[] msg, ImmutableSctpMessageInfo msgInfo) {
 		if (msg == null) {
 			throw new NullPointerException();
 		} else if (msg.length == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
 		if (codec != null) {
+			return new SctpEncodeTask(this, msg).register(msgInfo);
 		}
-		
-		return null;
+		return writeFuture(write0(msgInfo, msg, 0, msg.length));
 	}
 
 	@Override
-	public void writenf(byte[] msg, SctpWriteInfo info) {
+	public void writenf(byte[] msg, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) {
+			throw new NullPointerException();
+		} else if (msg.length > 0) {
+			if (codec != null) {
+				new SctpEncodeTask(this, msg).registernf(msgInfo);
+			}
+			else {
+				write0(msgInfo, msg, 0, msg.length);
+			}
+		}
 	}
 
 	static class SctpRecord {
-		final MessageInfo msgInfo;
+		final ImmutableSctpMessageInfo msgInfo;
 		ByteBuffer buffer;
 		boolean release;
 		
-		SctpRecord(MessageInfo msgInfo) {
+		SctpRecord(ImmutableSctpMessageInfo msgInfo) {
 			this.msgInfo = msgInfo;
 		}
 	}
@@ -287,7 +323,7 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		}
 
 		@Override
-		public IFuture<Void> write(MessageInfo msgInfo, ByteBuffer buffer, boolean withFuture) {
+		public IFuture<Void> write(ImmutableSctpMessageInfo msgInfo, ByteBuffer buffer, boolean withFuture) {
 			SctpRecord record = new SctpRecord(msgInfo);
 			
 			record.buffer = buffer;
@@ -300,7 +336,7 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		}
 
 		@Override
-		public IFuture<Void> write(MessageInfo msgInfo, byte[] bytes, boolean withFuture) {
+		public IFuture<Void> write(ImmutableSctpMessageInfo msgInfo, byte[] bytes, boolean withFuture) {
 			SctpRecord record = new SctpRecord(msgInfo);
 			
 			record.buffer = ByteBuffer.wrap(bytes);

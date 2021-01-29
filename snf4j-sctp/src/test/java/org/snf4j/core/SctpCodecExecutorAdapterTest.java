@@ -79,7 +79,7 @@ public class SctpCodecExecutorAdapterTest {
 		
 		SctpSession s = new SctpSession("S1", handler);	
 		SctpEncodeTask task = new SctpEncodeTask(s, "");
-		task.msgInfo = msgInfo;
+		task.msgInfo = ImmutableSctpMessageInfo.wrap(msgInfo);
 		msgInfo.streamNumber(9).payloadProtocolID(99);
 		List<Object> out = task.encode("...");
 		assertEquals("D|...", new String((byte[])out.get(0)));
@@ -134,7 +134,7 @@ public class SctpCodecExecutorAdapterTest {
 		
 		s = new SctpSession("S1", handler);
 		task = new SctpEncodeTask(s, "");
-		task.msgInfo = msgInfo;
+		task.msgInfo = ImmutableSctpMessageInfo.wrap(msgInfo);
 		msgInfo.streamNumber(0).payloadProtocolID(Integer.MIN_VALUE);
 		out = task.encode("...");
 		assertEquals("0|-2147483648|...", new String((byte[])out.get(0)));
@@ -168,7 +168,7 @@ public class SctpCodecExecutorAdapterTest {
 	
 	@Test
 	public void testEncodeBytes() throws Exception {
-		MessageInfo msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 0);
+		ImmutableSctpMessageInfo msgInfo = ImmutableSctpMessageInfo.create(new InetSocketAddress(100), 15, 170);
 		DefaultCodecExecutor codec = new DefaultCodecExecutor();
 		codec.getPipeline().add("1", new StringEncoder("D|"));
 		TestSctpHandler handler = new TestSctpHandler(codec);
@@ -181,14 +181,13 @@ public class SctpCodecExecutorAdapterTest {
 		SctpSession s = new SctpSession("S1", handler);	
 		SctpEncodeTask task = new SctpEncodeTask(s, "");
 		task.msgInfo = msgInfo;
-		msgInfo.streamNumber(15).payloadProtocolID(170);
 		List<Object> out = task.encode("...".getBytes());
 		assertEquals("15|170|...b", new String((byte[])out.get(0)));
 	}
 
 	@Test
 	public void testEncodeBuffer() throws Exception {
-		MessageInfo msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 0);
+		ImmutableSctpMessageInfo msgInfo = ImmutableSctpMessageInfo.create(new InetSocketAddress(100), 15, 170);
 		DefaultCodecExecutor codec = new DefaultCodecExecutor();
 		codec.getPipeline().add("1", new StringEncoder("D|"));
 		TestSctpHandler handler = new TestSctpHandler(codec);
@@ -201,7 +200,6 @@ public class SctpCodecExecutorAdapterTest {
 		SctpSession s = new SctpSession("S1", handler);	
 		SctpEncodeTask task = new SctpEncodeTask(s, "");
 		task.msgInfo = msgInfo;
-		msgInfo.streamNumber(15).payloadProtocolID(170);
 		List<Object> out = task.encode(ByteBuffer.wrap("...".getBytes()));
 		assertEquals("15|170|...bb", new String((byte[])out.get(0)));
 	}
