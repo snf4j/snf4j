@@ -5,11 +5,11 @@ import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
-public class DefalutSctpSessionConfigTest {
+public class DefaultSctpSessionConfigTest {
 	
 	@Test
 	public void testAll() throws Exception {
-		DefalutSctpSessionConfig config = new DefalutSctpSessionConfig();
+		DefaultSctpSessionConfig config = new DefaultSctpSessionConfig();
 		
 		assertEquals(0, config.getMinSctpStreamNumber());
 		assertEquals(65536, config.getMaxSctpStreamNumber());

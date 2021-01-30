@@ -1,6 +1,7 @@
 package org.snf4j.core;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.util.Queue;
@@ -33,21 +34,31 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 	@Override
 	final boolean completeRegistration(SelectorLoop loop, SelectionKey key, SelectableChannel channel) throws Exception {
 		SctpChannel sc = (SctpChannel) channel;
-
-		if (!sc.getRemoteAddresses().isEmpty()) {
-			key.interestOps(SelectionKey.OP_READ);
+		boolean open = sc.isOpen();
+		
+		if (open) {
+			if (!sc.isConnectionPending()) {
+				try {
+					if (!sc.getRemoteAddresses().isEmpty()) {
+						key.interestOps(SelectionKey.OP_READ);
+						return true;
+					}
+				}
+				catch (ClosedChannelException e) {
+					open = false;
+				}
+			}
 		}
-		else if (sc.isConnectionPending() || sc.isOpen()) {
+			
+		if (open) {
 			key.interestOps(SelectionKey.OP_CONNECT);
-			return false;
 		}
 		else {
 			//If the channel is closed notify session
 			loop.fireCreatedEvent(getSession(), channel);
 			loop.fireEndingEvent(getSession(), false);
-			return false;
-		}
-		return true;
+		}			
+		return false;
 	}	
 	
 	@Override

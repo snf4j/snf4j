@@ -4,7 +4,7 @@ import org.snf4j.core.codec.ICodecExecutor;
 
 import com.sun.nio.sctp.MessageInfo;
 
-public class DefalutSctpSessionConfig extends DefaultSessionConfig implements ISctpSessionConfig {
+public class DefaultSctpSessionConfig extends DefaultSessionConfig implements ISctpSessionConfig {
 
 	private int minSctpStreamNumber = 0;
 	
@@ -24,7 +24,7 @@ public class DefalutSctpSessionConfig extends DefaultSessionConfig implements IS
 		return minSctpStreamNumber;
 	}
 	
-	public DefalutSctpSessionConfig setMinSctpStreamNumber(int minStreamNumber) {
+	public DefaultSctpSessionConfig setMinSctpStreamNumber(int minStreamNumber) {
 		minSctpStreamNumber = minStreamNumber;
 		return this;
 	}
@@ -34,7 +34,7 @@ public class DefalutSctpSessionConfig extends DefaultSessionConfig implements IS
 		return maxSctpStreamNumber;
 	}
 
-	public DefalutSctpSessionConfig setMaxSctpStreamNumber(int maxStreamNumber) {
+	public DefaultSctpSessionConfig setMaxSctpStreamNumber(int maxStreamNumber) {
 		maxSctpStreamNumber = maxStreamNumber;
 		return this;
 	}
@@ -44,7 +44,7 @@ public class DefalutSctpSessionConfig extends DefaultSessionConfig implements IS
 		return minSctpPayloadProtocolID;
 	}
 
-	public DefalutSctpSessionConfig setMinSctpPayloadProtocolID(int minPayloadProtocolID) {
+	public DefaultSctpSessionConfig setMinSctpPayloadProtocolID(int minPayloadProtocolID) {
 		minSctpPayloadProtocolID = minPayloadProtocolID;
 		return this;
 	}
@@ -54,7 +54,7 @@ public class DefalutSctpSessionConfig extends DefaultSessionConfig implements IS
 		return maxSctpPayloadProtocolID;
 	}
 
-	public DefalutSctpSessionConfig setMaxSctpPayloadProtocolID(int maxPayloadProtocolID) {
+	public DefaultSctpSessionConfig setMaxSctpPayloadProtocolID(int maxPayloadProtocolID) {
 		maxSctpPayloadProtocolID = maxPayloadProtocolID;
 		return this;
 	}

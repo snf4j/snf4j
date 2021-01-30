@@ -9,7 +9,10 @@ import org.snf4j.core.handler.AbstractSctpHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.ISctpHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.DefaultSctpSessionConfig;
+import org.snf4j.core.session.ISctpSessionConfig;
 
+import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.MessageInfo;
 import com.sun.nio.sctp.SctpChannel;
 import com.sun.nio.sctp.SctpServerChannel;
@@ -37,6 +40,20 @@ public class SctpServer {
 	AtomicBoolean dataSentLock = new AtomicBoolean(false);
 	
 	StringBuilder trace = new StringBuilder();
+	
+	public volatile boolean traceMsgInfo = true;
+	
+	public volatile boolean traceFullMsgInfo;
+	
+	public volatile int maxWriteSpinCount = -1;
+	
+	EventType closeInEvent;
+	
+	StoppingType closeType = StoppingType.GENTLE;
+	
+	EventType writeInEvent;
+	
+	Packet packetToWriteInEvent;
 
 	SctpServer(int port) {
 		this.port = port;
@@ -117,8 +134,58 @@ public class SctpServer {
 			SctpServer.this.trace(s);
 		}
 		
+		@Override
+		public ISctpSessionConfig getConfig() {
+			DefaultSctpSessionConfig config = new DefaultSctpSessionConfig();
+			
+			if (maxWriteSpinCount != -1) {
+				config.setMaxWriteSpinCount(maxWriteSpinCount);
+			}
+			return config;
+		}
+		
 		ImmutableSctpMessageInfo respMsgInfo(MessageInfo msgInfo) {
 			return ImmutableSctpMessageInfo.create(msgInfo.streamNumber());
+		}
+		
+		String toString(MessageInfo msgInfo) {
+			StringBuilder sb = new StringBuilder();
+			int i;
+			long l;
+			boolean b;
+			
+			i = msgInfo.streamNumber();
+			if (i != 0) {
+				sb.append(i);
+			}
+			i = msgInfo.payloadProtocolID();
+			if (i != 0) {
+				sb.append("p");
+				sb.append(i);
+			}
+			b = msgInfo.isComplete();
+			if (!b) {
+				sb.append("!c");
+			}
+			b = msgInfo.isUnordered();
+			if (b) {
+				sb.append("u");
+			}
+			l = msgInfo.timeToLive();
+			if (l != 0) {
+				sb.append("t");
+				sb.append(l);
+			}
+			if (traceFullMsgInfo) {
+				Association a = msgInfo.association();
+				
+				if (a != null) {
+					sb.append("a");
+					sb.append(a.associationID());
+				}
+				sb.append(msgInfo.address());
+			}
+			return sb.length() > 0 ? "[" + sb.toString() + "]" : "";
 		}
 		
 		@Override
@@ -140,8 +207,13 @@ public class SctpServer {
 		@Override
 		public void read(byte[] msg, MessageInfo msgInfo) {
 			Packet packet = Packet.fromBytes(msg);
+			String info = "";
 			
-			trace(packet.type + "(" + packet.payload + ")");
+			if (traceMsgInfo) {
+				info = toString(msgInfo);
+			}
+			
+			trace(packet.type + "(" + packet.payload + ")" + info);
 			
 			switch (packet.type) {
 			case ECHO:
@@ -183,6 +255,25 @@ public class SctpServer {
 			default:
 				break;
 
+			}
+			
+			if (writeInEvent == type && packetToWriteInEvent != null) {
+				getSession().writenf(packetToWriteInEvent.toBytes(), ImmutableSctpMessageInfo.create(0));
+				packetToWriteInEvent = null;
+			}
+			
+			if (closeInEvent == type) {
+				switch (closeType) {
+				case GENTLE:
+					getSession().close();
+					break;
+				case QUICK:
+					getSession().quickClose();
+					break;
+				case DIRTY:
+					getSession().dirtyClose();
+					break;
+				}
 			}
 		}	
 		

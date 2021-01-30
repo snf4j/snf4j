@@ -12,7 +12,7 @@ import org.snf4j.core.handler.ISctpHandler;
 import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
-import org.snf4j.core.session.DefalutSctpSessionConfig;
+import org.snf4j.core.session.DefaultSctpSessionConfig;
 import org.snf4j.core.session.ISctpSessionConfig;
 import org.snf4j.core.session.ISession;
 
@@ -128,7 +128,7 @@ public class TestSctpHandler implements ISctpHandler {
 
 	@Override
 	public ISctpSessionConfig getConfig() {
-		return new DefalutSctpSessionConfig() {
+		return new DefaultSctpSessionConfig() {
 			
 			@Override
 			public ICodecExecutor createCodecExecutor() {

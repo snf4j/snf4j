@@ -22,6 +22,18 @@ import com.sun.nio.sctp.ShutdownNotification;
 public class SctpChannelContextTest {
 	
 	@Test
+	public void testWrap() {
+		TestSctpHandler handler = new TestSctpHandler();
+		SctpSession session = new SctpSession(handler);
+		
+		SctpChannelContext ctx = new SctpChannelContext(session);
+		ChannelContext<SctpSession> ctx2  = ctx.wrap(session);
+		assertFalse(ctx2 == ctx);
+		assertTrue(ctx2.getSession() == session);
+		assertTrue(ctx2.getClass() == SctpChannelContext.class);
+	}
+	
+	@Test
 	public void testNotificationHandler() throws Exception {
 		Field f = SctpChannelContext.class.getDeclaredField("HANDLER");
 		TestSctpHandler handler = new TestSctpHandler();

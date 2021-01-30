@@ -2,7 +2,7 @@ package org.snf4j.core.handler;
 
 import java.nio.ByteBuffer;
 
-import org.snf4j.core.session.DefalutSctpSessionConfig;
+import org.snf4j.core.session.DefaultSctpSessionConfig;
 import org.snf4j.core.session.ISctpSession;
 import org.snf4j.core.session.ISctpSessionConfig;
 import org.snf4j.core.session.ISession;
@@ -14,11 +14,11 @@ import com.sun.nio.sctp.Notification;
 abstract public class AbstractSctpHandler extends AbstractHandler implements ISctpHandler {
 	
 	protected AbstractSctpHandler() {
-		super(new DefalutSctpSessionConfig());
+		super(new DefaultSctpSessionConfig());
 	}
 	
 	protected AbstractSctpHandler(String name) {
-		super(name, new DefalutSctpSessionConfig());
+		super(name, new DefaultSctpSessionConfig());
 	}
 
 	@Override
