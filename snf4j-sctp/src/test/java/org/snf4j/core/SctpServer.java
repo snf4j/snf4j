@@ -2,15 +2,23 @@ package org.snf4j.core;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.snf4j.core.allocator.DefaultAllocator;
+import org.snf4j.core.allocator.IByteBufferAllocator;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.factory.AbstractSctpSessionFactory;
+import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractSctpHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.ISctpHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.DefaultSctpSessionConfig;
 import org.snf4j.core.session.ISctpSessionConfig;
+import org.snf4j.core.timer.ITimeoutModel;
+import org.snf4j.core.timer.ITimer;
 
 import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.MessageInfo;
@@ -45,7 +53,13 @@ public class SctpServer {
 	
 	public volatile boolean traceFullMsgInfo;
 	
+	public volatile boolean traceDataLength;
+	
 	public volatile int maxWriteSpinCount = -1;
+	
+	public volatile boolean optimizeCopying;
+	
+	public volatile long throughputCalculationInterval;
 	
 	EventType closeInEvent;
 	
@@ -54,6 +68,8 @@ public class SctpServer {
 	EventType writeInEvent;
 	
 	Packet packetToWriteInEvent;
+	
+	TestAllocator allocator;
 
 	SctpServer(int port) {
 		this.port = port;
@@ -127,6 +143,37 @@ public class SctpServer {
 		}
 		
 	}
+	class SessionStructureFactory implements ISessionStructureFactory {
+
+		@Override
+		public IByteBufferAllocator getAllocator() {
+			if (allocator != null) {
+				return allocator;
+			}
+			return DefaultAllocator.DEFAULT;
+		}
+
+		@Override
+		public ConcurrentMap<Object, Object> getAttributes() {
+			return null;
+		}
+
+		@Override
+		public Executor getExecutor() {
+			return null;
+		}
+
+		@Override
+		public ITimer getTimer() {
+			return null;
+		}
+
+		@Override
+		public ITimeoutModel getTimeoutModel() {
+			return null;
+		}
+		
+	}
 	
 	class Handler extends AbstractSctpHandler {
 
@@ -138,6 +185,8 @@ public class SctpServer {
 		public ISctpSessionConfig getConfig() {
 			DefaultSctpSessionConfig config = new DefaultSctpSessionConfig();
 			
+			config.setOptimizeDataCopying(optimizeCopying);
+			config.setThroughputCalculationInterval(throughputCalculationInterval);
 			if (maxWriteSpinCount != -1) {
 				config.setMaxWriteSpinCount(maxWriteSpinCount);
 			}
@@ -189,6 +238,11 @@ public class SctpServer {
 		}
 		
 		@Override
+		public ISessionStructureFactory getFactory() {
+			return new SessionStructureFactory();
+		}
+		
+		@Override
 		public void read(Object msg, MessageInfo msgInfo) {
 			if (msg instanceof ByteBuffer) {
 				ByteBuffer bb = (ByteBuffer)msg;
@@ -219,13 +273,26 @@ public class SctpServer {
 			case ECHO:
 				getSession().writenf(new Packet(PacketType.ECHO_RESPONSE).toBytes(), respMsgInfo(msgInfo));
 				break;
+				
+			case WRITE_AND_CLOSE:
+				getSession().writenf(new Packet(PacketType.WRITE_AND_CLOSE_RESPONSE, packet.payload).toBytes(),
+						respMsgInfo(msgInfo));
+				getSession().close();
+				getSession().writenf(new Packet(PacketType.NOP).toBytes(), respMsgInfo(msgInfo));
+				break;
+
 			}
 			
 			LockUtils.notify(dataReadLock);
 		}
 		
 		private void event(EventType type, long length) {
-			trace(Server.eventMapping.get(type));
+			if (length != -1 && traceDataLength) {
+				trace(Server.eventMapping.get(type) + "(" + length + ")");
+			}
+			else {
+				trace(Server.eventMapping.get(type));
+			}
 			
 			switch (type) {
 			case SESSION_CREATED:
@@ -285,6 +352,13 @@ public class SctpServer {
 		@Override
 		public void event(DataEvent event, long length) {
 			event(event.type(), length);
+		}
+		
+		@Override
+		public void exception(Throwable t) {
+			EventType type = EventType.EXCEPTION_CAUGHT;
+			
+			event(type, -1);
 		}
 		
 	}

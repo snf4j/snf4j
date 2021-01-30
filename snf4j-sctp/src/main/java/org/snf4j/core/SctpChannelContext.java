@@ -159,6 +159,10 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 				session.consumeInBufferAfterNoRead();
 			}
 		}	
+		else {
+			session.consumeInBufferAfterNoRead();
+		}
+		
 		if (session.markedShutdown()) {
 			if (loop.debugEnabled) {
 				loop.logger.debug("Closing channel in {} after shutdown", session);

@@ -16,6 +16,12 @@ public class TestSctpChannel extends SctpChannel {
 
 	IOException remoteAddressesException;
 	
+	IOException receiveException;
+
+	IOException sendException;
+	
+	MessageInfo msgInfo;
+	
 	protected TestSctpChannel() {
 		super(null);
 	}
@@ -75,11 +81,17 @@ public class TestSctpChannel extends SctpChannel {
 
 	@Override
 	public <T> MessageInfo receive(ByteBuffer arg0, T arg1, NotificationHandler<T> arg2) throws IOException {
-		return null;
+		if (receiveException != null) {
+			throw receiveException;
+		}
+		return msgInfo;
 	}
 
 	@Override
 	public int send(ByteBuffer arg0, MessageInfo arg1) throws IOException {
+		if (sendException != null) {
+			throw sendException;
+		}
 		return 0;
 	}
 
