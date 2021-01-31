@@ -1,6 +1,8 @@
 package org.snf4j.core;
 
+import java.net.SocketAddress;
 import java.nio.channels.SelectableChannel;
+import java.util.Iterator;
 
 import org.snf4j.core.factory.ISctpSessionFactory;
 
@@ -43,4 +45,37 @@ public class SctpServerChannelContext extends ServerChannelContext<ISctpSessionF
 		context.exception((SctpServerChannel) channel, t);
 	}
 
+	@Override
+	final String toString(SelectableChannel channel) {		
+		if (channel instanceof SctpChannel) {
+			return SctpChannelContext.toString((SctpChannel) channel);
+		}
+		else if (channel instanceof SctpServerChannel) {
+			StringBuilder sb = new StringBuilder(100);
+			
+			sb.append(channel.getClass().getName());
+			sb.append('[');
+			try {
+				Iterator<SocketAddress> i = ((SctpServerChannel)channel).getAllLocalAddresses().iterator();
+				
+				if (i.hasNext()) {
+					sb.append(i.next());
+					while (i.hasNext()) {
+						sb.append(',');
+						sb.append(i.next());
+					}
+				}
+				else {
+					sb.append("not bound");
+				}
+			}
+			catch (Exception e) {
+				sb.append("unknown");
+			}
+			sb.append(']');
+			return sb.toString();
+		}
+		return super.toString(channel);
+	}
+	
 }

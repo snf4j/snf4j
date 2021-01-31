@@ -2,6 +2,9 @@ package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.channels.SelectionKey;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -142,4 +145,18 @@ public class SctpTest {
 		});
 		LockUtils.waitFor(lock, millis);
 	}
+	
+	InetSocketAddress address(int port) {
+		return new InetSocketAddress("127.0.0.1", port);
+	}
+	
+	InetSocketAddress address(SocketAddress address, int port) {
+		return new InetSocketAddress(((InetSocketAddress)address).getAddress(), port);
+	}
+	
+	InetSocketAddress address(InetAddress address, int port) {
+		return new InetSocketAddress(address, port);
+	}
+	
+	
 }

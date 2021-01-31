@@ -274,6 +274,11 @@ public class SctpServer {
 				getSession().writenf(new Packet(PacketType.ECHO_RESPONSE).toBytes(), respMsgInfo(msgInfo));
 				break;
 				
+			case WRITE_AND_QUICK_CLOSE:
+				getSession().writenf(new Packet(PacketType.NOP).toBytes(), respMsgInfo(msgInfo));
+				getSession().quickClose();
+				break;
+				
 			case WRITE_AND_CLOSE:
 				getSession().writenf(new Packet(PacketType.WRITE_AND_CLOSE_RESPONSE, packet.payload).toBytes(),
 						respMsgInfo(msgInfo));

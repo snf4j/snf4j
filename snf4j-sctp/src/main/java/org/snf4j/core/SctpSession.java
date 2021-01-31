@@ -1,10 +1,15 @@
 package org.snf4j.core;
 
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.snf4j.core.codec.ICodecExecutor;
@@ -21,6 +26,7 @@ import org.snf4j.core.session.SessionState;
 import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.MessageInfo;
 import com.sun.nio.sctp.Notification;
+import com.sun.nio.sctp.SctpChannel;
 
 public class SctpSession extends InternalSession implements ISctpSession {
 	
@@ -188,14 +194,52 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		close(false);
 	}
 
+	private Set<SocketAddress> getAddresses(boolean local) {
+		SelectableChannel channel = this.channel;
+		
+		if (channel instanceof SctpChannel && channel.isOpen()) {
+			try {
+				if (local) {
+					return ((SctpChannel)channel).getAllLocalAddresses();
+				}
+				else {
+					return ((SctpChannel)channel).getRemoteAddresses();
+				}
+			} catch (IOException e) {
+				// Ignore
+			}
+		}
+		return Collections.emptySet();
+	}
+	
 	@Override
 	public SocketAddress getLocalAddress() {
+		Iterator<SocketAddress> i = getAddresses(true).iterator();
+		
+		if (i.hasNext()) {
+			return i.next();
+		}
 		return null;
 	}
 
 	@Override
 	public SocketAddress getRemoteAddress() {
+		Iterator<SocketAddress> i = getAddresses(false).iterator();
+		
+		if (i.hasNext()) {
+			return i.next();
+		}
 		return null;
+	}
+	
+	@Override
+	public Set<SocketAddress> getLocalAddresses() {
+		return getAddresses(true);
+	}
+	
+	@Override
+	public Set<SocketAddress> getRemoteAddresses() {
+		return getAddresses(false);
 	}
 	
 	@Override

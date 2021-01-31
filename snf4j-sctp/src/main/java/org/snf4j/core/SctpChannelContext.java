@@ -1,10 +1,13 @@
 package org.snf4j.core;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
+import java.util.Iterator;
 import java.util.Queue;
+import java.util.Set;
 
 import org.snf4j.core.SctpSession.SctpRecord;
 import org.snf4j.core.handler.DataEvent;
@@ -241,5 +244,55 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 	@Override
 	final void shutdown(SelectableChannel channel) throws Exception {
 		((SctpChannel)channel).shutdown();
-	}	
+	}
+	
+	private static boolean append(StringBuilder sb, Set<SocketAddress> addrs) {
+		Iterator<SocketAddress> i = addrs.iterator();
+		
+		if (i.hasNext()) {
+			sb.append(i.next());
+			while (i.hasNext()) {
+				sb.append(',');
+				sb.append(i.next());
+			}
+			return true;
+		}
+		return false;
+	}
+	
+	static String toString(SctpChannel channel) {
+		StringBuilder sb = new StringBuilder(100);
+		Set<SocketAddress> addrs;
+		
+		sb.append(channel.getClass().getName());
+		sb.append("[local=");
+		try {
+			if (!append(sb, channel.getAllLocalAddresses())) {
+				sb.append("not bound");
+			}
+		} catch (IOException e) {
+			sb.append("unknown");
+		}
+		try {
+			addrs = channel.getRemoteAddresses();
+			if (!addrs.isEmpty()) {
+				sb.append(",remote=");
+				if (!append(sb, addrs)) {
+					sb.append("not connected");
+				}
+			}
+		} catch (IOException e) {
+			sb.append(",remote=unknown");
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+	
+	@Override
+	final String toString(SelectableChannel channel) {
+		if (channel instanceof SctpChannel) {
+			return toString((SctpChannel) channel);
+		}
+		return super.toString(channel);
+	}
 }

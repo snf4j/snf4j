@@ -15,6 +15,8 @@ import com.sun.nio.sctp.SctpSocketOption;
 public class TestSctpChannel extends SctpChannel {
 
 	IOException remoteAddressesException;
+
+	IOException localAddressesException;
 	
 	IOException receiveException;
 
@@ -58,6 +60,9 @@ public class TestSctpChannel extends SctpChannel {
 
 	@Override
 	public Set<SocketAddress> getAllLocalAddresses() throws IOException {
+		if (localAddressesException != null) {
+			throw localAddressesException;
+		}
 		return null;
 	}
 
