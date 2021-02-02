@@ -57,6 +57,7 @@ class SctpFragments {
 				}
 				else {
 					fragment.clear();
+					fragment = allocator.ensure(fragment, msg.position(), minCapacity, maxCapacity);
 				}
 				msg.flip();
 				fragment.put(msg);

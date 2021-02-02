@@ -7,6 +7,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.snf4j.core.future.IFuture;
+
 import com.sun.nio.sctp.SctpChannel;
 
 public class SctpClient extends SctpServer {
@@ -23,11 +25,11 @@ public class SctpClient extends SctpServer {
 		super(port);
 	}
 	
-	public void start() throws Exception {
-		start(null);
+	public IFuture<Void> start() throws Exception {
+		return start(null);
 	}
 	
-	public void start(SctpChannel channel) throws Exception {
+	public IFuture<Void> start(SctpChannel channel) throws Exception {
 		if (loop == null) {
 			loop = new SelectorLoop();
 			if (loopStart) {
@@ -51,7 +53,7 @@ public class SctpClient extends SctpServer {
 		else {
 			sc = channel;
 		}
-		Sctp.register(loop, sc, new SctpSession(new Handler()));
+		return Sctp.register(loop, sc, new SctpSession(new Handler()));
 	}
 	
 }

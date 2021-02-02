@@ -133,10 +133,6 @@ public class SctpSession extends InternalSession implements ISctpSession {
 			inBuffer = allocator.allocate(inBufferCapacity);
 			return inBuffer;
 		}
-		if (inBuffer.position() == inBuffer.capacity()) {
-			inBuffer = allocator.extend((ByteBuffer) inBuffer.clear(), maxInBufferCapacity);
-			inBufferCapacity = inBuffer.capacity();
-		}
 		return inBuffer;
 	}
 	
@@ -146,32 +142,30 @@ public class SctpSession extends InternalSession implements ISctpSession {
 			return;
 		}
 		inBuffer = fragments.complete(msgInfo.streamNumber(), inBuffer);
-		inBuffer.flip();
-		if (inBuffer.hasRemaining()) {
-			ISctpReader handler = superCodec();
-			
-			if (optimizeBuffers) {
-				ByteBuffer data = inBuffer;
-				
-				inBuffer = null;
-				handler.read(data, msgInfo);
-			}
-			else {
-				byte[] data = new byte[inBuffer.remaining()];
-				
-				inBuffer.get(data);
-				inBuffer.clear();
-				handler.read(data, msgInfo);
-			}
+		if (inBuffer.capacity() > inBufferCapacity) {
+			inBufferCapacity = inBuffer.capacity();
 		}
-		else if (optimizeBuffers) {
-			allocator.release(inBuffer);
+		inBuffer.flip();
+		
+		ISctpReader handler = superCodec();
+
+		if (optimizeBuffers) {
+			ByteBuffer data = inBuffer;
+
 			inBuffer = null;
+			handler.read(data, msgInfo);
+		}
+		else {
+			byte[] data = new byte[inBuffer.remaining()];
+
+			inBuffer.get(data);
+			inBuffer.clear();
+			handler.read(data, msgInfo);
 		}
 	}
 	
 	void consumeInBufferAfterNoRead() {	
-		if (optimizeBuffers && inBuffer.position() == 0) {
+		if (optimizeBuffers) {
 			allocator.release(inBuffer);
 			inBuffer = null;
 		}
@@ -313,8 +307,39 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		return record;
 	}
 	
+	private SctpRecord createRecord(ImmutableSctpMessageInfo msgInfo, ByteBuffer msg, int length) {
+		SctpRecord record = new SctpRecord(msgInfo);
+		boolean allRemaining = length == msg.remaining();
+		
+		if (optimizeCopying && allRemaining) {
+			record.buffer = msg;
+			record.release = optimizeBuffers;
+		}
+		else {
+			ByteBuffer buf = allocator.allocate(length);
+			
+			if (allRemaining) {
+				buf.put(msg).flip();
+			}
+			else {
+				ByteBuffer dup = msg.duplicate();
+				
+				dup.limit(dup.position() + length);
+				buf.put(dup).flip();
+				msg.position(dup.position());
+			}
+			record.buffer = buf;
+			record.release = true;
+		}
+		return record;
+	}	
+	
 	private long write0(ImmutableSctpMessageInfo msgInfo, byte[] msg, int offset, int length) {
 		return write0(createRecord(msgInfo, msg, offset, length));
+	}
+	
+	private long write0(ImmutableSctpMessageInfo msgInfo, ByteBuffer msg, int length) {
+		return write0(createRecord(msgInfo, msg, length));
 	}
 	
 	@Override
@@ -344,6 +369,31 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		}
 	}
 
+	public IFuture<Void> write(ByteBuffer msg, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) {
+			throw new NullPointerException();
+		} else if (msg.remaining() == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+		if (codec != null) {
+			return new SctpEncodeTask(this, msg).register(msgInfo);
+		}
+		return writeFuture(write0(msgInfo, msg, msg.remaining()));
+	}
+	
+	public void writenf(ByteBuffer msg, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) {
+			throw new NullPointerException();
+		} else if (msg.remaining() > 0) {
+			if (codec != null) {
+				new SctpEncodeTask(this, msg).registernf(msgInfo);
+			}
+			else {
+				write0(msgInfo, msg, msg.remaining());
+			}
+		}
+	}
+	
 	static class SctpRecord {
 		final ImmutableSctpMessageInfo msgInfo;
 		ByteBuffer buffer;

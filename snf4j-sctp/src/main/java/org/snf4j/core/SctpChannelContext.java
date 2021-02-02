@@ -125,6 +125,7 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 	
 	private final void handleReading(final SelectorLoop loop, final SctpSession session, final SelectionKey key) {
 		boolean traceEnabled = loop.traceEnabled;
+		boolean consumed = false;
 		MessageInfo minfo;
 		
 		if (traceEnabled) {
@@ -152,17 +153,16 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 				session.incReadBytes(bytes, currentTime);
 				loop.fireEvent(session, DataEvent.RECEIVED, bytes);
 				session.consumeInBuffer(minfo);
+				consumed = true;
 			}
 			else if (bytes < 0) {
 				if (loop.debugEnabled) {
 					loop.logger.debug("Channel in {} reached end-of-stream", session);
 				}
 			}
-			else {
-				session.consumeInBufferAfterNoRead();
-			}
 		}	
-		else {
+
+		if (!consumed) {
 			session.consumeInBufferAfterNoRead();
 		}
 		
@@ -265,24 +265,37 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 		Set<SocketAddress> addrs;
 		
 		sb.append(channel.getClass().getName());
-		sb.append("[local=");
+		sb.append('[');
+		try {
+			addrs = channel.getRemoteAddresses();
+			if (!addrs.isEmpty()) {
+				sb.append("connected ");
+			}
+			else if (channel.isConnectionPending()) {
+				sb.append("connection-pending ");
+			}
+			else {
+				sb.append("not-connected ");
+			}
+		} catch (IOException e) {
+			addrs = null;
+		}
+		sb.append("local=");
 		try {
 			if (!append(sb, channel.getAllLocalAddresses())) {
-				sb.append("not bound");
+				sb.append("not-bound");
 			}
 		} catch (IOException e) {
 			sb.append("unknown");
 		}
-		try {
-			addrs = channel.getRemoteAddresses();
+		if (addrs != null) {
 			if (!addrs.isEmpty()) {
-				sb.append(",remote=");
-				if (!append(sb, addrs)) {
-					sb.append("not connected");
-				}
+				sb.append(" remote=");
+				append(sb, addrs);
 			}
-		} catch (IOException e) {
-			sb.append(",remote=unknown");
+		}
+		else {
+			sb.append(" remote=unknown");
 		}
 		sb.append(']');
 		return sb.toString();

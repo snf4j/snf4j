@@ -2,6 +2,7 @@ package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.util.Arrays;
 
@@ -491,6 +493,41 @@ public class SctpChannelContextTest extends SctpTest {
 		s.session.writenf(nopb("123456789"), info(0));
 		c.waitForDataRead(TIMEOUT);
 		assertTrue(0.0 < c.session.getReadBytesThroughput());
+	}
+	
+	void assertToString(String expected, String value) {
+		assertEquals(TestSctpChannel.class.getName() + expected, value);
+	}
+	
+	@Test
+	public void testToString() {
+		ChannelContext<?> ctx = new SctpChannelContext(null);
+		TestSctpChannel sc = new TestSctpChannel();
+		
+		InetSocketAddress a1 = address(2001);
+		InetSocketAddress a2 = address(2002);
+		InetSocketAddress a3 = address(2003);
+		InetSocketAddress a4 = address(2004);
+		
+		assertNull(ctx.toString((SelectableChannel)null));
+		assertToString("[not-connected local=not-bound]", ctx.toString(sc));
+		sc.connectionPending = true;
+		assertToString("[connection-pending local=not-bound]", ctx.toString(sc));		
+		sc.localAddresses.add(a1);
+		assertToString("[connection-pending local="+a1+"]", ctx.toString(sc));		
+		sc.localAddresses.add(a2);
+		assertToString("[connection-pending local="+a1+","+a2+"]", ctx.toString(sc));
+		sc.remoteAddresses.add(a3);
+		assertToString("[connected local="+a1+","+a2+" remote="+a3+"]", ctx.toString(sc));
+		sc.remoteAddresses.add(a4);
+		assertToString("[connected local="+a1+","+a2+" remote="+a3+","+a4+"]", ctx.toString(sc));
+		sc.remoteAddressesException = new IOException();
+		assertToString("[local="+a1+","+a2+" remote=unknown]", ctx.toString(sc));
+		sc.remoteAddressesException = null;
+		sc.localAddressesException = new IOException();
+		assertToString("[connected local=unknown remote="+a3+","+a4+"]", ctx.toString(sc));
+		sc.remoteAddressesException = new IOException();
+		assertToString("[local=unknown remote=unknown]", ctx.toString(sc));
 	}
 	
 	@Test

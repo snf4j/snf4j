@@ -11,6 +11,7 @@ import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.factory.AbstractSctpSessionFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.AbstractSctpHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.ISctpHandler;
@@ -55,11 +56,17 @@ public class SctpServer {
 	
 	public volatile boolean traceDataLength;
 	
+	public volatile boolean traceSessionFactory;
+	
 	public volatile int maxWriteSpinCount = -1;
 	
 	public volatile boolean optimizeCopying;
 	
 	public volatile long throughputCalculationInterval;
+	
+	public volatile int minInBufferCapacity = -1;
+	
+	public volatile int maxInBufferCapacity = -1;
 	
 	EventType closeInEvent;
 	
@@ -70,6 +77,8 @@ public class SctpServer {
 	Packet packetToWriteInEvent;
 	
 	TestAllocator allocator;
+	
+	ByteBuffer readBuffer;
 
 	SctpServer(int port) {
 		this.port = port;
@@ -92,7 +101,7 @@ public class SctpServer {
 		return s;
 	}
 	
-	public void start() throws Exception {
+	public IFuture<Void> start() throws Exception {
 		if (loop == null) {
 			loop = new SelectorLoop();
 			loop.start();
@@ -101,7 +110,7 @@ public class SctpServer {
 		ssc = SctpServerChannel.open();
 		ssc.configureBlocking(false);
 		ssc.bind(new InetSocketAddress(port));
-		Sctp.register(loop, ssc, new SessionFactory());
+		return Sctp.register(loop, ssc, new SessionFactory());
 	}
 	
 	public void stop(long millis) throws Exception {
@@ -140,6 +149,21 @@ public class SctpServer {
 		@Override
 		protected ISctpHandler createHandler(SctpChannel channel) {
 			return new Handler();
+		}
+		
+		@Override
+		public void registered(SctpServerChannel channel) {
+			if (traceSessionFactory) trace("REGISTERED");
+		}
+
+		@Override
+		public void closed(SctpServerChannel channel) {
+			if (traceSessionFactory) trace("CLOSED");
+		}
+
+		@Override
+		public void exception(SctpServerChannel channel, Throwable exception) {
+			if (traceSessionFactory) trace("EXCEPTION(" + exception.getMessage() + ")");
 		}
 		
 	}
@@ -189,6 +213,12 @@ public class SctpServer {
 			config.setThroughputCalculationInterval(throughputCalculationInterval);
 			if (maxWriteSpinCount != -1) {
 				config.setMaxWriteSpinCount(maxWriteSpinCount);
+			}
+			if (minInBufferCapacity != -1) {
+				config.setMinInBufferCapacity(minInBufferCapacity);
+			}
+			if (maxInBufferCapacity != -1) {
+				config.setMaxInBufferCapacity(maxInBufferCapacity);
 			}
 			return config;
 		}
@@ -249,6 +279,7 @@ public class SctpServer {
 				byte[] b = new byte[bb.remaining()];
 				
 				bb.get(b);
+				readBuffer = bb;
 				trace("BUF");
 				read(b, msgInfo);
 				return;				

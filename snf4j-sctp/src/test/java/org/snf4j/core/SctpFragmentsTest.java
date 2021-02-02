@@ -126,6 +126,53 @@ public class SctpFragmentsTest {
 		b = f.complete(1, b2);
 		assertTrue(b == b2);
 		assertBuffer("WW", 16, b);
+		
+		//release = false
+		f = prepare(false, false);
+		b1 = buffer("1233");
+		b2 = buffer("WW");
+		assertInternals(f, SctpFragments.State.EMPTY, -1, null, null);
+		assertTrue(b1 == f.store(1, b1));
+		assertInternals(f, SctpFragments.State.SINGLE, 1, allocated(0), null);
+		assertAllocator(1,0);
+		assertBuffer("", 16, b1);
+		b = f.complete(1, b2);
+		assertBuffer("1233WW", 16, b);
+		assertTrue(b == allocated(0));
+		assertInternals(f, SctpFragments.State.EMPTY, -1, b2, null);
+		b1 = buffer("XXX");
+		assertTrue(b1 == f.store(1, b1));
+		assertInternals(f, SctpFragments.State.SINGLE, 1, b2, null);
+		assertBuffer("", 16, b1);
+		b1 = buffer("YYY");
+		b = f.complete(1, b1);
+		assertTrue(b == b2);
+		assertBuffer("XXXYYY", 16, b);
+		assertInternals(f, SctpFragments.State.EMPTY, -1, b1, null);
+		b2 = buffer("12345678901234567", 32);
+		assertAllocator(1,0);
+		assertTrue(b2 == f.store(1, b2));
+		assertBuffer("", 32, b2);
+		b1 = buffer("MM");
+		b = f.complete(1, b1);
+		assertBuffer("12345678901234567MM", 32, b);
+		assertInternals(f, SctpFragments.State.EMPTY, -1, b1, null);
+
+		//buffer exception
+		assertEquals(16, b1.capacity());
+		b2 = buffer("12345678901234567", 32);
+		assertTrue(b2 == f.store(1, b2));
+		b1 = buffer("123456789012345");
+		assertEquals(16, b1.capacity());
+		b = f.complete(1, b1);
+		assertInternals(f, SctpFragments.State.EMPTY, -1, b1, null);
+		b2 = buffer("123456789012345612345678901234567", 64);
+		try {
+			f.store(1, b2);
+			fail();
+		}
+		catch (IndexOutOfBoundsException e) {
+		}
 	}
 	
 	@Test

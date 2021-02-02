@@ -2,9 +2,12 @@ package org.snf4j.core;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 import java.util.Set;
+import java.util.TreeSet;
 
 import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.MessageInfo;
@@ -14,15 +17,29 @@ import com.sun.nio.sctp.SctpSocketOption;
 
 public class TestSctpChannel extends SctpChannel {
 
+	public Set<SocketAddress> localAddresses = new TreeSet<SocketAddress>(new AddrComparator());
+
+	public Set<SocketAddress> remoteAddresses = new TreeSet<SocketAddress>(new AddrComparator());
+	
 	IOException remoteAddressesException;
 
 	IOException localAddressesException;
+	
+	boolean connectionPending;
 	
 	IOException receiveException;
 
 	IOException sendException;
 	
 	MessageInfo msgInfo;
+	
+	static class AddrComparator implements Comparator<SocketAddress> {
+
+		@Override
+		public int compare(SocketAddress o1, SocketAddress o2) {
+			return ((InetSocketAddress)o1).getPort() - ((InetSocketAddress)o2).getPort();
+		}
+	}
 	
 	protected TestSctpChannel() {
 		super(null);
@@ -63,7 +80,7 @@ public class TestSctpChannel extends SctpChannel {
 		if (localAddressesException != null) {
 			throw localAddressesException;
 		}
-		return null;
+		return localAddresses;
 	}
 
 	@Override
@@ -76,12 +93,12 @@ public class TestSctpChannel extends SctpChannel {
 		if (remoteAddressesException != null) {
 			throw remoteAddressesException;
 		}
-		return null;
+		return remoteAddresses;
 	}
 
 	@Override
 	public boolean isConnectionPending() {
-		return false;
+		return connectionPending;
 	}
 
 	@Override

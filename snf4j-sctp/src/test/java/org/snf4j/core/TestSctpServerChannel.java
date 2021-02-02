@@ -3,8 +3,8 @@ package org.snf4j.core;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketAddress;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 import com.sun.nio.sctp.SctpChannel;
 import com.sun.nio.sctp.SctpServerChannel;
@@ -12,7 +12,7 @@ import com.sun.nio.sctp.SctpSocketOption;
 
 public class TestSctpServerChannel extends SctpServerChannel {
 
-	public Set<SocketAddress> localAddresses = new HashSet<SocketAddress>();
+	public Set<SocketAddress> localAddresses = new TreeSet<SocketAddress>(new TestSctpChannel.AddrComparator());
 	
 	public IOException localAddressesException;
 	

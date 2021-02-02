@@ -66,7 +66,7 @@ public class SctpServerChannelContext extends ServerChannelContext<ISctpSessionF
 					}
 				}
 				else {
-					sb.append("not bound");
+					sb.append("not-bound");
 				}
 			}
 			catch (Exception e) {
