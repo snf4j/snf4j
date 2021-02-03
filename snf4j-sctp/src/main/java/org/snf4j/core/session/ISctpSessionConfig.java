@@ -65,4 +65,11 @@ public interface ISctpSessionConfig extends ISessionConfig {
 	 * @return the maximum payload protocol identifier
 	 */
 	int getMaxSctpPayloadProtocolID();
+	
+	int getDefaultSctpStreamNumber();
+	
+	int getDefaultSctpPayloadProtocolID();
+	
+	boolean getDefaultSctpUnorderedFlag();
+
 }

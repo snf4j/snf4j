@@ -18,6 +18,8 @@ import org.junit.Assume;
 import org.junit.Test;
 import org.snf4j.core.SctpSession.SctpRecord;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.IEncoder;
 
 import com.sun.nio.sctp.SctpChannel;
 
@@ -94,6 +96,20 @@ public class SctpTest {
 	
 	byte[] nopb(String payload) {
 		return nop(payload).toBytes();
+	}
+	
+	byte[] nopb(String payload, int off, int padding) {
+		return nop(payload).toBytes(off, padding);
+	}
+	
+	ByteBuffer nopbb;
+	
+	ByteBuffer nopbb(String payload) {
+		return nopbb = ByteBuffer.wrap(nopb(payload));
+	}
+
+	ByteBuffer nopbb(String payload, int padding) {
+		return nopbb = ByteBuffer.wrap(nopb(payload,0,padding));
 	}
 	
 	Packet nop(String head, String tail, char mid, int midLength) {
@@ -251,6 +267,18 @@ public class SctpTest {
 	
 	Queue<SctpRecord> getOut(SctpServer server) throws Exception {
 		return getOut(server.session);
+	}
+	
+	void addEncoders(SctpServer server, IEncoder<?,?>... encoders) {
+		DefaultCodecExecutor exec = server.codecExecutor;
+		
+		if (exec == null) {
+			exec = new DefaultCodecExecutor();
+			server.codecExecutor = exec;
+		}
+		for (int i=0; i<encoders.length; ++i) {
+			exec.getPipeline().add(""+i, encoders[i]);
+		}
 	}
 	
 	@Test

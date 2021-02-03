@@ -20,6 +20,7 @@ import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.ISctpSession;
+import org.snf4j.core.session.ISctpSessionConfig;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
 
@@ -48,6 +49,8 @@ public class SctpSession extends InternalSession implements ISctpSession {
 	
 	private boolean shutdown;
 	
+	private final ImmutableSctpMessageInfo defaultMsgInfo;
+	
 	ISctpEncodeTaskWriter encodeTaskWriter;
 	
 	public SctpSession(String name, ISctpHandler handler) {
@@ -55,9 +58,16 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		if (codec != null) {
 			((SctpCodecExecutorAdapter)codec).setSession(this);
 		}
+		
+		ISctpSessionConfig config = (ISctpSessionConfig) this.config;
+		
 		minInBufferCapacity = inBufferCapacity = config.getMinInBufferCapacity();
 		maxInBufferCapacity = config.getMaxInBufferCapacity();
 		fragments = new SctpFragments(allocator, minInBufferCapacity, maxInBufferCapacity, optimizeBuffers);
+		defaultMsgInfo = ImmutableSctpMessageInfo.create(
+				config.getDefaultSctpStreamNumber(),
+				config.getDefaultSctpPayloadProtocolID(),
+				config.getDefaultSctpUnorderedFlag());
 	}
 
 	public SctpSession(ISctpHandler handler) {
@@ -343,23 +353,57 @@ public class SctpSession extends InternalSession implements ISctpSession {
 	}
 	
 	@Override
+	public IFuture<Void> write(byte[] msg) {
+		return write(msg, null);
+	}
+	
+	@Override
+	public IFuture<Void> write(byte[] msg, int offset, int length) {
+		return write(msg, offset, length, null);
+	}
+	
+	@Override
 	public IFuture<Void> write(byte[] msg, ImmutableSctpMessageInfo msgInfo) {
-		if (msg == null) {
-			throw new NullPointerException();
-		} else if (msg.length == 0) {
+		if (msg == null) throw new NullPointerException();
+		else if (msg.length == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
+		if (msgInfo == null) msgInfo = defaultMsgInfo;
 		if (codec != null) {
 			return new SctpEncodeTask(this, msg).register(msgInfo);
 		}
 		return writeFuture(write0(msgInfo, msg, 0, msg.length));
 	}
+	
+	@Override
+	public IFuture<Void> write(byte[] msg, int offset, int length, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) throw new NullPointerException();
+		checkBounds(offset, length, msg.length);
+		if (length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+		if (msgInfo == null) msgInfo = defaultMsgInfo;
+		if (codec != null) {
+			return new SctpEncodeTask(this, msg, offset, length).register(msgInfo);
+		}
+		return writeFuture(write0(msgInfo, msg, offset, length));
+	}
+	
+	@Override
+	public void writenf(byte[] msg) {
+		writenf(msg, null);
+	}
+	
+	@Override
+	public void writenf(byte[] msg, int offset, int length) {
+		writenf(msg, offset, length, null);
+	}
 
 	@Override
 	public void writenf(byte[] msg, ImmutableSctpMessageInfo msgInfo) {
-		if (msg == null) {
-			throw new NullPointerException();
-		} else if (msg.length > 0) {
+		if (msg == null) throw new NullPointerException();
+		else if (msg.length > 0) {
+			if (msgInfo == null) msgInfo = defaultMsgInfo;
 			if (codec != null) {
 				new SctpEncodeTask(this, msg).registernf(msgInfo);
 			}
@@ -368,23 +412,76 @@ public class SctpSession extends InternalSession implements ISctpSession {
 			}
 		}
 	}
+	
+	@Override
+	public void writenf(byte[] msg, int offset, int length, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) throw new NullPointerException();
+		checkBounds(offset, length, msg.length);
+		if (length > 0) {
+			if (msgInfo == null) msgInfo = defaultMsgInfo;
+			if (codec != null) {
+				new SctpEncodeTask(this, msg, offset, length).registernf(msgInfo);
+			}
+			else {
+				write0(msgInfo, msg, offset, length);
+			}			
+		}
+	}
+	
+	@Override
+	public IFuture<Void> write(ByteBuffer msg) {
+		return write(msg, null);
+	}
 
+	@Override
+	public IFuture<Void> write(ByteBuffer msg, int length) {
+		return write(msg, length, null);
+	}
+	
+	@Override
 	public IFuture<Void> write(ByteBuffer msg, ImmutableSctpMessageInfo msgInfo) {
-		if (msg == null) {
-			throw new NullPointerException();
-		} else if (msg.remaining() == 0) {
+		if (msg == null) throw new NullPointerException();
+		else if (msg.remaining() == 0) {
 			return futuresController.getSuccessfulFuture();
 		}
+		if (msgInfo == null) msgInfo = defaultMsgInfo;
 		if (codec != null) {
 			return new SctpEncodeTask(this, msg).register(msgInfo);
 		}
 		return writeFuture(write0(msgInfo, msg, msg.remaining()));
 	}
+
+	@Override
+	public IFuture<Void> write(ByteBuffer msg, int length, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) throw new NullPointerException();
+		else if (msg.remaining() < length || length < 0) {
+			throw new IndexOutOfBoundsException();
+		}
+		else if (length == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+		if (msgInfo == null) msgInfo = defaultMsgInfo;
+		if (codec != null) {
+			return new SctpEncodeTask(this, msg, length).register(msgInfo);
+		}
+		return writeFuture(write0(msgInfo, msg, length));
+	}
 	
+	@Override
+	public void writenf(ByteBuffer msg) {
+		writenf(msg, null);
+	}
+	
+	@Override
+	public void writenf(ByteBuffer msg, int length) {
+		writenf(msg, length, null);
+	}
+	
+	@Override
 	public void writenf(ByteBuffer msg, ImmutableSctpMessageInfo msgInfo) {
-		if (msg == null) {
-			throw new NullPointerException();
-		} else if (msg.remaining() > 0) {
+		if (msg == null) throw new NullPointerException();
+		else if (msg.remaining() > 0) {
+			if (msgInfo == null) msgInfo = defaultMsgInfo;
 			if (codec != null) {
 				new SctpEncodeTask(this, msg).registernf(msgInfo);
 			}
@@ -394,6 +491,23 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		}
 	}
 	
+	@Override
+	public void writenf(ByteBuffer msg, int length, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) throw new NullPointerException();
+		else if (msg.remaining() < length || length < 0) {
+			throw new IndexOutOfBoundsException();
+		}
+		else if (length > 0) {
+			if (msgInfo == null) msgInfo = defaultMsgInfo;
+			if (codec != null) {
+				new SctpEncodeTask(this, msg, length).registernf(msgInfo);
+			}
+			else {
+				write0(msgInfo, msg, length);
+			}
+		}
+	}
+
 	static class SctpRecord {
 		final ImmutableSctpMessageInfo msgInfo;
 		ByteBuffer buffer;

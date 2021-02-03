@@ -9,6 +9,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.factory.AbstractSctpSessionFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.IFuture;
@@ -68,6 +70,12 @@ public class SctpServer {
 	
 	public volatile int maxInBufferCapacity = -1;
 	
+	public volatile int defaultSctpStreamNumber = -1;
+	
+	public volatile int defaultSctpPayloadProtocolID = -1;
+	
+	public volatile boolean defaultSctpUnorderedFlag;
+	
 	EventType closeInEvent;
 	
 	StoppingType closeType = StoppingType.GENTLE;
@@ -79,6 +87,8 @@ public class SctpServer {
 	TestAllocator allocator;
 	
 	ByteBuffer readBuffer;
+	
+	DefaultCodecExecutor codecExecutor;
 
 	SctpServer(int port) {
 		this.port = port;
@@ -207,7 +217,19 @@ public class SctpServer {
 		
 		@Override
 		public ISctpSessionConfig getConfig() {
-			DefaultSctpSessionConfig config = new DefaultSctpSessionConfig();
+			DefaultSctpSessionConfig config = new DefaultSctpSessionConfig() {
+				
+				@Override
+				public ICodecExecutor createCodecExecutor() {
+					return codecExecutor;
+				}
+				
+				@Override
+				public ICodecExecutor createCodecExecutor(MessageInfo msgInfo) {
+					return codecExecutor;
+				}
+				
+			};
 			
 			config.setOptimizeDataCopying(optimizeCopying);
 			config.setThroughputCalculationInterval(throughputCalculationInterval);
@@ -219,6 +241,15 @@ public class SctpServer {
 			}
 			if (maxInBufferCapacity != -1) {
 				config.setMaxInBufferCapacity(maxInBufferCapacity);
+			}
+			if (defaultSctpStreamNumber != -1) {
+				config.setDefaultSctpStreamNumber(defaultSctpStreamNumber);
+			}
+			if (defaultSctpPayloadProtocolID != -1) {
+				config.setDefaultSctpPayloadProtocolID(defaultSctpPayloadProtocolID);
+			}
+			if (defaultSctpUnorderedFlag) {
+				config.setDefaultSctpUnorderedFlag(defaultSctpUnorderedFlag);
 			}
 			return config;
 		}
