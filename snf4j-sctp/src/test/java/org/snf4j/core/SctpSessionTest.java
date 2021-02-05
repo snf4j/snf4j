@@ -17,6 +17,7 @@ import java.util.Set;
 
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.session.IllegalSessionStateException;
@@ -879,6 +880,17 @@ public class SctpSessionTest extends SctpTest {
 		} catch (IndexOutOfBoundsException e) {}
 	}
 	
+	void assertUnexpectedObject(SctpSession session) {
+		try {
+			session.write("Text");
+			fail();
+		} catch (IllegalArgumentException e) {}
+		try {
+			session.writenf("Text");
+			fail();
+		} catch (IllegalArgumentException e) {}
+	}
+	
 	@Test
 	public void testWriteMethods() throws Exception {
 		assumeSupported();
@@ -896,6 +908,7 @@ public class SctpSessionTest extends SctpTest {
 		assertNullSession(byte[].class, int.class, int.class);
 		assertNullSession(ByteBuffer.class);
 		assertNullSession(ByteBuffer.class, int.class);
+		assertNullSession(Object.class);
 		
 		//index out of bounds
 		assertOutOfBoundException(session, new byte[10], -1, 4);
@@ -976,6 +989,26 @@ public class SctpSessionTest extends SctpTest {
 		assertWrite("DR|NOP(1234nf)[5p6u]|");
 		assertEquals(0, nopbb.remaining());
 		
+		session.write((Object)nopb("1")).sync(TIMEOUT);
+		assertWrite("DR|NOP(1)|");
+		session.writenf((Object)nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		session.write((Object)nopbb("12")).sync(TIMEOUT);
+		assertWrite("DR|NOP(12)|");
+		session.writenf((Object)nopbb("12"));
+		assertWrite("DR|NOP(12)|");
+
+		session.write((Object)nopb("1"), info(3,6)).sync(TIMEOUT);
+		assertWrite("DR|NOP(1)[3p6]|");
+		session.writenf((Object)nopb("1"), info(3,6));
+		assertWrite("DR|NOP(1)[3p6]|");
+		session.write((Object)nopbb("12"), info(3,5)).sync(TIMEOUT);
+		assertWrite("DR|NOP(12)[3p5]|");
+		session.writenf((Object)nopbb("12"), info(3,5));
+		assertWrite("DR|NOP(12)[3p5]|");
+		
+		assertUnexpectedObject(session);
+		
 		//closing
 		session.closing = ClosingState.SENDING;
 		assertTrue(session.write(nopb("44")).isCancelled());
@@ -1016,10 +1049,77 @@ public class SctpSessionTest extends SctpTest {
 		session.write(nopb("11"), info(1,2,true)).sync(TIMEOUT);
 		assertWrite("DR|NOP(11e)[1p2u]|");
 		
+		session.writenf(nopb("12"));
+		assertWrite("DR|NOP(12e)|");
+		session.writenf(nopb("12"), info(1,2,true));
+		assertWrite("DR|NOP(12e)[1p2u]|");
+		
 		session.write(nopb("1134", 4, 5),4,7).sync(TIMEOUT);
 		assertWrite("DR|NOP(1134e)|");	
 		session.write(nopb("1134", 4, 5),4,7, info(1,3)).sync(TIMEOUT);
 		assertWrite("DR|NOP(1134e)[1p3]|");	
+
+		session.writenf(nopb("1135", 4, 5),4,7);
+		assertWrite("DR|NOP(1135e)|");	
+		session.writenf(nopb("1135", 4, 5),4,7, info(1,3));
+		assertWrite("DR|NOP(1135e)[1p3]|");	
+		
+		c.session.getCodecPipeline().addFirst("0", new ArrayToBufferEncoder());
+		
+		session.write(nopbb("11")).sync(TIMEOUT);
+		assertWrite("DR|NOP(11e)|");
+		session.write(nopbb("11"), info(1,2,true)).sync(TIMEOUT);
+		assertWrite("DR|NOP(11e)[1p2u]|");
+		
+		session.writenf(nopbb("11"));
+		assertWrite("DR|NOP(11e)|");
+		session.writenf(nopbb("11"), info(1,2,true));
+		assertWrite("DR|NOP(11e)[1p2u]|");
+
+		session.write(nopbb("11",5),5).sync(TIMEOUT);
+		assertWrite("DR|NOP(11e)|");
+		session.write(nopbb("11",6),5, info(1,2,true)).sync(TIMEOUT);
+		assertWrite("DR|NOP(11e)[1p2u]|");
+		
+		session.writenf(nopbb("11",5),5);
+		assertWrite("DR|NOP(11e)|");
+		session.writenf(nopbb("11",6),5, info(1,2,true));
+		assertWrite("DR|NOP(11e)[1p2u]|");
+		
+		assertNull(session.getEncodeTaskWriter().write((SocketAddress)null, nopb("1233"), true));
+		assertNull(session.getEncodeTaskWriter().write((SocketAddress)null, nopbb("1233"), true));
+		
+		session.write(nop("456")).sync(TIMEOUT);
+		assertWrite("DR|NOP(456e)|");
+		session.write(nop("456"), info(5)).sync(TIMEOUT);
+		assertWrite("DR|NOP(456e)[5]|");
+
+		session.writenf(nop("456"));
+		assertWrite("DR|NOP(456e)|");
+		session.writenf(nop("456"), info(5));
+		assertWrite("DR|NOP(456e)[5]|");
 		
 	}	
+	
+	@Test
+	public void testReadingWithCodec() throws Exception {
+		assumeSupported();
+		
+		TestCodec codec = new TestCodec();
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		addDecoders(s, codec.BPD(), codec.PBD());
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		SctpSession session = c.session;
+		
+		session.write(nopb("1111"));
+		assertWrite("DR|NOP(1111d)|");
+		
+		s.session.getCodecPipeline().add("3", codec.BPD());
+		
+		session.write(nopb("123"));
+		assertWrite("DR|M(NOP[123d])|");
+	}
 }

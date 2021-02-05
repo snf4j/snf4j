@@ -19,6 +19,7 @@ import org.junit.Test;
 import org.snf4j.core.SctpSession.SctpRecord;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
 
 import com.sun.nio.sctp.SctpChannel;
@@ -277,7 +278,19 @@ public class SctpTest {
 			server.codecExecutor = exec;
 		}
 		for (int i=0; i<encoders.length; ++i) {
-			exec.getPipeline().add(""+i, encoders[i]);
+			exec.getPipeline().add(""+(i+1), encoders[i]);
+		}
+	}
+	
+	void addDecoders(SctpServer server, IDecoder<?,?>... encoders) {
+		DefaultCodecExecutor exec = server.codecExecutor;
+		
+		if (exec == null) {
+			exec = new DefaultCodecExecutor();
+			server.codecExecutor = exec;
+		}
+		for (int i=0; i<encoders.length; ++i) {
+			exec.getPipeline().add(""+(i+1), encoders[i]);
 		}
 	}
 	

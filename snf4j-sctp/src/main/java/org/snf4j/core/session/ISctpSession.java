@@ -52,4 +52,12 @@ public interface ISctpSession extends ISession {
 	
 	void writenf(ByteBuffer msg, int length, ImmutableSctpMessageInfo msgInfo);
 	
+	IFuture<Void> write(Object msg);
+	
+	IFuture<Void> write(Object msg, ImmutableSctpMessageInfo msgInfo);
+	
+	void writenf(Object msg);
+	
+	void writenf(Object msg, ImmutableSctpMessageInfo msgInfo);
+	
 }

@@ -129,15 +129,6 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		return futureExpectedLen;
 	}
 	
-	private IFuture<Void> write1(SctpRecord record) {
-		long futureExpectedLen = write0(record);
-		
-		if (futureExpectedLen == -1) {
-			return futuresController.getCancelledFuture();
-		}
-		return futuresController.getWriteFuture(futureExpectedLen);
-	}
-	
 	ByteBuffer getInBuffer() {
 		if (inBuffer == null) {
 			inBuffer = allocator.allocate(inBufferCapacity);
@@ -508,6 +499,50 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		}
 	}
 
+	@Override
+	public IFuture<Void> write(Object msg) {
+		return write(msg, null);
+	}
+
+	@Override
+	public IFuture<Void> write(Object msg, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) throw new NullPointerException();
+		if (msgInfo == null) msgInfo = defaultMsgInfo;
+		if (codec != null) {
+			return new SctpEncodeTask(this, msg).register(msgInfo);
+		}
+		if (msg.getClass() == byte[].class) {
+			return write((byte[])msg, msgInfo);
+		}
+		if (msg instanceof ByteBuffer) {
+			return write((ByteBuffer)msg, msgInfo);
+		}
+		throw new IllegalArgumentException("msg is an unexpected object");
+	}
+	
+	@Override
+	public void writenf(Object msg) {
+		writenf(msg, null);
+	}
+	
+	@Override
+	public void writenf(Object msg, ImmutableSctpMessageInfo msgInfo) {
+		if (msg == null) throw new NullPointerException();
+		if (msgInfo == null) msgInfo = defaultMsgInfo;
+		if (codec != null) {
+			new SctpEncodeTask(this, msg).registernf(msgInfo);
+		}
+		else if (msg.getClass() == byte[].class) {
+			writenf((byte[])msg, msgInfo);
+		}
+		else if (msg instanceof ByteBuffer) {
+			writenf((ByteBuffer)msg, msgInfo);
+		}
+		else {
+			throw new IllegalArgumentException("msg is an unexpected object");
+		}
+	}
+	
 	static class SctpRecord {
 		final ImmutableSctpMessageInfo msgInfo;
 		ByteBuffer buffer;
@@ -537,7 +572,7 @@ public class SctpSession extends InternalSession implements ISctpSession {
 			record.buffer = buffer;
 			record.release = optimizeBuffers;
 			if (withFuture) {
-				return write1(record);
+				return writeFuture(write0(record));
 			}
 			write0(record);
 			return null;
@@ -549,7 +584,7 @@ public class SctpSession extends InternalSession implements ISctpSession {
 			
 			record.buffer = ByteBuffer.wrap(bytes);
 			if (withFuture) {
-				return write1(record);
+				return writeFuture(write0(record));
 			}
 			write0(record);
 			return null;
