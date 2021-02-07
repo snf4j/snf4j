@@ -17,6 +17,7 @@ import java.util.Set;
 
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
 import org.snf4j.core.codec.bytes.BufferToArrayEncoder;
 import org.snf4j.core.future.IFuture;
@@ -1117,6 +1118,14 @@ public class SctpSessionTest extends SctpTest {
 		session.write(nopbba("123456"));
 		assertWrite("DR|NOP(123456e)|");
 		assertAllocator(2,2,0);
+		
+		c.getCodec(0, 0).getPipeline().replace("E1", "E1", codec.PBBE());
+		session.write(nopbba("123456"));
+		assertWrite("DR|NOP(123456e2)|");
+		assertAllocator(3,4,0);
+		session.writenf(nopbba("12345"));
+		assertWrite("DR|NOP(12345e2)|");
+		assertAllocator(4,6,0);
 	}	
 	
 	@Test
@@ -1143,17 +1152,72 @@ public class SctpSessionTest extends SctpTest {
 		assertEquals("DS|", c.getTrace());
 		session.write(nopb("1122"), info(3));
 		assertWrite("DR|NOP(1122)[3]|");
+		codec.duplicatingDecode = true;
+		session.write(nopb("1111"));
+		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
+		assertEquals("DR|NOP(1111d)|NOP(1111d)|NOP(1111d)|", s.getTrace());
+		codec.duplicatingDecode = false;
 		
 		s.getCodec(0,0).getPipeline().add("3", codec.BPD());
 		
+		s.resetLocks();
 		session.write(nopb("123"));
 		assertWrite("DR|M(NOP[123d])|");
+		codec.duplicatingDecode = true;
+		session.write(nopb("1111"));
+		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
+		assertEquals("DR|M(NOP[1111d])|M(NOP[1111d])|M(NOP[1111d])|", s.getTrace());
+		codec.duplicatingDecode = false;
 		clearTraces();
 		
 		codec.decodeException = new Exception("E1");
 		session.writenf(nopb("456"));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getTrace());
+		assertEquals("DR|EXC|SCL|SEN|", s.getTrace());
+		c.stop(TIMEOUT);
+		codec.decodeException = null;
+		
+		s.allocator = new TestAllocator(false, true);
+		s.optimizeCopying = true;
+		addCodecs(s,0,0,codec.BPD(), codec.PBD());
+		c = new SctpClient(PORT);
+		c.start();
+		waitForReady(TIMEOUT);
+		session = c.session;
+		
+		session.write(nopb("1111"));
+		assertWrite("DR|NOP(1111d)|");
+		clearTraces();
+		codec.discardingDecode = true;
+		session.write(nopb("11112"));
+		waitFor(100);
+		codec.discardingDecode = false;
+		assertEquals("DR|", s.getTrace());
+		assertEquals("DS|", c.getTrace());
+		session.write(nopb("1122"), info(3));
+		assertWrite("DR|BUF|NOP(1122)[3]|");
+		codec.duplicatingDecode = true;
+		s.getCodec(0, 0).getPipeline().add("X", new ArrayToBufferDecoder());
+		session.write(nopb("1111"));
+		s.waitForDataRead(TIMEOUT);
+		waitFor(100);
+		assertEquals("DR|BUF|NOP(1111d)|BUF|NOP(1111d)|BUF|NOP(1111d)|", s.getTrace());
+		codec.duplicatingDecode = false;
+		clearTraces();
+		
+		codec.decodeException = new Exception("E1");
+		session.writenf(nopb("456"));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getTrace());
+		assertEquals("DR|EXC|SCL|SEN|", s.getTrace());
+		c.stop(TIMEOUT);
+		codec.decodeException = null;
+		
 	}
 	
 	void addEncoders(TestCodec codec, char type) {

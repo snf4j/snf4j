@@ -104,6 +104,15 @@ public class SctpServer {
 		this.port = port;
 	}
 	
+	void resetLocks() {
+		sessionOpenLock.set(false);
+		sessionReadyLock.set(false);
+		sessionEndingLock.set(false);
+		dataReceivedLock.set(false);
+		dataReadLock.set(false);
+		dataSentLock.set(false);
+	}
+	
 	void addCodec(int streamNum, int protoID, DefaultCodecExecutor executor) {
 		codecExecutors[streamNum][protoID] = executor;
 	}
@@ -182,16 +191,19 @@ public class SctpServer {
 		@Override
 		public void registered(SctpServerChannel channel) {
 			if (traceSessionFactory) trace("REGISTERED");
+			super.registered(channel);
 		}
 
 		@Override
 		public void closed(SctpServerChannel channel) {
 			if (traceSessionFactory) trace("CLOSED");
+			super.closed(channel);
 		}
 
 		@Override
 		public void exception(SctpServerChannel channel, Throwable exception) {
 			if (traceSessionFactory) trace("EXCEPTION(" + exception.getMessage() + ")");
+			super.exception(channel, exception);
 		}
 		
 	}

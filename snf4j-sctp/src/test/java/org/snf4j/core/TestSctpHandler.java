@@ -43,10 +43,10 @@ public class TestSctpHandler implements ISctpHandler {
 		return s;
 	}
 	
-	TestSctpHandler() {	
+	public TestSctpHandler() {	
 	}
 	
-	TestSctpHandler(ICodecExecutor codec) {
+	public TestSctpHandler(ICodecExecutor codec) {
 		this.codec = codec;
 	}
 	

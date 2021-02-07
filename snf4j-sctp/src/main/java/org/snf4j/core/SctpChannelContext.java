@@ -308,4 +308,9 @@ public class SctpChannelContext extends SessionChannelContext<SctpSession> {
 		}
 		return super.toString(channel);
 	}
+
+	@Override
+	public final boolean exceptionOnDecodingFailure() {
+		return true;
+	}
 }
