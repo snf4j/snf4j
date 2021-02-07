@@ -580,8 +580,9 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 						catch (PipelineDecodeException e) {
 							InternalSession session = e.getSession();
 							SessionIncident incident = SessionIncident.DECODING_PIPELINE_FAILURE;
+							ChannelContext<?> ctx = (ChannelContext<?>) key.attachment();
 							
-							if (session instanceof StreamSession) {
+							if (ctx.exceptionOnDecodingFailure()) {
 								elogger.error(logger, incident.defaultMessage(), session, e.getCause());
 								fireException(session, e.getCause());
 							}

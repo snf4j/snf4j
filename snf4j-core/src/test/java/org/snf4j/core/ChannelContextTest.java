@@ -72,6 +72,7 @@ public class ChannelContextTest {
 		assertFalse(ctx.isSession());
 		assertNull(ctx.getSession());
 		ctx.shutdown(null);
+		assertTrue(ctx.exceptionOnDecodingFailure());
 	}
 	
 	@Test
@@ -107,6 +108,7 @@ public class ChannelContextTest {
 		
 		assertTrue(ctx2.getClass() == SocketChannelContext.class);
 		assertTrue(session == ctx2.getSession());
+		assertTrue(ctx.exceptionOnDecodingFailure());
 		
 		SocketChannel sc = SocketChannel.open();
 		sc.configureBlocking(false);
@@ -125,6 +127,7 @@ public class ChannelContextTest {
 		
 		assertTrue(ctx2.getClass() == DatagramChannelContext.class);
 		assertTrue(session == ctx2.getSession());
+		assertFalse(ctx.exceptionOnDecodingFailure());
 		
 		ChannelContext<?> ctx3 = new SocketChannelContext(null);
 		SocketChannel sc = SocketChannel.open();
@@ -169,6 +172,11 @@ public class ChannelContextTest {
 		@Override
 		void shutdown(SelectableChannel channel) throws Exception {
 		}
+
+		@Override
+		boolean exceptionOnDecodingFailure() {
+			return false;
+		}
 		
 	}
 	
@@ -192,7 +200,7 @@ public class ChannelContextTest {
 		InternalSession create(SelectableChannel channel) throws Exception {
 			return null;
 		}
-		
+
 	}
 	
 	static class TestChannelContext extends ChannelContext<Integer> {
@@ -233,6 +241,11 @@ public class ChannelContextTest {
 
 		@Override
 		void shutdown(SelectableChannel channel) throws Exception {
+		}
+
+		@Override
+		boolean exceptionOnDecodingFailure() {
+			return false;
 		}
 
 	}
