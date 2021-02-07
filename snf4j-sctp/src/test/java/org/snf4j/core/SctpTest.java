@@ -19,6 +19,7 @@ import org.junit.Test;
 import org.snf4j.core.SctpSession.SctpRecord;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.ICodec;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
 
@@ -86,6 +87,13 @@ public class SctpTest {
 		assertEquals("SCR|SOP|RDY|", s.getTrace());
 	}
 	
+	void stopClientAndClearTraces(long millis) throws Exception {
+		c.stop(millis);
+		c.waitForSessionEnding(millis);
+		s.waitForSessionEnding(millis);
+		clearTraces();
+	}
+	
 	void clearTraces() {
 		c.getTrace();
 		s.getTrace();
@@ -111,6 +119,14 @@ public class SctpTest {
 
 	ByteBuffer nopbb(String payload, int padding) {
 		return nopbb = ByteBuffer.wrap(nopb(payload,0,padding));
+	}
+	
+	ByteBuffer nopbba(String payload) {
+		byte[] b = nopb(payload);
+		
+		nopbb = allocator.allocate(b.length);
+		nopbb.put(b).flip();
+		return nopbb;
 	}
 	
 	Packet nop(String head, String tail, char mid, int midLength) {
@@ -270,28 +286,30 @@ public class SctpTest {
 		return getOut(server.session);
 	}
 	
-	void addEncoders(SctpServer server, IEncoder<?,?>... encoders) {
-		DefaultCodecExecutor exec = server.codecExecutor;
-		
-		if (exec == null) {
-			exec = new DefaultCodecExecutor();
-			server.codecExecutor = exec;
-		}
-		for (int i=0; i<encoders.length; ++i) {
-			exec.getPipeline().add(""+(i+1), encoders[i]);
-		}
+	void addCodecs(SctpServer server, ICodec<?,?>... codecs) {
+		server.codecExecutor = codec(codecs);
 	}
 	
-	void addDecoders(SctpServer server, IDecoder<?,?>... encoders) {
-		DefaultCodecExecutor exec = server.codecExecutor;
+	void addCodecs(SctpServer server, int streamNum, int protoID, ICodec<?,?>... codecs) {
+		if (server.codecExecutor == null) {
+			addCodecs(server);
+		}
+		server.addCodec(streamNum, protoID, codec(codecs));
+	}
+
+	DefaultCodecExecutor codec(ICodec<?,?>... codecs) {
+		DefaultCodecExecutor exec = new DefaultCodecExecutor();
+		int d = 1, e = 1;
 		
-		if (exec == null) {
-			exec = new DefaultCodecExecutor();
-			server.codecExecutor = exec;
+		for (ICodec<?, ?> codec: codecs) {
+			if (codec instanceof IEncoder) {
+				exec.getPipeline().add("E"+e++, (IEncoder<?,?>)codec);
+			}
+			else {
+				exec.getPipeline().add("D"+d++, (IDecoder<?,?>)codec);
+			}
 		}
-		for (int i=0; i<encoders.length; ++i) {
-			exec.getPipeline().add(""+(i+1), encoders[i]);
-		}
+		return exec;
 	}
 	
 	@Test

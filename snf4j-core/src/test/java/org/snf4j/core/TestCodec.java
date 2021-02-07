@@ -62,10 +62,12 @@ public class TestCodec {
 	IDecoder<?,?> PPD() { return new PPD(); }
 	IDecoder<?,?> PBD() { return new PBD(); }
 	IDecoder<?,?> PBD_D() { return new PBD('D'); }
+	IDecoder<?,?> PBD(char type) { return new PBD(type); }
 	IBaseDecoder<?> BasePD() { return new BasePD(); }
 	IDecoder<?,?> BPD() { return new BPD(); }
 	IEncoder<?,?> PBE() { return new PBE(); }
 	IEncoder<?,?> PBE_E() { return new PBE('E'); }
+	IEncoder<?,?> PBE(char type) { return new PBE(type); }
 	IEncoder<?,?> PBBE() { return new PBBE(); }
 	IEncoder<?,?> BPE() { return new BPE(); }
 	IEncoder<?,?> BBEEv() { return new BBEEv(); }

@@ -18,6 +18,7 @@ import java.util.Set;
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
+import org.snf4j.core.codec.bytes.BufferToArrayEncoder;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.session.IllegalSessionStateException;
@@ -1038,7 +1039,10 @@ public class SctpSessionTest extends SctpTest {
 		TestCodec codec = new TestCodec();
 		s = new SctpServer(PORT);
 		c = new SctpClient(PORT);
-		addEncoders(c, codec.PBE(), codec.BPE());
+		addCodecs(c, 0,0, codec.PBE(), codec.BPE());
+		addCodecs(c, 1,2, codec.PBE(), codec.BPE());
+		addCodecs(c, 1,3, codec.PBE(), codec.BPE());
+		addCodecs(c, 5,0, codec.PBE(), codec.BPE());
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
@@ -1098,7 +1102,21 @@ public class SctpSessionTest extends SctpTest {
 		assertWrite("DR|NOP(456e)|");
 		session.writenf(nop("456"), info(5));
 		assertWrite("DR|NOP(456e)[5]|");
+		stopClientAndClearTraces(TIMEOUT);
 		
+		c = new SctpClient(PORT);
+		addCodecs(c, 0,0, codec.PBE(), codec.BPE(), new BufferToArrayEncoder(true));
+		c.allocator = new TestAllocator(false, true);
+		c.optimizeCopying = true;
+		c.start();
+		waitForReady(TIMEOUT);
+		session = c.session;
+		setAllocator(c.allocator);
+		assertAllocator(1,1,0);
+		
+		session.write(nopbba("123456"));
+		assertWrite("DR|NOP(123456e)|");
+		assertAllocator(2,2,0);
 	}	
 	
 	@Test
@@ -1108,7 +1126,7 @@ public class SctpSessionTest extends SctpTest {
 		TestCodec codec = new TestCodec();
 		s = new SctpServer(PORT);
 		c = new SctpClient(PORT);
-		addDecoders(s, codec.BPD(), codec.PBD());
+		addCodecs(s,0,0,codec.BPD(), codec.PBD());
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
@@ -1116,10 +1134,290 @@ public class SctpSessionTest extends SctpTest {
 		
 		session.write(nopb("1111"));
 		assertWrite("DR|NOP(1111d)|");
+		clearTraces();
+		codec.discardingDecode = true;
+		session.write(nopb("11112"));
+		waitFor(100);
+		codec.discardingDecode = false;
+		assertEquals("DR|", s.getTrace());
+		assertEquals("DS|", c.getTrace());
+		session.write(nopb("1122"), info(3));
+		assertWrite("DR|NOP(1122)[3]|");
 		
-		s.session.getCodecPipeline().add("3", codec.BPD());
+		s.getCodec(0,0).getPipeline().add("3", codec.BPD());
 		
 		session.write(nopb("123"));
 		assertWrite("DR|M(NOP[123d])|");
+		clearTraces();
+		
+		codec.decodeException = new Exception("E1");
+		session.writenf(nopb("456"));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+	}
+	
+	void addEncoders(TestCodec codec, char type) {
+		addCodecs(c,codec.PBE(type), codec.BPE());
+	}
+	
+	void addEncoders(TestCodec codec, int streamNum, int protoID, char type) {
+		addCodecs(c,streamNum,protoID,codec.PBE(type), codec.BPE());
+	}
+	
+	@Test
+	public void testCodecConfiguration() throws Exception {
+		assumeSupported();
+
+		TestCodec codec = new TestCodec();
+		s = new SctpServer(PORT);
+		s.start();
+
+		//defaults
+		c = new SctpClient(PORT);
+		addEncoders(codec, 'A');
+		c.start();
+		waitForReady(TIMEOUT);
+		c.session.writenf(nopb("111"));
+		assertWrite("DR|NOP(111)|");
+		c.session.writenf(nopb("111"),info(1,2));
+		assertWrite("DR|NOP(111)[1p2]|");
+		addEncoders(codec,1,2,'B');
+		c.session.writenf(nopb("111"),info(1,2));
+		assertWrite("DR|NOP(111)[1p2]|");
+		addEncoders(codec,1,3,'C');
+		c.session.writenf(nopb("111"),info(1,3));
+		assertWrite("DR|NOP(111C)[1p3]|");
+		addEncoders(codec,1,3,'D');
+		c.session.writenf(nopb("111"),info(1,3));
+		assertWrite("DR|NOP(111C)[1p3]|");
+		stopClientAndClearTraces(TIMEOUT);
+		
+		//min stream number
+		c = new SctpClient(PORT);
+		addEncoders(codec, 'A');
+		addEncoders(codec,2,0, 'B');
+		c.minSctpStreamNumber = 2;
+		c.start();
+		waitForReady(TIMEOUT);
+		c.session.writenf(nopb("111"));
+		assertWrite("DR|NOP(111A)|");
+		c.session.writenf(nopb("111"), info(1));
+		assertWrite("DR|NOP(111A)[1]|");
+		c.session.writenf(nopb("111"), info(2));
+		assertWrite("DR|NOP(111B)[2]|");
+		c.session.writenf(nopb("111"), info(3));
+		assertWrite("DR|NOP(111)[3]|");
+		stopClientAndClearTraces(TIMEOUT);
+
+		//max stream number
+		c = new SctpClient(PORT);
+		addEncoders(codec, 'A');
+		addEncoders(codec,3,0, 'B');
+		c.maxSctpStreamNumber = 3;
+		c.start();
+		waitForReady(TIMEOUT);
+		c.session.writenf(nopb("111"),info(4));
+		assertWrite("DR|NOP(111A)[4]|");
+		c.session.writenf(nopb("111"), info(3));
+		assertWrite("DR|NOP(111B)[3]|");
+		c.session.writenf(nopb("111"), info(2));
+		assertWrite("DR|NOP(111)[2]|");
+		c.session.writenf(nopb("111"));
+		assertWrite("DR|NOP(111)|");
+		stopClientAndClearTraces(TIMEOUT);
+
+		//min proto ID
+		c = new SctpClient(PORT);
+		addEncoders(codec, 'A');
+		addEncoders(codec,0,2, 'B');
+		c.minSctpPayloadProtocolID = 2;
+		c.start();
+		waitForReady(TIMEOUT);
+		c.session.writenf(nopb("111"));
+		assertWrite("DR|NOP(111A)|");
+		c.session.writenf(nopb("111"), info(0,1));
+		assertWrite("DR|NOP(111A)[p1]|");
+		c.session.writenf(nopb("111"), info(0,2));
+		assertWrite("DR|NOP(111B)[p2]|");
+		c.session.writenf(nopb("111"), info(0,3));
+		assertWrite("DR|NOP(111)[p3]|");
+		stopClientAndClearTraces(TIMEOUT);
+		
+		//max stream number
+		c = new SctpClient(PORT);
+		addEncoders(codec, 'A');
+		addEncoders(codec,0,3, 'B');
+		c.maxSctpPayloadProtocolID = 3;
+		c.start();
+		waitForReady(TIMEOUT);
+		c.session.writenf(nopb("111"),info(0,4));
+		assertWrite("DR|NOP(111A)[p4]|");
+		c.session.writenf(nopb("111"), info(0,3));
+		assertWrite("DR|NOP(111B)[p3]|");
+		c.session.writenf(nopb("111"), info(0,2));
+		assertWrite("DR|NOP(111)[p2]|");
+		c.session.writenf(nopb("111"));
+		assertWrite("DR|NOP(111)|");
+		stopClientAndClearTraces(TIMEOUT);
+		
+		//all
+		c = new SctpClient(PORT);
+		addEncoders(codec, 'A');
+		addEncoders(codec,2,6, 'B');
+		addEncoders(codec,2,7, 'C');
+		addEncoders(codec,3,6, 'D');
+		addEncoders(codec,3,7, 'E');
+		c.minSctpStreamNumber = 2;
+		c.maxSctpStreamNumber = 3;
+		c.minSctpPayloadProtocolID = 6;
+		c.maxSctpPayloadProtocolID = 7;
+		c.start();
+		waitForReady(TIMEOUT);
+		c.session.writenf(nopb("111"));
+		assertWrite("DR|NOP(111A)|");
+		c.session.writenf(nopb("111"),info(1,5));
+		assertWrite("DR|NOP(111A)[1p5]|");
+		c.session.writenf(nopb("111"),info(1,6));
+		assertWrite("DR|NOP(111A)[1p6]|");
+		c.session.writenf(nopb("111"),info(2,5));
+		assertWrite("DR|NOP(111A)[2p5]|");
+		
+		c.session.writenf(nopb("111"),info(2,6));
+		assertWrite("DR|NOP(111B)[2p6]|");
+		c.session.writenf(nopb("111"),info(2,7));
+		assertWrite("DR|NOP(111C)[2p7]|");
+		c.session.writenf(nopb("111"),info(3,6));
+		assertWrite("DR|NOP(111D)[3p6]|");
+		c.session.writenf(nopb("111"),info(3,7));
+		assertWrite("DR|NOP(111E)[3p7]|");
+		
+		c.session.writenf(nopb("111"),info(3,8));
+		assertWrite("DR|NOP(111A)[3p8]|");
+		c.session.writenf(nopb("111"),info(4,7));
+		assertWrite("DR|NOP(111A)[4p7]|");
+		c.session.writenf(nopb("111"),info(4,8));
+		assertWrite("DR|NOP(111A)[4p8]|");
+		c.session.writenf(nopb("111"),info(4,Integer.MIN_VALUE));
+		assertWrite("DR|NOP(111A)[4p-2147483648]|");
+		c.session.writenf(nopb("111"),info(4,Integer.MAX_VALUE));
+		assertWrite("DR|NOP(111A)[4p2147483647]|");
+		
+		
+	}
+	
+	@Test
+	public void testOptimizeCopying() throws Exception {
+		assumeSupported();
+		
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(false, false);
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		setAllocator(c.allocator);
+		assertAllocator(1,0,1);
+		
+		byte[] msgb = nopb("12345");
+		c.session.suspendWrite();
+		c.session.writenf(msgb);
+		msgb[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(12345)|");
+		assertAllocator(2,0,2);
+		
+		ByteBuffer msgbb = ByteBuffer.wrap(nopb("123"));
+		c.session.suspendWrite();
+		c.session.writenf(msgbb);
+		msgbb.array()[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(123)|");
+		assertAllocator(3,0,3);
+		assertEquals(0, msgbb.remaining());
+		
+		msgbb = ByteBuffer.wrap(nopb("123",0,4));
+		c.session.suspendWrite();
+		c.session.writenf(msgbb,6);
+		msgbb.array()[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(123)|");
+		assertAllocator(4,0,4);
+		assertEquals(4, msgbb.remaining());
+		stopClientAndClearTraces(TIMEOUT);
+		
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(false, false);
+		c.optimizeCopying = true;
+		c.start();
+		waitForReady(TIMEOUT);
+		setAllocator(c.allocator);
+		assertAllocator(1,0,1);
+		
+		msgb = nopb("5678");
+		c.session.suspendWrite();
+		c.session.writenf(msgb);
+		msgb[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(6678)|");
+		assertAllocator(1,0,1);
+		
+		msgbb = ByteBuffer.wrap(nopb("12344"));
+		c.session.suspendWrite();
+		c.session.writenf(msgbb);
+		msgbb.array()[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(22344)|");
+		assertAllocator(1,0,1);
+
+		msgbb = ByteBuffer.wrap(nopb("1234",0,4));
+		c.session.suspendWrite();
+		c.session.writenf(msgbb,7);
+		msgbb.array()[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(1234)|");
+		assertAllocator(2,0,2);
+		assertEquals(4, msgbb.remaining());
+		stopClientAndClearTraces(TIMEOUT);
+
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(true, false);
+		c.optimizeCopying = true;
+		c.start();
+		waitForReady(TIMEOUT);
+		setAllocator(c.allocator);
+		assertAllocator(1,0,1);
+		
+		msgb = nopb("5678");
+		c.session.suspendWrite();
+		c.session.writenf(msgb);
+		msgb[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(5678)|");
+		assertAllocator(2,0,2);
+		stopClientAndClearTraces(TIMEOUT);
+
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(true, true);
+		c.optimizeCopying = true;
+		c.start();
+		waitForReady(TIMEOUT);
+		setAllocator(c.allocator);
+		assertAllocator(1,1,0);
+
+		msgb = nopb("5678");
+		c.session.suspendWrite();
+		c.session.writenf(msgb);
+		msgb[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(5678)|");
+		assertAllocator(2,2,0);
+
+		msgbb = ByteBuffer.wrap(nopb("12344"));
+		c.session.suspendWrite();
+		c.session.writenf(msgbb);
+		msgbb.array()[3]++;
+		c.session.resumeWrite();
+		assertWrite("DR|NOP(22344)|");
+		assertAllocator(2,3,0);	
 	}
 }

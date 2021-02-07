@@ -74,6 +74,14 @@ public class SctpServer {
 	
 	public volatile int defaultSctpPayloadProtocolID = -1;
 	
+	public volatile int minSctpStreamNumber = -111;
+	
+	public volatile int maxSctpStreamNumber = -111;
+	
+	public volatile int minSctpPayloadProtocolID = -111;
+	
+	public volatile int maxSctpPayloadProtocolID = -111;
+	
 	public volatile boolean defaultSctpUnorderedFlag;
 	
 	EventType closeInEvent;
@@ -90,8 +98,18 @@ public class SctpServer {
 	
 	DefaultCodecExecutor codecExecutor;
 
+	DefaultCodecExecutor[][] codecExecutors = new DefaultCodecExecutor[10][10];
+	
 	SctpServer(int port) {
 		this.port = port;
+	}
+	
+	void addCodec(int streamNum, int protoID, DefaultCodecExecutor executor) {
+		codecExecutors[streamNum][protoID] = executor;
+	}
+	
+	DefaultCodecExecutor getCodec(int streamNum, int protoID) {
+		return codecExecutors[streamNum][protoID];
 	}
 	
 	void trace(String data) {
@@ -226,7 +244,7 @@ public class SctpServer {
 				
 				@Override
 				public ICodecExecutor createCodecExecutor(MessageInfo msgInfo) {
-					return codecExecutor;
+					return codecExecutors[msgInfo.streamNumber()][msgInfo.payloadProtocolID()];
 				}
 				
 			};
@@ -250,6 +268,18 @@ public class SctpServer {
 			}
 			if (defaultSctpUnorderedFlag) {
 				config.setDefaultSctpUnorderedFlag(defaultSctpUnorderedFlag);
+			}
+			if (minSctpStreamNumber != -111) {
+				config.setMinSctpStreamNumber(minSctpStreamNumber);
+			}
+			if (maxSctpStreamNumber != -111) {
+				config.setMaxSctpStreamNumber(maxSctpStreamNumber);
+			}
+			if (minSctpPayloadProtocolID != -111) {
+				config.setMinSctpPayloadProtocolID(minSctpPayloadProtocolID);
+			}
+			if (maxSctpPayloadProtocolID != -111) {
+				config.setMaxSctpPayloadProtocolID(maxSctpPayloadProtocolID);
 			}
 			return config;
 		}
