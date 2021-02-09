@@ -68,6 +68,9 @@ class SctpCodecExecutorAdapter extends CodecExecutorAdapter implements ISctpRead
 			if (executor == null) {
 				executor = SctpNopCodecExecutor.INSTANCE;
 			}
+			else {
+				this.executor.addChild(session, executor);
+			}
 			executors.put(key, executor);
 		}
 		return executor;

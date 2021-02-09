@@ -71,5 +71,9 @@ class SctpNopCodecExecutor implements ICodecExecutor {
 	@Override
 	public void event(ISession session, SessionEvent event) {
 	}
+	
+	@Override
+	public void addChild(ISession session, ICodecExecutor executor) {	
+	}
 
 }

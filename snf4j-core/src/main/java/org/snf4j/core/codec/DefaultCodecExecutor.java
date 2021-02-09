@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,6 +42,8 @@ import org.snf4j.core.session.ISession;
  */
 public class DefaultCodecExecutor implements ICodecExecutor {
 
+	private final static int EVENT_COUNT = SessionEvent.values().length;
+	
 	private int decodersVersion;
 	
 	private final Deque<DecoderContext> decoders = new LinkedList<DecoderContext>();
@@ -62,6 +64,10 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 	private int eventCodecsVersion;
 	
 	private IEventDrivenCodec[] eventCodecs;
+	
+	private SessionEvent[] events;
+	
+	private List<ICodecExecutor> children;
 	
 	@Override
 	public final void syncDecoders() {
@@ -469,11 +475,48 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 
 	@Override
 	public void event(ISession session, SessionEvent event) {
+		if (events != null) {
+			if (event == SessionEvent.CREATED) {
+				for (int i=0; i<EVENT_COUNT; ++i) {
+					events[i] = null;
+				}
+			}
+		}
+		else {
+			events = new SessionEvent[EVENT_COUNT];
+		}
+		events[event.ordinal()] = event;
+		
 		if (eventCodecs != null) {
 			for (IEventDrivenCodec codec: eventCodecs) {
 				codec.event(session, event);
 			}
 		}
+		
+		if (children != null) {
+			for (ICodecExecutor executor: children) {
+				executor.syncEventDrivenCodecs(session);
+				executor.event(session, event);
+			}
+		}
+	}
+	
+	@Override
+	public void addChild(ISession session, ICodecExecutor executor) {
+		if (events != null) {
+			for (int i=0; i<EVENT_COUNT; ++i) {
+				SessionEvent event = events[i];
+
+				if (event != null) {
+					executor.syncEventDrivenCodecs(session);
+					executor.event(session, event);
+				}
+			}
+		}
+		if (children == null) {
+			children = new ArrayList<ICodecExecutor>();
+		}
+		children.add(executor);
 	}
 	
 }

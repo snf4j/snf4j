@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1880,6 +1880,75 @@ public class CodecPipelineTest {
 		assertEquals("ABC", stringFromBuffer(o.get(0)));
 		assertEquals("BBSE|SBE|BSE|SBBE|V2(ABC)|V1(ABC)|", getTrace());
 		
+	}
+	
+	@Test 
+	public void testSessionEventOrdinals() {
+		assertEquals(5, SessionEvent.values().length);
+		assertEquals(0, SessionEvent.CREATED.ordinal());
+		assertEquals(1, SessionEvent.OPENED.ordinal());
+		assertEquals(2, SessionEvent.READY.ordinal());
+		assertEquals(3, SessionEvent.CLOSED.ordinal());
+		assertEquals(4, SessionEvent.ENDING.ordinal());
+	}
+	
+	DefaultCodecExecutor createExecutor(String id) {
+		DefaultCodecExecutor e = new DefaultCodecExecutor();
+		ICodecPipeline p = e.getPipeline();
+		
+		p.add(1, new SBE());
+		p.add(2, new SSEEv(id));
+		return e;
+	}
+	
+	@Test
+	public void testEventDrivenChildCodecs() {
+		DefaultCodecExecutor e0 = createExecutor("0");
+		DefaultCodecExecutor e1 = createExecutor("1");
+	
+		e0.addChild(null, e1);
+		e0.syncEventDrivenCodecs(null);
+		e0.event(null, SessionEvent.CREATED);
+		assertEquals("ADD(0)|CREATED(0)|ADD(1)|CREATED(1)|", getTrace());
+		e0.event(null,  SessionEvent.OPENED);
+		assertEquals("OPENED(0)|OPENED(1)|", getTrace());
+
+		DefaultCodecExecutor e2 = createExecutor("2");
+		e0.addChild(null, e2);
+		assertEquals("ADD(2)|CREATED(2)|OPENED(2)|", getTrace());
+		e0.event(null, SessionEvent.READY);
+		assertEquals("READY(0)|READY(1)|READY(2)|", getTrace());
+		
+		e2.getPipeline().remove(2);
+		e0.event(null, SessionEvent.CLOSED);
+		assertEquals("CLOSED(0)|CLOSED(1)|REM(2)|", getTrace());
+		e0.event(null, SessionEvent.ENDING);
+		assertEquals("ENDING(0)|ENDING(1)|", getTrace());
+		
+		DefaultCodecExecutor e3 = createExecutor("3");
+		e0.addChild(null, e3);
+		assertEquals("ADD(3)|CREATED(3)|OPENED(3)|READY(3)|CLOSED(3)|ENDING(3)|", getTrace());
+		e3.getPipeline().remove(2);
+		
+		e0.event(null, SessionEvent.OPENED);
+		assertEquals("OPENED(0)|OPENED(1)|REM(3)|", getTrace());
+		
+		DefaultCodecExecutor e4 = createExecutor("4");
+		e0.addChild(null, e4);
+		assertEquals("ADD(4)|CREATED(4)|OPENED(4)|READY(4)|CLOSED(4)|ENDING(4)|", getTrace());
+		
+		e0.event(null, SessionEvent.CREATED);
+		assertEquals("CREATED(0)|CREATED(1)|CREATED(4)|", getTrace());
+		
+		DefaultCodecExecutor e5 = createExecutor("5");
+		e0.addChild(null, e5);
+		assertEquals("ADD(5)|CREATED(5)|", getTrace());
+		e0.event(null, SessionEvent.ENDING);
+		assertEquals("ENDING(0)|ENDING(1)|ENDING(4)|ENDING(5)|", getTrace());
+
+		DefaultCodecExecutor e6 = createExecutor("6");
+		e0.addChild(null, e6);
+		assertEquals("ADD(6)|CREATED(6)|ENDING(6)|", getTrace());
 	}
 	
 	@Test

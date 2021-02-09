@@ -39,6 +39,8 @@ public class SctpTest {
 	
 	public final static boolean SUPPORTED;
 	
+	StringBuilder trace = new StringBuilder();
+	
 	static {
 		boolean supported;
 		
@@ -62,6 +64,23 @@ public class SctpTest {
 		if (s != null) s.stop(TIMEOUT);
 	}
 
+	void trace(String s) {
+		synchronized (trace) {
+			trace.append(s);
+			trace.append('|');
+		}
+	}
+	
+	String getTrace() {
+		String s;
+		
+		synchronized (trace) {
+			s = trace.toString();
+			trace.setLength(0);
+		}
+		return s;
+	}
+	
 	void startClientServer() throws Exception {
 		s = new SctpServer(PORT);
 		c = new SctpClient(PORT);

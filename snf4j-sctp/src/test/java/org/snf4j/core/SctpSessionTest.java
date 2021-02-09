@@ -17,11 +17,15 @@ import java.util.Set;
 
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.IEventDrivenCodec;
 import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
+import org.snf4j.core.codec.bytes.BufferToArrayDecoder;
 import org.snf4j.core.codec.bytes.BufferToArrayEncoder;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
+import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IllegalSessionStateException;
 
 import com.sun.nio.sctp.SctpChannel;
@@ -1364,9 +1368,115 @@ public class SctpSessionTest extends SctpTest {
 		c.session.writenf(nopb("111"),info(4,Integer.MIN_VALUE));
 		assertWrite("DR|NOP(111A)[4p-2147483648]|");
 		c.session.writenf(nopb("111"),info(4,Integer.MAX_VALUE));
-		assertWrite("DR|NOP(111A)[4p2147483647]|");
+		assertWrite("DR|NOP(111A)[4p2147483647]|");	
+	}
+	
+	void assertTracedEvents(String s, long id) {
+		s = s.replaceAll("X", ""+id);
+		assertEquals(s, getTrace());
+	}
+	
+	@Test
+	public void testEventDrivenCodecs() throws Exception {
+		assumeSupported();
+
+		s = new SctpServer(PORT);
+		s.start();
+		c = new SctpClient(PORT);
+		addCodecs(c, new EventEncoder(""));
+		addCodecs(c,0,0,new EventEncoder("0,0"));
+		c.start();
+		waitForReady(TIMEOUT);
+		SctpSession session = c.session;
+		assertTracedEvents("#ADD(X)||#CREATED(X)||#OPENED(X)||#READY(X)||", session.getId());
 		
+		session.writenf(nopb("111"));
+		assertWrite("DR|NOP(111)|");
+		assertTracedEvents("0,0#ADD(X)||0,0#CREATED(X)||0,0#OPENED(X)||0,0#READY(X)||", session.getId());
+		session.writenf(nopb("222"));
+		assertWrite("DR|NOP(222)|");
+		assertTracedEvents("", session.getId());
+		c.getCodec(0,0).getPipeline().remove("E1");
+		session.writenf(nopb("3"));
+		assertWrite("DR|NOP(3)|");
+		assertTracedEvents("", session.getId());
+		session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTracedEvents("#CLOSED(X)||0,0#REM(X)||#ENDING(X)||", session.getId());
+		c.stop(TIMEOUT);
+		clearTraces();
 		
+		c = new SctpClient(PORT);
+		addCodecs(c, new EventDecoder(""));
+		addCodecs(c,1,1,new EventDecoder("1,1"));
+		c.start();
+		waitForReady(TIMEOUT);
+		session = c.session;
+		assertTracedEvents("#ADD(X)||#CREATED(X)||#OPENED(X)||#READY(X)||", session.getId());
+		
+		s.session.writenf(nopb("123"));
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(123)|", c.getTrace());
+		assertTracedEvents("", session.getId());
+		s.session.writenf(nopb("123"), info(1,1));
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(123)[1p1]|", c.getTrace());
+		assertTracedEvents("1,1#ADD(X)||1,1#CREATED(X)||1,1#OPENED(X)||1,1#READY(X)||", session.getId());
+		session.close();
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertTracedEvents("#CLOSED(X)||1,1#CLOSED(X)||#ENDING(X)||1,1#ENDING(X)||", session.getId());	
+	}
+	
+	class EventEncoder extends BufferToArrayEncoder implements IEventDrivenCodec {
+
+		final String id;
+		
+		EventEncoder(String id) {
+			this.id = id;
+		}
+		
+		@Override
+		public void added(ISession session) {
+			trace(id + "#ADD(" + session.getId() + ")|");
+		}
+
+		@Override
+		public void event(ISession session, SessionEvent event) {
+			trace(id + "#" + event.name() +"(" + session.getId() + ")|");
+		}
+
+		@Override
+		public void removed(ISession session) {
+			trace(id + "#REM(" + session.getId() + ")|");
+		}
+	}
+	
+	class EventDecoder extends BufferToArrayDecoder implements IEventDrivenCodec {
+
+		final String id;
+		
+		EventDecoder(String id) {
+			this.id = id;
+		}
+		
+		@Override
+		public void added(ISession session) {
+			trace(id + "#ADD(" + session.getId() + ")|");
+		}
+
+		@Override
+		public void event(ISession session, SessionEvent event) {
+			trace(id + "#" + event.name() +"(" + session.getId() + ")|");
+		}
+
+		@Override
+		public void removed(ISession session) {
+			trace(id + "#REM(" + session.getId() + ")|");
+		}
 	}
 	
 	@Test
