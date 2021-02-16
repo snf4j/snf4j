@@ -23,41 +23,11 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
-
-import java.nio.ByteBuffer;
-
-import com.sun.nio.sctp.MessageInfo;
 
 /**
- * A reader that reads data directly from a SCTP channel.
+ * Provides interfaces and classes for factories of different kind that are used
+ * by the API.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public interface ISctpReader {
-	
-	/**
-	 * Called when a new message was received from the remote end.
-	 * <p>
-	 * The passed array can be safely stored or modified by this method as it will
-	 * not be used by the caller.
-	 * 
-	 * @param msg     the message received from the remote end.
-	 * @param msgInfo additional ancillary information about the received message.
-	 */
-	void read(byte[] msg, MessageInfo msgInfo);
-	
-	/**
-	 * Called when a new message was received from the remote end. This method is
-	 * only called when the associated session is configured to optimize data
-	 * copying and uses an allocator supporting the releasing of no longer used
-	 * buffers.
-	 * <p>
-	 * The passed buffer can be safely stored or modified by this method as it will
-	 * not be used by the caller.
-	 * 
-	 * @param msg     the message received from the remote end.
-	 * @param msgInfo additional ancillary information about the received message.
-	 */
-	void read(ByteBuffer msg, MessageInfo msgInfo);
-}
+package org.snf4j.core.factory;
