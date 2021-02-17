@@ -46,7 +46,13 @@
       <artifactId>snf4j-core</artifactId> 
       <version>${project.version}</version>
     </dependency>
-
+    <dependency>
+      <groupId>org.snf4j</groupId> 
+      <artifactId>snf4j-core</artifactId> 
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
   </dependencies> 
-    
-</project>
+ 
+ </project>

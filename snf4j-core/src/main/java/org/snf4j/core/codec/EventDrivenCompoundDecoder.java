@@ -39,7 +39,7 @@ import org.snf4j.core.session.ISession;
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-abstract class EventDrivenCompoundDecoder<I,O> extends CompoundDecoder<I,O> implements IEventDrivenCodec {
+abstract public class EventDrivenCompoundDecoder<I,O> extends CompoundDecoder<I,O> implements IEventDrivenCodec {
 	
 	private final IEventDrivenCodec[] codecs;
 	

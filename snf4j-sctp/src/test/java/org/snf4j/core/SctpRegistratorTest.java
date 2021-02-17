@@ -62,6 +62,11 @@ public class SctpRegistratorTest extends SctpTest {
 			assertEquals("factory is null", e.getMessage());
 		}
 		loop.stop();
+	}
+	
+	@Test
+	public void testRegisterHandler() throws Exception {
+		assumeSupported();
 		
 		s = new SctpServer(PORT);
 		c = new SctpClient(PORT);
@@ -70,5 +75,4 @@ public class SctpRegistratorTest extends SctpTest {
 		c.start();
 		waitForReady(TIMEOUT);
 	}
-
 }

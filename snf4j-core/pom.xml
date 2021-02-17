@@ -42,7 +42,20 @@
   <build>
     <plugins>
 
-      <plugin>
+     <plugin>
+       <groupId>org.apache.maven.plugins</groupId>
+       <artifactId>maven-jar-plugin</artifactId>
+       <version>${version.jar.plugin}</version>
+       <executions>
+         <execution>
+           <goals>
+             <goal>test-jar</goal>
+           </goals>
+         </execution>
+       </executions>
+     </plugin>
+
+     <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${version.surefire.plugin}</version>
@@ -70,11 +83,11 @@
         </executions>
         <configuration>
           <tasks>
-            <delete dir="target/classes/org/snf4j/core/logger/impl" /> 
+            <delete dir="${project.build.outputDirectory}/org/snf4j/core/logger/impl" /> 
           </tasks>
         </configuration>
       </plugin>
-      
+	  
     </plugins>
   </build>
 

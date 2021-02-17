@@ -49,7 +49,7 @@ public class SctpServerChannelContextTest extends SctpTest {
 		s.start().sync(TIMEOUT);
 		assertEquals("REGISTERED|", s.getTrace());
 		
-		AtomicBoolean lock = new AtomicBoolean();
+		final AtomicBoolean lock = new AtomicBoolean();
 		s.loop.execute(new Runnable() {
 
 			@Override

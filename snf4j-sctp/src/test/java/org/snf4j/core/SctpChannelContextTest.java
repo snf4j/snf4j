@@ -140,13 +140,13 @@ public class SctpChannelContextTest extends SctpTest {
 	public void testRegisterClosedChannel() throws Exception {
 		assumeSupported();
 		c = new SctpClient(PORT);
-		SctpChannel sc = SctpChannel.open();
+		final SctpChannel sc = SctpChannel.open();
 		c.start(sc);
 		waitFor(50);
 		assertEquals("", c.getTrace());
 		
-		SelectionKey k = sc.keyFor(c.loop.selector);
-		SctpChannelContext ctx = (SctpChannelContext) k.attachment();
+		final SelectionKey k = sc.keyFor(c.loop.selector);
+		final SctpChannelContext ctx = (SctpChannelContext) k.attachment();
 		sc.close();
 		
 		c.loop.execute(new Runnable() {
@@ -170,9 +170,9 @@ public class SctpChannelContextTest extends SctpTest {
 		waitFor(50);
 		assertEquals("", c.getTrace());
 		
-		SelectionKey k2 = sc2.keyFor(c.loop.selector);
-		SctpChannelContext ctx2 = (SctpChannelContext) k2.attachment();
-		TestSctpChannel tsc = new TestSctpChannel();
+		final SelectionKey k2 = sc2.keyFor(c.loop.selector);
+		final SctpChannelContext ctx2 = (SctpChannelContext) k2.attachment();
+		final TestSctpChannel tsc = new TestSctpChannel();
 		tsc.remoteAddressesException = new ClosedChannelException();
 		sc2.close();
 
@@ -308,16 +308,16 @@ public class SctpChannelContextTest extends SctpTest {
 		assumeSupported();
 		startClientServer();
 		
-		SctpSession session = c.session;
+		final SctpSession session = c.session;
 		session.writenf(nopb("44"), info(0));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DS|", c.getTrace());
 		assertEquals("DR|NOP(44)|", s.getTrace());
 
-		SctpChannelContext ctx = (SctpChannelContext) getKey(c).attachment();
+		final SctpChannelContext ctx = (SctpChannelContext) getKey(c).attachment();
 		TestSctpChannel sc = new TestSctpChannel();
-		TestSelectionKey k = new TestSelectionKey(sc);
+		final TestSelectionKey k = new TestSelectionKey(sc);
 		
 		sc.receiveException = new IOException();
 		
@@ -378,16 +378,16 @@ public class SctpChannelContextTest extends SctpTest {
 		assumeSupported();
 		startClientServer();
 		
-		SctpSession session = c.session;
+		final SctpSession session = c.session;
 		session.writenf(nopb("44"), info(0));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DS|", c.getTrace());
 		assertEquals("DR|NOP(44)|", s.getTrace());
 		
-		SctpChannelContext ctx = (SctpChannelContext) getKey(c).attachment();
+		final SctpChannelContext ctx = (SctpChannelContext) getKey(c).attachment();
 		TestSctpChannel sc = new TestSctpChannel();
-		TestSelectionKey k = new TestSelectionKey(sc);
+		final TestSelectionKey k = new TestSelectionKey(sc);
 		
 		sc.sendException = new IOException();
 		session.suspendWrite();
