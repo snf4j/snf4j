@@ -56,7 +56,7 @@ import com.sun.nio.sctp.SctpChannel;
 import com.sun.nio.sctp.SendFailedNotification;
 import com.sun.nio.sctp.ShutdownNotification;
 
-public class SctpChannelContextTest extends SctpRegistratorTest {
+public class SctpChannelContextTest extends SctpTest {
 	
 	@Test
 	public void testRegisterPendingConnection() throws Exception {

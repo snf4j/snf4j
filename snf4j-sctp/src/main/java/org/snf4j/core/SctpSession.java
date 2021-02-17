@@ -123,8 +123,12 @@ public class SctpSession extends InternalSession implements ISctpSession {
 	}
 	
 	private static SctpCodecExecutorAdapter codec(ISctpHandler handler) {
-		ICodecExecutor executor = handler.getConfig().createCodecExecutor();
+		ICodecExecutor executor;
 		
+		if (handler == null) {
+			throw new IllegalArgumentException("handler is null");
+		}
+		executor = handler.getConfig().createCodecExecutor();
 		return executor != null ? new SctpCodecExecutorAdapter(executor, handler) : null;
 	}
 	

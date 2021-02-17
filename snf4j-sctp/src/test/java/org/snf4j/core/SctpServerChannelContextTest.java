@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 
-public class SctpServerChannelContextTest extends SctpRegistratorTest {
+public class SctpServerChannelContextTest extends SctpTest {
 
 	void assertToString(String expected, String value) {
 		assertEquals(TestSctpServerChannel.class.getName() + expected, value);

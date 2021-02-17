@@ -51,5 +51,6 @@ public class SctpNopCodecExecutorTest {
 		assertNull(e.decode(null, (byte[])null));
 		assertNull(e.decode(null, (ByteBuffer)null));
 		e.event(null, null);
+		e.addChild(null, null);
 	}
 }

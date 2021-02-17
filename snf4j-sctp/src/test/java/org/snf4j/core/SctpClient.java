@@ -46,6 +46,8 @@ public class SctpClient extends SctpServer {
 	
 	boolean loopStart = true;
 	
+	boolean registerHandler;
+	
 	SctpClient(int port) {
 		super(port);
 	}
@@ -77,6 +79,9 @@ public class SctpClient extends SctpServer {
 		}
 		else {
 			sc = channel;
+		}
+		if (registerHandler) {
+			return SctpRegistrator.register(loop, sc, new Handler());
 		}
 		return SctpRegistrator.register(loop, sc, new SctpSession(new Handler()));
 	}

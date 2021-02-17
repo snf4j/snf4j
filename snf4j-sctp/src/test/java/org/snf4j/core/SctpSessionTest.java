@@ -55,7 +55,7 @@ import org.snf4j.core.session.IllegalSessionStateException;
 
 import com.sun.nio.sctp.SctpChannel;
 
-public class SctpSessionTest extends SctpRegistratorTest {	
+public class SctpSessionTest extends SctpTest {	
 	
 	@Test
 	public void testGetParent() throws Exception {
