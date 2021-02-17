@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,11 @@ import org.apache.logging.log4j.LogManager;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.ILoggerFactory;
 
+/**
+ * A factory for the Log4j 2 logger.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 public class Log4j2LoggerFactory implements ILoggerFactory {
 
 	private final ConcurrentMap<String, ILogger> map = new ConcurrentHashMap<String, ILogger>();
