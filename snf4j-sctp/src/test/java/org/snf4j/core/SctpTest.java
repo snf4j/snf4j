@@ -81,6 +81,10 @@ public class SctpTest {
 		Assume.assumeTrue(SUPPORTED);
 	}
 	
+	public static boolean isOptimized(SctpSession session) {
+		return session.optimizeBuffers && session.optimizeCopying;
+	}
+	
 	@After
 	public void after() throws Exception {
 		if (c != null) c.stop(TIMEOUT);

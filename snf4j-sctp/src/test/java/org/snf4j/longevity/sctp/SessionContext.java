@@ -1,0 +1,52 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2021 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
+package org.snf4j.longevity.sctp;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+public class SessionContext {
+	
+	public final static String ATTR_KEY = "SessionContext";
+	
+	AtomicLong packetCounter;
+	
+	final long initialPacketCounter;
+	
+	public SessionContext() {
+		packetCounter = new AtomicLong(Utils.RANDOM.nextInt(Config.MAX_PACKET_IN_SESSION));
+		initialPacketCounter = packetCounter.get();
+	}
+
+	public boolean nextPacket() {
+		if (packetCounter.get() > 0) {
+			long c = packetCounter.decrementAndGet();
+			if (c >= 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+}

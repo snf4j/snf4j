@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1621,4 +1622,238 @@ public class SctpSessionTest extends SctpTest {
 		assertWrite("DR|NOP(22344)|");
 		assertAllocator(2,3,0);	
 	}
+	
+	@Test
+	public void testOptimizedDataCopyingRead() throws Exception {
+		assumeSupported();
+
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		s.allocator = new TestAllocator(false, true);
+		s.optimizeCopying = true;
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		SctpSession session = c.session;
+		setAllocator(s.allocator);
+		assertAllocatorDeltas(1, 1, 0);
+		assertNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|BUF|NOP(1)|");
+		assertAllocatorDeltas(1, 0, 1);
+		s.session.release(s.readBuffer);
+		assertAllocatorDeltas(0, 1, 0);
+		assertNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		
+		Packet p = nop("1", "0", '2', 6000);
+		session.writenf(p.toBytes());
+		assertWrite("DR|DR|DR|BUF|NOP("+p.payload+")|");
+		assertAllocatorDeltas(3, 2, 1);
+		s.session.release(s.readBuffer);
+		assertAllocatorDeltas(0, 1, 0);
+		assertNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+			
+		session.writenf(p.toBytes());
+		assertWrite("DR|BUF|NOP("+p.payload+")|");
+		assertAllocatorDeltas(1, 0, 1);
+		s.session.release(s.readBuffer);
+		assertAllocatorDeltas(0, 1, 0);
+		assertNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		stopClientAndClearTraces(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertAllocatorDeltas(1, 1, 0);
+		
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		s.allocator = new TestAllocator(false, true);
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		session = c.session;
+		setAllocator(s.allocator);
+		assertAllocatorDeltas(1, 0, 1);
+
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(2048, getIn(s).capacity());
+		assertEquals(0, getOut(s).size());
+
+		session.writenf(p.toBytes());
+		assertWrite("DR|DR|DR|NOP("+p.payload+")|");
+		assertAllocatorDeltas(1, 1, 1);
+		assertNotNull(getIn(s));
+		assertEquals(2048*4, getIn(s).capacity());
+		assertEquals(0, getOut(s).size());
+
+		session.writenf(p.toBytes());
+		assertWrite("DR|NOP("+p.payload+")|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		stopClientAndClearTraces(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertAllocatorDeltas(0, 1, 0);
+		assertNull(getIn(s));
+	
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		s.allocator = new TestAllocator(false, false);
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		session = c.session;
+		setAllocator(s.allocator);
+		assertAllocatorDeltas(1, 0, 1);
+
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(2048, getIn(s).capacity());
+		assertEquals(0, getOut(s).size());
+
+		session.writenf(p.toBytes());
+		assertWrite("DR|DR|DR|NOP("+p.payload+")|");
+		assertAllocatorDeltas(1, 0, 2);
+		assertNotNull(getIn(s));
+		assertEquals(2048*4, getIn(s).capacity());
+		assertEquals(0, getOut(s).size());
+
+		session.writenf(p.toBytes());
+		assertWrite("DR|NOP("+p.payload+")|");
+		assertAllocatorDeltas(0, 0, 2);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		stopClientAndClearTraces(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertAllocatorDeltas(0, 0, 2);
+		assertNull(getIn(s));
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingReadWithCodec() throws Exception {
+		assumeSupported();
+
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		s.allocator = new TestAllocator(false, true);
+		s.optimizeCopying = true;
+		addCodecs(s,0,0,new ArrayToBufferDecoder(true));
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		SctpSession session = c.session;
+		setAllocator(s.allocator);
+		assertAllocatorDeltas(1, 1, 0);
+		assertNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|BUF|NOP(1)|");
+		assertAllocatorDeltas(2, 1, 1);
+		s.session.release(s.readBuffer);
+		assertAllocatorDeltas(0, 1, 0);
+		assertNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		
+		s.getCodec(0,0).getPipeline().replace("D1", "D1", new BufferToArrayDecoder(true));
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(1, 1, 0);
+		assertNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		
+		s.getCodec(0,0).getPipeline().remove("D1");
+		session.writenf(nopb("1"));
+		assertWrite("DR|BUF|NOP(1)|");
+		assertAllocatorDeltas(1, 0, 1);
+		s.session.release(s.readBuffer);
+		assertAllocatorDeltas(0, 1, 0);
+		assertNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		stopClientAndClearTraces(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertAllocatorDeltas(1, 1, 0);
+		
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		s.allocator = new TestAllocator(false, true);
+		addCodecs(s,0,0,new ArrayToBufferDecoder(true));
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		session = c.session;
+		setAllocator(s.allocator);
+		assertAllocatorDeltas(1, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+
+		session.writenf(nopb("1"));
+		assertWrite("DR|BUF|NOP(1)|");
+		assertAllocatorDeltas(1, 0, 2);
+		s.session.release(s.readBuffer);
+		assertAllocatorDeltas(0, 1, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+
+		s.getCodec(0,0).getPipeline().replace("D1", "D1", new BufferToArrayDecoder(false));
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+
+		s.getCodec(0,0).getPipeline().remove("D1");
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		stopClientAndClearTraces(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertAllocatorDeltas(0, 1, 0);
+
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		s.allocator = new TestAllocator(false, false);
+		addCodecs(s,0,0,new ArrayToBufferDecoder(false));
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		session = c.session;
+		setAllocator(s.allocator);
+		assertAllocatorDeltas(1, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+
+		session.writenf(nopb("1"));
+		assertWrite("DR|BUF|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+
+		s.getCodec(0,0).getPipeline().replace("D1", "D1", new BufferToArrayDecoder(false));
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+
+		s.getCodec(0,0).getPipeline().remove("D1");
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(s));
+		assertEquals(0, getOut(s).size());
+		stopClientAndClearTraces(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertAllocatorDeltas(0, 0, 1);
+	}	
 }

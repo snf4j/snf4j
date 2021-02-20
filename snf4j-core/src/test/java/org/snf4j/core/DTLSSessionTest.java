@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -2143,6 +2143,7 @@ public class DTLSSessionTest extends DTLSTest {
 		b = nop("1", null);
 		session.write(b);
 		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", s.getRecordedData(true));
 		if (codec) {
 			assertEquals(acount+1+add, a.getAllocatedCount());
@@ -2185,6 +2186,7 @@ public class DTLSSessionTest extends DTLSTest {
 		b = nop("1", a);
 		session.write(b);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", c.getRecordedData(true));
 		assertEquals(acount+2, a.getAllocatedCount());
 		assertEquals(rcount+2, a.getReleasedCount());
@@ -2195,6 +2197,7 @@ public class DTLSSessionTest extends DTLSTest {
 		b = nop("2", a);
 		session.send(address(PORT+1), b);
 		s2.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals(codec ? "SCR|SOP|RDY|DR|NOP2(2)|" : "SCR|SOP|RDY|DR|NOP(2)|", s2.getRecordedData(true));
 		assertEquals(acount+3, a.getAllocatedCount());
 		assertEquals(rcount+3, a.getReleasedCount());
@@ -2227,6 +2230,7 @@ public class DTLSSessionTest extends DTLSTest {
 		b = nop("1", a);
 		session.write(b);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals(codec ? "DR|NOP2(1)|" : "DR|NOP(1)|", c.getRecordedData(true));
 		assertEquals(acount+2, a.getAllocatedCount());
 		assertEquals(0, a.getReleasedCount());
@@ -2234,6 +2238,7 @@ public class DTLSSessionTest extends DTLSTest {
 		b = nop("2", a);
 		session.send(address(PORT+1), b);
 		s2.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals(codec ? "DR|NOP2(2)|" : "DR|NOP(2)|", s2.getRecordedData(true));
 		assertEquals(acount+3, a.getAllocatedCount());
 		assertEquals(0, a.getReleasedCount());
