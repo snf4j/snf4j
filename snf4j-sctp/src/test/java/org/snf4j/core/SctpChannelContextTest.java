@@ -242,7 +242,7 @@ public class SctpChannelContextTest extends SctpTest {
 		session.write(nopb("1234"), msgInfo);
 		TestSelectionKey key = new TestSelectionKey(new TestSctpChannel());
 		SctpChannelContext ctx = (SctpChannelContext) session.channel.keyFor(c.loop.selector).attachment();
-		Method m = SctpChannelContext.class.getDeclaredMethod("handleWriting", SelectorLoop.class, SctpSession.class, SelectionKey.class, int.class);
+		Method m = AbstractSctpChannelContext.class.getDeclaredMethod("handleWriting", SelectorLoop.class, InternalSctpSession.class, SelectionKey.class, int.class);
 		m.setAccessible(true);
 		assertEquals(new Integer(0), m.invoke(ctx, c.loop, session, key, 1));
 		session.resumeWrite();
@@ -399,9 +399,9 @@ public class SctpChannelContextTest extends SctpTest {
 			public void run() {
 				Method m;
 				try {
-					m = SctpChannelContext.class.getDeclaredMethod("handleWriting", 
+					m = AbstractSctpChannelContext.class.getDeclaredMethod("handleWriting", 
 							SelectorLoop.class, 
-							SctpSession.class, 
+							InternalSctpSession.class, 
 							SelectionKey.class,
 							int.class);
 					m.setAccessible(true);
@@ -569,7 +569,7 @@ public class SctpChannelContextTest extends SctpTest {
 	
 	@Test
 	public void testNotificationHandler() throws Exception {
-		Field f = SctpChannelContext.class.getDeclaredField("HANDLER");
+		Field f = AbstractSctpChannelContext.class.getDeclaredField("HANDLER");
 		TestSctpHandler handler = new TestSctpHandler();
 		SctpSession session = new SctpSession(handler);
 		

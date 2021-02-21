@@ -33,11 +33,16 @@ import java.util.Collections;
 import java.util.Set;
 
 import org.snf4j.core.handler.ISctpHandler;
+import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.ISctpSession;
 
 import com.sun.nio.sctp.Association;
+import com.sun.nio.sctp.AssociationChangeNotification;
+import com.sun.nio.sctp.AssociationChangeNotification.AssocChangeEvent;
+import com.sun.nio.sctp.HandlerResult;
+import com.sun.nio.sctp.Notification;
 import com.sun.nio.sctp.SctpChannel;
 
 /**
@@ -77,8 +82,14 @@ public class SctpSession extends InternalSctpSession implements ISctpSession {
 		this(null, handler);
 	}
 	
-	void markShutdown() {
-		shutdown = true;
+	@Override
+	HandlerResult notification(Notification notification, SctpNotificationType type) {
+		if (type == SctpNotificationType.ASSOCIATION_CHANGE) {
+			if (((AssociationChangeNotification)notification).event() == AssocChangeEvent.SHUTDOWN) {
+				shutdown = true;
+			}
+		}
+		return super.notification(notification, type);
 	}
 	
 	boolean markedShutdown() {
