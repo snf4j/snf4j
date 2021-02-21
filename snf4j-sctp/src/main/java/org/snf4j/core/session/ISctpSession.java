@@ -25,6 +25,7 @@
  */
 package org.snf4j.core.session;
 
+import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Set;
@@ -32,6 +33,8 @@ import java.util.Set;
 import org.snf4j.core.ImmutableSctpMessageInfo;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.ISctpHandler;
+
+import com.sun.nio.sctp.Association;
 
 /**
  * Extends the {@link ISession} interface to cover SCTP functionalities.
@@ -50,6 +53,33 @@ public interface ISctpSession extends ISession {
 
 	@Override
 	ISctpSession getParent();
+	
+	/**
+	 * Returns the association on the SCTP channel's socket associated with this
+	 * session
+	 * 
+	 * @return the association, or {@code null} if the SCTP channel's socket is not
+	 *         connected
+	 */
+	Association getAssociation();
+	
+	/**
+	 * Adds the given address to the bound addresses for the SCTP channel's socket
+	 * associated with this session
+	 * 
+	 * @param address the address to add to the bound addresses
+	 * @return the future associated with this bind operation
+	 */
+	IFuture<Void> bindAddress(InetAddress address);
+	
+	/**
+	 * Removes the given address from the bound addresses for the SCTP channel's
+	 * socket associated with this session
+	 * 
+	 * @param address the address to remove from the bound addresses
+	 * @return the future associated with this unbind operation
+	 */
+	IFuture<Void> unbindAddress(InetAddress address);
 	
 	/**
 	 * Returns one of the local addresses this session is bound to.

@@ -39,6 +39,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.AlreadyBoundException;
 import java.util.Set;
 
 import org.junit.Test;
@@ -48,7 +49,10 @@ import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
 import org.snf4j.core.codec.bytes.BufferToArrayDecoder;
 import org.snf4j.core.codec.bytes.BufferToArrayEncoder;
+import org.snf4j.core.future.FailedFuture;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.future.SuccessfulFuture;
+import org.snf4j.core.future.TaskFuture;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.session.ISession;
@@ -64,6 +68,134 @@ public class SctpSessionTest extends SctpTest {
 		startClientServer();
 		assertNull(c.session.getParent());
 		assertNull(s.session.getParent());
+	}
+	
+	@Test
+	public void testGetAssociation() throws Exception {
+		assumeSupported();
+		SctpSession session = new SctpSession(new TestSctpHandler());
+		assertNull(session.getAssociation());
+		
+		startClientServer();
+		session = c.session;
+		assertNotNull(session.getAssociation());
+		session.close();
+		session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertNull(session.getAssociation());
+		
+		TestSctpChannel tsc = new TestSctpChannel();
+		tsc.associationException = new IOException();
+		session.channel = tsc;
+		assertNull(session.getAssociation());
+	}
+	
+	InetAddress[] addresses(SctpSession session) {
+		Object[] os = session.getLocalAddresses().toArray();
+		
+		InetAddress[] addrs = new InetAddress[os.length];
+		for (int i=0; i<addrs.length; ++i) {
+			addrs[i] = ((InetSocketAddress) os[i]).getAddress();
+		}
+		return addrs;
+	}
+	
+	@Test
+	public void testBindUnbindAddress() throws Exception {
+		assumeSupported();
+		startClientServer();
+		SctpSession session = c.session;
+		InetAddress addr0 = address(0).getAddress();
+		InetAddress addr1 = null;
+		
+		for (InetAddress a: addresses(session)) {
+			if (!a.equals(addr0)) {
+				addr1 = a;
+				break;
+			}
+		}
+		assertNotNull(addr1);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		c.localAddresses.add(address(addr0,0));
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		session = c.session;
+		assertEquals(1, session.getLocalAddresses().size());
+		session.bindAddress(addr1).sync(TIMEOUT);
+		waitFor(50);
+		assertEquals(2, session.getLocalAddresses().size());
+		session.unbindAddress(addr1).sync(TIMEOUT);
+		waitFor(50);
+		assertEquals(1, session.getLocalAddresses().size());
+		
+		IFuture<Void> f = session.bindAddress(addr0);
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		assertTrue(f.cause() instanceof AlreadyBoundException);
+		assertTrue(f.getClass() == TaskFuture.class);
+		f = session.unbindAddress(addr0);
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		assertNotNull(f.cause());
+		
+		BindUnbindTask task = new BindUnbindTask(session, addr1, true);
+		c.loop.execute(task).sync(TIMEOUT);
+		assertTrue(task.future.isSuccessful());
+		waitFor(50);
+		assertEquals(2, session.getLocalAddresses().size());
+		assertTrue(task.future.getClass() == SuccessfulFuture.class);
+		task = new BindUnbindTask(session, addr1, false);		
+		c.loop.execute(task).sync(TIMEOUT);
+		assertTrue(task.future.isSuccessful());
+		waitFor(50);
+		assertEquals(1, session.getLocalAddresses().size());
+		assertTrue(task.future.getClass() == SuccessfulFuture.class);
+		
+		task = new BindUnbindTask(session, addr0, true);	
+		c.loop.execute(task).sync(TIMEOUT);
+		assertTrue(task.future.isFailed());
+		assertTrue(task.future.getClass() == FailedFuture.class);
+		assertTrue(task.future.cause() instanceof AlreadyBoundException);
+		task = new BindUnbindTask(session, addr0, false);	
+		c.loop.execute(task).sync(TIMEOUT);
+		assertTrue(task.future.isFailed());
+		assertTrue(task.future.getClass() == FailedFuture.class);
+		assertNotNull(task.future.cause());
+		
+		session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		session.channel = null;
+		assertTrue(session.bindAddress(addr1).isCancelled());
+		session.loop = null;
+		assertTrue(session.bindAddress(addr1).isCancelled());
+	}
+	
+	class BindUnbindTask implements Runnable {
+		
+		SctpSession session;
+		
+		boolean bind;
+		
+		volatile IFuture<Void> future;
+		
+		InetAddress address;
+		
+		BindUnbindTask(SctpSession session, InetAddress address, boolean bind) {
+			this.session = session;
+			this.bind = bind;
+			this.address = address;
+		}
+		
+		@Override
+		public void run() {
+			future = bind ? session.bindAddress(address) : session.unbindAddress(address);
+		}
 	}
 	
 	@Test

@@ -56,6 +56,8 @@ public class TestSctpChannel extends SctpChannel {
 
 	IOException sendException;
 	
+	IOException associationException;
+	
 	MessageInfo msgInfo;
 	
 	static class AddrComparator implements Comparator<SocketAddress> {
@@ -72,6 +74,9 @@ public class TestSctpChannel extends SctpChannel {
 
 	@Override
 	public Association association() throws IOException {
+		if (associationException != null) {
+			throw associationException;
+		}
 		return null;
 	}
 

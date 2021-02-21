@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
@@ -38,7 +39,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.snf4j.core.codec.ICodecExecutor;
+import org.snf4j.core.future.CancelledFuture;
+import org.snf4j.core.future.FailedFuture;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.future.SuccessfulFuture;
+import org.snf4j.core.future.TaskFuture;
 import org.snf4j.core.handler.ISctpHandler;
 import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.handler.SessionEvent;
@@ -49,6 +54,7 @@ import org.snf4j.core.session.ISctpSessionConfig;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
 
+import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.MessageInfo;
 import com.sun.nio.sctp.Notification;
@@ -240,7 +246,79 @@ public class SctpSession extends InternalSession implements ISctpSession {
 		closeCalled.set(true);
 		close(false);
 	}
+	
+	@Override
+	public Association getAssociation() {
+		SelectableChannel channel = this.channel;
+		
+		if (channel != null && channel.isOpen()) {
+			try {
+				return ((SctpChannel)channel).association();
+			}
+			catch (IOException e) {
+				//Ignore
+			}
+		}
+		return null;
+	}
+	
+	private void bindUnbind(InetAddress address, TaskFuture<Void> future, boolean bind) {
+		try {
+			if (bind) {
+				((SctpChannel) channel).bindAddress(address);
+			} else {
+				((SctpChannel) channel).unbindAddress(address);
+			}
+			future.success();
+		}
+		catch (Throwable t) {
+			future.abort(t);
+		}
+	}
+	
+	private IFuture<Void> bindUnbind(final InetAddress address, boolean bind) {
+		InternalSelectorLoop loop = this.loop;
+		SelectableChannel channel = this.channel;
+		
+		if (loop == null || channel == null) {
+			return new CancelledFuture<Void>(this);
+		}
+		if (loop.inLoop()) {
+			try {
+				if (bind) {
+					((SctpChannel) channel).bindAddress(address);
+				} else {
+					((SctpChannel) channel).unbindAddress(address);
+				}
+			}
+			catch (Throwable t) {
+				return new FailedFuture<Void>(this,t);
+			}
+			return new SuccessfulFuture<Void>(this);
+		}
+		
+		final TaskFuture<Void> future = new TaskFuture<Void>(this);
+		
+		loop.executenf(new Runnable() {
 
+			@Override
+			public void run() {
+				bindUnbind(address, future, bind);
+			}
+		});
+		return future;
+	}
+	
+	@Override
+	public IFuture<Void> bindAddress(InetAddress address) {
+		return bindUnbind(address, true);
+	}
+	
+	@Override
+	public IFuture<Void> unbindAddress(InetAddress address) {
+		return bindUnbind(address, false);
+	}
+	
 	private Set<SocketAddress> getAddresses(boolean local) {
 		SelectableChannel channel = this.channel;
 		
