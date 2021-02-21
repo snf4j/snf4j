@@ -34,7 +34,7 @@ import java.util.Iterator;
 import java.util.Queue;
 import java.util.Set;
 
-import org.snf4j.core.SctpSession.SctpRecord;
+import org.snf4j.core.InternalSctpSession.SctpRecord;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SctpNotificationType;
 

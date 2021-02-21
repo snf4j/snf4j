@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.After;
 import org.junit.Assume;
-import org.snf4j.core.SctpSession.SctpRecord;
+import org.snf4j.core.InternalSctpSession.SctpRecord;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.codec.ICodec;
@@ -286,7 +286,7 @@ public class SctpTest {
 	}
 	
 	ByteBuffer getFragment(SctpSession session) throws Exception {
-		Field f = SctpSession.class.getDeclaredField("fragments");
+		Field f = InternalSctpSession.class.getDeclaredField("fragments");
 		Field f2 = SctpFragments.class.getDeclaredField("fragment");
 		
 		f.setAccessible(true);
@@ -299,7 +299,7 @@ public class SctpTest {
 	}
 	
 	ByteBuffer getIn(SctpSession session) throws Exception {
-		Field f = SctpSession.class.getDeclaredField("inBuffer");
+		Field f = InternalSctpSession.class.getDeclaredField("inBuffer");
 		
 		f.setAccessible(true);
 		return (ByteBuffer) f.get(session);
@@ -310,7 +310,7 @@ public class SctpTest {
 	}
 	
 	void setIn(SctpSession session, ByteBuffer in) throws Exception {
-		Field f = SctpSession.class.getDeclaredField("inBuffer");
+		Field f = InternalSctpSession.class.getDeclaredField("inBuffer");
 		
 		f.setAccessible(true);
 		f.set(session, in);
@@ -322,7 +322,7 @@ public class SctpTest {
 	
 	@SuppressWarnings("unchecked")
 	Queue<SctpRecord> getOut(SctpSession session) throws Exception {
-		Field f = SctpSession.class.getDeclaredField("outQueue");
+		Field f = InternalSctpSession.class.getDeclaredField("outQueue");
 		
 		f.setAccessible(true);
 		return (Queue<SctpRecord>) f.get(session);

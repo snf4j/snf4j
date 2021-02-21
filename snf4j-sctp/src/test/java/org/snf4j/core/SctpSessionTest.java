@@ -89,6 +89,7 @@ public class SctpSessionTest extends SctpTest {
 		tsc.associationException = new IOException();
 		session.channel = tsc;
 		assertNull(session.getAssociation());
+		tsc.close();
 	}
 	
 	InetAddress[] addresses(SctpSession session) {
