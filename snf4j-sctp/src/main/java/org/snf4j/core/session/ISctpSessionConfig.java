@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.session;
 
+import java.net.SocketAddress;
+
 import org.snf4j.core.codec.ICodecExecutor;
 
 import com.sun.nio.sctp.MessageInfo;
@@ -98,8 +100,8 @@ public interface ISctpSessionConfig extends ISessionConfig {
 	
 	/**
 	 * Returns the stream number for the SCTP messages sent by the
-	 * {@link org.snf4j.core.SctpSession SctpSession}'s write methods without
-	 * specified the {@code msgInfo} argument.
+	 * {@link org.snf4j.core.session.ISctpSession ISctpSession}'s write methods
+	 * without specified the {@code msgInfo} argument.
 	 * 
 	 * @return the default stream number
 	 */
@@ -107,8 +109,8 @@ public interface ISctpSessionConfig extends ISessionConfig {
 	
 	/**
 	 * Returns the payload protocol identifier for the SCTP messages sent by the
-	 * {@link org.snf4j.core.SctpSession SctpSession}'s write methods without
-	 * specified the {@code msgInfo} argument.
+	 * {@link org.snf4j.core.session.ISctpSession ISctpSession}'s write methods
+	 * without specified the {@code msgInfo} argument.
 	 * 
 	 * @return the default payload protocol identifier
 	 */
@@ -116,11 +118,21 @@ public interface ISctpSessionConfig extends ISessionConfig {
 	
 	/**
 	 * Returns the unordered flag for the SCTP messages sent by the
-	 * {@link org.snf4j.core.SctpSession SctpSession}'s write methods without
-	 * specified the {@code msgInfo} argument.
+	 * {@link org.snf4j.core.session.ISctpSession ISctpSession}'s write methods
+	 * without specified the {@code msgInfo} argument.
 	 * 
 	 * @return the default unordered flag
 	 */
 	boolean getDefaultSctpUnorderedFlag();
+	
+	/**
+	 * Returns the preferred peer address for the SCTP messages sent by the
+	 * {@link org.snf4j.core.session.ISctpSession ISctpSession}'s write methods
+	 * without specified the {@code msgInfo} argument.
+	 * 
+	 * @return the preferred peer address, or {@code null} to use the peer primary
+	 *         address
+	 */
+	SocketAddress getDefaultSctpPeerAddress();
 
 }

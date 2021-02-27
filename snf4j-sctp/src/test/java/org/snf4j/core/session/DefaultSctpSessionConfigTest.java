@@ -30,6 +30,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+
 import org.junit.Test;
 
 public class DefaultSctpSessionConfigTest {
@@ -46,14 +49,17 @@ public class DefaultSctpSessionConfigTest {
 		assertEquals(0, config.getDefaultSctpPayloadProtocolID());
 		assertFalse(config.getDefaultSctpUnorderedFlag());
 		assertNull(config.createCodecExecutor(null));
+		assertNull(config.getDefaultSctpPeerAddress());
 		
+		SocketAddress a = InetSocketAddress.createUnresolved("127.0.0.1", 8888);
 		config.setMinSctpStreamNumber(40)
 			.setMaxSctpStreamNumber(100)
 			.setMinSctpPayloadProtocolID(77)
 			.setMaxSctpPayloadProtocolID(777)
 			.setDefaultSctpStreamNumber(103)
 			.setDefaultSctpPayloadProtocolID(44)
-			.setDefaultSctpUnorderedFlag(true);
+			.setDefaultSctpUnorderedFlag(true)
+			.setDefaultSctpPeerAddress(a);
 		
 		assertEquals(40, config.getMinSctpStreamNumber());
 		assertEquals(100, config.getMaxSctpStreamNumber());
@@ -62,6 +68,7 @@ public class DefaultSctpSessionConfigTest {
 		assertEquals(103, config.getDefaultSctpStreamNumber());
 		assertEquals(44, config.getDefaultSctpPayloadProtocolID());
 		assertTrue(config.getDefaultSctpUnorderedFlag());
+		assertTrue(config.getDefaultSctpPeerAddress() == a);
 		
 	}
 }

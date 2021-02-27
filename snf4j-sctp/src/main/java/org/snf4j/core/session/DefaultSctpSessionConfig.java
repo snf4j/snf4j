@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.session;
 
+import java.net.SocketAddress;
+
 import org.snf4j.core.codec.ICodecExecutor;
 
 import com.sun.nio.sctp.MessageInfo;
@@ -49,6 +51,8 @@ public class DefaultSctpSessionConfig extends DefaultSessionConfig implements IS
 	private int defaultSctpPayloadProtocolID; /* 0 */
 	
 	private boolean defaultSctpUnorderedFlag; /* false */
+	
+	private SocketAddress defaultSctpPeerAddress; /* null */
 	
 	@Override
 	public ICodecExecutor createCodecExecutor(MessageInfo msgInfo) {
@@ -173,8 +177,8 @@ public class DefaultSctpSessionConfig extends DefaultSessionConfig implements IS
 
 	/**
 	 * Configures the stream number for the SCTP messages sent by the
-	 * {@link org.snf4j.core.SctpSession SctpSession}'s write methods without
-	 * specified the {@code msgInfo} argument.
+	 * {@link org.snf4j.core.session.ISctpSession ISctpSession}'s write methods
+	 * without specified the {@code msgInfo} argument.
 	 * 
 	 * @param defaultStreamNumber the default stream number
 	 * @return this session config object
@@ -196,8 +200,8 @@ public class DefaultSctpSessionConfig extends DefaultSessionConfig implements IS
 
 	/**
 	 * Configures the payload protocol identifier for the SCTP messages sent by the
-	 * {@link org.snf4j.core.SctpSession SctpSession}'s write methods without
-	 * specified the {@code msgInfo} argument.
+	 * {@link org.snf4j.core.session.ISctpSession ISctpSession}'s write methods
+	 * without specified the {@code msgInfo} argument.
 	 * 
 	 * @param defaultPayloadProtocolID the default payload protocol identifier
 	 * @return this session config object
@@ -219,14 +223,38 @@ public class DefaultSctpSessionConfig extends DefaultSessionConfig implements IS
 	
 	/**
 	 * Configures the unordered flag for the SCTP messages sent by the
-	 * {@link org.snf4j.core.SctpSession SctpSession}'s write methods without
-	 * specified the {@code msgInfo} argument.
+	 * {@link org.snf4j.core.session.ISctpSession ISctpSession}'s write methods
+	 * without specified the {@code msgInfo} argument.
 	 * 
 	 * @param defaultUnorderedFlag the default unordered flag
 	 * @return this session config object
 	 */
 	public DefaultSctpSessionConfig setDefaultSctpUnorderedFlag(boolean defaultUnorderedFlag) {
 		defaultSctpUnorderedFlag = defaultUnorderedFlag;
+		return this;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is {@code null}
+	 */
+	@Override
+	public SocketAddress getDefaultSctpPeerAddress() {
+		return defaultSctpPeerAddress;
+	}
+	
+	/**
+	 * Configures the preferred peer address for the SCTP messages sent by the
+	 * {@link org.snf4j.core.session.ISctpSession ISctpSession}'s write methods
+	 * without specified the {@code msgInfo} argument.
+	 * 
+	 * @param defaultPeerAddress the preferred peer address, or {@code null} to use
+	 *                           the peer primary address
+	 * @return this session config object
+	 */
+	public DefaultSctpSessionConfig setDefaultSctpPeerAddress(SocketAddress defaultPeerAddress) {
+		defaultSctpPeerAddress = defaultPeerAddress;
 		return this;
 	}
 	

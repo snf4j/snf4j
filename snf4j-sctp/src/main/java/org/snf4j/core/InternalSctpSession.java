@@ -75,6 +75,8 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 	
 	private final ImmutableSctpMessageInfo defaultMsgInfo;
 	
+	final boolean defaultPeerAddress;
+	
 	ISctpEncodeTaskWriter encodeTaskWriter;
 	
 	InternalSctpSession(String name, ISctpHandler handler, ILogger logger) {
@@ -84,14 +86,27 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		}
 		
 		ISctpSessionConfig config = (ISctpSessionConfig) this.config;
+		SocketAddress addr = config.getDefaultSctpPeerAddress();
 		
 		minInBufferCapacity = inBufferCapacity = config.getMinInBufferCapacity();
 		maxInBufferCapacity = config.getMaxInBufferCapacity();
 		fragments = new SctpFragments(allocator, minInBufferCapacity, maxInBufferCapacity, optimizeBuffers);
-		defaultMsgInfo = ImmutableSctpMessageInfo.create(
-				config.getDefaultSctpStreamNumber(),
-				config.getDefaultSctpPayloadProtocolID(),
-				config.getDefaultSctpUnorderedFlag());
+		
+		if (addr == null) {
+			defaultPeerAddress = false;
+			defaultMsgInfo = ImmutableSctpMessageInfo.create(
+					config.getDefaultSctpStreamNumber(),
+					config.getDefaultSctpPayloadProtocolID(),
+					config.getDefaultSctpUnorderedFlag());
+		}
+		else {
+			defaultPeerAddress = true;
+			defaultMsgInfo = ImmutableSctpMessageInfo.create(
+					addr,
+					config.getDefaultSctpStreamNumber(),
+					config.getDefaultSctpPayloadProtocolID(),
+					config.getDefaultSctpUnorderedFlag());			
+		}
 	}
 	
 	private static SctpCodecExecutorAdapter codec(ISctpHandler handler) {

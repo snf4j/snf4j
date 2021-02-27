@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -123,6 +124,8 @@ public class SctpServer {
 	public volatile int defaultSctpStreamNumber = -1;
 	
 	public volatile int defaultSctpPayloadProtocolID = -1;
+	
+	public volatile SocketAddress defaultSctpPeerAddress;
 	
 	public volatile int minSctpStreamNumber = -111;
 	
@@ -382,6 +385,7 @@ public class SctpServer {
 			if (defaultSctpUnorderedFlag) {
 				config.setDefaultSctpUnorderedFlag(defaultSctpUnorderedFlag);
 			}
+			config.setDefaultSctpPeerAddress(defaultSctpPeerAddress);
 			if (minSctpStreamNumber != -111) {
 				config.setMinSctpStreamNumber(minSctpStreamNumber);
 			}

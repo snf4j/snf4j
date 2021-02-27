@@ -28,12 +28,14 @@ package org.snf4j.core;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.ISctpHandler;
 import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.logger.ILogger;
@@ -224,4 +226,68 @@ public class SctpMultiSession extends InternalSctpSession implements ISctpMultiS
 		((SctpMultiChannel) channel).unbindAddress(address);		
 	}
 
+	private final void checkConfig() {
+		if (!defaultPeerAddress) throw new IllegalStateException("default peer address is not configured");
+	}
+	
+	@Override
+	public IFuture<Void> write(byte[] msg) {
+		checkConfig();
+		return super.write(msg, null);
+	}
+	
+	@Override
+	public IFuture<Void> write(byte[] msg, int offset, int length) {
+		checkConfig();
+		return super.write(msg, offset, length, null);
+	}
+
+	@Override
+	public void writenf(byte[] msg) {
+		checkConfig();
+		super.writenf(msg, null);
+	}
+	
+	@Override
+	public void writenf(byte[] msg, int offset, int length) {
+		checkConfig();
+		super.writenf(msg, offset, length, null);
+	}
+
+	@Override
+	public IFuture<Void> write(ByteBuffer msg) {
+		checkConfig();
+		return super.write(msg, null);
+	}
+
+	@Override
+	public IFuture<Void> write(ByteBuffer msg, int length) {
+		checkConfig();
+		return super.write(msg, length, null);
+	}
+
+	@Override
+	public void writenf(ByteBuffer msg) {
+		checkConfig();
+		super.writenf(msg, null);
+	}
+	
+	@Override
+	public void writenf(ByteBuffer msg, int length) {
+		checkConfig();
+		super.writenf(msg, length, null);
+	}
+
+	@Override
+	public IFuture<Void> write(Object msg) {
+		checkConfig();
+		return super.write(msg, null);
+	}
+
+	@Override
+	public void writenf(Object msg) {
+		checkConfig();
+		super.writenf(msg, null);
+	}
+	
 }

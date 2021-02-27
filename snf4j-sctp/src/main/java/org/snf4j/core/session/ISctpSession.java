@@ -124,8 +124,9 @@ public interface ISctpSession extends ISession {
 	 * Writes a message from the specified byte array to the SCTP channel that is
 	 * associated with this session. The message will be written with the
 	 * {@code com.sun.nio.sctp.MessageInfo} created based on the default values for
-	 * {@code streamNumber}, {@code payloadProtocolID} and {@code unordered} that
-	 * were read from the session's configuration during creation of this session.
+	 * {@code address}, {@code streamNumber}, {@code payloadProtocolID} and
+	 * {@code unordered} that were read from the session's configuration during
+	 * creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
 	 * 
@@ -139,8 +140,8 @@ public interface ISctpSession extends ISession {
 	 * Writes a message of given length from the specified byte array to the SCTP
 	 * channel that is associated with this session. The message will be written
 	 * with the {@code com.sun.nio.sctp.MessageInfo} created based on the default
-	 * values for {@code streamNumber}, {@code payloadProtocolID} and
-	 * {@code unordered} that were read from the session's configuration during
+	 * values for {@code address}, {@code streamNumber}, {@code payloadProtocolID}
+	 * and {@code unordered} that were read from the session's configuration during
 	 * creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
@@ -189,14 +190,14 @@ public interface ISctpSession extends ISession {
 	 * Writes a message from the specified byte array to the SCTP channel that is
 	 * associated with this session. The message will be written with the
 	 * {@code com.sun.nio.sctp.MessageInfo} created based on the default values for
-	 * {@code streamNumber}, {@code payloadProtocolID} and {@code unordered} that
-	 * were read from the session's configuration during creation of this session.
+	 * {@code address}, {@code streamNumber}, {@code payloadProtocolID} and
+	 * {@code unordered} that were read from the session's configuration during
+	 * creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
 	 * <p>
-	 * This method should be used whenever there will be no need to 
-	 * synchronize on a future object. This will save some resources and 
-	 * may improve performance.
+	 * This method should be used whenever there will be no need to synchronize on a
+	 * future object. This will save some resources and may improve performance.
 	 * 
 	 * @param msg the byte array containing the message to be written
 	 * @throws IllegalSessionStateException if this session is not open
@@ -207,15 +208,14 @@ public interface ISctpSession extends ISession {
 	 * Writes a message of given length from the specified byte array to the SCTP
 	 * channel that is associated with this session. The message will be written
 	 * with the {@code com.sun.nio.sctp.MessageInfo} created based on the default
-	 * values for {@code streamNumber}, {@code payloadProtocolID} and
-	 * {@code unordered} that were read from the session's configuration during
+	 * values for {@code address}, {@code streamNumber}, {@code payloadProtocolID}
+	 * and {@code unordered} that were read from the session's configuration during
 	 * creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
 	 * <p>
-	 * This method should be used whenever there will be no need to 
-	 * synchronize on a future object. This will save some resources and 
-	 * may improve performance.
+	 * This method should be used whenever there will be no need to synchronize on a
+	 * future object. This will save some resources and may improve performance.
 	 * 
 	 * @param msg    the byte array containing the message to be written
 	 * @param offset offset within the array of the first byte to be written
@@ -266,8 +266,9 @@ public interface ISctpSession extends ISession {
 	 * Writes a message from the specified byte buffer to the SCTP channel that is
 	 * associated with this session. The message will be written with the
 	 * {@code com.sun.nio.sctp.MessageInfo} created based on the default values for
-	 * {@code streamNumber}, {@code payloadProtocolID} and {@code unordered} that
-	 * were read from the session's configuration during creation of this session.
+	 * {@code address}, {@code streamNumber}, {@code payloadProtocolID} and
+	 * {@code unordered} that were read from the session's configuration during
+	 * creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
 	 * 
@@ -281,8 +282,8 @@ public interface ISctpSession extends ISession {
 	 * Writes a message of given length from the specified byte buffer to the SCTP
 	 * channel that is associated with this session. The message will be written
 	 * with the {@code com.sun.nio.sctp.MessageInfo} created based on the default
-	 * values for {@code streamNumber}, {@code payloadProtocolID} and
-	 * {@code unordered} that were read from the session's configuration during
+	 * values for {@code address}, {@code streamNumber}, {@code payloadProtocolID}
+	 * and {@code unordered} that were read from the session's configuration during
 	 * creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
@@ -329,14 +330,14 @@ public interface ISctpSession extends ISession {
 	 * Writes a message from the specified byte buffer to the SCTP channel that is
 	 * associated with this session. The message will be written with the
 	 * {@code com.sun.nio.sctp.MessageInfo} created based on the default values for
-	 * {@code streamNumber}, {@code payloadProtocolID} and {@code unordered} that
-	 * were read from the session's configuration during creation of this session.
+	 * {@code address}, {@code streamNumber}, {@code payloadProtocolID} and
+	 * {@code unordered} that were read from the session's configuration during
+	 * creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
 	 * <p>
-	 * This method should be used whenever there will be no need to 
-	 * synchronize on a future object. This will save some resources and 
-	 * may improve performance.
+	 * This method should be used whenever there will be no need to synchronize on a
+	 * future object. This will save some resources and may improve performance.
 	 * 
 	 * @param msg the byte array containing the message to be written
 	 * @throws IllegalSessionStateException if this session is not open
@@ -347,15 +348,14 @@ public interface ISctpSession extends ISession {
 	 * Writes a message of given length from the specified byte buffer to the SCTP
 	 * channel that is associated with this session. The message will be written
 	 * with the {@code com.sun.nio.sctp.MessageInfo} created based on the default
-	 * values for {@code streamNumber}, {@code payloadProtocolID} and
-	 * {@code unordered} that were read from the session's configuration during
+	 * values for {@code address}, {@code streamNumber}, {@code payloadProtocolID}
+	 * and {@code unordered} that were read from the session's configuration during
 	 * creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
 	 * <p>
-	 * This method should be used whenever there will be no need to 
-	 * synchronize on a future object. This will save some resources and 
-	 * may improve performance.
+	 * This method should be used whenever there will be no need to synchronize on a
+	 * future object. This will save some resources and may improve performance.
 	 * 
 	 * @param msg    the byte array containing the message to be written
 	 * @param length number of bytes to be written
@@ -403,9 +403,9 @@ public interface ISctpSession extends ISession {
 	/**
 	 * Writes a message to the SCTP channel that is associated with this session.
 	 * The message will be written with the {@code com.sun.nio.sctp.MessageInfo}
-	 * created based on the default values for {@code streamNumber},
-	 * {@code payloadProtocolID} and {@code unordered} that were read from the
-	 * session's configuration during creation of this session.
+	 * created based on the default values for {@code address},
+	 * {@code streamNumber}, {@code payloadProtocolID} and {@code unordered} that
+	 * were read from the session's configuration during creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
 	 * <p>
@@ -444,21 +444,20 @@ public interface ISctpSession extends ISession {
 	/**
 	 * Writes a message to the SCTP channel that is associated with this session.
 	 * The message will be written with the {@code com.sun.nio.sctp.MessageInfo}
-	 * created based on the default values for {@code streamNumber},
-	 * {@code payloadProtocolID} and {@code unordered} that were read from the
-	 * session's configuration during creation of this session.
+	 * created based on the default values for {@code address},
+	 * {@code streamNumber}, {@code payloadProtocolID} and {@code unordered} that
+	 * were read from the session's configuration during creation of this session.
 	 * <p>
 	 * The operation is asynchronous.
 	 * <p>
-	 * This method usually requires that the session has configured a codec
-	 * pipeline with at least one encoder that accepts the msg as the inbound
-	 * data. If a codec pipeline is not configured or no encoder accept the msg
-	 * object it still accepts messages that are of the <code>byte[]</code> or
-	 * {@link ByteBuffer} type.
+	 * This method usually requires that the session has configured a codec pipeline
+	 * with at least one encoder that accepts the msg as the inbound data. If a
+	 * codec pipeline is not configured or no encoder accept the msg object it still
+	 * accepts messages that are of the <code>byte[]</code> or {@link ByteBuffer}
+	 * type.
 	 * <p>
-	 * This method should be used whenever there will be no need to 
-	 * synchronize on a future object. This will save some resources and 
-	 * may improve performance.
+	 * This method should be used whenever there will be no need to synchronize on a
+	 * future object. This will save some resources and may improve performance.
 	 * 
 	 * @param msg the byte array containing the message to be written
 	 * @throws IllegalSessionStateException if this session is not open

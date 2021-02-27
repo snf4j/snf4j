@@ -28,16 +28,21 @@ package org.snf4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Set;
 
 import org.junit.After;
 import org.junit.Test;
+import org.snf4j.core.session.ISctpSession;
 
 import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.MessageInfo;
@@ -623,5 +628,95 @@ public class SctpMultiSessionTest extends SctpTest {
 		tsmc.associationsException = new IOException();
 		session.shutdown((Set<Association>)null);
 		tsmc.close();
+	}
+	
+	void assertIllegalStateException(String name, Class<?>... args) throws Exception {
+		Method m = SctpMultiSession.class.getDeclaredMethod(name, args);
+		
+		Object[] vals = new Object[args.length];
+		for (int i=0; i<vals.length; ++i) {
+			Class<?> clazz = args[i];
+			
+			if (clazz == int.class) {
+				vals[i] = 1;
+			}
+		}
+		
+		try {
+			m.invoke(ms.session, vals);
+			fail();
+		}
+		catch (InvocationTargetException e) {
+			assertTrue(e.getCause().getClass() == IllegalStateException.class);
+			assertEquals("default peer address is not configured", e.getCause().getMessage());
+		}
+	}
+	
+	private void assertWrite(String expected) throws Exception {
+		ms.waitForDataSent(TIMEOUT);
+		mc.waitForDataRead(TIMEOUT);
+		assertEquals(expected, mc.getTrace());
+	}
+	
+	@Test
+	public void testWriteMethods() throws Exception {
+		assumeSupported();
+
+		ms = new SctpClient(PORT);
+		ms.startMulti();
+		ms.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", ms.getTrace());
+		
+		assertIllegalStateException("write",byte[].class);
+		assertIllegalStateException("write",byte[].class, int.class, int.class);
+		assertIllegalStateException("write",ByteBuffer.class);
+		assertIllegalStateException("write",ByteBuffer.class,int.class);
+		assertIllegalStateException("write",Object.class);
+		assertIllegalStateException("writenf",byte[].class);
+		assertIllegalStateException("writenf",byte[].class, int.class, int.class);
+		assertIllegalStateException("writenf",ByteBuffer.class);
+		assertIllegalStateException("writenf",ByteBuffer.class,int.class);
+		assertIllegalStateException("writenf",Object.class);
+		ms.session.close();
+		ms.waitForSessionEnding(TIMEOUT);
+		
+		ms = new SctpClient(PORT);
+		ms.defaultSctpPeerAddress = address(PORT+1);
+		ms.startMulti();
+		ms.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", ms.getTrace());
+
+		mc = new SctpClient(PORT+1);
+		mc.startMulti();
+		mc.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", mc.getTrace());
+		
+		ISctpSession session = ms.session;
+		
+		session.write(nopb("1")).sync(TIMEOUT);
+		assertWrite("DR|NOP(1)|");
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		
+		session.write(nopb("1",4,7),4,4).sync(TIMEOUT);
+		assertWrite("DR|NOP(1)|");
+		session.writenf(nopb("1",4,7),4,4);
+		assertWrite("DR|NOP(1)|");
+		
+		session.write(nopbb("1")).sync(TIMEOUT);
+		assertWrite("DR|NOP(1)|");
+		session.writenf(nopbb("1"));
+		assertWrite("DR|NOP(1)|");
+		
+		session.write(nopbb("123", 7),6).sync(TIMEOUT);
+		assertWrite("DR|NOP(123)|");
+		session.writenf(nopbb("123", 7),6);
+		assertWrite("DR|NOP(123)|");
+
+		session.write((Object)nopb("1")).sync(TIMEOUT);
+		assertWrite("DR|NOP(1)|");
+		session.writenf((Object)nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		
 	}
 }

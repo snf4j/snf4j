@@ -26,7 +26,10 @@
 package org.snf4j.core.session;
 
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.Set;
+
+import org.snf4j.core.future.IFuture;
 
 import com.sun.nio.sctp.Association;
 
@@ -39,4 +42,94 @@ public interface ISctpMultiSession extends ISctpSession {
 	
 	Set<SocketAddress> getRemoteAddresses(Association association);
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	IFuture<Void> write(byte[] msg);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	IFuture<Void> write(byte[] msg, int offset, int length);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	void writenf(byte[] msg);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	void writenf(byte[] msg, int offset, int length);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	IFuture<Void> write(ByteBuffer msg);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	IFuture<Void> write(ByteBuffer msg, int length);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	void writenf(ByteBuffer msg);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	void writenf(ByteBuffer msg, int length);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	IFuture<Void> write(Object msg);
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @throws IllegalStateException if the default peer address is not set in the session's configuration
+	 */
+	@Override
+	void writenf(Object msg);
+	
 }
