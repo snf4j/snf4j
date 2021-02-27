@@ -112,6 +112,8 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		return encodeTaskWriter;		
 	}
 	
+	abstract boolean closeNow();
+	
 	@Override
 	public ISctpHandler getHandler() {
 		return (ISctpHandler) handler;
@@ -120,6 +122,18 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 	@Override
 	public ISctpSession getParent() {
 		return null;
+	}
+	
+	@Override
+	public void close() {
+		closeCalled.set(true);
+		close(false, true);
+	}
+
+	@Override
+	public void quickClose() {
+		closeCalled.set(true);
+		close(false, false);
 	}
 
 	private final long write0(SctpRecord record) {

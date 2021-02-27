@@ -35,6 +35,7 @@ import java.util.Set;
 import org.snf4j.core.future.IFuture;
 
 import com.sun.nio.sctp.SctpChannel;
+import com.sun.nio.sctp.SctpMultiChannel;
 
 public class SctpClient extends SctpServer {
 	
@@ -43,6 +44,8 @@ public class SctpClient extends SctpServer {
 	Set<SocketAddress> localAddresses = new HashSet<SocketAddress>();
 	
 	SctpChannel sc;
+	
+	SctpMultiChannel smc;
 	
 	boolean loopStart = true;
 	
@@ -53,7 +56,7 @@ public class SctpClient extends SctpServer {
 	}
 	
 	public IFuture<Void> start() throws Exception {
-		return start(null);
+		return start((SctpChannel)null);
 	}
 	
 	public IFuture<Void> start(SctpChannel channel) throws Exception {
@@ -85,5 +88,42 @@ public class SctpClient extends SctpServer {
 		}
 		return SctpRegistrator.register(loop, sc, new SctpSession(new Handler()));
 	}
+	
+	public IFuture<Void> startMulti() throws Exception {
+		return start((SctpMultiChannel)null);
+	}
+	
+	public IFuture<Void> start(SctpMultiChannel channel) throws Exception {
+		if (loop == null) {
+			loop = new SelectorLoop();
+			if (loopStart) {
+				loop.start();
+			}
+		}
+	
+		if (channel == null) {
+			smc = SctpMultiChannel.open();
+			smc.configureBlocking(false);
+			if (!localAddresses.isEmpty()) {
+				Iterator<SocketAddress> i = localAddresses.iterator();
+				
+				smc.bind(i.next());
+				while (i.hasNext()) {
+					smc.bindAddress(((InetSocketAddress)i.next()).getAddress());
+				}
+			}
+			else {
+				smc.bind(new InetSocketAddress(InetAddress.getByName(ip), port));
+			}
+		}
+		else {
+			smc = channel;
+		}
+		if (registerHandler) {
+			return SctpRegistrator.register(loop, smc, new Handler());
+		}
+		return SctpRegistrator.register(loop, smc, new SctpMultiSession(new Handler()));
+	}
+	
 	
 }

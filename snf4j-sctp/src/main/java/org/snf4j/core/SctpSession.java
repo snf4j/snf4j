@@ -92,14 +92,9 @@ public class SctpSession extends InternalSctpSession implements ISctpSession {
 		return super.notification(notification, type);
 	}
 	
-	boolean markedShutdown() {
-		return shutdown;
-	}
-	
 	@Override
-	public void close() {
-		closeCalled.set(true);
-		close(false);
+	boolean closeNow() {
+		return shutdown;
 	}
 	
 	@Override

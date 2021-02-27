@@ -89,17 +89,6 @@ class SctpChannelContext extends AbstractSctpChannelContext<SctpSession> {
 		return ((SctpChannel)key.channel()).receive(msg, session, HANDLER);
 	}
 	
-	final void handleReading(final SelectorLoop loop, final SctpSession session, final SelectionKey key) {
-		super.handleReading(loop, session, key);
-
-		if (session.markedShutdown()) {
-			if (loop.debugEnabled) {
-				loop.logger.debug("Closing channel in {} after shutdown", session);
-			}
-			session.close(true);
-		}
-	}
-	
 	@Override
 	int send(SelectionKey key, ByteBuffer msg, MessageInfo msgInfo) throws Exception {
 		return ((SctpChannel)key.channel()).send(msg, msgInfo);

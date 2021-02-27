@@ -27,6 +27,8 @@ package org.snf4j.core;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +44,7 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.AbstractSctpHandler;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.ISctpHandler;
+import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.DefaultSctpSessionConfig;
 import org.snf4j.core.session.ISctpSessionConfig;
@@ -49,11 +52,27 @@ import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 
 import com.sun.nio.sctp.Association;
+import com.sun.nio.sctp.AssociationChangeNotification;
+import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.MessageInfo;
+import com.sun.nio.sctp.Notification;
+import com.sun.nio.sctp.PeerAddressChangeNotification;
 import com.sun.nio.sctp.SctpChannel;
 import com.sun.nio.sctp.SctpServerChannel;
+import com.sun.nio.sctp.SendFailedNotification;
+import com.sun.nio.sctp.ShutdownNotification;
 
 public class SctpServer {
+	
+	static final String[] NOTIFICATION_CODES = new String[SctpNotificationType.values().length];
+	
+	static {
+		NOTIFICATION_CODES[SctpNotificationType.GENERIC.ordinal()] = "GEN";
+		NOTIFICATION_CODES[SctpNotificationType.ASSOCIATION_CHANGE.ordinal()] = "ASC";
+		NOTIFICATION_CODES[SctpNotificationType.PEER_ADDRESS_CHANGE.ordinal()] = "PAC";
+		NOTIFICATION_CODES[SctpNotificationType.SEND_FAILED.ordinal()] = "SFL";
+		NOTIFICATION_CODES[SctpNotificationType.SHUTDOWN.ordinal()] = "SHT";
+	}
 	
 	SelectorLoop loop;	
 	
@@ -61,7 +80,7 @@ public class SctpServer {
 	
 	SctpServerChannel ssc;
 	
-	SctpSession session;
+	InternalSctpSession session;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	
@@ -75,6 +94,10 @@ public class SctpServer {
 	
 	AtomicBoolean dataSentLock = new AtomicBoolean(false);
 	
+	AtomicBoolean[] notificationLocks = new AtomicBoolean[NOTIFICATION_CODES.length];
+	
+	char[] notificationResults = new char[NOTIFICATION_CODES.length];
+	
 	StringBuilder trace = new StringBuilder();
 	
 	public volatile boolean traceMsgInfo = true;
@@ -84,6 +107,8 @@ public class SctpServer {
 	public volatile boolean traceDataLength;
 	
 	public volatile boolean traceSessionFactory;
+	
+	public volatile boolean traceNotification;
 	
 	public volatile int maxWriteSpinCount = -1;
 	
@@ -125,8 +150,14 @@ public class SctpServer {
 
 	DefaultCodecExecutor[][] codecExecutors = new DefaultCodecExecutor[10][10];
 	
+	List<Notification> notifications = new ArrayList<Notification>();
+	
 	SctpServer(int port) {
 		this.port = port;
+		for (int i=0; i<notificationLocks.length; ++i) {
+			notificationLocks[i] = new AtomicBoolean();
+			notificationResults[i] = 'C';
+		}
 	}
 	
 	void resetLocks() {
@@ -182,6 +213,27 @@ public class SctpServer {
 		}
 	}
 	
+	public SctpNotificationType notificationType(String code) {
+		for (int i=0; i<NOTIFICATION_CODES.length; ++i) {
+			if (code.equals(NOTIFICATION_CODES[i])) {
+				return SctpNotificationType.values()[i];
+			}
+		}
+		throw new IllegalArgumentException("wrong notification code");
+	}
+	
+	void notificationResult(String code, char result) {
+		notificationResults[notificationType(code).ordinal()] = result;
+	}
+	
+	public void waitForNotification(SctpNotificationType type, long millis) throws InterruptedException {
+		LockUtils.waitFor(notificationLocks[type.ordinal()], millis);
+	}
+	
+	public void waitForNotification(String code, long millis) throws InterruptedException {
+		LockUtils.waitFor(notificationLocks[notificationType(code).ordinal()], millis);
+	}
+	
 	public void waitForSessionOpen(long millis) throws InterruptedException {
 		LockUtils.waitFor(sessionOpenLock, millis);
 	}
@@ -204,6 +256,30 @@ public class SctpServer {
 	
 	public void waitForDataSent(long millis) throws InterruptedException {
 		LockUtils.waitFor(dataSentLock, millis);
+	}
+
+	void clearNotifications() {
+		notifications.clear();
+	}
+	
+	Association association(int i) {
+		return notifications.get(i).association();
+	}
+	
+	AssociationChangeNotification ASC(int i) {
+		return (AssociationChangeNotification) notifications.get(i);
+	}
+	
+	PeerAddressChangeNotification PAC(int i) {
+		return (PeerAddressChangeNotification) notifications.get(i);
+	}
+	
+	SendFailedNotification SFL(int i) {
+		return (SendFailedNotification) notifications.get(i);
+	}
+	
+	ShutdownNotification SHT(int i) {
+		return (ShutdownNotification) notifications.get(i);
 	}
 
 	class SessionFactory extends AbstractSctpSessionFactory {
@@ -430,7 +506,7 @@ public class SctpServer {
 			
 			switch (type) {
 			case SESSION_CREATED:
-				session = (SctpSession) getSession();
+				session = (InternalSctpSession) getSession();
 				break;
 				
 			case SESSION_OPENED:
@@ -491,8 +567,20 @@ public class SctpServer {
 		@Override
 		public void exception(Throwable t) {
 			EventType type = EventType.EXCEPTION_CAUGHT;
-			
+			System.out.println(t + " " + getSession().getClass());
 			event(type, -1);
+		}
+		
+		@Override
+		public HandlerResult notification(Notification notification, SctpNotificationType type) {
+			if (traceNotification) {
+				trace(NOTIFICATION_CODES[type.ordinal()]);
+				notifications.add(notification);
+			}
+			LockUtils.notify(notificationLocks[type.ordinal()]);
+			return notificationResults[type.ordinal()] == 'C' ? 
+					HandlerResult.CONTINUE : 
+					HandlerResult.RETURN;
 		}
 		
 	}

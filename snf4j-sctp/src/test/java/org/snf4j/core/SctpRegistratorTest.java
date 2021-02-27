@@ -61,6 +61,23 @@ public class SctpRegistratorTest extends SctpTest {
 		catch (IllegalArgumentException e) {
 			assertEquals("factory is null", e.getMessage());
 		}
+		
+		try {
+			SctpRegistrator.register(loop,new TestSctpMultiChannel(), (SctpMultiSession)null);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("session is null", e.getMessage());
+		}
+		
+		try {
+			SctpRegistrator.register(loop,new TestSctpMultiChannel(), (ISctpHandler)null);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("handler is null", e.getMessage());
+		}
+		
 		loop.stop();
 	}
 	
@@ -74,5 +91,13 @@ public class SctpRegistratorTest extends SctpTest {
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		c = new SctpClient(PORT);
+		c.registerHandler = true;
+		c.startMulti();
+		c.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getTrace());	
 	}
 }

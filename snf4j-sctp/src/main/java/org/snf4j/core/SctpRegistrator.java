@@ -34,6 +34,7 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.ISctpHandler;
 
 import com.sun.nio.sctp.SctpChannel;
+import com.sun.nio.sctp.SctpMultiChannel;
 import com.sun.nio.sctp.SctpServerChannel;
 
 /**
@@ -138,4 +139,20 @@ public class SctpRegistrator {
 		}		
 		return loop.register(channel, SelectionKey.OP_ACCEPT, new SctpServerChannelContext(factory));
 	}
+	
+	public static IFuture<Void> register(SelectorLoop loop, SctpMultiChannel channel, ISctpHandler handler) 
+			throws ClosedChannelException {
+		SctpMultiSession session = new SctpMultiSession(handler);
+		
+		return loop.register(channel, SelectionKey.OP_READ, new SctpMultiChannelContext(session));
+	}	
+	
+	public static IFuture<Void> register(SelectorLoop loop, SctpMultiChannel channel, SctpMultiSession session)
+			throws ClosedChannelException {
+		if (session == null) {
+			throw new IllegalArgumentException("session is null");
+		}
+		return loop.register(channel, SelectionKey.OP_READ, new SctpMultiChannelContext(session));
+	}
+	
 }

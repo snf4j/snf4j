@@ -202,7 +202,7 @@ public class SctpChannelContextTest extends SctpTest {
 		Arrays.fill(payload, (byte)'1');
 		byte[] data = nopb(new String(payload));
 		
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		ImmutableSctpMessageInfo msgInfo = info(0);
 		session.suspendWrite();
 		for (int i=0; i<32; ++i) {
@@ -286,7 +286,7 @@ public class SctpChannelContextTest extends SctpTest {
 		assumeSupported();
 		startClientServer();
 	
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		SelectionKey k = getKey(c);
 		SctpChannelContext ctx = (SctpChannelContext) k.attachment();
 		TestSelectionKey tsk = new TestSelectionKey(session.channel);
@@ -308,7 +308,7 @@ public class SctpChannelContextTest extends SctpTest {
 		assumeSupported();
 		startClientServer();
 		
-		final SctpSession session = c.session;
+		final InternalSctpSession session = c.session;
 		session.writenf(nopb("44"), info(0));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
@@ -327,9 +327,9 @@ public class SctpChannelContextTest extends SctpTest {
 			public void run() {
 				Method m;
 				try {
-					m = SctpChannelContext.class.getDeclaredMethod("handleReading", 
+					m = AbstractSctpChannelContext.class.getDeclaredMethod("handleReading", 
 							SelectorLoop.class, 
-							SctpSession.class, 
+							InternalSctpSession.class, 
 							SelectionKey.class);
 					m.setAccessible(true);
 					m.invoke(ctx, c.loop, session, k);
@@ -361,9 +361,9 @@ public class SctpChannelContextTest extends SctpTest {
 		SctpChannelContext ctx = (SctpChannelContext) getKey(c).attachment();
 		TestSctpChannel sc = new TestSctpChannel();
 		TestSelectionKey k = new TestSelectionKey(sc);
-		Method m = SctpChannelContext.class.getDeclaredMethod("handleReading", 
+		Method m = AbstractSctpChannelContext.class.getDeclaredMethod("handleReading", 
 				SelectorLoop.class, 
-				SctpSession.class, 
+				InternalSctpSession.class, 
 				SelectionKey.class);
 		
 		sc.msgInfo = MessageInfo.createOutgoing(null, 0);
@@ -378,7 +378,7 @@ public class SctpChannelContextTest extends SctpTest {
 		assumeSupported();
 		startClientServer();
 		
-		final SctpSession session = c.session;
+		final InternalSctpSession session = c.session;
 		session.writenf(nopb("44"), info(0));
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
@@ -428,7 +428,7 @@ public class SctpChannelContextTest extends SctpTest {
 		c.start();
 		waitForReady(TIMEOUT);
 		setAllocator(c.allocator);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		
 		assertAllocator(1,0,1);
 		session.writenf(nopb("12345"), info(0));
@@ -455,7 +455,7 @@ public class SctpChannelContextTest extends SctpTest {
 		assertAllocator(1,1,0);
 	}
 	
-	void assertStats(SctpSession session, long read, long written) {
+	void assertStats(InternalSctpSession session, long read, long written) {
 		assertEquals(read, session.getReadBytes());
 		assertEquals(written, session.getWrittenBytes());
 	}
@@ -565,6 +565,14 @@ public class SctpChannelContextTest extends SctpTest {
 		assertFalse(ctx2 == ctx);
 		assertTrue(ctx2.getSession() == session);
 		assertTrue(ctx2.getClass() == SctpChannelContext.class);
+		
+		SctpMultiSession session2 = new SctpMultiSession(handler);
+
+		SctpMultiChannelContext ctx3 = new SctpMultiChannelContext(session2);
+		ChannelContext<SctpMultiSession> ctx4  = ctx3.wrap(session2);
+		assertFalse(ctx4 == ctx3);
+		assertTrue(ctx4.getSession() == session2);
+		assertTrue(ctx4.getClass() == SctpMultiChannelContext.class);
 	}
 	
 	@Test
@@ -578,13 +586,13 @@ public class SctpChannelContextTest extends SctpTest {
 		AbstractNotificationHandler<SctpSession> h = (AbstractNotificationHandler<SctpSession>) f.get(null);
 		h.handleNotification(new TestPeerAddressChangeNotification(), session);
 		assertEquals("N|TestPeerAddressChangeNotification|PEER_ADDRESS_CHANGE|", handler.getTrace());
-		assertFalse(session.markedShutdown());
+		assertFalse(session.closeNow());
 		h.handleNotification(new TestAssociationChangeNotification(AssocChangeEvent.COMM_UP), session);
 		assertEquals("N|TestAssociationChangeNotification|ASSOCIATION_CHANGE|", handler.getTrace());
-		assertFalse(session.markedShutdown());
+		assertFalse(session.closeNow());
 		h.handleNotification(new TestAssociationChangeNotification(AssocChangeEvent.SHUTDOWN), session);
 		assertEquals("N|TestAssociationChangeNotification|ASSOCIATION_CHANGE|", handler.getTrace());
-		assertTrue(session.markedShutdown());
+		assertTrue(session.closeNow());
 		h.handleNotification(new TestSendFailedNotification(), session);
 		assertEquals("N|TestSendFailedNotification|SEND_FAILED|", handler.getTrace());
 		h.handleNotification(new TestShutdownNotification(), session);

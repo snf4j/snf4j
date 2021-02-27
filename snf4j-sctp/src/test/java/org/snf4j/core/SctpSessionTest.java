@@ -73,7 +73,7 @@ public class SctpSessionTest extends SctpTest {
 	@Test
 	public void testGetAssociation() throws Exception {
 		assumeSupported();
-		SctpSession session = new SctpSession(new TestSctpHandler());
+		InternalSctpSession session = new SctpSession(new TestSctpHandler());
 		assertNull(session.getAssociation());
 		
 		startClientServer();
@@ -92,21 +92,11 @@ public class SctpSessionTest extends SctpTest {
 		tsc.close();
 	}
 	
-	InetAddress[] addresses(SctpSession session) {
-		Object[] os = session.getLocalAddresses().toArray();
-		
-		InetAddress[] addrs = new InetAddress[os.length];
-		for (int i=0; i<addrs.length; ++i) {
-			addrs[i] = ((InetSocketAddress) os[i]).getAddress();
-		}
-		return addrs;
-	}
-	
 	@Test
 	public void testBindUnbindAddress() throws Exception {
 		assumeSupported();
 		startClientServer();
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		InetAddress addr0 = address(0).getAddress();
 		InetAddress addr1 = null;
 		
@@ -179,7 +169,7 @@ public class SctpSessionTest extends SctpTest {
 	
 	class BindUnbindTask implements Runnable {
 		
-		SctpSession session;
+		InternalSctpSession session;
 		
 		boolean bind;
 		
@@ -187,7 +177,7 @@ public class SctpSessionTest extends SctpTest {
 		
 		InetAddress address;
 		
-		BindUnbindTask(SctpSession session, InetAddress address, boolean bind) {
+		BindUnbindTask(InternalSctpSession session, InetAddress address, boolean bind) {
 			this.session = session;
 			this.bind = bind;
 			this.address = address;
@@ -203,7 +193,7 @@ public class SctpSessionTest extends SctpTest {
 	public void testClose() throws Exception {
 		assumeSupported();
 		startClientServer();
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 
 		//when suspended
 		session.suspendWrite();
@@ -247,7 +237,7 @@ public class SctpSessionTest extends SctpTest {
 	public void testQuickClose() throws Exception {
 		assumeSupported();
 		startClientServer();
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 
 		//when suspended
 		session.suspendWrite();
@@ -384,7 +374,7 @@ public class SctpSessionTest extends SctpTest {
 		assumeSupported();
 
 		startClientServer();
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		
 		IFuture<Void> f = session.write(nopb("123"), info(0));
 		f.sync(TIMEOUT);
@@ -424,7 +414,7 @@ public class SctpSessionTest extends SctpTest {
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		c.traceDataLength = true;
 		s.traceDataLength = true;
 		setAllocator(s.allocator);
@@ -520,7 +510,7 @@ public class SctpSessionTest extends SctpTest {
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		c.traceDataLength = true;
 		s.traceDataLength = true;
 		setAllocator(s.allocator);
@@ -610,7 +600,7 @@ public class SctpSessionTest extends SctpTest {
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		c.traceDataLength = true;
 		s.traceDataLength = true;
 		setAllocator(s.allocator);
@@ -915,7 +905,7 @@ public class SctpSessionTest extends SctpTest {
 		c.session.quickClose();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertAllocator(1,1,0);	
+		assertAllocator(2,2,0);	
 		assertNull(getIn(c));
 		assertNull(getOut(c));
 		c.stop(TIMEOUT);
@@ -1025,7 +1015,7 @@ public class SctpSessionTest extends SctpTest {
 		assertEquals(expectedTrace, s.getTrace());
 	}
 	
-	void assertOutOfBoundException(SctpSession session, byte[] data, int off, int len) {
+	void assertOutOfBoundException(InternalSctpSession session, byte[] data, int off, int len) {
 		try {
 			session.write(data, off, len);
 			fail();
@@ -1036,7 +1026,7 @@ public class SctpSessionTest extends SctpTest {
 		} catch (IndexOutOfBoundsException e) {}
 	}
 
-	void assertOutOfBoundException(SctpSession session, ByteBuffer data, int len) {
+	void assertOutOfBoundException(InternalSctpSession session, ByteBuffer data, int len) {
 		try {
 			session.write(data, len);
 			fail();
@@ -1047,7 +1037,7 @@ public class SctpSessionTest extends SctpTest {
 		} catch (IndexOutOfBoundsException e) {}
 	}
 	
-	void assertUnexpectedObject(SctpSession session) {
+	void assertUnexpectedObject(InternalSctpSession session) {
 		try {
 			session.write("Text");
 			fail();
@@ -1064,7 +1054,7 @@ public class SctpSessionTest extends SctpTest {
 
 		startClientServer();
 		
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		byte[] emptyb = new byte[0];
 		ByteBuffer emptybb = ByteBuffer.wrap(emptyb);
 		byte[] nemptyb = new byte[10];
@@ -1212,7 +1202,7 @@ public class SctpSessionTest extends SctpTest {
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		
 		session.write(nopb("11")).sync(TIMEOUT);
 		assertWrite("DR|NOP(11e)|");
@@ -1304,7 +1294,7 @@ public class SctpSessionTest extends SctpTest {
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		
 		session.write(nopb("1111"));
 		assertWrite("DR|NOP(1111d)|");
@@ -1548,7 +1538,7 @@ public class SctpSessionTest extends SctpTest {
 		addCodecs(c,0,0,new EventEncoder("0,0"));
 		c.start();
 		waitForReady(TIMEOUT);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		assertTracedEvents("#ADD(X)||#CREATED(X)||#OPENED(X)||#READY(X)||", session.getId());
 		
 		session.writenf(nopb("111"));
@@ -1767,7 +1757,7 @@ public class SctpSessionTest extends SctpTest {
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		setAllocator(s.allocator);
 		assertAllocatorDeltas(1, 1, 0);
 		assertNull(getIn(s));
@@ -1882,7 +1872,7 @@ public class SctpSessionTest extends SctpTest {
 		s.start();
 		c.start();
 		waitForReady(TIMEOUT);
-		SctpSession session = c.session;
+		InternalSctpSession session = c.session;
 		setAllocator(s.allocator);
 		assertAllocatorDeltas(1, 1, 0);
 		assertNull(getIn(s));

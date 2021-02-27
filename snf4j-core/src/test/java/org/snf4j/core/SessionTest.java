@@ -1560,6 +1560,36 @@ public class SessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT); s.stop(TIMEOUT);
+		
+		//gentle close with skipped sending
+		s = new Server(PORT); s.start();
+		c = new Client(PORT); c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		
+		final AtomicBoolean lock = new AtomicBoolean();
+		
+		c.loop.execute(new Runnable() {
+
+			@Override
+			public void run() {
+				LockUtils.notify(lock);
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+				}
+			}
+		});
+		LockUtils.waitFor(lock, TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		c.session.close(false, false);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT); s.stop(TIMEOUT);
 	}  
 	
 	@Test

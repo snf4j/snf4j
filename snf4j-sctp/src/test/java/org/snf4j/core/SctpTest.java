@@ -285,7 +285,7 @@ public class SctpTest {
 		return new InetSocketAddress(address, port);
 	}
 	
-	ByteBuffer getFragment(SctpSession session) throws Exception {
+	ByteBuffer getFragment(InternalSctpSession session) throws Exception {
 		Field f = InternalSctpSession.class.getDeclaredField("fragments");
 		Field f2 = SctpFragments.class.getDeclaredField("fragment");
 		
@@ -298,7 +298,7 @@ public class SctpTest {
 		return getFragment(server.session);
 	}
 	
-	ByteBuffer getIn(SctpSession session) throws Exception {
+	ByteBuffer getIn(InternalSctpSession session) throws Exception {
 		Field f = InternalSctpSession.class.getDeclaredField("inBuffer");
 		
 		f.setAccessible(true);
@@ -309,7 +309,7 @@ public class SctpTest {
 		return getIn(server.session);
 	}
 	
-	void setIn(SctpSession session, ByteBuffer in) throws Exception {
+	void setIn(InternalSctpSession session, ByteBuffer in) throws Exception {
 		Field f = InternalSctpSession.class.getDeclaredField("inBuffer");
 		
 		f.setAccessible(true);
@@ -321,7 +321,7 @@ public class SctpTest {
 	}
 	
 	@SuppressWarnings("unchecked")
-	Queue<SctpRecord> getOut(SctpSession session) throws Exception {
+	Queue<SctpRecord> getOut(InternalSctpSession session) throws Exception {
 		Field f = InternalSctpSession.class.getDeclaredField("outQueue");
 		
 		f.setAccessible(true);
@@ -357,5 +357,16 @@ public class SctpTest {
 		}
 		return exec;
 	}
+	
+	InetAddress[] addresses(InternalSctpSession session) {
+		Object[] os = session.getLocalAddresses().toArray();
+		
+		InetAddress[] addrs = new InetAddress[os.length];
+		for (int i=0; i<addrs.length; ++i) {
+			addrs[i] = ((InetSocketAddress) os[i]).getAddress();
+		}
+		return addrs;
+	}
+	
 	
 }

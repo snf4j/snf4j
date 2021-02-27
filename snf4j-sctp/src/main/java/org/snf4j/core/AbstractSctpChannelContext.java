@@ -113,7 +113,7 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 		
 		try {
 			minfo = receive(key, session.getInBuffer(), session, HANDLER);
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			loop.elogWarnOrError(loop.logger, "Reading from channel in {} failed: {}", session, e);
 			loop.fireException(session, e);
 			minfo = null;
@@ -144,13 +144,20 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 		if (!consumed) {
 			session.consumeInBufferAfterNoRead();
 		}
+		
+		if (session.closeNow()) {
+			if (loop.debugEnabled) {
+				loop.logger.debug("Closing channel in {} after shutdown", session);
+			}
+			session.close(true);
+		}
 	}
 	
 	abstract int send(SelectionKey key, ByteBuffer msg, MessageInfo msgInfo) throws Exception;
 	
 	int handleWriting(final SelectorLoop loop, final T session, final SelectionKey key, int spinCount) {
 		boolean traceEnabled = loop.traceEnabled;
-		Exception exception = null;
+		Throwable exception = null;
 		long totalBytes = 0;
 		int bytes;
 		
@@ -198,7 +205,7 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 				}
 			}
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			exception = e;
 		}
 		
