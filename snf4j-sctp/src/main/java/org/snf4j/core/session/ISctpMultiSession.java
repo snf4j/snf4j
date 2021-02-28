@@ -38,10 +38,43 @@ public interface ISctpMultiSession extends ISctpSession {
 	@Override
 	ISctpMultiSession getParent();
 
+	/**
+	 * Shutdown an association without closing this session.
+	 * 
+	 * @param association the association to shutdown
+	 * @return the future associated with this shutdown operation
+	 */
+	IFuture<Void> shutdown(Association association);
+	
+	/**
+	 * Returns the open associations on the SCTP multi-channel's socket associated
+	 * with this session.
+	 * 
+	 * @return the open associations, or an empty {@code Set} if there are none
+	 */
 	Set<Association> getAssociations();
 	
+	/**
+	 * Returns all of the remote addresses to which the given association on the
+	 * SCTP multi-channel's socket associated with this session.
+	 * 
+	 * @param association the given association
+	 * @return all of the remote addresses for the given association, or an empty
+	 *         {@code Set} if the association has been shutdown
+	 */
 	Set<SocketAddress> getRemoteAddresses(Association association);
 
+	/**
+	 * Returns all of the remote addresses to which the open associations on the
+	 * SCTP multi-channel associated with this session is connected.
+	 * 
+	 * @return All of the remote addresses to which the SCTP multi-channel
+	 *         associated with this session is connected, or an empty Set if the
+	 *         channel is not connected
+	 */
+	@Override
+	Set<SocketAddress> getRemoteAddresses();
+	
 	/**
 	 * {@inheritDoc}
 	 * 

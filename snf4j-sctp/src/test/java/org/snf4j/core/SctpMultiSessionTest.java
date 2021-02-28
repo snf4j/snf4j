@@ -42,10 +42,16 @@ import java.util.Set;
 
 import org.junit.After;
 import org.junit.Test;
+import org.snf4j.core.future.CancelledFuture;
+import org.snf4j.core.future.FailedFuture;
+import org.snf4j.core.future.IFuture;
+import org.snf4j.core.future.SuccessfulFuture;
+import org.snf4j.core.future.TaskFuture;
 import org.snf4j.core.session.ISctpSession;
 
 import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.MessageInfo;
+import com.sun.nio.sctp.SctpChannel;
 
 public class SctpMultiSessionTest extends SctpTest {
 
@@ -491,6 +497,8 @@ public class SctpMultiSessionTest extends SctpTest {
 		assertNull(session.getRemoteAddress());
 		assertEquals(0, session.getRemoteAddresses(a).size());
 		assertEquals(0, session.getRemoteAddresses().size());
+		assertNull(session.getRemoteAddress());
+		
 		try {
 			session.getRemoteAddresses(null);
 			fail();
@@ -512,6 +520,8 @@ public class SctpMultiSessionTest extends SctpTest {
 			
 		assertEquals(1, session.getRemoteAddresses(ms.association(0)).size());
 		assertEquals(1, session.getRemoteAddresses().size());
+		assertNotNull(session.getRemoteAddress());
+		assertEquals(session.getRemoteAddress(), session.getRemoteAddresses().iterator().next());
 		assertEquals(1, c.session.getLocalAddresses().size());
 		assertEquals(c.session.getLocalAddress(), session.getRemoteAddresses(ms.association(0)).iterator().next());
 		assertEquals(1, session.getAssociations().size());
@@ -538,6 +548,12 @@ public class SctpMultiSessionTest extends SctpTest {
 		Iterator<Association> i = session.getAssociations().iterator();
 		if (!a.equals(i.next())) {
 			assertEquals(a, i.next());
+		}
+		SocketAddress addr = session.getRemoteAddress();
+		assertNotNull(addr);
+		Iterator<SocketAddress> i2 = session.getRemoteAddresses().iterator();
+		if (!addr.equals(i2.next())) {
+			assertEquals(addr, i2.next());
 		}
 		
 		session.close();
@@ -718,5 +734,152 @@ public class SctpMultiSessionTest extends SctpTest {
 		session.writenf((Object)nopb("1"));
 		assertWrite("DR|NOP(1)|");
 		
+	}
+	
+	@Test
+	public void testShutdown() throws Exception {
+		assumeSupported();
+		ms = new SctpClient(PORT);
+		ms.traceNotification = true;
+		ms.startMulti();
+		ms.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", ms.getTrace());
+		SctpMultiSession session = (SctpMultiSession) ms.session;
+		
+		c = new SctpClient(PORT);
+		c.traceNotification = true;
+		c.localAddresses.add(address(0));
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.waitForNotification("ASC", TIMEOUT);
+		assertEquals("SCR|SOP|RDY|ASC|", c.getTrace());
+		ms.waitForNotification("ASC", TIMEOUT);
+		assertEquals("ASC|", ms.getTrace());
+		
+		session.shutdown(ms.association(0)).sync(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		ms.waitForNotification("ASC", TIMEOUT);
+		assertEquals("SHT|ASC|SCL|SEN|", c.getTrace());
+		assertEquals("ASC|", ms.getTrace());
+		c.stop(TIMEOUT);
+
+		IFuture<Void> f = session.shutdown(ms.association(0));
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		assertNotNull(f.cause());
+		assertTrue(f.getClass() == TaskFuture.class);
+		ms.clearNotifications();
+		
+		c = new SctpClient(PORT);
+		c.traceNotification = true;
+		c.localAddresses.add(address(0));
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.waitForNotification("ASC", TIMEOUT);
+		assertEquals("SCR|SOP|RDY|ASC|", c.getTrace());
+		ms.waitForNotification("ASC", TIMEOUT);
+		assertEquals("ASC|", ms.getTrace());
+		
+		ShutdownTask task = new ShutdownTask(session, ms.association(0));
+		ms.loop.execute(task).sync(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		ms.waitForNotification("ASC", TIMEOUT);
+		assertEquals("SHT|ASC|SCL|SEN|", c.getTrace());
+		assertEquals("ASC|", ms.getTrace());
+		c.stop(TIMEOUT);
+		assertTrue(task.f.getClass() == SuccessfulFuture.class);
+		
+		task = new ShutdownTask(session, ms.association(0));		
+		ms.loop.execute(task).sync(TIMEOUT);
+		task.f.await(TIMEOUT);
+		assertTrue(task.f.isFailed());
+		assertNotNull(task.f.cause());
+		assertTrue(task.f.getClass() == FailedFuture.class);
+		
+		session.close();
+		ms.waitForSessionEnding(TIMEOUT);
+		ms.stop(TIMEOUT);
+		assertEquals("SCL|SEN|", ms.getTrace());
+		session.loop = null;
+		f = session.shutdown(ms.association(0));
+		assertTrue(f.getClass() == CancelledFuture.class);
+		session.loop = ms.loop;
+		session.channel = null;
+		f = session.shutdown(ms.association(0));
+		assertTrue(f.getClass() == CancelledFuture.class);
+		ms = null;
+	}
+	
+	class ShutdownTask implements Runnable {
+		
+		IFuture<Void> f;
+		
+		final SctpMultiSession s;
+		
+		final Association a;
+		
+		ShutdownTask(SctpMultiSession s, Association a) {
+			this.s = s;
+			this.a = a;
+		}
+		
+		@Override
+		public void run() {
+			f = s.shutdown(a);
+		}
+	}
+	
+	@Test
+	public void testBranch() throws Exception {
+		assumeSupported();
+		ms = new SctpClient(PORT);
+		ms.traceNotification = true;
+		ms.startMulti();
+		ms.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", ms.getTrace());
+		SctpMultiSession session = (SctpMultiSession) ms.session;
+
+		c = new SctpClient(PORT);
+		c.traceNotification = true;
+		c.localAddresses.add(address(0));
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.waitForNotification("ASC", TIMEOUT);
+		assertEquals("SCR|SOP|RDY|ASC|", c.getTrace());
+		ms.waitForNotification("ASC", TIMEOUT);
+		assertEquals("ASC|", ms.getTrace());
+		
+		assertEquals(1, session.getAssociations().size());
+		SctpChannel channel = ms.smc.branch(ms.association(0));
+		assertEquals(0, session.getAssociations().size());
+		
+		ms.session.close();
+		ms.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", ms.getTrace());
+		
+		SctpClient c2 = new SctpClient(PORT);
+		c2.traceNotification = true;
+		c2.start(channel);
+		c2.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c2.getTrace());
+		c.session.writenf(nopb("1"));
+		c.waitForDataSent(TIMEOUT);
+		c2.waitForDataRead(TIMEOUT);
+		assertEquals("DS|", c.getTrace());
+		assertEquals("DR|NOP(1)|", c2.getTrace());
+
+		c2.session.writenf(nopb("12"));
+		c2.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|", c2.getTrace());
+		assertEquals("DR|NOP(12)|", c.getTrace());
+		
+		c.session.close();
+		c2.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("ASC|SCL|SEN|", c.getTrace());
+		assertEquals("SHT|ASC|SCL|SEN|", c2.getTrace());
+		
+		c2.stop(TIMEOUT);
 	}
 }

@@ -35,7 +35,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.snf4j.core.future.CancelledFuture;
+import org.snf4j.core.future.FailedFuture;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.future.SuccessfulFuture;
+import org.snf4j.core.future.TaskFuture;
 import org.snf4j.core.handler.ISctpHandler;
 import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.logger.ILogger;
@@ -68,6 +72,42 @@ public class SctpMultiSession extends InternalSctpSession implements ISctpMultiS
 	@Override
 	public ISctpMultiSession getParent() {
 		return null;
+	}
+	
+	@Override
+	public IFuture<Void> shutdown(final Association association) {
+		InternalSelectorLoop loop = this.loop;
+		SelectableChannel channel = this.channel;
+		
+		if (loop == null || channel == null) {
+			return new CancelledFuture<Void>(this);
+		}
+		if (loop.inLoop()) {
+			try {
+				((SctpMultiChannel)channel).shutdown(association);		
+			}
+			catch (Throwable t) {
+				return new FailedFuture<Void>(this,t);				
+			}
+			return new SuccessfulFuture<Void>(this);
+		}
+		
+		final TaskFuture<Void> future = new TaskFuture<Void>(this);
+		
+		loop.executenf(new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					((SctpMultiChannel)channel).shutdown(association);
+					future.success();
+				}
+				catch (Throwable t) {
+					future.abort(t);
+				}
+			}
+		});
+		return future;
 	}
 
 	@Override
@@ -173,6 +213,20 @@ public class SctpMultiSession extends InternalSctpSession implements ISctpMultiS
 			});
 		}
 		return true;
+	}
+	
+	@Override
+	public SocketAddress getRemoteAddress() {
+		Iterator<Association> i = getAssociations().iterator();
+		
+		while (i.hasNext()) {
+			Iterator<SocketAddress> i2 = getRemoteAddresses(i.next()).iterator();
+			
+			if (i2.hasNext()) {
+				return i2.next();
+			}
+		}
+		return null;
 	}
 	
 	@Override
