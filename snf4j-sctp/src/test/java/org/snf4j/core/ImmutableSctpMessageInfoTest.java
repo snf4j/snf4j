@@ -97,6 +97,36 @@ public class ImmutableSctpMessageInfoTest {
 		m2 = sm.unwrap();
 		assertFalse(m2 == m);
 		assertMessageInfo(m2, sm);
+
+		m.timeToLive(3333);
+		sm = ImmutableSctpMessageInfo.create(m);
+		assertMessageInfo(m, sm);
+		m2 = sm.unwrap();
+		assertFalse(m2 == m);
+		assertMessageInfo(m2, sm);
+		
+		Association asso = new Association(0,0,0) {};
+
+		m = MessageInfo.createOutgoing(asso, null, 2);
+		sm = ImmutableSctpMessageInfo.create(asso, 2);
+		assertMessageInfo(m, sm);
+		m2 = sm.unwrap();
+		assertFalse(m2 == m);
+		assertMessageInfo(m2, sm);
+
+		m.payloadProtocolID(56);
+		sm = ImmutableSctpMessageInfo.create(asso, 2, 56);
+		assertMessageInfo(m, sm);
+		m2 = sm.unwrap();
+		assertFalse(m2 == m);
+		assertMessageInfo(m2, sm);
+		
+		m.unordered(true);		
+		sm = ImmutableSctpMessageInfo.create(asso, 2, 56, true);
+		assertMessageInfo(m, sm);
+		m2 = sm.unwrap();
+		assertFalse(m2 == m);
+		assertMessageInfo(m2, sm);
 		
 		m.timeToLive(3333);
 		sm = ImmutableSctpMessageInfo.create(m);
@@ -105,7 +135,27 @@ public class ImmutableSctpMessageInfoTest {
 		assertFalse(m2 == m);
 		assertMessageInfo(m2, sm);
 		
+		m = MessageInfo.createOutgoing(asso, a, 2);
+		sm = ImmutableSctpMessageInfo.create(asso, a, 2);
+		assertMessageInfo(m, sm);
+		m2 = sm.unwrap();
+		assertFalse(m2 == m);
+		assertMessageInfo(m2, sm);
+
+		m.payloadProtocolID(56);
+		sm = ImmutableSctpMessageInfo.create(asso, a, 2, 56);
+		assertMessageInfo(m, sm);
+		m2 = sm.unwrap();
+		assertFalse(m2 == m);
+		assertMessageInfo(m2, sm);
 		
+		m.unordered(true);		
+		sm = ImmutableSctpMessageInfo.create(asso, a, 2, 56, true);
+		assertMessageInfo(m, sm);
+		m2 = sm.unwrap();
+		assertFalse(m2 == m);
+		assertMessageInfo(m2, sm);
+				
 		m = MessageInfo.createOutgoing(new TestAssociation(10), a, 77)
 				.payloadProtocolID(34)
 				.unordered(true)

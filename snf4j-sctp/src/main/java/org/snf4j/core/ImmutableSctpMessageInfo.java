@@ -75,6 +75,54 @@ public abstract class ImmutableSctpMessageInfo extends MessageInfo {
 	}
 	
 	/**
+	 * Creates an immutable {@code MessageInfo} with specified association, stream
+	 * number, and the peer primary address as the preferred peer address of the
+	 * association to send the message to.
+	 * <p>
+	 * The returned instance will have its {@code unordered} flag set to
+	 * {@code false}, its {@code timeToLive} value set to 0, its {@code complete}
+	 * value set to {@code true}, and its {@code payloadProtocolID} value set to 0.
+	 * 
+	 * @param association  the association to send the message on
+	 * @param streamNumber the stream number that the message will be sent on
+	 * @return the immutable {@code MessageInfo}
+	 */
+	public static ImmutableSctpMessageInfo create(Association association, int streamNumber) {
+		return new OutgoingMessageInfo(association, null, streamNumber) {
+
+			@Override
+			public MessageInfo unwrap() {
+				return MessageInfo.createOutgoing(association, null, streamNumber);
+			}			
+		};
+	}
+	
+	/**
+	 * Creates an immutable {@code MessageInfo} with specified association, stream
+	 * number and the preferred peer address of the association to send the message
+	 * to.
+	 * <p>
+	 * The returned instance will have its {@code unordered} flag set to
+	 * {@code false}, its {@code timeToLive} value set to 0, its {@code complete}
+	 * value set to {@code true}, and its {@code payloadProtocolID} value set to 0.
+	 * 
+	 * @param association  the association to send the message on
+	 * @param address      the preferred peer address of the association to send the
+	 *                     message to, or null to use the peer primary address
+	 * @param streamNumber the stream number that the message will be sent on
+	 * @return the immutable {@code MessageInfo}
+	 */
+	public static ImmutableSctpMessageInfo create(Association association, SocketAddress address, int streamNumber) {
+		return new OutgoingMessageInfo(association, address, streamNumber) {
+
+			@Override
+			public MessageInfo unwrap() {
+				return MessageInfo.createOutgoing(association, address, streamNumber);
+			}			
+		};
+	}
+	
+	/**
 	 * Creates an immutable {@code MessageInfo} with specified stream number,
 	 * payload protocol identifier and the peer primary address as the
 	 * preferred peer address.
@@ -92,7 +140,7 @@ public abstract class ImmutableSctpMessageInfo extends MessageInfo {
 			
 			@Override
 			public MessageInfo unwrap() {
-				return MessageInfo.createOutgoing(address, streamNumber)
+				return MessageInfo.createOutgoing(null, streamNumber)
 						.payloadProtocolID(payloadProtocolID);
 			}			
 		};
@@ -125,6 +173,59 @@ public abstract class ImmutableSctpMessageInfo extends MessageInfo {
 	}
 	
 	/**
+	 * Creates an immutable {@code MessageInfo} with specified association, stream
+	 * number, payload protocol identifier and the peer primary address as the
+	 * preferred peer address of the association to send the message to.
+	 * <p>
+	 * The returned instance will have its {@code unordered} flag set to
+	 * {@code false}, its {@code timeToLive} value set to 0, and its
+	 * {@code complete} value set to {@code true}.
+	 * 
+	 * @param association       the association to send the message on
+	 * @param streamNumber      the stream number that the message will be sent on
+	 * @param payloadProtocolID The payload protocol identifier.
+	 * @return the immutable {@code MessageInfo}
+	 */
+	public static ImmutableSctpMessageInfo create(Association association, int streamNumber, int payloadProtocolID) {
+		return new OutgoingMessageInfo(association, null, streamNumber, payloadProtocolID) {
+			
+			@Override
+			public MessageInfo unwrap() {
+				return MessageInfo.createOutgoing(association, null, streamNumber)
+						.payloadProtocolID(payloadProtocolID);
+			}			
+		};
+	}
+	
+	/**
+	 * Creates an immutable {@code MessageInfo} with specified association, stream
+	 * number, payload protocol identifier and the preferred peer address of the
+	 * association to send the message to.
+	 * <p>
+	 * The returned instance will have its {@code unordered} flag set to
+	 * {@code false}, its {@code timeToLive} value set to 0, and its
+	 * {@code complete} value set to {@code true}.
+	 * 
+	 * @param association       the association to send the message on
+	 * @param address           the preferred peer address of the association to
+	 *                          send the message to, or null to use the peer primary
+	 *                          address
+	 * @param streamNumber      the stream number that the message will be sent on
+	 * @param payloadProtocolID The payload protocol identifier.
+	 * @return the immutable {@code MessageInfo}
+	 */
+	public static ImmutableSctpMessageInfo create(Association association, SocketAddress address, int streamNumber, int payloadProtocolID) {
+		return new OutgoingMessageInfo(association, address, streamNumber, payloadProtocolID) {
+			
+			@Override
+			public MessageInfo unwrap() {
+				return MessageInfo.createOutgoing(association, address, streamNumber)
+						.payloadProtocolID(payloadProtocolID);
+			}			
+		};
+	}
+	
+	/**
 	 * Creates an immutable {@code MessageInfo} with specified stream number,
 	 * payload protocol identifier, unordered flag and the peer primary address as
 	 * the preferred peer address.
@@ -144,7 +245,7 @@ public abstract class ImmutableSctpMessageInfo extends MessageInfo {
 			
 			@Override
 			public MessageInfo unwrap() {
-				return MessageInfo.createOutgoing(address, streamNumber)
+				return MessageInfo.createOutgoing(null, streamNumber)
 						.payloadProtocolID(payloadProtocolID)
 						.unordered(unordered);
 			}			
@@ -174,6 +275,66 @@ public abstract class ImmutableSctpMessageInfo extends MessageInfo {
 			@Override
 			public MessageInfo unwrap() {
 				return MessageInfo.createOutgoing(address, streamNumber)
+						.payloadProtocolID(payloadProtocolID)
+						.unordered(unordered);
+			}			
+		};
+	}
+	
+	/**
+	 * Creates an immutable {@code MessageInfo} with specified association, stream
+	 * number, payload protocol identifier, unordered flag and the peer primary
+	 * address as the preferred peer address of the association to send the message
+	 * to.
+	 * <p>
+	 * The returned instance will have its {@code timeToLive} value set to 0, and
+	 * its {@code complete} value set to {@code true}.
+	 * 
+	 * @param association       the association to send the message on
+	 * @param streamNumber      the stream number that the message will be sent on
+	 * @param payloadProtocolID The payload protocol identifier.
+	 * @param unordered         {@code true} requests the un-ordered delivery of the
+	 *                          message, {@code false} indicates that the message is
+	 *                          ordered.
+	 * @return the immutable {@code MessageInfo}
+	 */
+	public static ImmutableSctpMessageInfo create(Association association, int streamNumber, int payloadProtocolID, boolean unordered) {
+		return new OutgoingMessageInfo(association, null, streamNumber, payloadProtocolID, unordered) {
+			
+			@Override
+			public MessageInfo unwrap() {
+				return MessageInfo.createOutgoing(association, null, streamNumber)
+						.payloadProtocolID(payloadProtocolID)
+						.unordered(unordered);
+			}			
+		};
+	}
+	
+	/**
+	 * Creates an immutable {@code MessageInfo} with specified association, stream
+	 * number, payload protocol identifier, unordered flag and the preferred peer
+	 * address of the association to send the message to.
+	 * <p>
+	 * The returned instance will have its {@code timeToLive} value set to 0, and
+	 * its {@code complete} value set to {@code true}.
+	 * 
+	 * @param association       the association to send the message on
+	 * @param address           the preferred peer address of the association to
+	 *                          send the message to, or null to use the peer primary
+	 *                          address
+	 * @param streamNumber      the stream number that the message will be sent on
+	 * @param payloadProtocolID The payload protocol identifier.
+	 * @param unordered         {@code true} requests the un-ordered delivery of the
+	 *                          message, {@code false} indicates that the message is
+	 *                          ordered.
+	 * @return the immutable {@code MessageInfo}
+	 */
+	public static ImmutableSctpMessageInfo create(Association association, SocketAddress address, int streamNumber, int payloadProtocolID, boolean unordered) {
+		return new OutgoingMessageInfo(association, address, streamNumber, payloadProtocolID, unordered) {
+			
+			@Override
+			public MessageInfo unwrap() {
+				return MessageInfo.createOutgoing(association, address, streamNumber)
 						.payloadProtocolID(payloadProtocolID)
 						.unordered(unordered);
 			}			
@@ -257,6 +418,27 @@ public abstract class ImmutableSctpMessageInfo extends MessageInfo {
 		}
 		
 		private OutgoingMessageInfo(SocketAddress address, int streamNumber, int payloadProtocolID, boolean unordered) {
+			this.address = address;
+			this.streamNumber = streamNumber;
+			this.payloadProtocolID = payloadProtocolID;
+			this.unordered = unordered;
+		}
+		
+		private OutgoingMessageInfo(Association association, SocketAddress address, int streamNumber) {
+			this.association = association;
+			this.address = address;
+			this.streamNumber = streamNumber;
+		}
+		
+		private OutgoingMessageInfo(Association association, SocketAddress address, int streamNumber, int payloadProtocolID) {
+			this.association = association;
+			this.address = address;
+			this.streamNumber = streamNumber;
+			this.payloadProtocolID = payloadProtocolID;
+		}
+		
+		private OutgoingMessageInfo(Association association, SocketAddress address, int streamNumber, int payloadProtocolID, boolean unordered) {
+			this.association = association;
 			this.address = address;
 			this.streamNumber = streamNumber;
 			this.payloadProtocolID = payloadProtocolID;
