@@ -32,6 +32,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.awt.Point;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -44,6 +45,7 @@ import java.util.Set;
 
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.codec.IEventDrivenCodec;
 import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
@@ -55,6 +57,7 @@ import org.snf4j.core.future.SuccessfulFuture;
 import org.snf4j.core.future.TaskFuture;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
+import org.snf4j.core.session.ISctpSessionConfig;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IllegalSessionStateException;
 
@@ -1282,6 +1285,86 @@ public class SctpSessionTest extends SctpTest {
 		assertWrite("DR|NOP(12345e2)|");
 		assertAllocator(4,6,0);
 	}	
+	
+	@Test
+	public void testGetCodecPipeline() throws Exception {
+		assumeSupported();
+
+		startClientServer();
+		assertNull(c.session.getCodecPipeline());
+		assertNull(c.session.getCodecPipeline("1"));
+		assertNull(c.session.getCodecPipeline(ISctpSessionConfig.DEFAULT_CODEC_EXECUTOR_IDENTIFIER));
+		stopClientAndClearTraces(TIMEOUT);
+		
+		TestCodec codec = new TestCodec();
+		c = new SctpClient(PORT);
+		addCodecs(c, codec.PBE('A'), codec.BPE());
+		addCodecs(c, 1,1, codec.PBE('B'), codec.BPE());
+		c.start();
+		waitForReady(TIMEOUT);
+		InternalSctpSession session = c.session;
+		
+		c.useCodecExecutorIdentifier = true;
+		c.codecExecutorIdentifier = ISctpSessionConfig.DEFAULT_CODEC_EXECUTOR_IDENTIFIER;
+		session.write(nopb("1111"));
+		assertWrite("DR|NOP(1111A)|");
+		ICodecPipeline p = session.getCodecPipeline();
+		assertNotNull(p);
+		Point identifier = new Point(1,1);
+		assertNull(session.getCodecPipeline(identifier));
+		
+		c.useCodecExecutorIdentifier = false;
+		session.write(nopb("1111"),info(1,1));
+		assertWrite("DR|NOP(1111B)[1p1]|");
+		ICodecPipeline p11 = session.getCodecPipeline(identifier);
+		assertNotNull(p11);
+		assertFalse(p == p11);
+		assertTrue(p == session.getCodecPipeline(ISctpSessionConfig.DEFAULT_CODEC_EXECUTOR_IDENTIFIER));
+		
+		p.add("X1", codec.PBE('X'));
+		p.add("X2", codec.BPE());
+		p11.add("Y1", codec.PBE('Y'));
+		p11.add("Y2", codec.BPE());
+
+		c.useCodecExecutorIdentifier = true;
+		session.write(nopb("1111"));
+		assertWrite("DR|NOP(1111XA)|");
+		c.useCodecExecutorIdentifier = false;
+		session.write(nopb("1111"),info(1,1));
+		assertWrite("DR|NOP(1111YB)[1p1]|");
+		session.write(nopb("1111"));
+		assertWrite("DR|NOP(1111)|");
+	}
+	
+	@Test
+	public void testDefaultCodec() throws Exception {
+		assumeSupported();
+		
+		TestCodec codec = new TestCodec();
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		addCodecs(c, codec.PBE('A'), codec.BPE());
+		addCodecs(c, 1,1, codec.PBE('B'), codec.BPE());
+		
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		InternalSctpSession session = c.session;
+		
+		c.useCodecExecutorIdentifier = true;
+		session.write(nopb("1111"));
+		assertWrite("DR|NOP(1111)|");
+		c.codecExecutorIdentifier = ISctpSessionConfig.DEFAULT_CODEC_EXECUTOR_IDENTIFIER;
+		session.write(nopb("1111"));
+		assertWrite("DR|NOP(1111A)|");
+		c.useCodecExecutorIdentifier = false;
+		session.write(nopb("1111"));
+		assertWrite("DR|NOP(1111)|");
+		session.write(nopb("1111"),info(1,1));
+		assertWrite("DR|NOP(1111B)[1p1]|");
+		session.write(nopb("1111"),info(1,1));
+		assertWrite("DR|NOP(1111B)[1p1]|");
+	}
 	
 	@Test
 	public void testReadingWithCodec() throws Exception {

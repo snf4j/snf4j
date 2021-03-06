@@ -41,30 +41,19 @@ public class DefaultSctpSessionConfigTest {
 	public void testAll() throws Exception {
 		DefaultSctpSessionConfig config = new DefaultSctpSessionConfig();
 		
-		assertEquals(0, config.getMinSctpStreamNumber());
-		assertEquals(65536, config.getMaxSctpStreamNumber());
-		assertEquals(Integer.MIN_VALUE, config.getMinSctpPayloadProtocolID());
-		assertEquals(Integer.MAX_VALUE, config.getMaxSctpPayloadProtocolID());
 		assertEquals(0, config.getDefaultSctpStreamNumber());
 		assertEquals(0, config.getDefaultSctpPayloadProtocolID());
 		assertFalse(config.getDefaultSctpUnorderedFlag());
+		assertTrue(config.getCodecExecutorIdentifier(null) == ISctpSessionConfig.DEFAULT_CODEC_EXECUTOR_IDENTIFIER);
 		assertNull(config.createCodecExecutor(null));
 		assertNull(config.getDefaultSctpPeerAddress());
 		
 		SocketAddress a = InetSocketAddress.createUnresolved("127.0.0.1", 8888);
-		config.setMinSctpStreamNumber(40)
-			.setMaxSctpStreamNumber(100)
-			.setMinSctpPayloadProtocolID(77)
-			.setMaxSctpPayloadProtocolID(777)
-			.setDefaultSctpStreamNumber(103)
+		config.setDefaultSctpStreamNumber(103)
 			.setDefaultSctpPayloadProtocolID(44)
 			.setDefaultSctpUnorderedFlag(true)
 			.setDefaultSctpPeerAddress(a);
 		
-		assertEquals(40, config.getMinSctpStreamNumber());
-		assertEquals(100, config.getMaxSctpStreamNumber());
-		assertEquals(77, config.getMinSctpPayloadProtocolID());
-		assertEquals(777, config.getMaxSctpPayloadProtocolID());
 		assertEquals(103, config.getDefaultSctpStreamNumber());
 		assertEquals(44, config.getDefaultSctpPayloadProtocolID());
 		assertTrue(config.getDefaultSctpUnorderedFlag());

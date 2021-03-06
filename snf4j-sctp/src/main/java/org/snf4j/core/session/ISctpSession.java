@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 
 import org.snf4j.core.ImmutableSctpMessageInfo;
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.ISctpHandler;
 
@@ -53,6 +54,16 @@ public interface ISctpSession extends ISession {
 
 	@Override
 	ISctpSession getParent();
+	
+	/**
+	 * Gets the codec pipeline that is associated with this session and is
+	 * identified by the given identifier.
+	 * 
+	 * @param identifier the identifier of the codec pipeline
+	 * @return the codec pipeline or {@code null} if the session does not support it
+	 *         or it has not been created yet
+	 */
+	ICodecPipeline getCodecPipeline(Object identifier);
 	
 	/**
 	 * Returns the association on the SCTP channel's socket associated with this

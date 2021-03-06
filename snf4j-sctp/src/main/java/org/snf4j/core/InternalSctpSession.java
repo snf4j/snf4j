@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.snf4j.core.codec.ICodecExecutor;
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.CancelledFuture;
 import org.snf4j.core.future.FailedFuture;
 import org.snf4j.core.future.IFuture;
@@ -226,6 +227,21 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 	
 	ISctpReader superCodec() {
 		return (ISctpReader) (codec != null ? codec : this.handler);
+	}
+	
+	@Override
+	public ICodecPipeline getCodecPipeline(Object identifier) {
+		if (identifier == ISctpSessionConfig.DEFAULT_CODEC_EXECUTOR_IDENTIFIER) {
+			return getCodecPipeline();
+		}
+		if (codec != null) {
+			ICodecExecutor executor = ((SctpCodecExecutorAdapter)codec).getExecutor(identifier);
+			
+			if (executor != null) {
+				return executor.getPipeline();
+			}
+		}
+		return null;
 	}
 	
 	abstract Set<SocketAddress> getAddresses(Association association, boolean local);

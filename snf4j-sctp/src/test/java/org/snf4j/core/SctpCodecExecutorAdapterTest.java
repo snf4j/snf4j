@@ -74,16 +74,6 @@ public class SctpCodecExecutorAdapterTest {
 	}
 	
 	@Test
-	public void testKey() {
-		assertEquals(new Long(0), SctpCodecExecutorAdapter.key(0, 0));
-		assertEquals(new Long(0x0000000100000002L), SctpCodecExecutorAdapter.key(1, 2));
-		assertEquals(new Long(0x0001000000000002L), SctpCodecExecutorAdapter.key(65536, 2));
-		assertEquals(new Long(0x00010000ffffffffL), SctpCodecExecutorAdapter.key(65536, -1));
-		assertEquals(new Long(0x0001000080000000L), SctpCodecExecutorAdapter.key(65536, Integer.MIN_VALUE));
-		assertEquals(new Long(0x000100007fffffffL), SctpCodecExecutorAdapter.key(65536, Integer.MAX_VALUE));
-	}
-	
-	@Test
 	public void testGetExecutor() throws Exception {
 		MessageInfo msgInfo = MessageInfo.createOutgoing(new InetSocketAddress(100), 0);
 		DefaultCodecExecutor codec = new DefaultCodecExecutor();

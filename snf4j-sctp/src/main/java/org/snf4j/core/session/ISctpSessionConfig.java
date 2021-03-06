@@ -39,64 +39,37 @@ import com.sun.nio.sctp.MessageInfo;
 public interface ISctpSessionConfig extends ISessionConfig {
 	
 	/**
-	 * Creates a new codec executor that should be used for decoding/encoding SCTP
-	 * messages that can by identified by given ancillary data.
+	 * The identifier of the default codec executor.
+	 */
+	public final static Object DEFAULT_CODEC_EXECUTOR_IDENTIFIER = new Object();
+	
+	/**
+	 * Returns an identifier of the codec executor that should be used for
+	 * decoding/encoding SCTP messages that can be identified by the given ancillary
+	 * data. If the default executor (i.e. created by the
+	 * {@link #createCodecExecutor()}) should be used this method should return
+	 * the {@link #DEFAULT_CODEC_EXECUTOR_IDENTIFIER} value.
+	 * <p>
+	 * If the codec executor identified by the ancillary data has not been created
+	 * yet it will be created by {@link #createCodecExecutor(Object)} and the
+	 * returned identifier will be used as the argument.
+	 * <p>
 	 * 
-	 * @param msgInfo ancillary data about the message
+	 * @param msgInfo the ancillary data about a SCTP message to be decoded/encoded
+	 * @return the identifier of the codec executor, or <code>null</code> if
+	 *         decoding and encoding are not required.
+	 */
+	Object getCodecExecutorIdentifier(MessageInfo msgInfo);
+	
+	/**
+	 * Creates a new codec executor that should be used for decoding/encoding SCTP
+	 * messages that can be identified by the given identifier.
+	 * 
+	 * @param identifier the identifier of the codec executor to create
 	 * @return the codec executor, or <code>null</code> if decoding and encoding are
 	 *         not required.
 	 */
-	ICodecExecutor createCodecExecutor(MessageInfo msgInfo);
-	
-	/**
-	 * Returns the minimum stream number of the SCTP messages that should be
-	 * encoded/decoded by the codec executors created by the
-	 * {@link #createCodecExecutor(MessageInfo)}.
-	 * <p>
-	 * For other stream numbers the SCTP messages should be encoded/decoded by the
-	 * default codec executor (created by {@link #createCodecExecutor()}).
-	 * 
-	 * @return the minimum stream number
-	 */
-	int getMinSctpStreamNumber();
-	
-	/**
-	 * Returns the maximum stream number of the SCTP messages that should be
-	 * encoded/decoded by the codec executors created by the
-	 * {@link #createCodecExecutor(MessageInfo)}.
-	 * <p>
-	 * For other stream numbers the SCTP messages should be encoded/decoded by the
-	 * default codec executor (created by {@link #createCodecExecutor()}).
-	 * 
-	 * @return the maximum stream number
-	 */
-	int getMaxSctpStreamNumber();
-	
-	/**
-	 * Returns the minimum payload protocol identifier of the SCTP messages that
-	 * should be encoded/decoded by the codec executors created by the
-	 * {@link #createCodecExecutor(MessageInfo)}.
-	 * <p>
-	 * For other payload protocol identifiers the SCTP messages should be
-	 * encoded/decoded by the default codec executor (created by
-	 * {@link #createCodecExecutor()}).
-	 * 
-	 * @return the minimum payload protocol identifier
-	 */
-	int getMinSctpPayloadProtocolID();
-	
-	/**
-	 * Returns the maximum payload protocol identifier of the SCTP messages that
-	 * should be encoded/decoded by the codec executors created by the
-	 * {@link #createCodecExecutor(MessageInfo)}.
-	 * <p>
-	 * For other payload protocol identifiers the SCTP messages should be
-	 * encoded/decoded by the default codec executor (created by
-	 * {@link #createCodecExecutor()}).
-	 * 
-	 * @return the maximum payload protocol identifier
-	 */
-	int getMaxSctpPayloadProtocolID();
+	ICodecExecutor createCodecExecutor(Object identifier);
 	
 	/**
 	 * Returns the stream number for the SCTP messages sent by the

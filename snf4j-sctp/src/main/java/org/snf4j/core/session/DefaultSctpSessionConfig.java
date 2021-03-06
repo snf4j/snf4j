@@ -38,14 +38,6 @@ import com.sun.nio.sctp.MessageInfo;
  */
 public class DefaultSctpSessionConfig extends DefaultSessionConfig implements ISctpSessionConfig {
 
-	private int minSctpStreamNumber; /* 0 */
-	
-	private int maxSctpStreamNumber = 65536;
-	
-	private int minSctpPayloadProtocolID = Integer.MIN_VALUE;
-	
-	private int maxSctpPayloadProtocolID = Integer.MAX_VALUE;
-	
 	private int defaultSctpStreamNumber; /* 0 */
 	
 	private int defaultSctpPayloadProtocolID; /* 0 */
@@ -54,117 +46,26 @@ public class DefaultSctpSessionConfig extends DefaultSessionConfig implements IS
 	
 	private SocketAddress defaultSctpPeerAddress; /* null */
 	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is {@link #DEFAULT_CODEC_EXECUTOR_IDENTIFIER}
+	 */
 	@Override
-	public ICodecExecutor createCodecExecutor(MessageInfo msgInfo) {
+	public Object getCodecExecutorIdentifier(MessageInfo msgInfo) {
+		return DEFAULT_CODEC_EXECUTOR_IDENTIFIER;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * The default value is <code>null</code>
+	 */
+	@Override
+	public ICodecExecutor createCodecExecutor(Object identifier) {
 		return null;
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * The default value is 0
-	 */
-	@Override
-	public int getMinSctpStreamNumber() {
-		return minSctpStreamNumber;
-	}
-	
-	/**
-	 * Configures the minimum stream number of the SCTP messages that should be
-	 * encoded/decoded by the codec executors created by the
-	 * {@link #createCodecExecutor(MessageInfo)}.
-	 * <p>
-	 * For other stream numbers the SCTP messages should be encoded/decoded by the
-	 * default codec executor (created by {@link #createCodecExecutor()}).
-	 * 
-	 * @param minStreamNumber the minimum stream number
-	 * @return this session config object
-	 */
-	public DefaultSctpSessionConfig setMinSctpStreamNumber(int minStreamNumber) {
-		minSctpStreamNumber = minStreamNumber;
-		return this;
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * The default value is 65536
-	 */
-	@Override
-	public int getMaxSctpStreamNumber() {
-		return maxSctpStreamNumber;
-	}
-
-	/**
-	 * Configures the maximum stream number of the SCTP messages that should be
-	 * encoded/decoded by the codec executors created by the
-	 * {@link #createCodecExecutor(MessageInfo)}.
-	 * <p>
-	 * For other stream numbers the SCTP messages should be encoded/decoded by the
-	 * default codec executor (created by {@link #createCodecExecutor()}).
-	 * 
-	 * @param maxStreamNumber the maximum stream number
-	 * @return this session config object
-	 */
-	public DefaultSctpSessionConfig setMaxSctpStreamNumber(int maxStreamNumber) {
-		maxSctpStreamNumber = maxStreamNumber;
-		return this;
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * The default value is {@code Integer.MIN_VALUE}
-	 */
-	@Override
-	public int getMinSctpPayloadProtocolID() {
-		return minSctpPayloadProtocolID;
-	}
-
-	/**
-	 * Configures the minimum payload protocol identifier of the SCTP messages that
-	 * should be encoded/decoded by the codec executors created by the
-	 * {@link #createCodecExecutor(MessageInfo)}.
-	 * <p>
-	 * For other payload protocol identifiers the SCTP messages should be
-	 * encoded/decoded by the default codec executor (created by
-	 * {@link #createCodecExecutor()}).
-	 * 
-	 * @param minPayloadProtocolID the minimum payload protocol identifier
-	 * @return this session config object
-	 */
-	public DefaultSctpSessionConfig setMinSctpPayloadProtocolID(int minPayloadProtocolID) {
-		minSctpPayloadProtocolID = minPayloadProtocolID;
-		return this;
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * The default value is {@code Integer.MAX_VALUE}
-	 */
-	@Override
-	public int getMaxSctpPayloadProtocolID() {
-		return maxSctpPayloadProtocolID;
-	}
-
-	/**
-	 * Configures the maximum payload protocol identifier of the SCTP messages that
-	 * should be encoded/decoded by the codec executors created by the
-	 * {@link #createCodecExecutor(MessageInfo)}.
-	 * <p>
-	 * For other payload protocol identifiers the SCTP messages should be
-	 * encoded/decoded by the default codec executor (created by
-	 * {@link #createCodecExecutor()}).
-	 * 
-	 * @param maxPayloadProtocolID the maximum payload protocol identifier
-	 * @return this session config object
-	 */
-	public DefaultSctpSessionConfig setMaxSctpPayloadProtocolID(int maxPayloadProtocolID) {
-		maxSctpPayloadProtocolID = maxPayloadProtocolID;
-		return this;
-	}
-
 	/**
 	 * {@inheritDoc}
 	 * <p>

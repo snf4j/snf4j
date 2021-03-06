@@ -26,10 +26,10 @@
 package org.snf4j.core;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.handler.ISctpHandler;
@@ -40,63 +40,54 @@ import com.sun.nio.sctp.MessageInfo;
 
 class SctpCodecExecutorAdapter extends CodecExecutorAdapter implements ISctpReader {
 
-	private Map<Long, ICodecExecutor> executors;
-	
-	private final int minStreamNum;
-	
-	private final int maxStreamNum;
-	
-	private final int minProtoID;
-	
-	private final int maxProtoID;
+	private volatile ConcurrentMap<Object, ICodecExecutor> executors;
 	
 	private final ISctpSessionConfig config;
 	
 	SctpCodecExecutorAdapter(ICodecExecutor executor, ISctpHandler handler) {
 		super(executor);
 		config = handler.getConfig();
-		minStreamNum = config.getMinSctpStreamNumber();
-		maxStreamNum = config.getMaxSctpStreamNumber();
-		minProtoID = config.getMinSctpPayloadProtocolID();
-		maxProtoID = config.getMaxSctpPayloadProtocolID();
 	}
 	
 	void setSession(ISctpSession session) {
 		this.session = session;
 	}
 
-	final static Long key(int streamNum, int protoID) {
-		return new Long(((long)streamNum << 32) | ((long)protoID & 0xffffffffL));
+	ICodecExecutor getExecutor(Object identifier) {
+		ConcurrentMap<Object, ICodecExecutor> executors = this.executors;
+		
+		return executors != null ? executors.get(identifier) : null;
 	}
 	
 	ICodecExecutor getExecutor(MessageInfo msgInfo) {
-		int streamNum = msgInfo.streamNumber();
-		int protoID = msgInfo.payloadProtocolID();
-		
-		if (streamNum < minStreamNum || streamNum > maxStreamNum || protoID < minProtoID || protoID > maxProtoID) {
+		Object identifier = config.getCodecExecutorIdentifier(msgInfo);
+
+		if (ISctpSessionConfig.DEFAULT_CODEC_EXECUTOR_IDENTIFIER == identifier) {
 			return executor;
 		}
+		else if (identifier == null) {
+			return SctpNopCodecExecutor.INSTANCE;
+		}
 
-		Long key = key(streamNum, protoID);
 		ICodecExecutor executor;
 		
 		if (executors == null) {
-			executors = new HashMap<Long, ICodecExecutor>();
+			executors = new ConcurrentHashMap<Object, ICodecExecutor>();
 			executor = null;
 		}
 		else {
-			executor = executors.get(key);
+			executor = executors.get(identifier);
 		}
 		
 		if (executor == null) {
-			executor = config.createCodecExecutor(msgInfo);
+			executor = config.createCodecExecutor(identifier);
 			if (executor == null) {
 				executor = SctpNopCodecExecutor.INSTANCE;
 			}
 			else {
 				this.executor.addChild(session, executor);
 			}
-			executors.put(key, executor);
+			executors.put(identifier, executor);
 		}
 		return executor;
 	}

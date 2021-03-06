@@ -162,18 +162,25 @@ public class TestSctpHandler implements ISctpHandler {
 			}
 			
 			@Override
-			public ICodecExecutor createCodecExecutor(MessageInfo msgInfo) {
-				if (codecs == null) {
-					return codec;
+			public Object getCodecExecutorIdentifier(MessageInfo msgInfo) {
+				int streamNum = msgInfo.streamNumber();
+				int protoID = msgInfo.payloadProtocolID();
+				
+				if (streamNum < minStreamNumber || streamNum > maxStreamNumber || protoID < minProtoID || protoID > maxProtoID) {
+					return DEFAULT_CODEC_EXECUTOR_IDENTIFIER;
 				}
-				Long key = ((long)msgInfo.payloadProtocolID() << 32) | (long)msgInfo.streamNumber();
-				return codecs.get(key);
+				if (codecs == null) {
+					return DEFAULT_CODEC_EXECUTOR_IDENTIFIER;
+				}
+				return ((long)msgInfo.payloadProtocolID() << 32) | (long)msgInfo.streamNumber();
+			}
+
+			@Override
+			public ICodecExecutor createCodecExecutor(Object type) {
+				return codecs.get(type);
 			}
 			
-		}.setMinSctpStreamNumber(minStreamNumber)
-				.setMaxSctpStreamNumber(maxStreamNumber)
-				.setMinSctpPayloadProtocolID(minProtoID)
-				.setMaxSctpPayloadProtocolID(maxProtoID);
+		};
 	}
 
 	@Override

@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import java.awt.Point;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -127,15 +128,19 @@ public class SctpServer {
 	
 	public volatile SocketAddress defaultSctpPeerAddress;
 	
-	public volatile int minSctpStreamNumber = -111;
+	public volatile int minSctpStreamNumber = 0;
 	
-	public volatile int maxSctpStreamNumber = -111;
+	public volatile int maxSctpStreamNumber = 65535;
 	
-	public volatile int minSctpPayloadProtocolID = -111;
+	public volatile int minSctpPayloadProtocolID = Integer.MIN_VALUE;
 	
-	public volatile int maxSctpPayloadProtocolID = -111;
+	public volatile int maxSctpPayloadProtocolID = Integer.MAX_VALUE;
 	
 	public volatile boolean defaultSctpUnorderedFlag;
+	
+	public volatile boolean useCodecExecutorIdentifier;
+	
+	public volatile Object codecExecutorIdentifier;
 	
 	EventType closeInEvent;
 	
@@ -359,8 +364,23 @@ public class SctpServer {
 				}
 				
 				@Override
-				public ICodecExecutor createCodecExecutor(MessageInfo msgInfo) {
-					return codecExecutors[msgInfo.streamNumber()][msgInfo.payloadProtocolID()];
+				public Object getCodecExecutorIdentifier(MessageInfo msgInfo) {
+					if (useCodecExecutorIdentifier) {
+						return codecExecutorIdentifier;
+					}
+					
+					int streamNum = msgInfo.streamNumber();
+					int protoID = msgInfo.payloadProtocolID();
+					
+					if (streamNum < minSctpStreamNumber || streamNum > maxSctpStreamNumber || protoID < minSctpPayloadProtocolID || protoID > maxSctpPayloadProtocolID) {
+						return DEFAULT_CODEC_EXECUTOR_IDENTIFIER;
+					}
+					return new Point(msgInfo.streamNumber(), msgInfo.payloadProtocolID());
+				}
+				
+				@Override
+				public ICodecExecutor createCodecExecutor(Object type) {
+					return codecExecutors[((Point)type).x][((Point)type).y];
 				}
 				
 			};
@@ -386,18 +406,6 @@ public class SctpServer {
 				config.setDefaultSctpUnorderedFlag(defaultSctpUnorderedFlag);
 			}
 			config.setDefaultSctpPeerAddress(defaultSctpPeerAddress);
-			if (minSctpStreamNumber != -111) {
-				config.setMinSctpStreamNumber(minSctpStreamNumber);
-			}
-			if (maxSctpStreamNumber != -111) {
-				config.setMaxSctpStreamNumber(maxSctpStreamNumber);
-			}
-			if (minSctpPayloadProtocolID != -111) {
-				config.setMinSctpPayloadProtocolID(minSctpPayloadProtocolID);
-			}
-			if (maxSctpPayloadProtocolID != -111) {
-				config.setMaxSctpPayloadProtocolID(maxSctpPayloadProtocolID);
-			}
 			return config;
 		}
 		
