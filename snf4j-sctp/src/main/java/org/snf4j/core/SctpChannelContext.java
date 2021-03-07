@@ -99,7 +99,7 @@ class SctpChannelContext extends AbstractSctpChannelContext<SctpSession> {
 		((SctpChannel)channel).shutdown();
 	}
 	
-	private static boolean append(StringBuilder sb, Set<SocketAddress> addrs) {
+	static boolean append(StringBuilder sb, Set<SocketAddress> addrs) {
 		Iterator<SocketAddress> i = addrs.iterator();
 		
 		if (i.hasNext()) {

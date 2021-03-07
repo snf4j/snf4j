@@ -29,8 +29,11 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.Set;
+import java.util.TreeSet;
+
+import org.snf4j.core.TestSctpChannel.AddrComparator;
 
 import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.MessageInfo;
@@ -41,18 +44,51 @@ import com.sun.nio.sctp.SctpSocketOption;
 
 public class TestSctpMultiChannel extends SctpMultiChannel {
 
+	Set<Association> associations = new TreeSet<Association>(new AssoComparator());
+	
 	IOException associationsException;
+	
+	public Set<SocketAddress> localAddresses = new TreeSet<SocketAddress>(new AddrComparator());
+
+	IOException localAddressesException;
+	
+	@SuppressWarnings("unchecked")
+	public Set<SocketAddress>[] remoteAddresses = new Set[] {
+		new TreeSet<SocketAddress>(new AddrComparator()),
+		new TreeSet<SocketAddress>(new AddrComparator())
+	};
+	
+	IOException[] remoteAddressesException = new IOException[2];
 	
 	protected TestSctpMultiChannel() {
 		super(null);
 	}
 
+	static class AssoComparator implements Comparator<Association> {
+
+		@Override
+		public int compare(Association o1, Association o2) {
+			return o1.associationID() - o2.associationID();
+		}
+	}
+	
+	static class TestAssociation extends Association {
+
+		protected TestAssociation(int id) {
+			super(id, id, id);
+		}
+	}
+	
+	Association association(int id) {
+		return new TestAssociation(id);
+	}
+	
 	@Override
 	public Set<Association> associations() throws IOException {
 		if (associationsException != null) {
 			throw associationsException;
 		}
-		return Collections.emptySet();
+		return associations;
 	}
 
 	@Override
@@ -72,7 +108,10 @@ public class TestSctpMultiChannel extends SctpMultiChannel {
 
 	@Override
 	public Set<SocketAddress> getAllLocalAddresses() throws IOException {
-		return null;
+		if (localAddressesException != null) {
+			throw localAddressesException;
+		}
+		return localAddresses;
 	}
 
 	@Override
@@ -82,7 +121,10 @@ public class TestSctpMultiChannel extends SctpMultiChannel {
 
 	@Override
 	public Set<SocketAddress> getRemoteAddresses(Association arg0) throws IOException {
-		return null;
+		if (remoteAddressesException[arg0.associationID()] != null) {
+			throw remoteAddressesException[arg0.associationID()];
+		}
+		return remoteAddresses[arg0.associationID()];
 	}
 
 	@Override

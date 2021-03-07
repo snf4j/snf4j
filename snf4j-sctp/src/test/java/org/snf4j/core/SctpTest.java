@@ -175,6 +175,14 @@ public class SctpTest {
 		return nopbb;
 	}
 	
+	ByteBuffer nopbba(String payload, int padding) {
+		byte[] b = nopb(payload,0,padding);
+		
+		nopbb = allocator.allocate(b.length);
+		nopbb.put(b).flip();
+		return nopbb;
+	}
+	
 	Packet nop(String head, String tail, char mid, int midLength) {
 		char[] payload = new char[tail.length() + tail.length() + midLength];
 		

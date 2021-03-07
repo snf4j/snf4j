@@ -41,11 +41,13 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AlreadyBoundException;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.Test;
 import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.ICodecPipeline;
+import org.snf4j.core.codec.IEncoder;
 import org.snf4j.core.codec.IEventDrivenCodec;
 import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
@@ -1827,6 +1829,260 @@ public class SctpSessionTest extends SctpTest {
 		c.session.resumeWrite();
 		assertWrite("DR|NOP(22344)|");
 		assertAllocator(2,3,0);	
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingWrite() throws Exception {
+		assumeSupported();
+
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(false, true);
+		c.optimizeCopying = true;
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		InternalSctpSession session = c.session;
+		setAllocator(c.allocator);
+		assertAllocatorDeltas(1, 1, 0);
+		assertEquals(0, getOut(c).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 0);
+		assertEquals(0, getOut(c).size());
+		
+		session.writenf(nopbba("12"));
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(1, 1, 0);
+		assertEquals(0, getOut(c).size());
+		c.stop(TIMEOUT);
+		assertAllocatorDeltas(1, 1, 0);
+		
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(true, true);
+		c.optimizeCopying = true;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		clearTraces();
+		session = c.session;
+		setAllocator(c.allocator);
+		assertAllocatorDeltas(1, 1, 0);
+		assertEquals(0, getOut(c).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(1, 1, 0);
+		assertEquals(0, getOut(c).size());
+		
+		ByteBuffer bb = nopbba("12",4);
+		session.writenf(bb,5);
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(2, 1, 1);
+		assertEquals(0, getOut(c).size());
+		c.stop(TIMEOUT);
+		assertAllocatorDeltas(1, 1, 1);
+		session.release(bb);
+		assertAllocatorDeltas(0, 1, 0);
+		
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(false, true);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		clearTraces();
+		session = c.session;
+		setAllocator(c.allocator);
+		assertAllocatorDeltas(1, 0, 1);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(1, 1, 1);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		
+		bb = nopbba("12");
+		session.writenf(bb);
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(2, 1, 2);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		c.stop(TIMEOUT);
+		assertAllocatorDeltas(0, 1, 1);
+		session.release(bb);
+		assertAllocatorDeltas(0, 1, 0);
+		
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(false, false);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		clearTraces();
+		session = c.session;
+		setAllocator(c.allocator);
+		assertAllocatorDeltas(1, 0, 1);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(1, 0, 2);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		
+		bb = nopbba("12");
+		session.writenf(bb);
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(2, 0, 4);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		c.stop(TIMEOUT);
+		assertAllocatorDeltas(0, 0, 4);
+		session.release(bb);
+		assertAllocatorDeltas(0, 0, 4);
+		
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingWriteWithCodec() throws Exception {
+		assumeSupported();
+
+		s = new SctpServer(PORT);
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(false, true);
+		c.optimizeCopying = true;
+		addCodecs(c,0,0,new BufferToArrayEncoder(false));
+		s.start();
+		c.start();
+		waitForReady(TIMEOUT);
+		InternalSctpSession session = c.session;
+		setAllocator(c.allocator);
+		assertAllocatorDeltas(1, 1, 0);
+		assertEquals(0, getOut(c).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 0);
+		assertEquals(0, getOut(c).size());
+		
+		ICodecPipeline p11 = session.getCodecPipeline(new Point(0,0));
+		assertNotNull(p11);
+		p11.replace("E1", "E1", new BufferToArrayEncoder(true));
+		session.writenf(nopbba("12"));
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(1, 1, 0);
+		assertEquals(0, getOut(c).size());
+
+		p11.replace("E1", "E1", new BufferToBufferEncoder());
+		session.writenf(nopbba("12"));
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(1, 1, 0);
+		assertEquals(0, getOut(c).size());
+	
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 1, 0);
+		assertEquals(0, getOut(c).size());
+	
+		p11.replace("E1", "E1", new ArrayToBufferEncoder());
+		session.writenf(nopbba("12"));
+		assertWrite("DR|NOP(12)|");
+		//it's not ok yet but will be fixed
+		assertAllocatorDeltas(1, 1, 1);
+		assertEquals(0, getOut(c).size());
+	
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 1, 1);
+		assertEquals(0, getOut(c).size());
+		c.stop(TIMEOUT);
+		assertAllocatorDeltas(1, 1, 1);
+		
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(false, true);
+		addCodecs(c,0,0,new BufferToArrayEncoder(false));
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		clearTraces();
+		session = c.session;
+		setAllocator(c.allocator);
+		assertAllocatorDeltas(1, 0, 1);
+		assertEquals(0, getOut(c).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		
+		p11 = session.getCodecPipeline(new Point(0,0));
+		assertNotNull(p11);
+		p11.replace("E1", "E1", new BufferToArrayEncoder(true));
+		ByteBuffer bb = nopbba("12");
+		session.writenf(bb);
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(1, 1, 2);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		session.release(bb);
+		assertAllocatorDeltas(0, 1, 1);
+		c.stop(TIMEOUT);
+		assertAllocatorDeltas(0, 1, 0);
+		
+		c = new SctpClient(PORT);
+		c.allocator = new TestAllocator(false, false);
+		addCodecs(c,0,0,new BufferToArrayEncoder(false));
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		clearTraces();
+		session = c.session;
+		setAllocator(c.allocator);
+		assertAllocatorDeltas(1, 0, 1);
+		assertEquals(0, getOut(c).size());
+		
+		session.writenf(nopb("1"));
+		assertWrite("DR|NOP(1)|");
+		assertAllocatorDeltas(0, 0, 1);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		
+		p11 = session.getCodecPipeline(new Point(0,0));
+		assertNotNull(p11);
+		p11.replace("E1", "E1", new BufferToArrayEncoder(true));
+		bb = nopbba("12");
+		session.writenf(bb);
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(1, 0, 2);
+		assertNotNull(getIn(c));
+		assertEquals(0, getOut(c).size());
+		session.release(bb);
+		assertAllocatorDeltas(0, 0, 2);
+		c.stop(TIMEOUT);
+		assertAllocatorDeltas(0, 0, 2);
+		
+	}
+	
+	class BufferToBufferEncoder implements IEncoder<ByteBuffer,ByteBuffer> {
+
+		@Override
+		public Class<ByteBuffer> getInboundType() {
+			return ByteBuffer.class;
+		}
+
+		@Override
+		public Class<ByteBuffer> getOutboundType() {
+			return ByteBuffer.class;
+		}
+
+		@Override
+		public void encode(ISession session, ByteBuffer data, List<ByteBuffer> out) throws Exception {
+			out.add(data);
+		}
 	}
 	
 	@Test

@@ -25,10 +25,13 @@
  */
 package org.snf4j.core;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
+import java.util.Iterator;
 
+import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.MessageInfo;
 import com.sun.nio.sctp.NotificationHandler;
 import com.sun.nio.sctp.SctpMultiChannel;
@@ -62,5 +65,53 @@ class SctpMultiChannelContext extends AbstractSctpChannelContext<SctpMultiSessio
 			channel.close();
 		}
 	}
-
+	
+	static String toString(SctpMultiChannel channel) {
+		StringBuilder sb = new StringBuilder(200);
+		
+		sb.append(channel.getClass().getName());
+		sb.append("[local=");
+		try {
+			if (!SctpChannelContext.append(sb, channel.getAllLocalAddresses())) {
+				sb.append("not-bound");
+			}
+		} catch (IOException e) {
+			sb.append("unknown");
+		}
+		Iterator<Association> i;
+		try {
+			i = channel.associations().iterator();
+			
+			if (i.hasNext()) {
+				sb.append(" remote=");
+				try {
+					if (!SctpChannelContext.append(sb, channel.getRemoteAddresses(i.next()))) {
+						sb.append("shutdown");
+					}
+					while (i.hasNext()) {
+						sb.append(';');
+						if (!SctpChannelContext.append(sb, channel.getRemoteAddresses(i.next()))) {
+							sb.append("shutdown");
+						}
+					}
+				}
+				catch (Exception e2) {
+					sb.append("unknown");
+				}
+			}
+		}
+		catch (Exception e) {
+			sb.append(" remote=unknown");
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+	
+	@Override
+	final String toString(SelectableChannel channel) {		
+		if (channel instanceof SctpMultiChannel) {
+			return toString((SctpMultiChannel) channel);
+		}
+		return super.toString(channel);
+	}
 }
