@@ -26,7 +26,7 @@
 package org.snf4j.core.handler;
 
 /**
- * An {@code enum} defining types of SCTP notification.
+ * An {@code enum} defining types of the SCTP notifications.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */

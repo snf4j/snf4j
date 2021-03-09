@@ -53,6 +53,14 @@ import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.Notification;
 import com.sun.nio.sctp.SctpMultiChannel;
 
+/**
+ * The Stream Control Transmission Protocol (SCTP) multi-session.
+ * <p>
+ * It uses the message-oriented connected SCTP socket as described in the IETF
+ * RFC 4960 "Stream Control Transmission Protocol".
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 public class SctpMultiSession extends InternalSctpSession implements ISctpMultiSession {
 
 	private final static ILogger LOGGER = LoggerFactory.getLogger(SctpMultiSession.class);
@@ -77,7 +85,7 @@ public class SctpMultiSession extends InternalSctpSession implements ISctpMultiS
 	@Override
 	public IFuture<Void> shutdown(final Association association) {
 		InternalSelectorLoop loop = this.loop;
-		SelectableChannel channel = this.channel;
+		final SelectableChannel channel = this.channel;
 		
 		if (loop == null || channel == null) {
 			return new CancelledFuture<Void>(this);

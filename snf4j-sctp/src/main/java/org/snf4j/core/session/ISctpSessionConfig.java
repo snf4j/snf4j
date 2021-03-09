@@ -55,7 +55,7 @@ public interface ISctpSessionConfig extends ISessionConfig {
 	 * returned identifier will be used as the argument.
 	 * <p>
 	 * 
-	 * @param msgInfo the ancillary data about a SCTP message to be decoded/encoded
+	 * @param msgInfo the ancillary data about an SCTP message to be decoded/encoded
 	 * @return the identifier of the codec executor, or <code>null</code> if
 	 *         decoding and encoding are not required.
 	 */

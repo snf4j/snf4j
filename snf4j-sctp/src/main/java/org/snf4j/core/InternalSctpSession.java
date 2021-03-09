@@ -294,7 +294,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		}
 	}
 	
-	private IFuture<Void> bindUnbind(final InetAddress address, boolean bind) {
+	private IFuture<Void> bindUnbind(final InetAddress address, final boolean bind) {
 		InternalSelectorLoop loop = this.loop;
 		SelectableChannel channel = this.channel;
 		

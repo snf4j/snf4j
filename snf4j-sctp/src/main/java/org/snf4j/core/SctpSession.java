@@ -73,7 +73,7 @@ public class SctpSession extends InternalSctpSession implements ISctpSession {
 	}
 
 	/**
-	 * Constructs a SCTP session associated with a handler. 
+	 * Constructs an SCTP session associated with a handler. 
 	 * 
 	 * @param handler
 	 *            the handler that should be associated with this session

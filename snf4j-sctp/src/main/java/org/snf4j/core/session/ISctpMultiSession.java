@@ -33,6 +33,12 @@ import org.snf4j.core.future.IFuture;
 
 import com.sun.nio.sctp.Association;
 
+/**
+ * Extends the {@link ISctpSession} interface to cover SCTP functionalities
+ * related to the SCTP multi sessions.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 public interface ISctpMultiSession extends ISctpSession {
 	
 	@Override

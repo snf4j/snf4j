@@ -45,12 +45,12 @@ public abstract class AbstractSctpSessionFactory implements ISctpSessionFactory 
 	}
 	
 	/**
-	 * Creates a SCTP session for a newly accepted connection. The returned session
+	 * Creates an SCTP session for a newly accepted connection. The returned session
 	 * will be associated with the handler returned by the
 	 * {@link #createHandler} method.
 	 * 
 	 * @param channel the SCTP channel associated with the accepted connection.
-	 * @return a SCTP session that will be associated with the accepted connection
+	 * @return an SCTP session that will be associated with the accepted connection
 	 */
 	@Override
 	public SctpSession create(SctpChannel channel) {
@@ -58,11 +58,11 @@ public abstract class AbstractSctpSessionFactory implements ISctpSessionFactory 
 	}
 
 	/**
-	 * Creates a SCTP handler for a newly accepted connection. This
+	 * Creates an SCTP handler for a newly accepted connection. This
 	 * method can be also used to configure the newly accepted channel.
 	 * 
 	 * @param channel the SCTP channel associated with the accepted connection.
-	 * @return a SCTP handler that will be associated with the session
+	 * @return an SCTP handler that will be associated with the session
 	 *         returned by the {@link #create} method
 	 */
 	abstract protected ISctpHandler createHandler(SctpChannel channel);

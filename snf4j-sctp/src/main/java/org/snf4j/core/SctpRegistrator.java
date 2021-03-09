@@ -49,7 +49,7 @@ public class SctpRegistrator {
 	}
 	
 	/**
-	 * Registers a SCTP channel with the specified selector loop. The method
+	 * Registers an SCTP channel with the specified selector loop. The method
 	 * only adds the channel to the selector-loop's pending registration queue.
 	 * <p>
 	 * This method is asynchronous.
@@ -79,7 +79,7 @@ public class SctpRegistrator {
 	}
 	
 	/**
-	 * Registers a SCTP channel with the specified selector loop. The method only
+	 * Registers an SCTP channel with the specified selector loop. The method only
 	 * adds the channel to the selector-loop's pending registration queue.
 	 * <p>
 	 * This method is asynchronous.
@@ -140,6 +140,26 @@ public class SctpRegistrator {
 		return loop.register(channel, SelectionKey.OP_ACCEPT, new SctpServerChannelContext(factory));
 	}
 	
+	/**
+	 * Registers an SCTP multi channel with the specified selector loop. The method
+	 * only adds the channel to the selector-loop's pending registration queue.
+	 * <p>
+	 * This method is asynchronous.
+	 * 
+	 * @param loop    the selector loop the SCTP multi channel should be registered
+	 *                with
+	 * @param channel the SCTP multi channel to register with the specified selector
+	 *                loop
+	 * @param handler the handler that will be associated with the channel
+	 * @return the future associated with this registration
+	 * @throws ClosedChannelException        if the channel is closed
+	 * @throws SelectorLoopStoppingException if selector loop is in the process of
+	 *                                       stopping
+	 * @throws ClosedSelectorException       if the internal selector is closed
+	 * @throws IllegalArgumentException      if a bit in ops does not correspond to
+	 *                                       an operation that is supported by the
+	 *                                       channel
+	 */
 	public static IFuture<Void> register(SelectorLoop loop, SctpMultiChannel channel, ISctpHandler handler) 
 			throws ClosedChannelException {
 		SctpMultiSession session = new SctpMultiSession(handler);
@@ -147,6 +167,30 @@ public class SctpRegistrator {
 		return loop.register(channel, SelectionKey.OP_READ, new SctpMultiChannelContext(session));
 	}	
 	
+	/**
+	 * Registers an SCTP multi channel with the specified selector loop. The method
+	 * only adds the channel to the selector-loop's pending registration queue.
+	 * <p>
+	 * This method is asynchronous.
+	 * 
+	 * @param loop    the selector loop the SCTP multi channel should be registered
+	 *                with
+	 * @param channel the SCTP multi channel to register with the specified selector
+	 *                loop
+	 * @param session the session that will be associated with the channel
+	 * @return the future associated with this registration
+	 * @throws ClosedChannelException        if the channel is closed
+	 * @throws SelectorLoopStoppingException if selector loop is in the process of
+	 *                                       stopping
+	 * @throws ClosedSelectorException       if the internal selector is closed
+	 * @throws IllegalArgumentException      if a bit in ops does not correspond to
+	 *                                       an operation that is supported by the
+	 *                                       channel
+	 * @throws IllegalArgumentException      if the session argument is
+	 *                                       <code>null</code> or the session object
+	 *                                       is reused (was already registered with
+	 *                                       some selector loop)
+	 */
 	public static IFuture<Void> register(SelectorLoop loop, SctpMultiChannel channel, SctpMultiSession session)
 			throws ClosedChannelException {
 		if (session == null) {

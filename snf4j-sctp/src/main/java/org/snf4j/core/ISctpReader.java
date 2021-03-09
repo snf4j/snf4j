@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import com.sun.nio.sctp.MessageInfo;
 
 /**
- * A reader that reads data directly from a SCTP channel.
+ * A reader that reads data directly from an SCTP channel.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */

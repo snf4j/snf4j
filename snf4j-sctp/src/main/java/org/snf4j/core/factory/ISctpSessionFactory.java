@@ -31,7 +31,7 @@ import com.sun.nio.sctp.SctpChannel;
 import com.sun.nio.sctp.SctpServerChannel;
 
 /**
- * Factory used to create a SCTP session for a newly accepted
+ * Factory used to create an SCTP session for a newly accepted
  * connection. This interface is associated with the
  * {@link com.sun.nio.sctp.SctpServerChannel} being registered with the
  * selector loop.
@@ -41,15 +41,15 @@ import com.sun.nio.sctp.SctpServerChannel;
 public interface ISctpSessionFactory {
 
 	/**
-	 * Creates a SCTP session for a newly accepted connection. This
+	 * Creates an SCTP session for a newly accepted connection. This
 	 * method can be also used to configure the newly accepted channel.
 	 * 
 	 * @param channel
 	 *            the SCTP channel associated with the accepted connection.
-	 * @return a SCTP session that will be associated with the
+	 * @return an SCTP session that will be associated with the
 	 *         accepted connection
 	 * @throws Exception
-	 *             when a SCTP session could not be created
+	 *             when an SCTP session could not be created
 	 */
 	SctpSession create(SctpChannel channel) throws Exception;
 	
