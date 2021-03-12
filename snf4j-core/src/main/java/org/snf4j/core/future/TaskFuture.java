@@ -32,7 +32,7 @@ import org.snf4j.core.session.ISession;
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class TaskFuture<V> extends AbstractBlockingFuture<V> {
+public class TaskFuture<V> extends AbstractBlockingFuture<V> implements IAbortableFuture {
 
 	/**
 	 * Constructs a task future associated with a session.
@@ -65,6 +65,7 @@ public class TaskFuture<V> extends AbstractBlockingFuture<V> {
 	 *            should be cancelled
 	 * 
 	 */
+	@Override
 	public void abort(Throwable cause) {
 		if (cause != null) {
 			if (setState(FutureState.FAILED)) {

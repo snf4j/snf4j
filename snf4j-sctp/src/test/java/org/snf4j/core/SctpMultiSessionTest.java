@@ -47,6 +47,7 @@ import org.snf4j.core.future.FailedFuture;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SuccessfulFuture;
 import org.snf4j.core.future.TaskFuture;
+import org.snf4j.core.handler.SctpSendingFailureException;
 import org.snf4j.core.session.ISctpSession;
 
 import com.sun.nio.sctp.Association;
@@ -386,35 +387,58 @@ public class SctpMultiSessionTest extends SctpTest {
 		mc.stop(TIMEOUT);
 	}
 
-	@Test
-	public void testWriteWithoutAssociationAndAddress() throws Exception {
-		assumeSupported();
-		ms = new SctpClient(PORT);
+	SctpClient startMulti(int port) throws Exception {
+		SctpClient ms = new SctpClient(port);
 		ms.traceNotification = true;
+		ms.traceIncident = true;
 		ms.startMulti();
 		ms.waitForSessionReady(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|", ms.getTrace());
+		return ms;
+	}
+	
+	@Test
+	public void testWriteShutdownAssociation() throws Exception {
+		assumeSupported();
+		ms = startMulti(PORT);
+		mc = startMulti(PORT+1);
 		
-		mc = new SctpClient(PORT+1);
-		mc.traceNotification = true;
-		mc.startMulti();
-		mc.waitForSessionReady(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|", mc.getTrace());
+		mc.session.write(nopb("1234"), ImmutableSctpMessageInfo.create(address(PORT), 1));
+		mc.waitForDataSent(TIMEOUT);
+		mc.waitForNotification("ASC", TIMEOUT);
+		ms.waitForDataRead(TIMEOUT);
+		assertEquals("DS|ASC|", mc.getTrace());
+		assertEquals("ASC|DR|NOP(1234)[1]|", ms.getTrace());
+
+		SctpMultiSession session = (SctpMultiSession) ms.session;
+		assertEquals(1, session.getAssociations().size());
+		Association a = session.getAssociation();
+		
+		session.shutdown(a);
+		ms.waitForNotification("ASC", TIMEOUT);
+		mc.waitForNotification("ASC", TIMEOUT);
+		assertEquals("ASC|", ms.getTrace());
+		assertEquals("SHT|ASC|", mc.getTrace());
+		session.writenf(nopb("12"), ImmutableSctpMessageInfo.create(a, 1));
+		waitFor(100);
+		assertEquals("SCTP_SENDING_FAILURE|", ms.getTrace());
+		assertEquals("", mc.getTrace());
+		assertTrue(ms.incidentThrowable instanceof SctpSendingFailureException);
+		assertTrue(a == ((SctpSendingFailureException)ms.incidentThrowable).getMessageInfo().association());	
+	}
+	
+	@Test
+	public void testWriteWithoutAssociationAndAddress() throws Exception {
+		assumeSupported();
+		ms = startMulti(PORT);
+		mc = startMulti(PORT+1);
 		
 		mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(0));
-		mc.waitForSessionEnding(TIMEOUT);
-		assertEquals("EXC|SCL|SEN|", mc.getTrace());
-		assertFinished(mc);
-		mc.stop(TIMEOUT);
+		waitFor(100);
+		assertEquals("SCTP_SENDING_FAILURE|", mc.getTrace());
+		assertEquals("", ms.getTrace());
 		
-		mc = new SctpClient(PORT+1);
-		mc.traceNotification = true;
-		mc.startMulti();
-		mc.waitForSessionReady(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|", mc.getTrace());
-		
-		MessageInfo msgInfo = MessageInfo.createOutgoing(address(PORT), 1);
-		mc.session.write(nopb("1234"), ImmutableSctpMessageInfo.create(msgInfo));
+		mc.session.write(nopb("1234"), ImmutableSctpMessageInfo.create(address(PORT), 1));
 		mc.waitForDataSent(TIMEOUT);
 		mc.waitForNotification("ASC", TIMEOUT);
 		ms.waitForDataRead(TIMEOUT);
@@ -422,11 +446,15 @@ public class SctpMultiSessionTest extends SctpTest {
 		assertEquals("ASC|DR|NOP(1234)[1]|", ms.getTrace());
 		
 		mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(0));
-		mc.waitForSessionEnding(TIMEOUT);
-		ms.waitForNotification("ASC", TIMEOUT);
-		assertEquals("EXC|ASC|SCL|SEN|", mc.getTrace());
-		assertEquals("SHT|ASC|", ms.getTrace());
-		assertFinished(mc);
+		waitFor(100);
+		assertEquals("SCTP_SENDING_FAILURE|", mc.getTrace());
+		assertEquals("", ms.getTrace());
+		
+		mc.session.write(nopb("1234"), ImmutableSctpMessageInfo.create(address(PORT), 1));
+		mc.waitForDataSent(TIMEOUT);
+		ms.waitForDataRead(TIMEOUT);
+		assertEquals("DS|", mc.getTrace());
+		assertEquals("DR|NOP(1234)[1]|", ms.getTrace());		
 	}	
 	
 	@Test

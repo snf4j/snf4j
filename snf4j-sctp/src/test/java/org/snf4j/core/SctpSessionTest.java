@@ -1716,6 +1716,31 @@ public class SctpSessionTest extends SctpTest {
 	}
 	
 	@Test
+	public void testException() throws Exception {
+		assumeSupported();
+		startClientServer();
+		c.session.writenf(nopb("1"), ImmutableSctpMessageInfo.create(-1));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", c.getTrace());
+		assertEquals("SCL|SEN|", s.getTrace());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		startClientServer();
+		c.throwInException = true;
+		assertEquals(0, c.throwInExceptionCount.get());
+		c.session.writenf(nopb("1"), ImmutableSctpMessageInfo.create(-1));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals(1, c.throwInExceptionCount.get());
+		assertEquals("EXC|SCL|SEN|", c.getTrace());
+		assertEquals("SCL|SEN|", s.getTrace());
+		c.session.exception(new IOException());
+		assertEquals("", c.getTrace());
+	}
+	
+	@Test
 	public void testOptimizeCopying() throws Exception {
 		assumeSupported();
 		

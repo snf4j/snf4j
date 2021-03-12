@@ -155,10 +155,15 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 	
 	abstract int send(SelectionKey key, ByteBuffer msg, MessageInfo msgInfo) throws Exception;
 	
+	int send(T session, SelectionKey key, SctpRecord record) throws Exception {
+		return send(key, record.buffer, record.msgInfo.unwrap());
+	}
+	
 	int handleWriting(final SelectorLoop loop, final T session, final SelectionKey key, int spinCount) {
 		boolean traceEnabled = loop.traceEnabled;
 		Throwable exception = null;
 		long totalBytes = 0;
+		long consumedBytes = 0;
 		int bytes;
 		
 		if (traceEnabled) {
@@ -172,7 +177,7 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 			while (spinCount > 0 && (record = outQueue.peek()) != null) {
 				long length = record.buffer.remaining();
 				
-				bytes = send(key, record.buffer, record.msgInfo.unwrap());
+				bytes = send(session, key, record);
 				
 				if (bytes == length) {
 					if (traceEnabled) {
@@ -180,7 +185,15 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 					}
 					outQueue.poll();
 					totalBytes += bytes;
+					consumedBytes += bytes;
 					--spinCount;
+					if (record.release) {
+						session.release(record.buffer);
+					}					
+				}
+				else if (bytes == -length) {
+					outQueue.poll();
+					consumedBytes += length;
 					if (record.release) {
 						session.release(record.buffer);
 					}					
@@ -197,7 +210,7 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 					
 					session.calculateThroughput(currentTime, false);
 					session.incWrittenBytes(totalBytes, currentTime);
-					session.consumedBytes(totalBytes);
+					session.consumedBytes(consumedBytes);
 				}
 				if (outQueue.isEmpty()) {
 					session.clearWriteInterestOps(key);
@@ -214,7 +227,7 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 		}
 		
 		if (exception != null) {
-			loop.elogWarnOrError(loop.logger, "Writting to chennel in {} failed: {}", session, exception);
+			loop.elogWarnOrError(loop.logger, "Writting to channel in {} failed: {}", session, exception);
 			loop.fireException(session, exception);
 			spinCount = 0;
 		}

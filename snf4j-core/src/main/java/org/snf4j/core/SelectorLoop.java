@@ -557,7 +557,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 			if (totalBytes > 0) {
 				fireEvent(session, DataEvent.SENT, totalBytes);
 			}
-			elogWarnOrError(logger, "Writting to chennel in {} failed: {}", session, e);
+			elogWarnOrError(logger, "Writting to channel in {} failed: {}", session, e);
 			fireException(session, e);
 			totalBytes = 0;
 		}
@@ -746,7 +746,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 		
 		if (exception != null) {
-			elogWarnOrError(logger, "Writting to chennel in {} failed: {}", session, exception);
+			elogWarnOrError(logger, "Writting to channel in {} failed: {}", session, exception);
 			fireException(session, exception);
 			spinCount = 0;
 		}

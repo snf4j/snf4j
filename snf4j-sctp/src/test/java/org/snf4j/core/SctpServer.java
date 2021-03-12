@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -48,6 +49,7 @@ import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.ISctpHandler;
 import org.snf4j.core.handler.SctpNotificationType;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.session.DefaultSctpSessionConfig;
 import org.snf4j.core.session.ISctpSessionConfig;
 import org.snf4j.core.timer.ITimeoutModel;
@@ -112,6 +114,8 @@ public class SctpServer {
 	
 	public volatile boolean traceNotification;
 	
+	public volatile boolean traceIncident;
+	
 	public volatile int maxWriteSpinCount = -1;
 	
 	public volatile boolean optimizeCopying;
@@ -141,6 +145,14 @@ public class SctpServer {
 	public volatile boolean useCodecExecutorIdentifier;
 	
 	public volatile Object codecExecutorIdentifier;
+	
+	public volatile boolean throwInException;
+	
+	public volatile boolean incidentResult = false;
+	
+	public Throwable incidentThrowable;
+	
+	AtomicInteger throwInExceptionCount = new AtomicInteger();
 	
 	EventType closeInEvent;
 	
@@ -581,6 +593,19 @@ public class SctpServer {
 			EventType type = EventType.EXCEPTION_CAUGHT;
 			System.out.println(t + " " + getSession().getClass());
 			event(type, -1);
+			if (throwInException) {
+				throwInExceptionCount.getAndIncrement();
+				throw new IllegalArgumentException();
+			}
+		}
+		
+		@Override
+		public boolean incident(SessionIncident incident, Throwable t) {
+			if (traceIncident) {
+				trace(incident.name());
+			}
+			incidentThrowable = t;
+			return incidentResult;
 		}
 		
 		@Override

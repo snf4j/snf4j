@@ -31,6 +31,10 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.util.Iterator;
 
+import org.snf4j.core.InternalSctpSession.SctpRecord;
+import org.snf4j.core.handler.SctpSendingFailureException;
+import org.snf4j.core.handler.SessionIncident;
+
 import com.sun.nio.sctp.Association;
 import com.sun.nio.sctp.MessageInfo;
 import com.sun.nio.sctp.NotificationHandler;
@@ -63,6 +67,24 @@ class SctpMultiChannelContext extends AbstractSctpChannelContext<SctpMultiSessio
 		if (!context.shutdown((SctpMultiChannel) channel)) {
 			context.closing = ClosingState.FINISHED;
 			channel.close();
+		}
+	}
+	
+	@Override
+	int send(SctpMultiSession session, SelectionKey key, SctpRecord record) throws Exception {
+		try {
+			return send(key, record.buffer, record.msgInfo.unwrap());
+		}
+		catch (IOException e) {
+			throw e;
+		}
+		catch (Throwable t) {
+			SessionIncident incident = SessionIncident.SCTP_SENDING_FAILURE;
+			
+			if (!session.incident(incident, new SctpSendingFailureException(record.msgInfo, t))) {
+				session.elogger.error(session.logger, incident.defaultMessage(), session, t);
+			}
+			return -record.buffer.remaining();
 		}
 	}
 	

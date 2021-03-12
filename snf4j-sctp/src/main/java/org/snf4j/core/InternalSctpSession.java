@@ -41,6 +41,7 @@ import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.CancelledFuture;
 import org.snf4j.core.future.FailedFuture;
+import org.snf4j.core.future.IAbortableFuture;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SuccessfulFuture;
 import org.snf4j.core.future.TaskFuture;
@@ -150,6 +151,22 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 	public void quickClose() {
 		closeCalled.set(true);
 		close(false, false);
+	}
+	
+	@Override
+	void exception(Throwable t) {
+		if (isValid(EventType.EXCEPTION_CAUGHT)) {
+			try {
+				handler.exception(t);
+				futuresController.exception(t);
+				super.quickClose();
+			}
+			catch (Exception e) {
+				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);
+				futuresController.exception(t);
+				super.quickClose();
+			}
+		}
 	}
 
 	private final long write0(SctpRecord record) {
@@ -647,6 +664,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		final ImmutableSctpMessageInfo msgInfo;
 		ByteBuffer buffer;
 		boolean release;
+		IAbortableFuture future;
 		
 		SctpRecord(ImmutableSctpMessageInfo msgInfo) {
 			this.msgInfo = msgInfo;
