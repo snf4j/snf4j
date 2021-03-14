@@ -41,7 +41,6 @@ import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.CancelledFuture;
 import org.snf4j.core.future.FailedFuture;
-import org.snf4j.core.future.IAbortableFuture;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SuccessfulFuture;
 import org.snf4j.core.future.TaskFuture;
@@ -71,6 +70,8 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 	
 	private ConcurrentLinkedQueue<SctpRecord> outQueue;
 	
+	private volatile long consumedBytes;
+
 	private final int minInBufferCapacity;
 	
 	private final int maxInBufferCapacity;
@@ -169,7 +170,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		}
 	}
 
-	private final long write0(SctpRecord record) {
+	private final IFuture<Void> write0(SctpRecord record, boolean withFuture) {
 		SelectionKey key = checkKey(this.key);
 		long futureExpectedLen;
 
@@ -177,10 +178,13 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 			synchronized (writeLock) {
 				key = detectRebuild(key);
 				if (closing != ClosingState.NONE) {
-					return -1;
+					return withFuture ? writeFuture(-1) : null;
 				}
 				outQueueSize += record.buffer.remaining();
-				futureExpectedLen = outQueueSize + getWrittenBytes();
+				futureExpectedLen = outQueueSize + getConsumedBytes();
+				if (withFuture) {
+					record.future = writeFuture(futureExpectedLen);
+				}
 				outQueue.add(record);
 				setWriteInterestOps(key);
 			}
@@ -189,7 +193,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 			throw new IllegalSessionStateException(SessionState.CLOSING);
 		}
 		lazyWakeup();
-		return futureExpectedLen;
+		return record.future;
 	}
 	
 	ByteBuffer getInBuffer() {
@@ -240,6 +244,11 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 	 */
 	final void consumedBytes(long number) {
 		outQueueSize -= number;
+		consumedBytes += number;
+	}
+	
+	long getConsumedBytes() {
+		return consumedBytes;
 	}
 	
 	ISctpReader superCodec() {
@@ -402,7 +411,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		return outQueue;
 	}
 	
-	private IFuture<Void> writeFuture(long expectedLen) {
+	IFuture<Void> writeFuture(long expectedLen) {
 		if (expectedLen == -1) {
 			return futuresController.getCancelledFuture();
 		}
@@ -452,12 +461,20 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		return record;
 	}	
 	
-	private long write0(ImmutableSctpMessageInfo msgInfo, byte[] msg, int offset, int length) {
-		return write0(createRecord(msgInfo, msg, offset, length));
+	private void writenf0(ImmutableSctpMessageInfo msgInfo, byte[] msg, int offset, int length) {
+		write0(createRecord(msgInfo, msg, offset, length), false);
 	}
 	
-	private long write0(ImmutableSctpMessageInfo msgInfo, ByteBuffer msg, int length) {
-		return write0(createRecord(msgInfo, msg, length));
+	private void writenf0(ImmutableSctpMessageInfo msgInfo, ByteBuffer msg, int length) {
+		write0(createRecord(msgInfo, msg, length), false);
+	}
+	
+	private IFuture<Void> write0(ImmutableSctpMessageInfo msgInfo, byte[] msg, int offset, int length) {
+		return write0(createRecord(msgInfo, msg, offset, length), true);
+	}
+	
+	private IFuture<Void> write0(ImmutableSctpMessageInfo msgInfo, ByteBuffer msg, int length) {
+		return write0(createRecord(msgInfo, msg, length), true);
 	}
 	
 	@Override
@@ -480,7 +497,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		if (codec != null) {
 			return new SctpEncodeTask(this, msg).register(msgInfo);
 		}
-		return writeFuture(write0(msgInfo, msg, 0, msg.length));
+		return write0(msgInfo, msg, 0, msg.length);
 	}
 	
 	@Override
@@ -494,7 +511,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		if (codec != null) {
 			return new SctpEncodeTask(this, msg, offset, length).register(msgInfo);
 		}
-		return writeFuture(write0(msgInfo, msg, offset, length));
+		return write0(msgInfo, msg, offset, length);
 	}
 	
 	@Override
@@ -516,7 +533,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 				new SctpEncodeTask(this, msg).registernf(msgInfo);
 			}
 			else {
-				write0(msgInfo, msg, 0, msg.length);
+				writenf0(msgInfo, msg, 0, msg.length);
 			}
 		}
 	}
@@ -531,7 +548,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 				new SctpEncodeTask(this, msg, offset, length).registernf(msgInfo);
 			}
 			else {
-				write0(msgInfo, msg, offset, length);
+				writenf0(msgInfo, msg, offset, length);
 			}			
 		}
 	}
@@ -559,7 +576,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		if (codec != null) {
 			return new SctpEncodeTask(this, msg, length).register(msgInfo);
 		}
-		return writeFuture(write0(msgInfo, msg, length));
+		return write0(msgInfo, msg, length);
 	}
 	
 	@Override
@@ -581,7 +598,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 				new SctpEncodeTask(this, msg).registernf(msgInfo);
 			}
 			else {
-				write0(msgInfo, msg, msg.remaining());
+				writenf0(msgInfo, msg, msg.remaining());
 			}
 		}
 	}
@@ -598,7 +615,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 				new SctpEncodeTask(this, msg, length).registernf(msgInfo);
 			}
 			else {
-				write0(msgInfo, msg, length);
+				writenf0(msgInfo, msg, length);
 			}
 		}
 	}
@@ -639,7 +656,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		if (codec != null) {
 			return new SctpEncodeTask(this, msg).register(msgInfo);
 		}
-		return writeFuture(write0(msgInfo, msg, msg.remaining()));
+		return write0(msgInfo, msg, msg.remaining());
 	}
 
 	@Override
@@ -664,7 +681,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 		final ImmutableSctpMessageInfo msgInfo;
 		ByteBuffer buffer;
 		boolean release;
-		IAbortableFuture future;
+		IFuture<Void> future;
 		
 		SctpRecord(ImmutableSctpMessageInfo msgInfo) {
 			this.msgInfo = msgInfo;
@@ -689,11 +706,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 			
 			record.buffer = buffer;
 			record.release = optimizeBuffers;
-			if (withFuture) {
-				return writeFuture(write0(record));
-			}
-			write0(record);
-			return null;
+			return write0(record, withFuture);
 		}
 
 		@Override
@@ -701,11 +714,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 			SctpRecord record = new SctpRecord(msgInfo);
 			
 			record.buffer = ByteBuffer.wrap(bytes);
-			if (withFuture) {
-				return writeFuture(write0(record));
-			}
-			write0(record);
-			return null;
+			return write0(record, withFuture);
 		}
 		
 	}	

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,58 +23,60 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.future;
+package org.snf4j.example.sctp;
 
+import java.nio.ByteBuffer;
+import java.util.List;
+
+import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.session.ISession;
 
-/**
- * A future that represents the result of a asynchronous task.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class TaskFuture<V> extends AbstractBlockingFuture<V> implements IAbortableFuture<V> {
-
-	/**
-	 * Constructs a task future associated with a session.
-	 * 
-	 * @param session
-	 *            the session this future is associated with, or
-	 *            <code>null</code> if this future is not associated with any
-	 *            session
-	 */
-	public TaskFuture(ISession session) {
-		super(session);
+public class Aggregator implements IDecoder<ByteBuffer,ByteBuffer> {
+	
+	private final int size;
+	
+	private ByteBuffer buffer;
+	
+	Aggregator(int size) {
+		this.size = size;
+	}
+	
+	@Override
+	public Class<ByteBuffer> getInboundType() {
+		return ByteBuffer.class;
 	}
 
-	/**
-	 * Marks this future as successful and notifies all threads waiting for this
-	 * future to be completed.
-	 */
-	public void success() {
-		if (setState(FutureState.SUCCESSFUL)) {
-			notifyWaiters();
-		}
-	}	
-	
-	/**
-	 * Aborts this future and notifies all threads waiting for this future to be
-	 * completed.
-	 * 
-	 * @param cause
-	 *            the cause of the failure, or <code>null</code> if this future
-	 *            should be cancelled
-	 * 
-	 */
 	@Override
-	public void abort(Throwable cause) {
-		if (cause != null) {
-			if (setState(FutureState.FAILED)) {
-				this.cause = cause;
-				notifyWaiters();
+	public Class<ByteBuffer> getOutboundType() {
+		return ByteBuffer.class;
+	}
+
+	@Override
+	public void decode(ISession session, ByteBuffer data, List<ByteBuffer> out) throws Exception {
+		if (buffer == null) {
+			if (data.remaining() == size) {
+				out.add(data);
+				return;
 			}
+			buffer = session.allocate(size);
 		}
-		else if (setState(FutureState.CANCELLED)) {
-			notifyWaiters();
+		
+		if (data.remaining() <= buffer.remaining()) {
+			buffer.put(data);
 		}
-	}	
+		else {
+			ByteBuffer dup = data.duplicate();
+			dup.limit(dup.position()+buffer.remaining());
+			buffer.put(dup);
+			data.position(dup.position());
+		}
+		
+		if (!buffer.hasRemaining()) {
+			buffer.flip();
+			out.add(buffer);
+			buffer = null;
+			decode(session, data, out);
+		}
+	}
+
 }

@@ -32,6 +32,8 @@ import java.nio.channels.SelectionKey;
 import java.util.Iterator;
 
 import org.snf4j.core.InternalSctpSession.SctpRecord;
+import org.snf4j.core.future.IAbortableFuture;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.SctpSendingFailureException;
 import org.snf4j.core.handler.SessionIncident;
 
@@ -80,7 +82,11 @@ class SctpMultiChannelContext extends AbstractSctpChannelContext<SctpMultiSessio
 		}
 		catch (Throwable t) {
 			SessionIncident incident = SessionIncident.SCTP_SENDING_FAILURE;
+			IFuture<Void> future = record.future;
 			
+			if (future instanceof IAbortableFuture) {
+				((IAbortableFuture<?>)future).abort(t);
+			}
 			if (!session.incident(incident, new SctpSendingFailureException(record.msgInfo, t))) {
 				session.elogger.error(session.logger, incident.defaultMessage(), session, t);
 			}

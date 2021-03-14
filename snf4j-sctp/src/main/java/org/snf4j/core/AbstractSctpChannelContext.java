@@ -175,7 +175,7 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 		
 		try {
 			while (spinCount > 0 && (record = outQueue.peek()) != null) {
-				long length = record.buffer.remaining();
+				int length = record.buffer.remaining();
 				
 				bytes = send(session, key, record);
 				
@@ -184,8 +184,8 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 						loop.logger.trace("{} byte(s) written to channel in {}", bytes, session);
 					}
 					outQueue.poll();
-					totalBytes += bytes;
-					consumedBytes += bytes;
+					totalBytes += length;
+					consumedBytes += length;
 					--spinCount;
 					if (record.release) {
 						session.release(record.buffer);
@@ -212,6 +212,9 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 					session.incWrittenBytes(totalBytes, currentTime);
 					session.consumedBytes(consumedBytes);
 				}
+				else if (consumedBytes > 0) {
+					session.consumedBytes(consumedBytes);
+				}
 				if (outQueue.isEmpty()) {
 					session.clearWriteInterestOps(key);
 					session.handleClosingInProgress();
@@ -224,6 +227,9 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 		
 		if (totalBytes > 0) {
 			loop.fireEvent(session, DataEvent.SENT, totalBytes);
+		}
+		if (consumedBytes > totalBytes) {
+			session.futuresController.event(DataEvent.SENT, consumedBytes - totalBytes);
 		}
 		
 		if (exception != null) {

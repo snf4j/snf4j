@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -37,7 +38,9 @@ import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.After;
@@ -48,6 +51,8 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.SuccessfulFuture;
 import org.snf4j.core.future.TaskFuture;
 import org.snf4j.core.handler.SctpSendingFailureException;
+import org.snf4j.core.handler.SessionIncident;
+import org.snf4j.core.logger.LoggerRecorder;
 import org.snf4j.core.session.ISctpSession;
 
 import com.sun.nio.sctp.Association;
@@ -397,6 +402,186 @@ public class SctpMultiSessionTest extends SctpTest {
 		return ms;
 	}
 	
+	long time;
+	
+	void setTime() {
+		time = System.currentTimeMillis();
+	}
+	
+	void assertTime(long max) {
+		assertTrue(System.currentTimeMillis() - time < max);
+		setTime();
+	}
+	
+	@Test
+	public void testIncident() throws Exception {
+		assumeSupported();
+		ImmutableSctpMessageInfo msgInfo = ImmutableSctpMessageInfo.create(0);
+		
+		mc = startMulti(PORT+1);
+		
+		LoggerRecorder.enableRecording();
+		IFuture<Void> f = mc.session.write(nopb("1"), msgInfo);
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		waitFor(50);
+		assertEquals("SCTP_SENDING_FAILURE|", mc.getTrace());
+		List<String> recording = LoggerRecorder.disableRecording();
+		String warnMsg = "[ERROR] " + SessionIncident.SCTP_SENDING_FAILURE.defaultMessage();
+		assertTrue(recording.contains(warnMsg));
+		
+		mc.incidentResult = true;
+		LoggerRecorder.enableRecording();
+		f = mc.session.write(nopb("1"), msgInfo);
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		waitFor(50);
+		assertEquals("SCTP_SENDING_FAILURE|", mc.getTrace());
+		recording = LoggerRecorder.disableRecording();
+		assertFalse(recording.contains(warnMsg));
+	}
+	
+	@Test
+	public void testSendFailure() throws Exception {
+		assumeSupported();
+		mc = startMulti(PORT+1);
+		mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(address(PORT), 1)).sync(TIMEOUT);
+		mc.waitForNotification("SFL", TIMEOUT);
+		assertEquals("DS|ASC|SFL|", mc.getTrace());	
+		assertEquals(0, ((SctpMultiSession)mc.session).getAssociations().size());
+		
+		ms = startMulti(PORT);
+		mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(address(PORT), 1)).sync(TIMEOUT);
+		mc.waitForDataSent(TIMEOUT);
+		mc.waitForNotification("ASC", TIMEOUT);
+		ms.waitForNotification("ASC", TIMEOUT);
+		ms.waitForDataRead(TIMEOUT);
+		assertEquals("DS|ASC|", mc.getTrace());
+		assertEquals("ASC|DR|NOP(1)[1]|", ms.getTrace());
+		
+		ms.clearNotifications();
+		mc.session.key.attach(new TestSctpMultiChannelContext((SctpMultiSession) mc.session));
+		mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(address(PORT), 1));//.sync(TIMEOUT);
+		mc.waitForSessionEnding(TIMEOUT);
+		ms.waitForNotification("ASC", TIMEOUT);
+		assertEquals("EXC|SCL|SEN|", mc.getTrace());
+		assertEquals("SHT|ASC|", ms.getTrace());
+	}
+	
+	static class TestSctpMultiChannelContext extends SctpMultiChannelContext {
+
+		TestSctpMultiChannelContext(SctpMultiSession session) {
+			super(session);
+		}
+		
+		@Override
+		int send(SelectionKey key, ByteBuffer msg, MessageInfo msgInfo) throws Exception {
+			throw new IOException();
+		}
+	}
+	
+	@Test
+	public void testWriteFutureWithCodec() throws Exception {
+		assumeSupported();
+		IFuture<Void> f;
+		
+		TestCodec codec = new TestCodec();
+		ms = startMulti(PORT);
+		mc = new SctpClient(PORT+1);
+		mc.traceNotification = true;
+		mc.traceIncident = true;
+		addCodecs(mc,1,0,codec.PBE(), codec.BPE());
+		mc.startMulti();
+		mc.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", mc.getTrace());
+	
+		ImmutableSctpMessageInfo msgInfo1 = ImmutableSctpMessageInfo.create(address(PORT), 1);
+		ImmutableSctpMessageInfo msgInfo2 = ImmutableSctpMessageInfo.create(1);
+		
+		mc.session.write(nopb("1"), msgInfo1).sync(TIMEOUT);
+		mc.waitForDataSent(TIMEOUT);
+		mc.waitForNotification("ASC", TIMEOUT);
+		ms.waitForDataRead(TIMEOUT);
+		assertEquals("DS|ASC|", mc.getTrace());
+		assertEquals("ASC|DR|NOP(1e)[1]|", ms.getTrace());
+		assertEquals(5, mc.session.getWrittenBytes());
+		
+		f = mc.session.write(nopb("1"), msgInfo2);
+		setTime();
+		f.await(TIMEOUT);
+		assertTime(100);
+		waitFor(100);
+		assertTrue(f.isDone());
+		assertTrue(f.isFailed());
+		assertEquals("SCTP_SENDING_FAILURE|", mc.getTrace());
+		assertEquals("", ms.getTrace());
+		assertEquals(5, mc.session.getWrittenBytes());
+		
+		mc.session.write(nopb("12"), msgInfo1).sync(TIMEOUT);
+		mc.waitForDataSent(TIMEOUT);
+		ms.waitForDataRead(TIMEOUT);
+		assertEquals("DS|", mc.getTrace());
+		assertEquals("DR|NOP(12e)[1]|", ms.getTrace());
+		assertEquals(11, mc.session.getWrittenBytes());
+	}
+	
+	@Test
+	public void testWriteFuture() throws Exception {
+		assumeSupported();
+		IFuture<Void> f;
+		
+		ms = startMulti(PORT);
+		mc = startMulti(PORT+1);
+		
+		ImmutableSctpMessageInfo msgInfo1 = ImmutableSctpMessageInfo.create(address(PORT), 1);
+		ImmutableSctpMessageInfo msgInfo2 = ImmutableSctpMessageInfo.create(0);
+		
+		mc.session.write(nopb("1"), msgInfo1).sync(TIMEOUT);
+		mc.waitForDataSent(TIMEOUT);
+		mc.waitForNotification("ASC", TIMEOUT);
+		ms.waitForDataRead(TIMEOUT);
+		assertEquals("DS|ASC|", mc.getTrace());
+		assertEquals("ASC|DR|NOP(1)[1]|", ms.getTrace());
+		assertEquals(4, mc.session.getWrittenBytes());
+		
+		f = mc.session.write(nopb("1"), msgInfo2);
+		setTime();
+		f.await(TIMEOUT);
+		assertTime(100);
+		waitFor(100);
+		assertTrue(f.isDone());
+		assertTrue(f.isFailed());
+		assertEquals("SCTP_SENDING_FAILURE|", mc.getTrace());
+		assertEquals("", ms.getTrace());
+		assertEquals(4, mc.session.getWrittenBytes());
+		
+		mc.session.write(nopb("12"), msgInfo1).sync(TIMEOUT);
+		mc.waitForDataSent(TIMEOUT);
+		ms.waitForDataRead(TIMEOUT);
+		assertEquals("DS|", mc.getTrace());
+		assertEquals("DR|NOP(12)[1]|", ms.getTrace());
+		assertEquals(9, mc.session.getWrittenBytes());
+		
+		mc.session.suspendWrite();
+		IFuture<Void> f1 = mc.session.write(nopb("12"), msgInfo1);
+		IFuture<Void> f2 = mc.session.write(nopb("123"), msgInfo2);		
+		IFuture<Void> f3 = mc.session.write(nopb("1234"), msgInfo1);
+		waitFor(100);
+		assertFalse(f1.isDone());
+		assertFalse(f2.isDone());
+		assertFalse(f3.isDone());
+		mc.session.resumeWrite();
+		f1.sync(TIMEOUT);
+		f3.sync(TIMEOUT);
+		assertTrue(f2.isFailed());
+		mc.waitForDataSent(TIMEOUT);
+		ms.waitForDataRead(TIMEOUT);
+		waitFor(100);
+		assertEquals("SCTP_SENDING_FAILURE|DS|", mc.getTrace());
+		assertEquals("DR|NOP(12)[1]|DR|NOP(1234)[1]|", ms.getTrace());
+		assertEquals(9+5+7, mc.session.getWrittenBytes());
+	}
+	
 	@Test
 	public void testWriteShutdownAssociation() throws Exception {
 		assumeSupported();
@@ -419,6 +604,16 @@ public class SctpMultiSessionTest extends SctpTest {
 		mc.waitForNotification("ASC", TIMEOUT);
 		assertEquals("ASC|", ms.getTrace());
 		assertEquals("SHT|ASC|", mc.getTrace());
+		IFuture<Void> f = session.write(nopb("12"), ImmutableSctpMessageInfo.create(a, 1));
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		assertNotNull(f.cause());
+		waitFor(50);
+		assertEquals("SCTP_SENDING_FAILURE|", ms.getTrace());
+		assertEquals("", mc.getTrace());
+		assertTrue(ms.incidentThrowable instanceof SctpSendingFailureException);
+		assertTrue(a == ((SctpSendingFailureException)ms.incidentThrowable).getMessageInfo().association());	
+		
 		session.writenf(nopb("12"), ImmutableSctpMessageInfo.create(a, 1));
 		waitFor(100);
 		assertEquals("SCTP_SENDING_FAILURE|", ms.getTrace());
@@ -433,8 +628,11 @@ public class SctpMultiSessionTest extends SctpTest {
 		ms = startMulti(PORT);
 		mc = startMulti(PORT+1);
 		
-		mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(0));
-		waitFor(100);
+		IFuture<Void> f = mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(0));
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		assertNotNull(f.cause());
+		waitFor(50);
 		assertEquals("SCTP_SENDING_FAILURE|", mc.getTrace());
 		assertEquals("", ms.getTrace());
 		
@@ -445,8 +643,11 @@ public class SctpMultiSessionTest extends SctpTest {
 		assertEquals("DS|ASC|", mc.getTrace());
 		assertEquals("ASC|DR|NOP(1234)[1]|", ms.getTrace());
 		
-		mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(0));
-		waitFor(100);
+		f = mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(0));
+		f.await(TIMEOUT);
+		assertTrue(f.isFailed());
+		assertNotNull(f.cause());
+		waitFor(50);
 		assertEquals("SCTP_SENDING_FAILURE|", mc.getTrace());
 		assertEquals("", ms.getTrace());
 		

@@ -293,6 +293,14 @@ public class SctpMultiSession extends InternalSctpSession implements ISctpMultiS
 	}
 	
 	@Override
+	IFuture<Void> writeFuture(long expectedLen) {
+		if (expectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getAbortableWriteFuture(expectedLen);
+	}
+	
+	@Override
 	public IFuture<Void> write(byte[] msg) {
 		checkConfig();
 		return super.write(msg, null);
