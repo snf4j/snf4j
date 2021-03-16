@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,12 +44,23 @@ public abstract class AbstractHandler implements IHandler {
 	
 	private String name;
 	
-	private ISessionConfig config = new DefaultSessionConfig();
+	private ISessionConfig config;
 	
 	/**
 	 * Default constructor creating an unnamed handler.
 	 */
 	protected AbstractHandler() {
+		this(new DefaultSessionConfig());
+	}
+	
+	/**
+	 * Default constructor creating an unnamed handler with given session
+	 * configuration object.
+	 * 
+	 * @param config the session configuration object
+	 */
+	protected AbstractHandler(ISessionConfig config) {
+		this.config = config;
 	}
 	
 	/**
@@ -59,7 +70,18 @@ public abstract class AbstractHandler implements IHandler {
 	 *            the name for this handler
 	 */
 	protected AbstractHandler(String name) {
+		this(name, new DefaultSessionConfig());
+	}
+	
+	/**
+	 * Constructor creating a named handler with given session configuration object.
+	 * 
+	 * @param name   the name for this handler
+	 * @param config the session configuration object
+	 */
+	protected AbstractHandler(String name, ISessionConfig config) {
 		this.name = name;
+		this.config = config;
 	}
 	
 	@Override

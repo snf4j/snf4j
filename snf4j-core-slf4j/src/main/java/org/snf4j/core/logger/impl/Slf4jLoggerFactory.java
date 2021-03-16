@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,12 @@ import org.slf4j.LoggerFactory;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.ILoggerFactory;
 
-public class Slf4jLoggerFactory implements ILoggerFactory {
+/**
+ * A factory for the SLF4J logger.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+ public class Slf4jLoggerFactory implements ILoggerFactory {
 
 	private final ConcurrentMap<String, ILogger> map = new ConcurrentHashMap<String, ILogger>();
 			

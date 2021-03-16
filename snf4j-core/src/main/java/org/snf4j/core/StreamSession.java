@@ -25,7 +25,6 @@
  */
 package org.snf4j.core;
 
-import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -456,40 +455,6 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	public void close() {
 		closeCalled.set(true);
 		close(false);
-	}
-	
-	
-	@Override
-	public void quickClose() {
-		SelectionKey key = this.key;
-		closeCalled.set(true);
-		
-		if (key != null && key.isValid()) {
-			try {
-				synchronized (writeLock) {
-					key = detectRebuild(key);
-					closing = ClosingState.FINISHED;
-					key.channel().close();
-				}
-			}
-			catch (Exception e) {
-			}
-		}
-		else if (channel != null) {
-			try {
-				close(channel);
-			} catch (IOException e) {
-			}
-		}
-
-		if (key != null) {
-			loop.finishInvalidatedKey(key);
-		}
-	}
-
-	@Override
-	public void dirtyClose() {
-		quickClose();
 	}
 	
 	final void superEvent(SessionEvent event) {

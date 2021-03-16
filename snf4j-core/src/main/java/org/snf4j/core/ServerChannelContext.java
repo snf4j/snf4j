@@ -51,4 +51,10 @@ abstract class ServerChannelContext<T> extends ChannelContext<T> {
 	@Override
 	final void shutdown(SelectableChannel channel) {
 	}
+	
+	@Override
+	final boolean exceptionOnDecodingFailure() {
+		return true;
+	}
+	
 }

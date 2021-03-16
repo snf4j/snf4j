@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -76,7 +76,7 @@ public class Statistics {
 	
 	static String[] bytesUnit = {"", "k", "m", "g", "t"};
 
-	static void incTotalSessions() {
+	public static void incTotalSessions() {
 		totalSessions.incrementAndGet();
 	}
 	
@@ -84,7 +84,7 @@ public class Statistics {
 		sslSessions.incrementAndGet();
 	}
 
-	static void updateSessions(int size) {
+	public static void updateSessions(int size) {
 		currentSessions.set(size);
 		print();
 	}
@@ -105,15 +105,15 @@ public class Statistics {
 		totalIncidents.incrementAndGet();
 	}
 	
-	static void incNotConnected() {
+	public static void incNotConnected() {
 		totalNotConnected.incrementAndGet();
 	}
 	
-	static void updateLongestSession(long l) {
+	public static void updateLongestSession(long l) {
 		longestSession.set(l);
 	}
 	
-	static void sessionEnding(ISession s) {
+	public static void sessionEnding(ISession s) {
 		AvgRecord r = new AvgRecord(s.getReadBytes() + s.getWrittenBytes(), s.getLastIoTime() - s.getCreationTime());
 		
 		totalBytes.addAndGet(r.bytes);

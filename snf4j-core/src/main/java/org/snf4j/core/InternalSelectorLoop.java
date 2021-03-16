@@ -580,8 +580,9 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 						catch (PipelineDecodeException e) {
 							InternalSession session = e.getSession();
 							SessionIncident incident = SessionIncident.DECODING_PIPELINE_FAILURE;
+							ChannelContext<?> ctx = (ChannelContext<?>) key.attachment();
 							
-							if (session instanceof StreamSession) {
+							if (ctx.exceptionOnDecodingFailure()) {
 								elogger.error(logger, incident.defaultMessage(), session, e.getCause());
 								fireException(session, e.getCause());
 							}
@@ -754,7 +755,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		}
 	}
 	
-	private final void handleRegistration(SelectionKey key, PendingRegistration reg) {
+	private final void handleRegistration(SelectionKey key, PendingRegistration reg) throws Exception {
 		if (reg.ctx.isSession()) {
 			handleRegisteredKey(key, reg);
 		}
@@ -1183,7 +1184,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		handleInvalidKey(key, stoppingKeys, false);
 	}
 	
-	abstract void handleRegisteredKey(SelectionKey key, PendingRegistration reg);
+	abstract void handleRegisteredKey(SelectionKey key, PendingRegistration reg) throws Exception;
 	
 	abstract SelectionKey handleSelectedKey(SelectionKey key);
 	

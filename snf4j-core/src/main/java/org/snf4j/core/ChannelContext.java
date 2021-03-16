@@ -50,6 +50,8 @@ abstract class ChannelContext<T> {
 	abstract InternalSession create(SelectableChannel channel) throws Exception;
 	
 	abstract void shutdown(SelectableChannel channel) throws Exception;
+
+	abstract boolean exceptionOnDecodingFailure();
 	
 	void close(SelectableChannel channel) throws IOException {	
 		channel.close();
@@ -65,7 +67,7 @@ abstract class ChannelContext<T> {
 		return true;
 	}
 	
-	boolean completeRegistration(SelectorLoop loop, SelectionKey key, SelectableChannel channel) {
+	boolean completeRegistration(SelectorLoop loop, SelectionKey key, SelectableChannel channel) throws Exception {
 		return true;
 	}
 	
@@ -78,4 +80,5 @@ abstract class ChannelContext<T> {
 	String toString(SelectableChannel channel) {
 		return channel != null ? channel.toString() : null;
 	}
+	
 }

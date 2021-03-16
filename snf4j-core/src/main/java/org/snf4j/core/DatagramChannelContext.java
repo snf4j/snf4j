@@ -98,4 +98,10 @@ class DatagramChannelContext extends SessionChannelContext<DatagramSession> {
 	@Override
 	final void shutdown(SelectableChannel channel) {
 	}
+	
+	@Override
+	final boolean exceptionOnDecodingFailure() {
+		return false;
+	}
+	
 }

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MIT License ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ~ 
+ ~ Copyright (c) 2021 SNF4J contributors
+ ~ 
+ ~ Permission is hereby granted, free of charge, to any person obtaining a copy
+ ~ of this software and associated documentation files (the "Software"), to deal
+ ~ in the Software without restriction, including without limitation the rights
+ ~ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ ~ copies of the Software, and to permit persons to whom the Software is
+ ~ furnished to do so, subject to the following conditions:
+ ~ 
+ ~ The above copyright notice and this permission notice shall be included in all
+ ~ copies or substantial portions of the Software.
+ ~ 
+ ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ ~ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ ~ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ ~ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ ~ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ ~ SOFTWARE.
+ ~
+ ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ -->
+ <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  
+  <modelVersion>4.0.0</modelVersion>
+ 
+  <parent>
+    <groupId>org.snf4j</groupId>
+    <artifactId>snf4j-project</artifactId>
+    <version>1.7.0-SNAPSHOT</version>
+  </parent>
+    
+  <artifactId>snf4j-sctp</artifactId>
+  <packaging>jar</packaging>
+  <name>SNF4J/SCTP</name>
+  <description>The SNF4J module for SCTP transport</description>
+  <url>http://snf4j.org</url>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.snf4j</groupId> 
+      <artifactId>snf4j-core</artifactId> 
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.snf4j</groupId> 
+      <artifactId>snf4j-core</artifactId> 
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+  </dependencies> 
+  
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${version.surefire.plugin}</version>
+        <configuration>
+          <systemProperties>
+            <property>
+              <name>org.snf4j.LoggerFactory</name>
+              <value>org.snf4j.core.logger.TestingLoggerFactory</value>
+            </property>
+          </systemProperties>
+        </configuration>        
+      </plugin>
+    </plugins>
+  </build> 
+   
+ </project>

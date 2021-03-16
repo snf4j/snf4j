@@ -93,4 +93,9 @@ class SocketChannelContext extends SessionChannelContext<StreamSession> {
 		((SocketChannel)channel).socket().shutdownOutput();	
 	}
 	
+	@Override
+	final boolean exceptionOnDecodingFailure() {
+		return true;
+	}
+	
 }

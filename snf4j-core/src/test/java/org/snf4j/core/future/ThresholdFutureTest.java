@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2018 SNF4J contributors
+ * Copyright (c) 2018-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,10 +53,14 @@ public class ThresholdFutureTest {
 		}).start();
 	}
 	
+	ThresholdFuture<Void> future(DataFuture<Void> df, long threshold) {
+		return new ThresholdFuture<Void>(df, threshold);
+	}
+	
 	@Test
 	public void testIsDone() {
 		DataFuture<Void> df = new DataFuture<Void>(new TestSession());
-		ThresholdFuture<Void> f = new ThresholdFuture<Void>(df, 100);
+		ThresholdFuture<Void> f = future(df, 100);
 		
 		assertFalse(f.isCancelled());
 		assertFalse(f.isDone());
@@ -85,7 +89,7 @@ public class ThresholdFutureTest {
 	@Test
 	public void testIsCancelled() {
 		DataFuture<Void> df = new DataFuture<Void>(new TestSession());
-		ThresholdFuture<Void> f = new ThresholdFuture<Void>(df, 100);
+		ThresholdFuture<Void> f = future(df, 100);
 		
 		df.cancel();
 		assertTrue(f.isCancelled());
@@ -97,7 +101,7 @@ public class ThresholdFutureTest {
 	@Test
 	public void testIsFailed() {
 		DataFuture<Void> df = new DataFuture<Void>(new TestSession());
-		ThresholdFuture<Void> f = new ThresholdFuture<Void>(df, 100);
+		ThresholdFuture<Void> f = future(df, 100);
 		Exception e = new Exception("Test1");
 
 		assertNull(f.cause());
@@ -115,7 +119,7 @@ public class ThresholdFutureTest {
 	@Test
 	public void testSyncIsSuccessful() throws Exception {
 		final DataFuture<Void> df = new DataFuture<Void>(new TestSession());
-		ThresholdFuture<Void> f = new ThresholdFuture<Void>(df, 100);
+		ThresholdFuture<Void> f = future(df, 100);
 		
 		update(new Runnable() {
 
@@ -130,7 +134,7 @@ public class ThresholdFutureTest {
 	@Test
 	public void testSyncIsCancelled() throws Exception {
 		final DataFuture<Void> df = new DataFuture<Void>(new TestSession());
-		ThresholdFuture<Void> f = new ThresholdFuture<Void>(df, 100);
+		ThresholdFuture<Void> f = future(df, 100);
 		
 		update(new Runnable() {
 
@@ -151,7 +155,7 @@ public class ThresholdFutureTest {
 	public void testSyncIsFailed() throws Exception {
 		final DataFuture<Void> df = new DataFuture<Void>(new TestSession());
 		final Exception e = new Exception("Test2");
-		ThresholdFuture<Void> f = new ThresholdFuture<Void>(df, 100);
+		ThresholdFuture<Void> f = future(df, 100);
 		
 		update(new Runnable() {
 

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -229,6 +229,19 @@ public class SessionFuturesController {
 	 */
 	public IFuture<Void> getWriteFuture(long expectedSize) {
 		return new ThresholdFuture<Void>(sentFuture, expectedSize);
+	}
+	
+	/**
+	 * Returns an abortable future that can be used to wait for the completion 
+	 * of a write operation.
+	 * 
+	 * @param expectedSize
+	 *            the expected size of total bytes sent by the future executor
+	 *            that completes this future
+	 * @return an abortable future associated with a write operation
+	 */
+	public IAbortableFuture<Void> getAbortableWriteFuture(long expectedSize) {
+		return new AbortableThresholdFuture<Void>(sentFuture, expectedSize);
 	}
 	
 	/**

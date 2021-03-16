@@ -110,6 +110,7 @@
     <module>snf4j-core</module>
     <module>snf4j-core-slf4j</module>
     <module>snf4j-core-log4j2</module>
+    <module>snf4j-sctp</module>
     <module>snf4j-example</module>
   </modules>
   
@@ -172,7 +173,7 @@
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>${version.javadoc.plugin}</version>
         <configuration>
-          <aggregate>false</aggregate>
+          <aggregate>true</aggregate>
           <stylesheet>java</stylesheet>
           <links>
             <link>http://java.sun.com/j2se/1.5.0/docs/api</link>
@@ -183,6 +184,7 @@
               <packages>org.snf4j:org.snf4j.*</packages>
             </group>
           </groups>
+          <excludePackageNames>org.snf4j.example.*</excludePackageNames>
         </configuration>
       </plugin>     
       

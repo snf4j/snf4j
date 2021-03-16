@@ -961,6 +961,7 @@ public class SessionCodecTest {
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DR|EXC|(E)|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("BVD|BBVD|", getTrace());
+		waitFor(50);
 		assertEquals(2, allocator.getReleasedCount());
 		assertEquals(5, allocator.getAllocatedCount());
 		assertEquals(3, allocator.getSize());

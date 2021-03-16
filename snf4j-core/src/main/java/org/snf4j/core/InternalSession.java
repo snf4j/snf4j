@@ -368,6 +368,10 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	}
 
 	void close(boolean isEos) {
+		close(isEos, true);
+	}
+	
+	void close(boolean isEos, boolean sending) {
 		SelectionKey key = this.key;
 		
 		if (key != null && key.isValid()) {
@@ -378,7 +382,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 						int ops = key.interestOps();
 						
 						this.isEOS = isEos;
-						if ((ops & SelectionKey.OP_WRITE) != 0) {
+						if (sending && (ops & SelectionKey.OP_WRITE) != 0) {
 							//To enable gentle close OP_READ must be set 
 							if (isEos) {
 								key.interestOps(ops & ~SelectionKey.OP_READ);
@@ -390,6 +394,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 							closing = ClosingState.SENDING;
 						}
 						else {
+							if (!sending) {
+								key.interestOps(ops & ~SelectionKey.OP_WRITE);
+							}
 							if (isEos) {
 								//Executed in the selector loop thread, so we can skip sending events now
 								closing = ClosingState.FINISHED;
@@ -419,8 +426,45 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			}
 		}
 		else {
-			quickClose();
+			quickClose0();
 		}
+	}
+	
+	private void quickClose0() {
+		SelectionKey key = this.key;
+		closeCalled.set(true);
+		
+		if (key != null && key.isValid()) {
+			try {
+				synchronized (writeLock) {
+					key = detectRebuild(key);
+					closing = ClosingState.FINISHED;
+					key.channel().close();
+				}
+			}
+			catch (Exception e) {
+			}
+		}
+		else if (channel != null) {
+			try {
+				close(channel);
+			} catch (IOException e) {
+			}
+		}
+
+		if (key != null) {
+			loop.finishInvalidatedKey(key);
+		}
+	}
+
+	@Override
+	public void quickClose() {
+		quickClose0();
+	}
+
+	@Override
+	public void dirtyClose() {
+		quickClose0();
 	}
 	
 	/**

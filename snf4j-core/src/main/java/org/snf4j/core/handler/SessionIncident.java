@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -64,7 +64,16 @@ public enum SessionIncident {
 	 * <p>
 	 * <b>Default action</b>: the default message is logged at the ERROR level. 
 	 */
-	DECODING_PIPELINE_FAILURE("Decoding pipeline failed for {}: {}");
+	DECODING_PIPELINE_FAILURE("Decoding pipeline failed for {}: {}"),
+	
+	/**
+	 * A failure occurred while sending a message via the SCTP channel. This
+	 * incident is only reported for the SCTP multi sessions for all exceptions
+	 * not being an instance of the {@link java.io.IOException}.
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the ERROR level. 
+	 */
+	SCTP_SENDING_FAILURE("Sending via SCTP channel failed for {}: {}");
 	
 	private String defaultMessage;
 	

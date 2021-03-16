@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -142,7 +142,7 @@ public interface IEngine {
 	 * 
 	 * @return <code>true</code> if an {@link IEngine} implementation will not
 	 *         consume anymore network data
-	 * @see closeInbound
+	 * @see #closeInbound
 	 */
 	boolean isInboundDone();
 	
@@ -153,7 +153,7 @@ public interface IEngine {
 	 * This method should be idempotent: if the outbound side has already been
 	 * closed, this method should not do anything.
 	 * 
-	 * @see isOutboundDone
+	 * @see #isOutboundDone
 	 */
 	void closeOutbound();
 	
@@ -169,7 +169,7 @@ public interface IEngine {
 	 *             should be reported to the associated session's handler (e.g.
 	 *             when an engine has not received a proper close message from
 	 *             the peer).
-	 * @see isInboundDone
+	 * @see #isInboundDone
 	 */
 	void closeInbound() throws SessionIncidentException;
 	
