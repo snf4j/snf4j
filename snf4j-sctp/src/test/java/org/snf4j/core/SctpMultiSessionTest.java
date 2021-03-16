@@ -451,6 +451,7 @@ public class SctpMultiSessionTest extends SctpTest {
 		mc.waitForDataSent(TIMEOUT);
 		mc.waitForNotification("ASC", TIMEOUT);
 		ms.waitForDataRead(TIMEOUT);
+		ms.waitForNotification("ASC", TIMEOUT);
 		assertEquals("DS|ASC|", mc.getTrace());
 		assertEquals("ASC|DR|NOP(1)[1]|", ms.getTrace());
 		
@@ -458,8 +459,8 @@ public class SctpMultiSessionTest extends SctpTest {
 		mc.closeType = StoppingType.GENTLE;
 		mc.session.write(nopb("1"), ImmutableSctpMessageInfo.create(0));
 		mc.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCTP_SENDING_FAILURE|ASC|SCL|SEN|", mc.getTrace());
 		ms.waitForNotification("ASC", TIMEOUT);
+		assertEquals("SCTP_SENDING_FAILURE|ASC|SCL|SEN|", mc.getTrace());
 		assertEquals("SHT|ASC|", ms.getTrace());
 		
 		mc.stop(TIMEOUT);
@@ -468,6 +469,7 @@ public class SctpMultiSessionTest extends SctpTest {
 		mc.waitForDataSent(TIMEOUT);
 		mc.waitForNotification("ASC", TIMEOUT);
 		ms.waitForDataRead(TIMEOUT);
+		ms.waitForNotification("ASC", TIMEOUT);
 		assertEquals("DS|ASC|", mc.getTrace());
 		assertEquals("ASC|DR|NOP(1)[1]|", ms.getTrace());
 
@@ -485,6 +487,7 @@ public class SctpMultiSessionTest extends SctpTest {
 		mc.waitForDataSent(TIMEOUT);
 		mc.waitForNotification("ASC", TIMEOUT);
 		ms.waitForDataRead(TIMEOUT);
+		ms.waitForNotification("ASC", TIMEOUT);
 		assertEquals("DS|ASC|", mc.getTrace());
 		assertEquals("ASC|DR|NOP(1)[1]|", ms.getTrace());
 

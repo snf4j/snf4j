@@ -27,7 +27,9 @@ after_failure:
   - pwd
   - cat snf4j-core/target/surefire-reports/*.txt
   - cat snf4j-core-slf4j/target/surefire-reports/*.txt
-  
+  - cat snf4j-core-log4j2/target/surefire-reports/*.txt
+  - cat snf4j-sctp/target/surefire-reports/*.txt
+ 
 before_script:
   - sudo apt-get update
   - sudo apt-get install libsctp-dev
