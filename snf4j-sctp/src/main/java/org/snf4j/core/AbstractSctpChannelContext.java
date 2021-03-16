@@ -216,7 +216,9 @@ abstract class AbstractSctpChannelContext<T extends InternalSctpSession> extends
 					session.consumedBytes(consumedBytes);
 				}
 				if (outQueue.isEmpty()) {
-					session.clearWriteInterestOps(key);
+					if (key.isValid()) {
+						session.clearWriteInterestOps(key);
+					}
 					session.handleClosingInProgress();
 				}
 			}

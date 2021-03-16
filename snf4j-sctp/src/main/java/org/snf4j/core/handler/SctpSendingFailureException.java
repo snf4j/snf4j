@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.handler;
 
+import java.nio.ByteBuffer;
+
 import org.snf4j.core.ImmutableSctpMessageInfo;
 
 /**
@@ -39,20 +41,40 @@ public class SctpSendingFailureException extends Exception {
 	
 	private static final long serialVersionUID = -8776550059570729769L;
 
-	private final ImmutableSctpMessageInfo messageInfo;
+	private final ImmutableSctpMessageInfo msgInfo;
 	
-	public SctpSendingFailureException(ImmutableSctpMessageInfo messageInfo, Throwable cause) {
+	private final ByteBuffer buffer;
+	
+	/**
+	 * Constructs an exception with the message that was to be sent along with the
+	 * immutable ancillary data about the message and the cause of the failure.
+	 * 
+	 * @param buffer  the message that was to be sent
+	 * @param msgInfo the immutable ancillary data about the message that was to be
+	 *                sent
+	 * @param cause   the cause of the failure
+	 */
+	public SctpSendingFailureException(ByteBuffer buffer, ImmutableSctpMessageInfo msgInfo, Throwable cause) {
 		super(cause);
-		this.messageInfo = messageInfo;
+		this.msgInfo = msgInfo;
+		this.buffer = buffer;
 	}
 	
 	/**
-	 * Returns the immutable SCTP message info object that was passed to the failing
-	 * send method of the SCTP channel.
+	 * Returns the immutable ancillary data about the message that was to be sent
 	 * 
-	 * @return the immutable SCTP message info object
+	 * @return the immutable ancillary data about the message
 	 */
 	public ImmutableSctpMessageInfo getMessageInfo() {
-		return messageInfo;
+		return msgInfo;
+	}
+	
+	/**
+	 * Returns the message that was to be sent.
+	 * 
+	 * @return the message
+	 */
+	public ByteBuffer getBuffer() {
+		return buffer;
 	}
 }

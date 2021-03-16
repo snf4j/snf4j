@@ -54,5 +54,23 @@
       <scope>test</scope>
     </dependency>
   </dependencies> 
- 
+  
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${version.surefire.plugin}</version>
+        <configuration>
+          <systemProperties>
+            <property>
+              <name>org.snf4j.LoggerFactory</name>
+              <value>org.snf4j.core.logger.TestingLoggerFactory</value>
+            </property>
+          </systemProperties>
+        </configuration>        
+      </plugin>
+    </plugins>
+  </build> 
+   
  </project>

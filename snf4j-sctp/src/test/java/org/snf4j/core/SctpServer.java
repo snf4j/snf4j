@@ -156,6 +156,8 @@ public class SctpServer {
 	
 	EventType closeInEvent;
 	
+	boolean closeInIncident;
+	
 	StoppingType closeType = StoppingType.GENTLE;
 	
 	EventType writeInEvent;
@@ -605,6 +607,21 @@ public class SctpServer {
 				trace(incident.name());
 			}
 			incidentThrowable = t;
+			
+			if (closeInIncident) {
+				switch (closeType) {
+				case GENTLE:
+					getSession().close();
+					break;
+				case QUICK:
+					getSession().quickClose();
+					break;
+				case DIRTY:
+					getSession().dirtyClose();
+					break;
+				}
+			}
+			
 			return incidentResult;
 		}
 		

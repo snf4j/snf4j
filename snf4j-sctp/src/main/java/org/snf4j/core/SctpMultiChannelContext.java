@@ -83,14 +83,17 @@ class SctpMultiChannelContext extends AbstractSctpChannelContext<SctpMultiSessio
 		catch (Throwable t) {
 			SessionIncident incident = SessionIncident.SCTP_SENDING_FAILURE;
 			IFuture<Void> future = record.future;
+			int remaining = record.buffer.remaining();
+			ByteBuffer buffer = ByteBuffer.allocate(remaining);
 			
+			buffer.put(record.buffer).flip();
 			if (future instanceof IAbortableFuture) {
 				((IAbortableFuture<?>)future).abort(t);
 			}
-			if (!session.incident(incident, new SctpSendingFailureException(record.msgInfo, t))) {
+			if (!session.incident(incident, new SctpSendingFailureException(buffer, record.msgInfo, t))) {
 				session.elogger.error(session.logger, incident.defaultMessage(), session, t);
 			}
-			return -record.buffer.remaining();
+			return -remaining;
 		}
 	}
 	
