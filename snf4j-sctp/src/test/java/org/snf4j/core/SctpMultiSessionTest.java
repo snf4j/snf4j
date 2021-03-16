@@ -443,6 +443,7 @@ public class SctpMultiSessionTest extends SctpTest {
 	
 	@Test
 	public void testCloseInIncident() throws Exception {
+		assumeSupported();
 		ms = startMulti(PORT);
 		mc = startMulti(PORT+1);
 		
