@@ -171,10 +171,10 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 				if (closing != ClosingState.NONE) {
 					return -1;
 				}
-				outQueue.add(record);
-				setWriteInterestOps(key);
 				outQueueSize += record.buffer.remaining();
 				futureExpectedLen = outQueueSize + getWrittenBytes();  
+				outQueue.add(record);
+				setWriteInterestOps(key);
 			}
 		}
 		catch (CancelledKeyException e) {

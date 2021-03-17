@@ -48,6 +48,7 @@ import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
+import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
 import org.snf4j.core.codec.bytes.BufferToArrayDecoder;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.session.ISession;
@@ -867,6 +868,21 @@ public class SessionCodecTest {
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));
+		
+		session.getCodecPipeline().replace("1", "1", new ArrayToBufferEncoder());
+		b0 = session.allocate(100);
+		b0.put(new Packet(PacketType.NOP,"2").toBytes());
+		b0.put((byte)0);
+		b0.flip();
+		int relCount = allocator.getReleasedCount();
+		int allCount = allocator.getAllocatedCount();
+		session.write(b0);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(2)|", s.getRecordedData(true));
+		assertEquals(2, allocator.getReleasedCount()-relCount);
+		assertEquals(0, allocator.getAllocatedCount()-allCount);
+		assertEquals(0, allocator.getSize());
 		
 	}
 	

@@ -2015,16 +2015,15 @@ public class SctpSessionTest extends SctpTest {
 		p11.replace("E1", "E1", new ArrayToBufferEncoder());
 		session.writenf(nopbba("12"));
 		assertWrite("DR|NOP(12)|");
-		//it's not ok yet but will be fixed
-		assertAllocatorDeltas(1, 1, 1);
+		assertAllocatorDeltas(1, 2, 0);
 		assertEquals(0, getOut(c).size());
 	
 		session.writenf(nopb("1"));
 		assertWrite("DR|NOP(1)|");
-		assertAllocatorDeltas(0, 1, 1);
+		assertAllocatorDeltas(0, 1, 0);
 		assertEquals(0, getOut(c).size());
 		c.stop(TIMEOUT);
-		assertAllocatorDeltas(1, 1, 1);
+		assertAllocatorDeltas(1, 1, 0);
 		
 		c = new SctpClient(PORT);
 		c.allocator = new TestAllocator(false, true);

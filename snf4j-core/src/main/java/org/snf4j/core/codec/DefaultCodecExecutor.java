@@ -221,6 +221,7 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 						}
 						else {
 							data.get(dataArray);
+							session.release(data);
 							return encode(session, dataArray, ctx, i);
 						}
 					}
