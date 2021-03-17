@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -2057,6 +2057,7 @@ public class SSLSessionTest {
 			c.getSession().write(bytes, 2, bytes.length-2);
 			s.waitForDataRead(TIMEOUT);
 			c.waitForDataSent(TIMEOUT);
+			waitFor(50);
 			assertEquals(acount+5, s.allocator.getAllocatedCount());
 			assertEquals(rcount+4, s.allocator.getReleasedCount());
 			assertArrayEquals(nulls, getAllBuffers(session));

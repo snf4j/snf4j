@@ -191,6 +191,12 @@ public class SctpServer {
 		dataSentLock.set(false);
 	}
 	
+	void resetNotificationLocks() {
+		for (int i=0; i<notificationLocks.length; ++i) {
+			notificationLocks[i].set(false);
+		}
+	}
+	
 	void addCodec(int streamNum, int protoID, DefaultCodecExecutor executor) {
 		codecExecutors[streamNum][protoID] = executor;
 	}

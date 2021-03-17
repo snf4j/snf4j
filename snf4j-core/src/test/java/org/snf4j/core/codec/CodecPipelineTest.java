@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.junit.Test;
+import org.snf4j.core.TestSession;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
@@ -1116,6 +1117,8 @@ public class CodecPipelineTest {
 
 	@Test
 	public void testEncoder() throws Exception {
+		TestSession session = new TestSession();
+		
 		//empty pipeline
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
 		List<Object> out = p.encode(null, "ABC".getBytes());
@@ -1137,7 +1140,7 @@ public class CodecPipelineTest {
 		assertEquals("ABC", new String((byte[])out.get(0)));
 		assertEquals("BBE|", getTrace());
 		assertNull(p.encode(null, "ABC"));
-		out = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
+		out = p.encode(session, ByteBuffer.wrap("ABC".getBytes()));
 		assertEquals("ABC", new String((byte[])out.get(0)));
 		assertEquals("BBE|", getTrace());
 
@@ -1187,7 +1190,7 @@ public class CodecPipelineTest {
 		out = p.encode(null, "ABC");
 		assertEquals("SBE|", getTrace());
 		assertEquals("ABC", new String((byte[])out.get(0)));
-		out = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
+		out = p.encode(session, ByteBuffer.wrap("ABC".getBytes()));
 		assertEquals("ABC", new String((byte[])out.get(0)));
 		assertEquals("BSE|SBE|", getTrace());
 		
@@ -1225,7 +1228,7 @@ public class CodecPipelineTest {
 		out = p.encode(null, "ABC".getBytes());
 		assertEquals("BBE|", getTrace());
 		assertEquals("ABC", new String((byte[])out.get(0)));
-		out = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
+		out = p.encode(session, ByteBuffer.wrap("ABC".getBytes()));
 		assertEquals("ABC", new String((byte[])out.get(0)));
 		assertEquals("BBE|", getTrace());
 		
@@ -1245,7 +1248,7 @@ public class CodecPipelineTest {
 		out = p.encode(null, "ABC");
 		assertEquals("SBE|", getTrace());
 		assertEquals("ABC", new String((byte[])out.get(0)));
-		out = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
+		out = p.encode(session, ByteBuffer.wrap("ABC".getBytes()));
 		assertEquals("ABC", new String((byte[])out.get(0)));
 		assertEquals("BBE|BSE|SBE|", getTrace());
 		
@@ -1285,7 +1288,7 @@ public class CodecPipelineTest {
 		out = p.encode(null, "ABC".getBytes());
 		assertEquals("BSE|SBE|", getTrace());
 		assertEquals("ABC", new String((byte[])out.get(0)));
-		out = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
+		out = p.encode(session, ByteBuffer.wrap("ABC".getBytes()));
 		assertEquals("ABC", new String((byte[])out.get(0)));
 		assertEquals("BSE|SBE|", getTrace());
 
@@ -1821,6 +1824,7 @@ public class CodecPipelineTest {
 	
 	@Test
 	public void testEncodeWithVoidEncoders() throws Exception {
+		TestSession session = new TestSession();
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
 		p.getPipeline().add(1, new BVE("V1",true));
 		p.getPipeline().add(2, new BBVE("V2",true));
@@ -1866,7 +1870,7 @@ public class CodecPipelineTest {
 		assertEquals(1, o.size());
 		assertEquals("ABC", stringFromBuffer(o.get(0)));
 		assertEquals("BSE|SBBE|V2(ABC)|V1(ABC)|", getTrace());
-		o = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
+		o = p.encode(session, ByteBuffer.wrap("ABC".getBytes()));
 		assertNotNull(o);
 		assertEquals(1, o.size());
 		assertEquals("ABC", stringFromBuffer(o.get(0)));
