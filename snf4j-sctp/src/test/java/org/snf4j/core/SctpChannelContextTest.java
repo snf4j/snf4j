@@ -219,6 +219,8 @@ public class SctpChannelContextTest extends SctpTest {
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
 		assertEquals("SCR|SOP|RDY|", c.getTrace());
+		s.waitForSessionReady(TIMEOUT);
+		s.getTrace();
 		session = c.session;
 		session.suspendWrite();
 		for (int i=0; i<32; ++i) {
