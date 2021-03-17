@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,9 +51,9 @@ public class TestEngine implements IEngine {
 	
 	boolean beginHandshakeException;
 	
-	final List<Record> records = new ArrayList<Record>();
+	final List<Record> records = Collections.synchronizedList(new ArrayList<Record>());
 
-	final List<Runnable> tasks = new ArrayList<Runnable>();
+	final List<Runnable> tasks = Collections.synchronizedList(new ArrayList<Runnable>());
 	
 	HandshakeStatus status = HandshakeStatus.NOT_HANDSHAKING;
 	
