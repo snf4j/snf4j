@@ -30,6 +30,7 @@ import static org.junit.Assert.assertEquals;
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
+import org.snf4j.core.TestSession;
 import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
 import org.snf4j.core.codec.bytes.BufferToArrayDecoder;
@@ -56,31 +57,44 @@ public class EventDrivenCompoundCodecTest {
 	public void testEncoding() {
 		IEncoder<?,?> eBb = new BufferToArrayEncoder();
 		IEncoder<?,?> ebB = new ArrayToBufferEncoder();
-		IEncoder<?,?> e1Bb = new Encoder("1");
-		IEncoder<?,?> e2Bb = new Encoder("2");
+		Encoder e1Bb = new Encoder("1");
+		Encoder e2Bb = new Encoder("2");
+		TestSession s = new TestSession() {
+			
+			@Override
+			public String toString() {
+				return "S";
+			}
+		};
+		InternalCodecPipeline p = new InternalCodecPipeline() {
+			@Override
+			public String toString() {
+				return "P";
+			}
+		};
 		
 		CompoundEncoder ceBb = new CompoundEncoder(e1Bb);
-		ceBb.added(null);
-		assertEquals("ADD(1)|", getTrace());
-		ceBb.removed(null);
-		assertEquals("REM(1)|", getTrace());
-		ceBb.event(null, SessionEvent.CREATED);
+		ceBb.added(s, p);
+		assertEquals("ADD(1)[SP]|", getTrace());
+		ceBb.removed(s, p);
+		assertEquals("REM(1)[SP]|", getTrace());
+		ceBb.event(s, SessionEvent.CREATED);
 		assertEquals("CREATED(1)|", getTrace());
 		
 		ceBb = new CompoundEncoder(eBb,ebB,e1Bb,ebB,eBb);
-		ceBb.added(null);
-		assertEquals("ADD(1)|", getTrace());
-		ceBb.removed(null);
-		assertEquals("REM(1)|", getTrace());
-		ceBb.event(null, SessionEvent.CREATED);
+		ceBb.added(s, p);
+		assertEquals("ADD(1)[SP]|", getTrace());
+		ceBb.removed(s, p);
+		assertEquals("REM(1)[SP]|", getTrace());
+		ceBb.event(s, SessionEvent.CREATED);
 		assertEquals("CREATED(1)|", getTrace());
 		
 		ceBb = new CompoundEncoder(eBb,ebB,e1Bb,ebB,e2Bb);
-		ceBb.added(null);
-		assertEquals("ADD(1)|ADD(2)|", getTrace());
-		ceBb.removed(null);
-		assertEquals("REM(1)|REM(2)|", getTrace());
-		ceBb.event(null, SessionEvent.CREATED);
+		ceBb.added(s, p);
+		assertEquals("ADD(1)[SP]|ADD(2)[SP]|", getTrace());
+		ceBb.removed(s, p);
+		assertEquals("REM(1)[SP]|REM(2)[SP]|", getTrace());
+		ceBb.event(s, SessionEvent.CREATED);
 		assertEquals("CREATED(1)|CREATED(2)|", getTrace());
 	}
 	
@@ -88,31 +102,44 @@ public class EventDrivenCompoundCodecTest {
 	public void testDecoding() {
 		IDecoder<?,?> dBb = new BufferToArrayDecoder();
 		IDecoder<?,?> dbB = new ArrayToBufferDecoder();
-		IDecoder<?,?> d1Bb = new Decoder("1");
-		IDecoder<?,?> d2Bb = new Decoder("2");
+		Decoder d1Bb = new Decoder("1");
+		Decoder d2Bb = new Decoder("2");
+		TestSession s = new TestSession() {
+			
+			@Override
+			public String toString() {
+				return "S";
+			}
+		};
+		InternalCodecPipeline p = new InternalCodecPipeline() {
+			@Override
+			public String toString() {
+				return "P";
+			}
+		};
 		
 		CompoundDecoder cdBb = new CompoundDecoder(d1Bb);
-		cdBb.added(null);
-		assertEquals("ADD(1)|", getTrace());
-		cdBb.removed(null);
-		assertEquals("REM(1)|", getTrace());
-		cdBb.event(null, SessionEvent.CREATED);
+		cdBb.added(s, p);
+		assertEquals("ADD(1)[SP]|", getTrace());
+		cdBb.removed(s, p);
+		assertEquals("REM(1)[SP]|", getTrace());
+		cdBb.event(s, SessionEvent.CREATED);
 		assertEquals("CREATED(1)|", getTrace());
 		
 		cdBb = new CompoundDecoder(dBb,dbB,d1Bb,dbB,dBb);
-		cdBb.added(null);
-		assertEquals("ADD(1)|", getTrace());
-		cdBb.removed(null);
-		assertEquals("REM(1)|", getTrace());
-		cdBb.event(null, SessionEvent.CREATED);
+		cdBb.added(s, p);
+		assertEquals("ADD(1)[SP]|", getTrace());
+		cdBb.removed(s, p);
+		assertEquals("REM(1)[SP]|", getTrace());
+		cdBb.event(s, SessionEvent.CREATED);
 		assertEquals("CREATED(1)|", getTrace());
 		
 		cdBb = new CompoundDecoder(dBb,dbB,d1Bb,dbB,d2Bb);
-		cdBb.added(null);
-		assertEquals("ADD(1)|ADD(2)|", getTrace());
-		cdBb.removed(null);
-		assertEquals("REM(1)|REM(2)|", getTrace());
-		cdBb.event(null, SessionEvent.CREATED);
+		cdBb.added(s, p);
+		assertEquals("ADD(1)[SP]|ADD(2)[SP]|", getTrace());
+		cdBb.removed(s, p);
+		assertEquals("REM(1)[SP]|REM(2)[SP]|", getTrace());
+		cdBb.event(s, SessionEvent.CREATED);
 		assertEquals("CREATED(1)|CREATED(2)|", getTrace());
 	}
 
@@ -125,8 +152,8 @@ public class EventDrivenCompoundCodecTest {
 		}
 		
 		@Override
-		public void added(ISession session) {
-			trace("ADD("+id+")");
+		public void added(ISession session, ICodecPipeline pipeline) {
+			trace("ADD("+id+")["+session+pipeline+"]");
 		}
 
 		@Override
@@ -135,8 +162,8 @@ public class EventDrivenCompoundCodecTest {
 		}
 
 		@Override
-		public void removed(ISession session) {
-			trace("REM("+id+")");
+		public void removed(ISession session, ICodecPipeline pipeline) {
+			trace("REM("+id+")["+session+pipeline+"]");
 		}
 	}
 
@@ -149,8 +176,8 @@ public class EventDrivenCompoundCodecTest {
 		}
 		
 		@Override
-		public void added(ISession session) {
-			trace("ADD("+id+")");
+		public void added(ISession session, ICodecPipeline pipeline) {
+			trace("ADD("+id+")["+session+pipeline+"]");
 		}
 
 		@Override
@@ -159,8 +186,8 @@ public class EventDrivenCompoundCodecTest {
 		}
 
 		@Override
-		public void removed(ISession session) {
-			trace("REM("+id+")");
+		public void removed(ISession session, ICodecPipeline pipeline) {
+			trace("REM("+id+")["+session+pipeline+"]");
 		}
 	}
 	

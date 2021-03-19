@@ -76,9 +76,9 @@ abstract public class EventDrivenCompoundEncoder<I,O> extends CompoundEncoder<I,
 	}
 
 	@Override
-	public void added(ISession session) {
+	public void added(ISession session, ICodecPipeline pipeline) {
 		for (int i=0; i<codecsCount; ++i) {
-			codecs[i].added(session);
+			codecs[i].added(session, pipeline);
 		}
 	}
 	
@@ -90,9 +90,9 @@ abstract public class EventDrivenCompoundEncoder<I,O> extends CompoundEncoder<I,
 	}
 	
 	@Override
-	public void removed(ISession session) {
+	public void removed(ISession session, ICodecPipeline pipeline) {
 		for (int i=0; i<codecsCount; ++i) {
-			codecs[i].removed(session);
+			codecs[i].removed(session, pipeline);
 		}
 	}
 }

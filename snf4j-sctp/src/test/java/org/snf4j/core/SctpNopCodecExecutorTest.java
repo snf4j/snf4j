@@ -40,8 +40,8 @@ public class SctpNopCodecExecutorTest {
 		ICodecExecutor e = SctpNopCodecExecutor.INSTANCE;
 		
 		assertNull(e.getPipeline());
-		e.syncDecoders();
-		e.syncEncoders();
+		e.syncDecoders(null);
+		e.syncEncoders(null);
 		e.syncEventDrivenCodecs(null);
 		assertNull(e.getBaseDecoder());
 		assertFalse(e.hasDecoders());

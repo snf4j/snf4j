@@ -70,19 +70,19 @@ public class CodecPipelineTest {
 		BaseS bd = new BaseS();
 		assertNull(p.getBaseDecoder());
 		p.getPipeline().add("1", bd);
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertTrue(bd == p.getBaseDecoder());
 		
 		//add first byte decoder
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BSD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertNull(p.getBaseDecoder());
 		
 		//add first byte buffer decoder
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BBSD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertNull(p.getBaseDecoder());
 		
 		//add first incompatible decoder
@@ -113,7 +113,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new BSD());
 		p.getPipeline().add("2", new SBD());
 		p.getPipeline().add("3", bd);
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertNull(p.getBaseDecoder());
 	}
 
@@ -174,7 +174,7 @@ public class CodecPipelineTest {
 	}
 
 	void assertEncoders(DefaultCodecExecutor p, String expected, String expectedKeys) throws Exception {
-		p.syncEncoders();
+		p.syncEncoders(null);
 		getTrace();
 		List<Object> out = p.encode(null, new byte[0]);
 		if (expected == null) {
@@ -194,7 +194,7 @@ public class CodecPipelineTest {
 	}
 	
 	void assertDecoders(DefaultCodecExecutor p, String expected, String expectedKeys) throws Exception {
-		p.syncDecoders();
+		p.syncDecoders(null);
 		getTrace();
 		List<Object> out = p.decode(null, new byte[0]);
 		if (expected == null) {
@@ -995,7 +995,7 @@ public class CodecPipelineTest {
 		//pipeline with base decoder
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BaseS());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertNotNull(out);
@@ -1007,7 +1007,7 @@ public class CodecPipelineTest {
 		//pipeline with one decoder
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BSD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertNotNull(out);
@@ -1020,7 +1020,7 @@ public class CodecPipelineTest {
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BSD());
 		p.getPipeline().add("2", new SBD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertEquals(1, out.size());
@@ -1032,7 +1032,7 @@ public class CodecPipelineTest {
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BSD());
 		p.getPipeline().add("2", new SBD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertEquals(1, out.size());
@@ -1045,7 +1045,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new BBSD());
 		p.getPipeline().add("2", new SBD());
 		p.getPipeline().add("3", new BSD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertEquals(1, out.size());
@@ -1057,7 +1057,7 @@ public class CodecPipelineTest {
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BSDDiscard());
 		p.getPipeline().add("2", new SBD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertEquals(0, out.size());
@@ -1068,7 +1068,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new BSD());
 		p.getPipeline().add("2", new SBD());
 		p.getPipeline().add("3", new BSDDiscard());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertEquals(0, out.size());
@@ -1080,7 +1080,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("2", new SBD());
 		p.getPipeline().add("3", new BSDDiscard());
 		p.getPipeline().add("4", new SBD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertEquals(0, out.size());
@@ -1091,7 +1091,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new BSDDuplicate());
 		p.getPipeline().add("2", new SBD());
 		p.getPipeline().add("3", new BSD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertEquals(2, out.size());
@@ -1106,7 +1106,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("3", new BSDDuplicate());
 		p.getPipeline().add("4", new SBD());
 		p.getPipeline().add("fifth", new BSD());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertEquals("", getTrace());
 		out = p.decode(null, "ABC".getBytes());
 		assertEquals(2, out.size());
@@ -1131,7 +1131,7 @@ public class CodecPipelineTest {
 		//pipeline with one encoder (byte in)
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BBE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC".getBytes());
 		assertNotNull(out);
@@ -1147,7 +1147,7 @@ public class CodecPipelineTest {
 		//pipeline with one encoder (byte buffer in)
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BB_BE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
 		assertNotNull(out);
@@ -1163,7 +1163,7 @@ public class CodecPipelineTest {
 		//pipeline with one encoder (String in)
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new SBE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC");
 		assertNotNull(out);
@@ -1179,7 +1179,7 @@ public class CodecPipelineTest {
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new SBE());
 		p.getPipeline().add("2", new BSE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC".getBytes());
 		assertNotNull(out);
@@ -1198,7 +1198,7 @@ public class CodecPipelineTest {
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new SBE());
 		p.getPipeline().add("2", new BBSE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
 		assertNotNull(out);
@@ -1217,7 +1217,7 @@ public class CodecPipelineTest {
 		p = new DefaultCodecExecutor();
 		p.getPipeline().add("1", new BBE());
 		p.getPipeline().add("2", new SBE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC");
 		assertNotNull(out);
@@ -1237,7 +1237,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new SBE());
 		p.getPipeline().add("2", new BSE());
 		p.getPipeline().add("3", new BBE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC".getBytes());
 		assertNotNull(out);
@@ -1257,7 +1257,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new SBE());
 		p.getPipeline().add("2", new BSE());
 		p.getPipeline().add("3", new BB_BE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
 		assertNotNull(out);
@@ -1277,7 +1277,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new SBE());
 		p.getPipeline().add("2", new BSE());
 		p.getPipeline().add("3", new SBE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC");
 		assertNotNull(out);
@@ -1297,7 +1297,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new SBEDiscard());
 		p.getPipeline().add("2", new BSE());
 		p.getPipeline().add("3", new SBE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC");
 		assertEquals(0, out.size());
@@ -1308,7 +1308,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new SBE());
 		p.getPipeline().add("2", new BSE());
 		p.getPipeline().add("3", new SBEDiscard());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC");
 		assertEquals(0, out.size());
@@ -1320,7 +1320,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("2", new BSE());
 		p.getPipeline().add("3", new SBEDiscard());
 		p.getPipeline().add("4", new BSE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC".getBytes());
 		assertEquals(0, out.size());
@@ -1331,7 +1331,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("1", new SBEDuplicate());
 		p.getPipeline().add("2", new BSE());
 		p.getPipeline().add("3", new SBE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC");
 		assertEquals(2, out.size());
@@ -1345,7 +1345,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add("2", new BSE());
 		p.getPipeline().add("3", new SBEDuplicate());
 		p.getPipeline().add("4", new BSE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertEquals("", getTrace());
 		out = p.encode(null, "ABC".getBytes());
 		assertEquals(2, out.size());
@@ -1719,11 +1719,11 @@ public class CodecPipelineTest {
 		assertNull(p.getBaseDecoder());
 		p.getPipeline().add(1, base);
 		assertNull(p.getBaseDecoder());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertTrue(base == p.getBaseDecoder());
 		p.getPipeline().addFirst(2, new D("x"));
 		assertTrue(base == p.getBaseDecoder());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertNull(p.getBaseDecoder());
 	}
 
@@ -1733,23 +1733,23 @@ public class CodecPipelineTest {
 		assertFalse(p.hasDecoders());
 		p.getPipeline().add(1, new BaseS());
 		assertFalse(p.hasDecoders());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertTrue(p.hasDecoders());
 		p.getPipeline().remove(1);
 		assertTrue(p.hasDecoders());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertFalse(p.hasDecoders());
 		p.getPipeline().add(1, new BSD());
 		assertFalse(p.hasDecoders());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertTrue(p.hasDecoders());
 		p.getPipeline().addFirst(2, new BVD("V"));
 		assertTrue(p.hasDecoders());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertTrue(p.hasDecoders());
 		p.getPipeline().remove(1);
 		assertTrue(p.hasDecoders());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertFalse(p.hasDecoders());
 		p.getPipeline().remove(2);
 	}
@@ -1760,19 +1760,19 @@ public class CodecPipelineTest {
 		p.getPipeline().add(1, new SBE());
 		p.encode(null, "ABC");
 		assertEquals("", getTrace());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		p.encode(null, "ABC");
 		assertEquals("SBE|", getTrace());
 		p.getPipeline().add(2, new BSE());
 		p.encode(null, "ABC".getBytes());
 		assertEquals("", getTrace());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		p.encode(null, "ABC".getBytes());
 		assertEquals("BSE|SBE|", getTrace());
 		p.getPipeline().add(3, new SBE());
 		p.encode(null, (Object)"ABC");
 		assertEquals("SBE|", getTrace());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		p.encode(null, (Object)"ABC");
 		assertEquals("SBE|BSE|SBE|", getTrace());
 	}
@@ -1783,13 +1783,13 @@ public class CodecPipelineTest {
 		p.getPipeline().add(1, new BaseS());
 		p.decode(null, "ABC".getBytes());
 		assertEquals("", getTrace());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		p.decode(null, "ABC".getBytes());
 		assertEquals("BaseS|", getTrace());
 		p.getPipeline().add(2, new SBD());
 		p.decode(null, "ABC".getBytes());
 		assertEquals("BaseS|", getTrace());
-		p.syncDecoders();
+		p.syncDecoders(null);
 		p.decode(null, "ABC".getBytes());
 		assertEquals("BaseS|SBD|", getTrace());
 	}
@@ -1806,7 +1806,7 @@ public class CodecPipelineTest {
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
 		p.getPipeline().add(1, new BVD("V1",true));
 		p.getPipeline().add(2, new BBVD("V2",true));
-		p.syncDecoders();
+		p.syncDecoders(null);
 		assertNull(p.decode(null, "ABC".getBytes()));
 		assertEquals("V1(ABC)|V2(ABC)|", getTrace());
 		p.getPipeline().add(3, new BSD());
@@ -1814,7 +1814,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add(5, new BVD("V4",true));
 		p.getPipeline().add(6, new B_BBD());
 		p.getPipeline().add(7, new BBVD("V5",true));
-		p.syncDecoders();
+		p.syncDecoders(null);
 		List<Object> out = p.decode(null, "ABC".getBytes());
 		assertNotNull(out);
 		assertEquals(1, out.size());
@@ -1828,7 +1828,7 @@ public class CodecPipelineTest {
 		DefaultCodecExecutor p = new DefaultCodecExecutor();
 		p.getPipeline().add(1, new BVE("V1",true));
 		p.getPipeline().add(2, new BBVE("V2",true));
-		p.syncEncoders();
+		p.syncEncoders(null);
 		assertNull(p.encode(null, "ABC".getBytes()));
 		assertEquals("V2(ABC)|V1(ABC)|", getTrace());
 		assertNull(p.encode(null, ByteBuffer.wrap("ABC".getBytes())));
@@ -1841,7 +1841,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add(6, new BVE("V5",true));
 		p.getPipeline().add(7, new BB_BE());
 		p.getPipeline().add(8, new BBVE("V6",true));
-		p.syncEncoders();
+		p.syncEncoders(null);
 		List<Object> o = p.encode(null, "ABC".getBytes());
 		assertNotNull(o);
 		assertEquals(1, o.size());
@@ -1852,7 +1852,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add(1, new SBE());
 		p.getPipeline().add(2, new SVE("V2",true));
 		p.getPipeline().add(3, new SVE("V3",true));
-		p.syncEncoders();
+		p.syncEncoders(null);
 		o = p.encode(null, "ABC");
 		assertNotNull(o);
 		assertEquals(1, o.size());
@@ -1864,7 +1864,7 @@ public class CodecPipelineTest {
 		p.getPipeline().add(2, new BBVE("V2",true));
 		p.getPipeline().add(3, new SBBE());
 		p.getPipeline().add(4, new BSE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		o = p.encode(null, "ABC".getBytes());
 		assertNotNull(o);
 		assertEquals(1, o.size());
@@ -1877,7 +1877,7 @@ public class CodecPipelineTest {
 		assertEquals("BSE|SBBE|V2(ABC)|V1(ABC)|", getTrace());
 		p.getPipeline().add(5, new SBE());
 		p.getPipeline().add(6, new BBSE());
-		p.syncEncoders();
+		p.syncEncoders(null);
 		o = p.encode(null, ByteBuffer.wrap("ABC".getBytes()));
 		assertNotNull(o);
 		assertEquals(1, o.size());
@@ -2118,7 +2118,7 @@ public class CodecPipelineTest {
 		}
 		
 		@Override
-		public void added(ISession session) {
+		public void added(ISession session, ICodecPipeline pipeline) {
 			trace("ADD("+id+")|");
 		}
 
@@ -2128,7 +2128,7 @@ public class CodecPipelineTest {
 		}
 
 		@Override
-		public void removed(ISession session) {
+		public void removed(ISession session, ICodecPipeline pipeline) {
 			trace("REM("+id+")|");
 		}
 	}
@@ -2281,7 +2281,7 @@ public class CodecPipelineTest {
 		}
 		
 		@Override
-		public void added(ISession session) {
+		public void added(ISession session, ICodecPipeline pipeline) {
 			trace("ADD("+id+")|");
 		}
 
@@ -2291,7 +2291,7 @@ public class CodecPipelineTest {
 		}
 
 		@Override
-		public void removed(ISession session) {
+		public void removed(ISession session, ICodecPipeline pipeline) {
 			trace("REM("+id+")|");
 		}
 	}

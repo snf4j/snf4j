@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -315,8 +315,8 @@ public class ZlibEncoderTest extends EncoderTest {
 		ZlibEncoder d = new ZlibEncoder();
 		
 		assertFalse(d.isFinished());
-		d.added(null);
-		d.removed(null);
+		d.added(null, null);
+		d.removed(null, null);
 		d.event(null, SessionEvent.CREATED);
 		assertFalse(d.isFinished());
 		d.event(null, SessionEvent.OPENED);

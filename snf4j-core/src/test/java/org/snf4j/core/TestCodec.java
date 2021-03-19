@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.snf4j.core.codec.IBaseDecoder;
 import org.snf4j.core.codec.ICodec;
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
 import org.snf4j.core.codec.IEventDrivenCodec;
@@ -238,7 +239,7 @@ public class TestCodec {
 		}
 		
 		@Override
-		public void added(ISession session) {
+		public void added(ISession session, ICodecPipeline pipeline) {
 			trace.append("A("+session.getId()+")|");
 		}
 
@@ -248,7 +249,7 @@ public class TestCodec {
 		}
 
 		@Override
-		public void removed(ISession session) {
+		public void removed(ISession session, ICodecPipeline pipeline) {
 			trace.append("R("+session.getId()+")|");
 		}
 

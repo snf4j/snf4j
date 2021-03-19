@@ -57,17 +57,17 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	}
 	
 	final List<Object> encode(ByteBuffer data) throws Exception {
-		executor.syncEncoders();
+		executor.syncEncoders(session);
 		return executor.encode(session, data);
 	}
 
 	final List<Object> encode(byte[] data) throws Exception {
-		executor.syncEncoders();
+		executor.syncEncoders(session);
 		return executor.encode(session, data);
 	}
 
 	final List<Object> encode(Object msg) throws Exception {
-		executor.syncEncoders();
+		executor.syncEncoders(session);
 		return executor.encode(session, msg);
 	}
 	
@@ -77,7 +77,7 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	
 	@Override
 	public int available(ByteBuffer buffer, boolean flipped) {
-		executor.syncDecoders();
+		executor.syncDecoders(session);
 
 		IBaseDecoder<?> base = executor.getBaseDecoder();
 		
@@ -92,7 +92,7 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 
 	@Override
 	public int available(byte[] buffer, int off, int len) {
-		executor.syncDecoders();
+		executor.syncDecoders(session);
 		
 		IBaseDecoder<?> base = executor.getBaseDecoder();
 		
@@ -111,7 +111,7 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 		List<Object> out;
 		
 		if (datagram) {
-			executor.syncDecoders();
+			executor.syncDecoders(session);
 		}
 		try {
 			out = executor.decode(session, data);
@@ -133,7 +133,7 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	public void read(ByteBuffer data) {
 		List<Object> out;
 		
-		executor.syncDecoders();
+		executor.syncDecoders(session);
 		try {
 			out = executor.decode(session, data);
 		}
@@ -154,7 +154,7 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	public void read(SocketAddress remoteAddress, byte[] datagram) throws PipelineDecodeException {
 		List<Object> out;
 		
-		executor.syncDecoders();
+		executor.syncDecoders(session);
 		try {
 			out = executor.decode(session, datagram);
 		}
@@ -175,7 +175,7 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	public void read(SocketAddress remoteAddress, ByteBuffer datagram) {
 		List<Object> out;
 		
-		executor.syncDecoders();
+		executor.syncDecoders(session);
 		try {
 			out = executor.decode(session, datagram);
 		}
