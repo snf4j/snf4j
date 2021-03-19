@@ -44,13 +44,19 @@ import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.CompoundDecoder;
 import org.snf4j.core.codec.CompoundEncoder;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.IBaseDecoder;
+import org.snf4j.core.codec.ICodec;
 import org.snf4j.core.codec.ICodecExecutor;
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
+import org.snf4j.core.codec.IEventDrivenCodec;
 import org.snf4j.core.codec.bytes.ArrayToBufferDecoder;
 import org.snf4j.core.codec.bytes.ArrayToBufferEncoder;
 import org.snf4j.core.codec.bytes.BufferToArrayDecoder;
+import org.snf4j.core.codec.bytes.BufferToArrayEncoder;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IllegalSessionStateException;
 
@@ -984,6 +990,185 @@ public class SessionCodecTest {
 		
 	}
 
+	byte[] bytes(PacketType type) {
+		return new Packet(type,"000").toBytes();
+	}
+	
+	void assertWrite(String expected) throws Exception {
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals(expected, s.getRecordedData(true));
+	}
+	
+	void assertWrite2(String expected) throws Exception {
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals(expected, c.getRecordedData(true));
+	}
+	
+	@Test
+	public void testReplaceInEventDrivenCodec() throws Exception {
+		DefaultCodecExecutor e = new DefaultCodecExecutor();
+		ICodecPipeline p = e.getPipeline();
+		ReplaceEncoder EA = new ReplaceEncoder('A');
+		ReplaceEncoder EB = new ReplaceEncoder('B', EA, "E");
+		ReplaceDecoder DC = new ReplaceDecoder('C');
+		ReplaceDecoder DD = new ReplaceDecoder('D', DC, "D");
+		
+		p.add(1, new ArrayToBufferEncoder());
+		p.add("E", EA);
+		p.add(2, new BufferToArrayEncoder());
+		startWithCodec(e);
+		
+		StreamSession session = c.getSession();
+		session.write(bytes(PacketType.NOP));
+		assertWrite("DR|NOP(00A)|");
+		session.getCodecPipeline().replace("E", "E", EB);
+		session.write(bytes(PacketType.NOP));
+		assertWrite("DR|NOP(00B)|");
+		session.write(bytes(PacketType.NOP));
+		assertWrite("DR|NOP(00A)|");
+		session.getCodecPipeline().replace("E", "E", EB);
+		session.suspendWrite();
+		session.write(bytes(PacketType.NOP));
+		session.write(bytes(PacketType.NOP));
+		session.resumeWrite();
+		waitFor(100);
+		assertWrite("DR|NOP(00B)|NOP(00A)|");
+		
+		p.add(3, new BaseDecoder());
+		p.add(4, new BufferToArrayDecoder());
+		p.add("D", DC);
+		p.add(5, new ArrayToBufferDecoder());
+		p.remove("E");
+		
+		c.getRecordedData(true);
+		session = s.getSession();
+		session.write(bytes(PacketType.NOP));
+		assertWrite2("DR|BUF|NOP(00C)|");
+		p.replace("D", "D", DD);
+		session.write(bytes(PacketType.NOP));
+		assertWrite2("DR|BUF|NOP(00D)|");
+		session.write(bytes(PacketType.NOP));
+		assertWrite2("DR|BUF|NOP(00C)|");
+		p.replace("D", "D", DD);
+		session.suspendWrite();
+		session.write(bytes(PacketType.NOP));
+		session.write(bytes(PacketType.NOP));
+		session.resumeWrite();
+		waitFor(100);
+		assertWrite2("DR|BUF|NOP(00D)|BUF|NOP(00C)|");
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+	}
+	
+	static class BaseDecoder extends ArrayToBufferDecoder implements IBaseDecoder<ByteBuffer> {
+
+		@Override
+		public int available(ISession session, ByteBuffer buffer, boolean flipped) {
+			if (flipped) {
+				return Packet.available(buffer.array(), buffer.position(), buffer.limit());
+			}
+			return Packet.available(buffer.array(), 0, buffer.position());
+		}
+
+		@Override
+		public int available(ISession session, byte[] buffer, int off, int len) {
+			return Packet.available(buffer, off, len);
+		}
+	}
+	
+	static class ReplaceDecoder extends ReplaceCodec implements IDecoder<byte[],byte[]> {
+
+		ReplaceDecoder(char last) {
+			super((byte) last);
+		}
+		
+		ReplaceDecoder(char last, ReplaceDecoder replace, Object replaceKey) {
+			super((byte) last, replace, replaceKey);
+		}
+
+		@Override
+		public void decode(ISession session, byte[] data, List<byte[]> out) throws Exception {
+			code(data, out);
+		}
+	}
+	
+	static class ReplaceEncoder extends ReplaceCodec implements IEncoder<byte[],byte[]> {
+
+		ReplaceEncoder(char last) {
+			super((byte) last);
+		}
+		
+		ReplaceEncoder(char last, ReplaceEncoder replace, Object replaceKey) {
+			super((byte) last, replace, replaceKey);
+		}
+
+		@Override
+		public void encode(ISession session, byte[] data, List<byte[]> out) throws Exception {
+			code(data, out);
+		}
+	}
+
+	static class ReplaceCodec implements ICodec<byte[],byte[]>, IEventDrivenCodec {
+
+		byte lastByte;
+		
+		ICodecPipeline pipeline;
+		
+		ReplaceCodec replace;
+		
+		Object replaceKey;
+		
+		ReplaceCodec(byte lastByte) {
+			this.lastByte = lastByte;
+		}
+		
+		ReplaceCodec(byte lastByte, ReplaceCodec replace, Object replaceKey) {
+			this.lastByte = lastByte;
+			this.replace = replace;
+			this.replaceKey = replaceKey;
+		}
+		
+		@Override
+		public Class<byte[]> getInboundType() {
+			return byte[].class;
+		}
+
+		@Override
+		public Class<byte[]> getOutboundType() {
+			return byte[].class;
+		}
+
+		public void code(byte[] data, List<byte[]> out) throws Exception {
+			data[data.length-1] = lastByte;
+			out.add(data);
+			if (pipeline != null && replaceKey != null) {
+				if (replace instanceof IDecoder) {
+				pipeline.replace(replaceKey, replaceKey, (IDecoder<?, ?>)replace);
+				}
+				else {
+					pipeline.replace(replaceKey, replaceKey, (IEncoder<?, ?>)replace);
+				}
+			}
+		}
+
+		@Override
+		public void added(ISession session, ICodecPipeline pipeline) {
+			this.pipeline = pipeline;
+		}
+
+		@Override
+		public void event(ISession session, SessionEvent event) {
+		}
+
+		@Override
+		public void removed(ISession session, ICodecPipeline pipeline) {
+			pipeline = null;
+		}
+	}
+	
 	class DupD implements IDecoder<ByteBuffer,ByteBuffer> {
 		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
 		@Override public Class<ByteBuffer> getOutboundType() {return ByteBuffer.class;}

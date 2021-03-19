@@ -70,7 +70,7 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 	private List<ICodecExecutor> children;
 	
 	@Override
-	public final void syncDecoders() {
+	public final void syncDecoders(ISession session) {
 		if (pipeline.getCodecsVersion() != decodersVersion) {
 			decoders.clear();
 			baseDecoder = null;
@@ -91,12 +91,13 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 					ctx = ctx.next;
 				}
 				decodersVersion = pipeline.getCodecsVersion();
+				syncEventDrivenCodecs(session);
 			}
 		}
 	}
 	
 	@Override
-	public final void syncEncoders() {
+	public final void syncEncoders(ISession session) {
 		if (pipeline.getCodecsVersion() != encodersVersion) {
 			encoders.clear();
 			firstEncoder = null;
@@ -111,6 +112,7 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 					ctx = ctx.next;
 				}
 				encodersVersion = pipeline.getCodecsVersion();
+				syncEventDrivenCodecs(session);
 			}
 		}		
 	}
@@ -177,14 +179,14 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 			if (eventCodecs != null) {
 				for (IEventDrivenCodec c: eventCodecs) {
 					if (!remove(c, removed)) {
-						c.added(session);
+						c.added(session, pipeline);
 					}
 				}
 			}
 			if (removed != null) {
 				for (IEventDrivenCodec c: removed) {
 					if (c != null) {
-						c.removed(session);
+						c.removed(session, pipeline);
 					}
 				}
 			}

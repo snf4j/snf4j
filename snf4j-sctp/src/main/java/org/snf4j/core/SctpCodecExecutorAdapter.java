@@ -95,21 +95,21 @@ class SctpCodecExecutorAdapter extends CodecExecutorAdapter implements ISctpRead
 	final List<Object> encode(ByteBuffer data, MessageInfo msgInfo) throws Exception {
 		ICodecExecutor executor = getExecutor(msgInfo);
 		
-		executor.syncEncoders();
+		executor.syncEncoders(session);
 		return executor.encode(session, data);
 	}
 	
 	final List<Object> encode(byte[] data, MessageInfo msgInfo) throws Exception {	
 		ICodecExecutor executor = getExecutor(msgInfo);
 		
-		executor.syncEncoders();
+		executor.syncEncoders(session);
 		return executor.encode(session, data);
 	}
 	
 	final List<Object> encode(Object msg, MessageInfo msgInfo) throws Exception {	
 		ICodecExecutor executor = getExecutor(msgInfo);
 		
-		executor.syncEncoders();
+		executor.syncEncoders(session);
 		return executor.encode(session, msg);
 	}
 	
@@ -118,7 +118,7 @@ class SctpCodecExecutorAdapter extends CodecExecutorAdapter implements ISctpRead
 		ICodecExecutor executor = getExecutor(msgInfo);
 		List<Object> out;	
 		
-		executor.syncDecoders();
+		executor.syncDecoders(session);
 		try {
 			out = executor.decode(session, msg);
 		}
@@ -140,7 +140,7 @@ class SctpCodecExecutorAdapter extends CodecExecutorAdapter implements ISctpRead
 		ICodecExecutor executor = getExecutor(msgInfo);
 		List<Object> out;	
 		
-		executor.syncDecoders();
+		executor.syncDecoders(session);
 		try {
 			out = executor.decode(session, msg);
 		}

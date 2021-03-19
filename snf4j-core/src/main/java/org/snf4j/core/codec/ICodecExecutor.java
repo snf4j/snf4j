@@ -60,8 +60,10 @@ public interface ICodecExecutor {
 	 * <p>
 	 * <b>Performance considerations</b>: This method is called every time new
 	 * data need to be decoded and so it should not perform any heavy tasks.
+	 * 
+	 * @param session the session the codec executor is associated with
 	 */
-	void syncDecoders();
+	void syncDecoders(ISession session);
 
 	/**
 	 * Informs the codec executor that right now is the best moment to safely
@@ -70,8 +72,10 @@ public interface ICodecExecutor {
 	 * <p>
 	 * <b>Performance considerations</b>: This method is called every time new
 	 * data need to be encoded and so it should not perform any heavy tasks.
+	 * 
+	 * @param session the session the codec executor is associated with
 	 */
-	void syncEncoders();
+	void syncEncoders(ISession session);
 	
 	/**
 	 * Informs the codec executor that right now is the best moment to safely

@@ -47,11 +47,11 @@ class SctpNopCodecExecutor implements ICodecExecutor {
 	}
 
 	@Override
-	public void syncDecoders() {
+	public void syncDecoders(ISession session) {
 	}
 
 	@Override
-	public void syncEncoders() {
+	public void syncEncoders(ISession session) {
 	}
 
 	@Override

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,8 +40,9 @@ public interface IEventDrivenCodec {
 	 * session.
 	 * 
 	 * @param session the session the pipeline is associated with
+	 * @param pipeline the pipeline the codec has been added to
 	 */
-	void added(ISession session);
+	void added(ISession session, ICodecPipeline pipeline);
 	
 	/**
 	 * Signals a session event to the codec.
@@ -56,6 +57,7 @@ public interface IEventDrivenCodec {
 	 * session.
 	 * 
 	 * @param session the session the pipeline is associated with
+	 * @param pipeline the pipeline the codec has been removed from
 	 */
-	void removed(ISession session);
+	void removed(ISession session, ICodecPipeline pipeline);
 }

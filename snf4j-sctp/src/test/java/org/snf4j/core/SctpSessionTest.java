@@ -1676,7 +1676,7 @@ public class SctpSessionTest extends SctpTest {
 		}
 		
 		@Override
-		public void added(ISession session) {
+		public void added(ISession session, ICodecPipeline pipeline) {
 			trace(id + "#ADD(" + session.getId() + ")|");
 		}
 
@@ -1686,7 +1686,7 @@ public class SctpSessionTest extends SctpTest {
 		}
 
 		@Override
-		public void removed(ISession session) {
+		public void removed(ISession session, ICodecPipeline pipeline) {
 			trace(id + "#REM(" + session.getId() + ")|");
 		}
 	}
@@ -1700,7 +1700,7 @@ public class SctpSessionTest extends SctpTest {
 		}
 		
 		@Override
-		public void added(ISession session) {
+		public void added(ISession session, ICodecPipeline pipeline) {
 			trace(id + "#ADD(" + session.getId() + ")|");
 		}
 
@@ -1710,7 +1710,7 @@ public class SctpSessionTest extends SctpTest {
 		}
 
 		@Override
-		public void removed(ISession session) {
+		public void removed(ISession session, ICodecPipeline pipeline) {
 			trace(id + "#REM(" + session.getId() + ")|");
 		}
 	}

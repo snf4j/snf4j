@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.zip.Deflater;
 
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.codec.IEncoder;
 import org.snf4j.core.codec.IEventDrivenCodec;
 import org.snf4j.core.handler.SessionEvent;
@@ -289,7 +290,7 @@ public class ZlibEncoder extends ZlibCodec implements IEncoder<byte[], ByteBuffe
 	 * Does nothing.
 	 */
 	@Override
-	public void added(ISession session) {
+	public void added(ISession session, ICodecPipeline pipeline) {
 	}
 
 	/**
@@ -309,7 +310,7 @@ public class ZlibEncoder extends ZlibCodec implements IEncoder<byte[], ByteBuffe
 	 * Does nothing.
 	 */
 	@Override
-	public void removed(ISession session) {
+	public void removed(ISession session, ICodecPipeline pipeline) {
 	}
 
 }
