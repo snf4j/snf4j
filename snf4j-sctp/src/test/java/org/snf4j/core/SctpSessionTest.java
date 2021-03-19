@@ -1635,11 +1635,11 @@ public class SctpSessionTest extends SctpTest {
 		c.getCodec(0,0).getPipeline().remove("E1");
 		session.writenf(nopb("3"));
 		assertWrite("DR|NOP(3)|");
-		assertTracedEvents("", session.getId());
+		assertTracedEvents("0,0#REM(X)||", session.getId());
 		session.close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertTracedEvents("#CLOSED(X)||0,0#REM(X)||#ENDING(X)||", session.getId());
+		assertTracedEvents("#CLOSED(X)||#ENDING(X)||", session.getId());
 		c.stop(TIMEOUT);
 		clearTraces();
 		
