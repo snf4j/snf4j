@@ -43,9 +43,9 @@ import org.snf4j.core.session.SSLEngineCreateException;
 public class SessionConfig extends DefaultSessionConfig {
 	
 	final static int MAX_PACKET_SIZE = 1024;
-	
+
 	final static int MAX_APPLICATION_DATA_SIZE = 512;
-	
+
 	static volatile SSLContext sslContext = null; 
 
 	SessionConfig() {
