@@ -184,7 +184,6 @@
               <packages>org.snf4j:org.snf4j.*</packages>
             </group>
           </groups>
-          <excludePackageNames>org.snf4j.example.*</excludePackageNames>
         </configuration>
       </plugin>     
       
