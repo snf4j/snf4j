@@ -64,7 +64,7 @@ public class SessionConfig extends DefaultSessionConfig {
 			in.close();
 		}
 	}
-	
+
 	SSLContext getSSLContext() throws SSLEngineCreateException {
 		if (sslContext == null) {
 			try {
