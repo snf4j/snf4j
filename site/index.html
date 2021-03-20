@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="keywords" content="java, non-blocking,asynchronous,networking,framework,socket,nio,udp,tcp,ssl,tls,dtls,protocol engine">
+    <meta name="keywords" content="java, non-blocking,asynchronous,networking,framework,socket,nio,udp,tcp,sctp,ssl,tls,dtls,protocol engine">
     <meta name="description" content="An asynchronous event-driven network application framework for quick and easy development of network applications">
     <meta name="author" content="SNF4J.ORG">
 
@@ -77,7 +77,7 @@
   <h1>Introduction</h1>
   <hr>
    <p>Simple Network Framework for Java (SNF4J) is an asynchronous event-driven network application framework for quick and easy development of network applications.
-   <p>The SNF4J serves as a simple, lightweight and independent network application framework helping in developing high performance and scalable network applications. It provides an asynchronous API via the Java NIO to handle various transports like TCP/IP and UDP/IP.
+   <p>The SNF4J serves as a simple, lightweight and independent network application framework helping in developing high performance and scalable network applications. It provides an asynchronous API via the Java NIO to handle various transports like TCP/IP, UDP/IP and SCTP/IP.
    <p>The framework is designed to be simple in use and moderately easy to understand. Application developers that like to keep their ear to the ground will not be overwhelmed by a tone of source code. It is oriented towards delivering core networking functionality as transferring data between two or more communicating network applications in a simple but effective way. To provide privacy and integrity of transferred data it provides support for the SSL/TLS/DTLS protocols.
 
    <div class="float-right mr-5">
@@ -91,9 +91,9 @@
     <h4>Design</h4>
    
     <ul>
-     <li> Unified API for transport layer types: TCP and UDP
+     <li> Unified API for transport layer types: TCP, UDP and SCTP
      <li> Event-driven API for developing asynchronous network applications
-     <li> Customizable protocol engines for transport layer types: TCP and UDP
+     <li> Customizable protocol engines for transport layer types: TCP, UDP and SCTP	
      <li> Utilities for development of UDP server applications
      <li> Simple API for customizable encoder-decoder pipelines
      <li> Provide ease of programing multi-thread applications in a single-thread way
@@ -314,7 +314,7 @@ loop.join();
 
   <!-- Copyright -->
   <hr>
-  <div class="footer-copyright text-center py-3">&copy; 2020 Copyright: SNF4J.ORG
+  <div class="footer-copyright text-center py-3">&copy; 2021 Copyright: SNF4J.ORG
   </div>
   <!-- Copyright -->
 
