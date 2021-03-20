@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +51,7 @@ public class SessionConfig extends DefaultSessionConfig {
 	SessionConfig() {
 		setMinInBufferCapacity(MAX_PACKET_SIZE);
 		setMinOutBufferCapacity(MAX_PACKET_SIZE);
+		setIgnorePossiblyIncompleteDatagrams(false);
 	}
 	
 	void load(KeyStore ks, String fileName, char[] password) throws Exception {
