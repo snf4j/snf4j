@@ -53,7 +53,7 @@ public class SessionConfig extends DefaultSessionConfig {
 		setMinOutBufferCapacity(MAX_PACKET_SIZE);
 		setIgnorePossiblyIncompleteDatagrams(false);
 	}
-	
+
 	void load(KeyStore ks, String fileName, char[] password) throws Exception {
 		InputStream in = getClass().getResourceAsStream(fileName);
 		
