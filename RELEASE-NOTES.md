@@ -1,3 +1,11 @@
+#### 1.7.0
+ - 2021-03-20 - [changes](https://github.com/snf4j/snf4j/compare/v1.6.0...v1.7.0)
+ - Added channel context for generic selector loop [(#55)](https://github.com/snf4j/snf4j/pull/55)
+ - Added support for SCTP protocol [(#60)](https://github.com/snf4j/snf4j/pull/60)
+ - Fixed #56: Encoding does not release buffers when the last encoder has byte[] as the inbound type [(#61)](https://github.com/snf4j/snf4j/pull/61)
+ - Fixed #57: Future objects returned by write/send methods of datagram-oriented sessions may signal completion too quickly [(#61)](https://github.com/snf4j/snf4j/pull/61)
+ - Fixed #62: Adding/Removal of an event-driven codec to/from a codec pipeline is not signaled in open sessions [(#63)](https://github.com/snf4j/snf4j/pull/63)
+ 
 #### 1.6.0
  - 2020-12-30 - [changes](https://github.com/snf4j/snf4j/compare/v1.5.0...v1.6.0)
  - Improved handling of empty buffers in engine handlers [(#48)](https://github.com/snf4j/snf4j/pull/48)
