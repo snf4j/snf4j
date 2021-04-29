@@ -26,8 +26,7 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
-    - name: Display test reports
       run: |
+        mvn -B package --file pom.xml
         cat snf4j-core/target/surefire-reports/*.txt
         cat snf4j-core-slf4j/target/surefire-reports/*.txt
