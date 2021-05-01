@@ -630,6 +630,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		
@@ -642,6 +643,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		
@@ -653,6 +655,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR+|DS+|ECHO()|DS|", getRecordedData(s));
 		assertEquals("DR+|DS+|ECHO_RESPONSE()|", getRecordedData(c));
 		
@@ -664,6 +667,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		
@@ -675,6 +679,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR+|DS+|ECHO()|DS|", getRecordedData(c));
 		assertEquals("DR+|DS+|ECHO_RESPONSE()|", getRecordedData(s));
 		
