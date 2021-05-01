@@ -778,6 +778,8 @@ public class DTLSSessionTest extends DTLSTest {
 		DatagramSession cs = c.getSession();
 		DatagramSession ss = s.getSession();
 		
+		clearDataLocks(c,s);
+		
 		cs.write(nop()).sync(TIMEOUT);
 		assertWrite(s,c,"DR|NOP("+ed+")|", "DS|");
 		cs.writenf(nop("1"));
@@ -899,7 +901,9 @@ public class DTLSSessionTest extends DTLSTest {
 		s2.waitForSessionReady(TIMEOUT);
 		s2.getRecordedData(true);
 		a1 = address(PORT+2);
-		
+
+		clearDataLocks(c,s2);
+
 		cs.send(a1, nop()).sync(TIMEOUT);
 		assertWrite(s2,c,"DR|$NOP("+ed+")|", "DS|");
 		cs.sendnf(a1, nop("1"));
