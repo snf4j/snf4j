@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        java: [8]
+        java: [8, 9, 10]
         
     env:
       SNF4J_SKIP_TEST_LOGGING: true
