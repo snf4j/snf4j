@@ -38,10 +38,14 @@ jobs:
     
     - name: Build on Java ${{ matrix.java }}
       run: |
-        mvn -B test || echo "Build failed"
+        mvn -B test
+        
+    - name: Log failure reports
+      if: ${{ failure() }}
+      run: |
         cat snf4j-core/target/surefire-reports/*.txt
         cat snf4j-core-slf4j/target/surefire-reports/*.txt
-        
+    
     - name: Generate coverage report
       if: matrix.java == 8
       run: |
@@ -53,10 +57,5 @@ jobs:
       with:
         name: codecov-umbrella
         fail_ci_if_error: true
-        verbose: true
+        verbose: false
         
-#    - name: Upload coverage report
-#      if: matrix.java == 8
-#      run: |
-#        mvn cobertura:cobertura || echo "Code coverage failed"
-#        bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
