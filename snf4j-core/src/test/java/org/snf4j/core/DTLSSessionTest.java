@@ -574,7 +574,7 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(960);
 		assertEquals("DR|DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|SCR|SOP|DR|", s.getRecordedData(true));
-		waitFor(50);
+		waitFor(90);
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 		
@@ -590,7 +590,7 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(960);
 		assertEquals("DR|DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|SCR|SOP|DR|", s.getRecordedData(true));
-		waitFor(50);
+		waitFor(90);
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 
