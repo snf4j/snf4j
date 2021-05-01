@@ -31,9 +31,13 @@ jobs:
         java-version: ${{ matrix.java }}
         distribution: 'adopt'
         
+    - name: Install dependencies
+      run: |
+        mvn install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+    
     - name: Build on Java ${{ matrix.java }}
       run: |
-        mvn -B package --file pom.xml || echo "Build failed"
+        mvn -B test || echo "Build failed"
         cat snf4j-core/target/surefire-reports/*.txt
         cat snf4j-core-slf4j/target/surefire-reports/*.txt
         
