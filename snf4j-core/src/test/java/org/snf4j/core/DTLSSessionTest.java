@@ -1017,6 +1017,8 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(nop());
 		s.waitForSessionReady(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(100);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		c.throwInRead = true;
