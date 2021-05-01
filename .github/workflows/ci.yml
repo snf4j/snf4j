@@ -20,7 +20,7 @@ jobs:
         
     env:
       SNF4J_SKIP_TEST_LOGGING: true
-      TRAVIS: true
+      SNF4J_UNIX_TEST: true
       
     steps:
     - name: Check out code    
