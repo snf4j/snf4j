@@ -1281,6 +1281,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT*10);
 		s.waitForSessionReady(TIMEOUT*10);
+		waitFor(50);
 		
 		p.action = p.DEFAULT_ACTION;
 		s.getRecordedData(true);
