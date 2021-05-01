@@ -1427,8 +1427,8 @@ public class SctpSessionTest extends SctpTest {
 		c = new SctpClient(PORT);
 		c.start();
 		waitForReady(TIMEOUT);
+		s.resetLocks();
 		session = c.session;
-		
 		session.write(nopb("1111"));
 		assertWrite("DR|NOP(1111d)|");
 		clearTraces();
