@@ -288,6 +288,7 @@ public class DTLSSessionTest extends DTLSTest {
 		
 		c.startClient();
 		assertReady(c, s, "SCR|SOP|DR+|DS+|RDY|DR+|", "SCR|SOP|DR+|DS+|RDY|DS|");
+		clearDataLocks(c,s);
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
@@ -352,6 +353,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.codecPipeline = codec;
 		c.startClient();
 		assertReady(c, s, "SCR|SOP|DR+|DS+|RDY|DR+|", "SCR|SOP|DR+|DS+|RDY|DS|");
+		clearDataLocks(c,s);
 		c.getSession().send(s.getSession().getLocalAddress(), nop("3")).sync(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
