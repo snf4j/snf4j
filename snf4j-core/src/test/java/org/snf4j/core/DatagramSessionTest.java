@@ -1875,7 +1875,7 @@ public class DatagramSessionTest {
 		s.getSession().getTimer().scheduleEvent("t1", 10);
 		waitFor(8);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(4);
+		waitFor(10);
 		assertEquals("TIM;t1|", s.getRecordedData(true));
 		
 		((DefaultTimer)s.timer).cancel();
