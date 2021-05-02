@@ -577,17 +577,18 @@ public class DatagramServerSessionTest {
 		assertTrue(session.getLastIoTime() >= session.getCreationTime());
 		assertTrue(session.getLastIoTime() <= ms2);
 		
-		waitFor(100);
+		waitFor(50);
 		assertTrue(session.getLastWriteTime() == session.getCreationTime());
 		session.write(nop()).sync(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
 		assertTrue(session.getLastWriteTime() > session.getCreationTime());
 		assertTrue(session.getLastWriteTime() == session.getLastIoTime());
 		assertTrue(session.getLastWriteTime() > session.getLastReadTime());
 		assertTrue(session.getLastWriteTime() <= System.currentTimeMillis());
 		
 		ms = session.getLastReadTime();
-		waitFor(100);
+		waitFor(50);
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		assertTrue(session.getLastReadTime() > ms);

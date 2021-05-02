@@ -714,12 +714,14 @@ public class DTLSSessionTest extends DTLSTest {
 		s.startServer();
 		c.startClient();
 		assertReady(c, s);
+		clearDataLocks(c, s);
 		DatagramSession origSession = c.getSession();
 		DatagramHandler origC = c;
 		
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		
