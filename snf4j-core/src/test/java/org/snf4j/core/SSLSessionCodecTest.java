@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -239,6 +239,7 @@ public class SSLSessionCodecTest {
 	@Test
 	public void testEncodeException() throws Exception {
 		startWithCodec(true);
+		waitFor(100);
 		c.incidentRecordException = true;
 		Packet packet = new Packet(PacketType.ECHO, "ABC");
 		StreamSession session = c.getSession();
@@ -267,6 +268,7 @@ public class SSLSessionCodecTest {
 		
 		//quick close on incident
 		startWithCodec(true);
+		waitFor(100);
 		c.incidentRecordException = true;
 		c.incidentQuickClose = true;
 		codec.encodeException = new Exception("E3");
@@ -280,6 +282,7 @@ public class SSLSessionCodecTest {
 
 		//dirty close on incident
 		startWithCodec(true);
+		waitFor(100);
 		c.incidentRecordException = true;
 		c.incidentDirtyClose = true;
 		codec.encodeException = new Exception("E4");
@@ -456,7 +459,7 @@ public class SSLSessionCodecTest {
 		session.write(packet);
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|DR|ECHO(ABCe)|DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
+		SSLSessionTest.assertTLSVariants("DS|DR|ECHO(ABCe)|DS|DR|?{DS|}SCL|SEN|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -469,7 +472,7 @@ public class SSLSessionCodecTest {
 		session.write(packet);
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|DR|ECHO(ABCe)|DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
+		SSLSessionTest.assertTLSVariants("DS|DR|ECHO(ABCe)|DS|DR|?{DS|}SCL|SEN|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE(ABCed)|DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -498,7 +501,7 @@ public class SSLSessionCodecTest {
 		assertTrue(session.write(packet).await(TIMEOUT).isCancelled());
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
+		SSLSessionTest.assertTLSVariants("DS|DR|?{DS|}SCL|SEN|", s.getRecordedData(true));
 		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -512,7 +515,7 @@ public class SSLSessionCodecTest {
 		assertTrue(future.await(TIMEOUT).isCancelled());
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
+		SSLSessionTest.assertTLSVariants("DS|DR|?{DS|}SCL|SEN|", s.getRecordedData(true));
 		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);

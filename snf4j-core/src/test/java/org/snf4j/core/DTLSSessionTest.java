@@ -288,6 +288,7 @@ public class DTLSSessionTest extends DTLSTest {
 		
 		c.startClient();
 		assertReady(c, s, "SCR|SOP|DR+|DS+|RDY|DR+|", "SCR|SOP|DR+|DS+|RDY|DS|");
+		clearDataLocks(c,s);
 		c.getSession().write(nop());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
@@ -352,6 +353,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.codecPipeline = codec;
 		c.startClient();
 		assertReady(c, s, "SCR|SOP|DR+|DS+|RDY|DR+|", "SCR|SOP|DR+|DS+|RDY|DS|");
+		clearDataLocks(c,s);
 		c.getSession().send(s.getSession().getLocalAddress(), nop("3")).sync(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
@@ -391,6 +393,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.codecPipeline = codec;
 		c.startServer();
 		assertReady(c, s);
+		clearDataLocks(c,s);
 		c.getSession().write(nop()).sync(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
@@ -406,6 +409,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s2.codecPipeline = codec;
 		s2.startServer();
 		s2.waitForSessionReady(TIMEOUT);
+		clearDataLocks(s2);
 		s2.getRecordedData(true);
 		c.getSession().send(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT+2), nop("4")).sync(TIMEOUT);
 		s2.waitForDataRead(TIMEOUT);
@@ -431,6 +435,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s2 = new DatagramHandler(PORT);
 		s2.startClient();
 		s2.waitForSessionReady(TIMEOUT);
+		clearDataLocks(s2);
 		s2.getRecordedData(true);
 		s2.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s2.waitForDataRead(TIMEOUT);
@@ -572,7 +577,7 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(960);
 		assertEquals("DR|DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|SCR|SOP|DR|", s.getRecordedData(true));
-		waitFor(50);
+		waitFor(90);
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 		
@@ -588,7 +593,7 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(960);
 		assertEquals("DR|DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|SCR|SOP|DR|", s.getRecordedData(true));
-		waitFor(50);
+		waitFor(90);
 		assertEquals("EXC|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 
@@ -630,6 +635,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		
@@ -642,6 +648,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		
@@ -653,6 +660,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR+|DS+|ECHO()|DS|", getRecordedData(s));
 		assertEquals("DR+|DS+|ECHO_RESPONSE()|", getRecordedData(c));
 		
@@ -664,6 +672,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		
@@ -675,6 +684,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForDataRead(TIMEOUT);
 		c.waitForDataRead(TIMEOUT);
+		waitFor(50);
 		assertEquals("DR+|DS+|ECHO()|DS|", getRecordedData(c));
 		assertEquals("DR+|DS+|ECHO_RESPONSE()|", getRecordedData(s));
 		
@@ -704,12 +714,14 @@ public class DTLSSessionTest extends DTLSTest {
 		s.startServer();
 		c.startClient();
 		assertReady(c, s);
+		clearDataLocks(c, s);
 		DatagramSession origSession = c.getSession();
 		DatagramHandler origC = c;
 		
 		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData(true);
 		
@@ -1274,6 +1286,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT*10);
 		s.waitForSessionReady(TIMEOUT*10);
+		waitFor(50);
 		
 		p.action = p.DEFAULT_ACTION;
 		s.getRecordedData(true);

@@ -1,6 +1,9 @@
-# This workflow will build a Java project with Maven
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
+# 
+# CI build that assembles artifacts and runs tests.
+#
+# USAGE:
+# - to skip CI add [skip ci] to the commit message
+#
 name: CI
 
 on:
@@ -12,14 +15,15 @@ on:
 jobs:
   build:    
     runs-on: ubuntu-latest
+    if: "! contains(toJSON(github.event.commits.*.message), '[skip ci]')"
 
     strategy:
       matrix:
-        java: [8]
+        java: [8, 9, 10, 11]
         
     env:
       SNF4J_SKIP_TEST_LOGGING: true
-      TRAVIS: true
+      SNF4J_UNIX_TEST: true
       
     steps:
     - name: Check out code    
@@ -37,12 +41,26 @@ jobs:
     
     - name: Build on Java ${{ matrix.java }}
       run: |
-        mvn -B test || echo "Build failed"
-        cat snf4j-core/target/surefire-reports/*.txt
-        cat snf4j-core-slf4j/target/surefire-reports/*.txt
+        mvn -B test
         
-    - name: Upload coverage report
+    - name: Log failure reports
+      if: ${{ failure() }}
+      run: |
+        cat snf4j-core/target/surefire-reports/*.txt
+        cat snf4j-core-log4j2/target/surefire-reports/*.txt
+        cat snf4j-core-slf4j/target/surefire-reports/*.txt
+        cat snf4j-sctp/target/surefire-reports/*.txt
+    
+    - name: Generate coverage report
       if: matrix.java == 8
       run: |
         mvn cobertura:cobertura || echo "Code coverage failed"
-        bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
+
+    - name: Upload coverage to Codecov
+      if: matrix.java == 8
+      uses: codecov/codecov-action@v1
+      with:
+        name: codecov-umbrella
+        fail_ci_if_error: true
+        verbose: false
+        

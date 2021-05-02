@@ -161,6 +161,33 @@ public class SessionTest {
 		return (ByteBuffer[]) f.get(s);
 	}
 	
+	static void assertVaraints(String expected, String actual, boolean useVariant) {
+		String variant = expected;
+		int i,j;
+		
+		while ((i = expected.indexOf("?{")) != -1) {
+			j = expected.indexOf("}", i);
+			if (j != -1) {
+				String s1 = expected.substring(i, j+1);
+				String s2 = expected.substring(i+2,j);
+				
+				expected = expected.replace(s1, s2);
+				variant = variant.replace(s1, "");
+			}
+			else {
+				break;
+			}
+		}
+		if (useVariant) {
+			if (!expected.equals(actual)) {
+				assertEquals(variant, actual);
+			}
+		}
+		else {
+			assertEquals(expected, actual);
+		}
+	}
+	
 	@Test
 	public void testConstructor() {
 		try {
@@ -2212,11 +2239,11 @@ public class SessionTest {
 		Arrays.fill(payload, (byte)'1');
 		byte[] data = new Packet(PacketType.NOP, new String(payload)).toBytes();
 		int writeCount = 2000;
-		boolean travis = "true".equalsIgnoreCase(System.getenv("TRAVIS")) || true;
-		int maxTries = travis ? 10 : 1;
+		boolean unix = "true".equalsIgnoreCase(System.getenv("SNF4J_UNIX_TEST")) || true;
+		int maxTries = unix ? 10 : 1;
 		StringBuilder sb = new StringBuilder();
 		
-		//In Travis CI we are trying 10 times as it is difficult to predict the size
+		//On unix we are trying 10 times as it is difficult to predict the size
 		//of data consumed by single execution of channel's write method.
 		for (int t=0; t<maxTries; ++t) {
 			c = new Client(PORT);
@@ -2264,7 +2291,7 @@ public class SessionTest {
 			assertEquals("SCL|SEN|", text.substring(count2*3));
 			
 			boolean countsOk;
-			if (travis) {
+			if (unix) {
 				countsOk = count2 > count;
 			}
 			else {

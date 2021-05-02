@@ -162,7 +162,7 @@ public class StreamSelectorLoopTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DR|DS|SCL|SEN|", s.getRecordedData(true));
+		SSLSessionTest.assertTLSVariants("DR|?{DS|}SCL|SEN|", s.getRecordedData(true));
 
 		s.stop(TIMEOUT);
 
@@ -1054,8 +1054,8 @@ public class StreamSelectorLoopTest {
 	
 	@Test
 	public void testConnectClientToClient() throws Exception {
-		//Does not work in the Travis CI environment
-		Assume.assumeTrue(!"true".equalsIgnoreCase(System.getenv("TRAVIS")));
+		//Does not work on unix
+		Assume.assumeTrue(!"true".equalsIgnoreCase(System.getenv("SNF4J_UNIX_TEST")));
 		
 		int size = PORT_MAX-PORT_MIN;
 		
