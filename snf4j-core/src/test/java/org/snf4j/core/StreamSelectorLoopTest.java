@@ -162,7 +162,7 @@ public class StreamSelectorLoopTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("DR|DS|SCL|SEN|", s.getRecordedData(true));
+		SSLSessionTest.assertTLSVariants("DR|?{DS|}SCL|SEN|", s.getRecordedData(true));
 
 		s.stop(TIMEOUT);
 

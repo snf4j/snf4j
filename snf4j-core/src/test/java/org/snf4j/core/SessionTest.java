@@ -161,6 +161,33 @@ public class SessionTest {
 		return (ByteBuffer[]) f.get(s);
 	}
 	
+	static void assertVaraints(String expected, String actual, boolean useVariant) {
+		String variant = expected;
+		int i,j;
+		
+		while ((i = expected.indexOf("?{")) != -1) {
+			j = expected.indexOf("}", i);
+			if (j != -1) {
+				String s1 = expected.substring(i, j+1);
+				String s2 = expected.substring(i+2,j);
+				
+				expected = expected.replace(s1, s2);
+				variant = variant.replace(s1, "");
+			}
+			else {
+				break;
+			}
+		}
+		if (useVariant) {
+			if (!expected.equals(actual)) {
+				assertEquals(variant, actual);
+			}
+		}
+		else {
+			assertEquals(expected, actual);
+		}
+	}
+	
 	@Test
 	public void testConstructor() {
 		try {
