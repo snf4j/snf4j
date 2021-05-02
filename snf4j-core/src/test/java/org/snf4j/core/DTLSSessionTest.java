@@ -393,6 +393,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.codecPipeline = codec;
 		c.startServer();
 		assertReady(c, s);
+		clearDataLocks(c,s);
 		c.getSession().write(nop()).sync(TIMEOUT);
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataRead(TIMEOUT);
@@ -408,6 +409,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s2.codecPipeline = codec;
 		s2.startServer();
 		s2.waitForSessionReady(TIMEOUT);
+		clearDataLocks(s2);
 		s2.getRecordedData(true);
 		c.getSession().send(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT+2), nop("4")).sync(TIMEOUT);
 		s2.waitForDataRead(TIMEOUT);
@@ -433,6 +435,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s2 = new DatagramHandler(PORT);
 		s2.startClient();
 		s2.waitForSessionReady(TIMEOUT);
+		clearDataLocks(s2);
 		s2.getRecordedData(true);
 		s2.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s2.waitForDataRead(TIMEOUT);
