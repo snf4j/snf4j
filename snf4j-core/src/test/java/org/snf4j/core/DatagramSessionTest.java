@@ -1872,10 +1872,10 @@ public class DatagramSessionTest {
 		c.getRecordedData(true);
 		
 		assertTrue(c.getSession().getTimer() == UnsupportedSessionTimer.INSTANCE);
-		s.getSession().getTimer().scheduleEvent("t1", 10);
-		waitFor(8);
+		s.getSession().getTimer().scheduleEvent("t1", 100);
+		waitFor(80);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(10);
+		waitFor(40);
 		assertEquals("TIM;t1|", s.getRecordedData(true));
 		
 		((DefaultTimer)s.timer).cancel();
