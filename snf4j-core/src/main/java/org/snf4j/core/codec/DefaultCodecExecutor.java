@@ -48,7 +48,7 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 	
 	private final Deque<DecoderContext> decoders = new LinkedList<DecoderContext>();
 
-	private IBaseDecoder<?> baseDecoder;
+	private IBaseDecoder<?,?> baseDecoder;
 	
 	private boolean hasDecoders;
 	
@@ -82,8 +82,8 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 					decoders.add((DecoderContext) ctx);
 					if (!ctx.isClogged()) {
 						if (!hasDecoders) {
-							if (((DecoderContext) ctx).getDecoder() instanceof IBaseDecoder<?>) {
-								baseDecoder = (IBaseDecoder<?>) ((DecoderContext) ctx).getDecoder();
+							if (((DecoderContext) ctx).getDecoder() instanceof IBaseDecoder<?,?>) {
+								baseDecoder = (IBaseDecoder<?,?>) ((DecoderContext) ctx).getDecoder();
 							}
 							hasDecoders = true;
 						}
@@ -472,7 +472,7 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 	}
 	
 	@Override
-	public final IBaseDecoder<?> getBaseDecoder() {
+	public final IBaseDecoder<?,?> getBaseDecoder() {
 		return baseDecoder;
 	}
 

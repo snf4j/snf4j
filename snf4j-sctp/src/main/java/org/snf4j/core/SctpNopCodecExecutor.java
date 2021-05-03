@@ -59,7 +59,7 @@ class SctpNopCodecExecutor implements ICodecExecutor {
 	}
 
 	@Override
-	public IBaseDecoder<?> getBaseDecoder() {
+	public IBaseDecoder<?,?> getBaseDecoder() {
 		return null;
 	}
 

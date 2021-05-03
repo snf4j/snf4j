@@ -64,7 +64,7 @@ public class TestCodec {
 	IDecoder<?,?> PBD() { return new PBD(); }
 	IDecoder<?,?> PBD_D() { return new PBD('D'); }
 	IDecoder<?,?> PBD(char type) { return new PBD(type); }
-	IBaseDecoder<?> BasePD() { return new BasePD(); }
+	IBaseDecoder<?,?> BasePD() { return new BasePD(); }
 	IDecoder<?,?> BPD() { return new BPD(); }
 	IEncoder<?,?> PBE() { return new PBE(); }
 	IEncoder<?,?> PBE_E() { return new PBE('E'); }
@@ -151,7 +151,7 @@ public class TestCodec {
 		}
 	}
 	
-	class BasePD implements IBaseDecoder<Packet> {
+	class BasePD implements IBaseDecoder<byte[],Packet> {
 		@Override public void decode(ISession session, byte[] data, List<Packet> out) throws Exception {
 			out.add(Packet.fromBytes(data));
 		}

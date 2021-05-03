@@ -1063,7 +1063,7 @@ public class SessionCodecTest {
 		
 	}
 	
-	static class BaseDecoder extends ArrayToBufferDecoder implements IBaseDecoder<ByteBuffer> {
+	static class BaseDecoder extends ArrayToBufferDecoder implements IBaseDecoder<byte[],ByteBuffer> {
 
 		@Override
 		public int available(ISession session, ByteBuffer buffer, boolean flipped) {
