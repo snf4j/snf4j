@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,12 +38,15 @@ import org.snf4j.core.session.ISession;
  * this decoder will only work if this decoder is the first decoder in the
  * pipeline. Otherwise, it will work as a regular decoder.
  * 
+ * @param <I>
+ *            the type of the accepted inbound objects. It is expected that the 
+ *            type should be either {@code byte[]} or {@link ByteBuffer}.
  * @param <O>
  *            the type of the produced outbound objects
  *            
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public interface IBaseDecoder<O> extends IDecoder<byte[],O> {
+public interface IBaseDecoder<I,O> extends IDecoder<I,O> {
 
 	/**
 	 * Determines how many bytes should be read from the input buffer to create 

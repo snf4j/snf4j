@@ -2058,7 +2058,7 @@ public class CodecPipelineTest {
 		}
 	}
 	
-	class BaseS implements IBaseDecoder<String> {
+	class BaseS implements IBaseDecoder<byte[],String> {
 		@Override public int available(ISession session, ByteBuffer buffer, boolean flipped) {return 0;}
 		@Override public int available(ISession session, byte[] buffer, int off, int len) {return 0;}
 		@Override public Class<byte[]> getInboundType() {return byte[].class;}

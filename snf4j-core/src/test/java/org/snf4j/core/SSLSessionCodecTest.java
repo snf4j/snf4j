@@ -37,6 +37,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.TestCodec.BBDEv;
 import org.snf4j.core.codec.DefaultCodecExecutor;
+import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.session.IllegalSessionStateException;
@@ -566,4 +567,28 @@ public class SSLSessionCodecTest {
 		assertEquals("A("+id+")|CLOSED("+id+")|ENDING("+id+")|", ((BBDEv)d2).getTrace());	
 	
 	}
+	
+	@Test
+	public void testGenericBaseBuffer() throws Exception {
+		DefaultCodecExecutor e = new DefaultCodecExecutor();
+		ICodecPipeline p = e.getPipeline();
+		
+		p.add("B", codec.BasePD2());
+		startWithCodec(e);
+		waitFor(50);
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		byte[] data = new Packet(PacketType.NOP, "12345678").toBytes();
+		s.getSession().write(data, 0, 5);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataReceived(TIMEOUT);
+		waitFor(100);
+		assertEquals("DS|",s.getRecordedData(true));
+		assertEquals("DR|",c.getRecordedData(true));
+		s.getSession().write(data, 5, data.length-5);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|",s.getRecordedData(true));
+		assertEquals("DR|M(NOP[12345678])|",c.getRecordedData(true));		
+	}	
 }

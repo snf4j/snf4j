@@ -79,7 +79,7 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	public int available(ByteBuffer buffer, boolean flipped) {
 		executor.syncDecoders(session);
 
-		IBaseDecoder<?> base = executor.getBaseDecoder();
+		IBaseDecoder<?,?> base = executor.getBaseDecoder();
 		
 		if (base != null) {
 			return base.available(session, buffer, flipped);
@@ -94,7 +94,7 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	public int available(byte[] buffer, int off, int len) {
 		executor.syncDecoders(session);
 		
-		IBaseDecoder<?> base = executor.getBaseDecoder();
+		IBaseDecoder<?,?> base = executor.getBaseDecoder();
 		
 		if (base != null) {
 			return base.available(session, buffer, off, len);

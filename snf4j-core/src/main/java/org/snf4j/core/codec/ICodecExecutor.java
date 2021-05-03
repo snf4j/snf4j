@@ -107,7 +107,7 @@ public interface ICodecExecutor {
 	 *         {@link IBaseDecoder}, if the first decoder does not implement it
 	 *         then <code>null</code> should be returned.
 	 */
-	IBaseDecoder<?> getBaseDecoder();
+	IBaseDecoder<?,?> getBaseDecoder();
 
 	/**
 	 * Informs if the pipeline has decoders that produce outbound object(s).
