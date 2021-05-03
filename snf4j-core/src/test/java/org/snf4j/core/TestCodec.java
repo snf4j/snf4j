@@ -65,6 +65,7 @@ public class TestCodec {
 	IDecoder<?,?> PBD_D() { return new PBD('D'); }
 	IDecoder<?,?> PBD(char type) { return new PBD(type); }
 	IBaseDecoder<?,?> BasePD() { return new BasePD(); }
+	IBaseDecoder<?,?> BasePD2() { return new BasePD2(); }
 	IDecoder<?,?> BPD() { return new BPD(); }
 	IEncoder<?,?> PBE() { return new PBE(); }
 	IEncoder<?,?> PBE_E() { return new PBE('E'); }
@@ -158,21 +159,31 @@ public class TestCodec {
 		@Override public Class<byte[]> getInboundType() {return byte[].class;}
 		@Override public Class<Packet> getOutboundType() {return Packet.class;}
 		@Override public int available(ISession session, ByteBuffer buffer, boolean flipped) {
-			int len = flipped ? buffer.remaining() : buffer.position();
-			byte[] data = new byte[len];
-			ByteBuffer dup = buffer.duplicate();
-			
-			if (!flipped) {
-				dup.flip();
-			}
-			dup.get(data);
-			return Packet.available(data, 0, len);
+			return Packet.available(buffer, flipped);
 		}
 		@Override public int available(ISession session, byte[] buffer, int off, int len) {
 			return Packet.available(buffer, off, len);
 		}
 	}
 
+	class BasePD2 implements IBaseDecoder<ByteBuffer,Packet> {
+		@Override public void decode(ISession session, ByteBuffer data, List<Packet> out) throws Exception {
+			byte[] bytes = new byte[data.remaining()];
+			
+			data.get(bytes);
+			session.release(data);
+			out.add(Packet.fromBytes(bytes));
+		}
+		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
+		@Override public Class<Packet> getOutboundType() {return Packet.class;}
+		@Override public int available(ISession session, ByteBuffer buffer, boolean flipped) {
+			return Packet.available(buffer, flipped);
+		}
+		@Override public int available(ISession session, byte[] buffer, int off, int len) {
+			return Packet.available(buffer, off, len);
+		}
+	}
+	
 	class BPD implements IDecoder<byte[],Packet> {
 		@Override public void decode(ISession session, byte[] data, List<Packet> out) throws Exception {
 			out.add(Packet.fromBytes(data));

@@ -1063,6 +1063,28 @@ public class SessionCodecTest {
 		
 	}
 	
+	@Test
+	public void testGenericBaseBuffer() throws Exception {
+		DefaultCodecExecutor e = new DefaultCodecExecutor();
+		ICodecPipeline p = e.getPipeline();
+		
+		p.add("B", codec.BasePD2());
+		startWithCodec(e);
+		byte[] data = new Packet(PacketType.NOP, "12345678").toBytes();
+		
+		s.getSession().write(data, 0, 5);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataReceived(TIMEOUT);
+		waitFor(100);
+		assertEquals("DS|",s.getRecordedData(true));
+		assertEquals("DR|",c.getRecordedData(true));
+		s.getSession().write(data, 5, data.length-5);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|",s.getRecordedData(true));
+		assertEquals("DR|M(NOP[12345678])|",c.getRecordedData(true));
+	}
+	
 	static class BaseDecoder extends ArrayToBufferDecoder implements IBaseDecoder<byte[],ByteBuffer> {
 
 		@Override

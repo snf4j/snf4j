@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,8 @@
  * -----------------------------------------------------------------------------
  */
 package org.snf4j.core;
+
+import java.nio.ByteBuffer;
 
 public class Packet {
 	PacketType type;
@@ -50,6 +52,18 @@ public class Packet {
 			}
 		}
 		return 0;
+	}
+	
+	static int available(ByteBuffer buffer, boolean flipped) {
+		int len = flipped ? buffer.remaining() : buffer.position();
+		byte[] data = new byte[len];
+		ByteBuffer dup = buffer.duplicate();
+		
+		if (!flipped) {
+			dup.flip();
+		}
+		dup.get(data);
+		return available(data, 0, len);
 	}
 	
 	static PacketType typeFromBytes(byte[] data) {
