@@ -218,7 +218,8 @@ public class ZlibDecoder extends ZlibCodec implements IDecoder<byte[],ByteBuffer
 			preInflate(session, in);
 
 			if (in.hasRemaining()) {
-				ByteBuffer inflated = ByteBuffer.allocate(inflateBound(in.remaining()));
+				int inflateBound = inflateBound(in.remaining());
+				ByteBuffer inflated = ByteBuffer.allocate(inflateBound);
 				int len;
 
 				inflater.setInput(in.array(), in.position(), in.remaining());
@@ -231,7 +232,7 @@ public class ZlibDecoder extends ZlibCodec implements IDecoder<byte[],ByteBuffer
 							if (!inflated.hasRemaining()) {
 								inflated.flip();
 								out.add(inflated);
-								inflated = ByteBuffer.allocate(inflateBound(inflater.getRemaining()));
+								inflated = ByteBuffer.allocate(inflateBound);
 							}
 						}
 						else if (inflater.needsDictionary()) {

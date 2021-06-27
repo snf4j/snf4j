@@ -428,6 +428,8 @@ public class SSLSessionTest {
 		assertTrue(session1 == ((SSLSession)c.getSession()).getEngineSession());
 		c.getRecordedData(true);
 		s.getRecordedData(true);
+		c.resetDataLocks();
+		s.resetDataLocks();
 		c.getSession().write(new Packet(PacketType.ECHO, "1").toBytes());
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
@@ -454,6 +456,8 @@ public class SSLSessionTest {
 		}
 		c.getRecordedData(true);
 		s.getRecordedData(true);
+		c.resetDataLocks();
+		s.resetDataLocks();
 		c.getSession().write(new Packet(PacketType.ECHO, "2").toBytes());
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);

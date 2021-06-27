@@ -2606,11 +2606,11 @@ public class SessionTest {
 		
 		s.throwInTimer = true;
 		stimer.scheduleEvent("e1", 10);
-		waitFor(20);
+		waitFor(50);
 		assertEquals(1, s.throwInTimerCount.get());
 		assertEquals("TIM;e1|", s.getRecordedData(true));
 		stimer.scheduleTask(new Task("t1"), 10, true);
-		waitFor(20);
+		waitFor(50);
 		assertEquals(2, s.throwInTimerCount.get());
 		assertEquals("TIM;t1|", s.getRecordedData(true));
 		

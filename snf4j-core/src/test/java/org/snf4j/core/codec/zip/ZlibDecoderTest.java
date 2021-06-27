@@ -25,6 +25,7 @@
  */
 package org.snf4j.core.codec.zip;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -35,6 +36,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
+import org.snf4j.core.codec.zip.ZlibCodec.Mode;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
@@ -360,6 +362,24 @@ public class ZlibDecoderTest extends DecoderTest {
 		d.event(null, SessionEvent.READY);
 		d.event(null, SessionEvent.CLOSED);
 		d.event(null, SessionEvent.ENDING);
+	}
+	
+	@Test
+	public void testDecodeHighlyCompressed() throws Exception {
+		ZlibEncoder e = new ZlibEncoder(9, Mode.RAW);
+		ZlibDecoder d = new ZlibDecoder(Mode.RAW);
+		
+		e.encode(null, new byte[1000], out);
+		assertEquals(1, out.size());
+		byte[] b = new byte[out.get(0).remaining()];
+		out.get(0).get(b);
+		out.clear();
+		d.decode(null, b, out);
+		int exp = 1000/(b.length*2);
+		if (exp*b.length*2 < 1000) {
+			exp++;
+		}
+		assertEquals(exp, out.size());
 	}
 	
 	static class TestZlibDecoder extends ZlibDecoder {
