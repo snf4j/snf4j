@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -207,6 +207,12 @@ public class Server {
 		if (lastServers.size() > 10) {
 			lastServers.removeFirst();
 		}
+	}
+	
+	public void resetDataLocks() {
+		dataReceivedLock.set(false);
+		dataReadLock.set(false);
+		dataSentLock.set(false);
 	}
 	
 	public Server findRemote() {
