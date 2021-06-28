@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -169,11 +169,13 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 							}
 						}
 						catch (PipelineDecodeException e) {
+							inAppBuffer.compact();
 							elogger.error(logger, SessionIncident.DECODING_PIPELINE_FAILURE.defaultMessage(), session, e.getCause());
 							fireException(e.getCause());
 							return false;
 						}
 						catch (Exception e) {
+							inAppBuffer.compact();
 							elogger.error(logger, "Reading from input application buffer failed for {}: {}", session, e);
 							fireException(e);
 							return false;

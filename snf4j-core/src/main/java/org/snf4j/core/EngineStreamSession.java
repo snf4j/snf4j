@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -130,12 +130,20 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 	}	
 	
 	@Override
+	void controlCloseException(Throwable t) {
+		internal.exception(t);
+	}
+	
+	@Override
 	void exception(Throwable t) {
 		if (isValid(EventType.EXCEPTION_CAUGHT)) {
 			try {
-				internal.exception(t);
-				futuresController.exception(t);
-				super.quickClose();
+				t = controlClose(t);
+				if (t != null) {
+					internal.exception(t);
+					futuresController.exception(t);
+					super.quickClose();
+				}
 			}
 			catch (Exception e) {
 				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);

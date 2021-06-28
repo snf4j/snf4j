@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,8 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.session.ISessionConfig;
 
 public class AbstractDatagramHandlerTest {
 	
@@ -55,6 +57,14 @@ public class AbstractDatagramHandlerTest {
 		assertNull(h.getFactory().getAttributes());
 		assertTrue(DefaultAllocator.DEFAULT == h.getFactory().getAllocator());
 		h.event(null, null, -1);
+
+		DefaultSessionConfig config = new DefaultSessionConfig();
+		DatagramHandler handler = new DatagramHandler(config);
+		assertTrue(config == handler.getConfig());
+		assertNull(handler.getName());
+		handler = new DatagramHandler("Name", config);
+		assertTrue(config == handler.getConfig());
+		assertEquals("Name", handler.getName());	
 	}
 	
 	@Test
@@ -96,4 +106,25 @@ public class AbstractDatagramHandlerTest {
 		assertTrue(bb == readMsg);
 		
 	}
+	
+	static class DatagramHandler extends AbstractDatagramHandler {
+
+		 protected DatagramHandler(ISessionConfig config) {
+				super(config);
+		}
+
+		protected DatagramHandler(String name, ISessionConfig config) {
+			super(name, config);
+		}
+		 
+		@Override
+		public void read(Object msg) {
+		}
+
+		@Override
+		public void read(SocketAddress remoteAddress, Object msg) {
+		}
+		
+	}
+	
 }

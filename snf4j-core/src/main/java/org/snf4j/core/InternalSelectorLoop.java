@@ -594,7 +594,23 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 							if (key.isValid()) {
 								fireException(key, e);
 							}
-							key.cancel();
+							
+							boolean cancel = true;
+							
+							if (e instanceof ICloseControllingException) {
+								switch (((ICloseControllingException)e).getCloseType()) {
+								case GENTLE:
+								case NONE:
+									cancel = false;
+									break;
+									
+								default:
+								}
+							}
+							
+							if (cancel) {
+								key.cancel();
+							}
 							elogger.error(logger, "Processing of selected key for {} failed: {}", key.attachment(), e);
 						}
 

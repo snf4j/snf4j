@@ -727,12 +727,40 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 	
+	void controlCloseException(Throwable t) {
+		handler.exception(t);
+	}
+	
+	Throwable controlClose(Throwable t) {
+		if (t instanceof ICloseControllingException) {
+			ICloseControllingException e = (ICloseControllingException) t;
+			
+			t = e.getClosingCause();
+			switch (e.getCloseType()) {
+			case GENTLE:
+				controlCloseException(t);
+				close();
+				return null;
+				
+			case NONE:
+				controlCloseException(t);
+				return null;
+				
+			default:
+			}
+		}
+		return t;
+	}
+	
 	void exception(Throwable t) {
 		if (isValid(EventType.EXCEPTION_CAUGHT)) {
 			try {
-				handler.exception(t);
-				futuresController.exception(t);
-				quickClose();
+				t = controlClose(t);
+				if (t != null) {
+					handler.exception(t);
+					futuresController.exception(t);
+					quickClose();
+				}
 			}
 			catch (Exception e) {
 				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);

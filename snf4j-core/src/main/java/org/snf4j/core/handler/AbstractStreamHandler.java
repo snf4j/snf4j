@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ package org.snf4j.core.handler;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.session.ISession;
+import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.IStreamSession;
 
 /**
@@ -44,6 +45,17 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 	}
 	
 	/**
+	 * Constructor creating an unnamed stream-oriented handler with given session
+	 * configuration object.
+	 * 
+	 * @param config 
+	 *            the session configuration object
+	 */	
+	 protected AbstractStreamHandler(ISessionConfig config) {
+		super(config);
+	}
+	
+	/**
 	 * Constructor creating a named stream-oriented handler.
 	 * 
 	 * @param name
@@ -52,6 +64,20 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 	protected AbstractStreamHandler(String name) {
 		super(name);
 	}
+	
+	/**
+	 * Constructor creating a named stream-oriented handler with given session
+	 * configuration object.
+	 * 
+	 * @param name
+	 *            the name for this handler
+	 * @param config 
+	 *            the session configuration object
+	 */
+	protected AbstractStreamHandler(String name, ISessionConfig config) {
+		super(name, config);
+	}
+	
 	
 	/**
 	 * Sets the stream-oriented session that will be associated with this

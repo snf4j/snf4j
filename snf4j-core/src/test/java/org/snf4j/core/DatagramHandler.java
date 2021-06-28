@@ -113,6 +113,7 @@ public class DatagramHandler {
 	public volatile boolean throwInSuperRead;
 	public final AtomicInteger throwInSuperReadCount = new AtomicInteger();
 	public volatile boolean throwInIncident;
+	public volatile RuntimeException throwIn;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
@@ -745,7 +746,7 @@ public class DatagramHandler {
 			
 			if(throwInRead) {
 				throwInReadCount.incrementAndGet();
-				throw new NullPointerException();
+				throw throwIn != null ? throwIn : new NullPointerException();
 			}
 		}
 		
