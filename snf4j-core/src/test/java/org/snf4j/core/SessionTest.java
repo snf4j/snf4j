@@ -1966,6 +1966,49 @@ public class SessionTest {
 		assertEquals("", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+		
+		Exception e = new Exception("Ex2");
+		s = new Server(PORT);
+		s.throwInRead = true;
+		s.throwIn = new CloseControllingException("Ex1", ICloseControllingException.CloseType.NONE, e);
+		s.exceptionRecordException = true;
+		c = new Client(PORT);
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|EXC|(Ex2)|DS|", s.getRecordedData(true));
+		s.throwIn = new CloseControllingException("Ex1", ICloseControllingException.CloseType.GENTLE, e);
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|EXC|(Ex2)|DS|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	
+		s = new Server(PORT);
+		s.throwInRead = true;
+		s.throwIn = new CloseControllingException("Ex1", ICloseControllingException.CloseType.DEFAULT, e);
+		s.exceptionRecordException = true;
+		c = new Client(PORT);
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|EXC|(Ex2)|SCL|SEN|", s.getRecordedData(true));	
 	}
 	
 	@Test
@@ -3251,6 +3294,32 @@ public class SessionTest {
 		assertEquals(1, a2.getReleasedCount());
 		assertTrue(data == b2[0]);
 		
+		
+	}
+	
+	public static class CloseControllingException extends RuntimeException implements ICloseControllingException {
+
+		private static final long serialVersionUID = 1L;
+
+		ICloseControllingException.CloseType type;
+		
+		Throwable cause;
+		
+		CloseControllingException(String message, ICloseControllingException.CloseType type, Throwable cause) {
+			super(message);
+			this.type = type;
+			this.cause = cause;
+		}
+		
+		@Override
+		public CloseType getCloseType() {
+			return type;
+		}
+
+		@Override
+		public Throwable getClosingCause() {
+			return cause != null ? cause : this;
+		}
 		
 	}
 	

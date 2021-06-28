@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
  */
 package org.snf4j.core.handler;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -36,7 +37,9 @@ import org.snf4j.core.DatagramSession;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.allocator.DefaultAllocator;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISession;
+import org.snf4j.core.session.ISessionConfig;
 
 public class AbstractStreamHandlerTest {
 
@@ -62,6 +65,14 @@ public class AbstractStreamHandlerTest {
 		assertNull(h.getFactory().getExecutor());
 		assertNull(h.getFactory().getAttributes());
 		assertTrue(DefaultAllocator.DEFAULT == h.getFactory().getAllocator());
+		
+		DefaultSessionConfig config = new DefaultSessionConfig();
+		StreamHandler handler = new StreamHandler(config);
+		assertTrue(config == handler.getConfig());
+		assertNull(handler.getName());
+		handler = new StreamHandler("Name", config);
+		assertTrue(config == handler.getConfig());
+		assertEquals("Name", handler.getName());
 	}
 
 	@Test
@@ -82,4 +93,20 @@ public class AbstractStreamHandlerTest {
 		assertTrue(bb == readMsg);
 		
 	}	
+	
+	static class StreamHandler extends AbstractStreamHandler {
+
+		 protected StreamHandler(ISessionConfig config) {
+				super(config);
+		}
+
+		protected StreamHandler(String name, ISessionConfig config) {
+			super(name, config);
+		}
+		 
+		@Override
+		public void read(Object msg) {
+		}
+		
+	}
 }

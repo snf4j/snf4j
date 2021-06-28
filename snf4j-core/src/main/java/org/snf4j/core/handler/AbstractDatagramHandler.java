@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.ISession;
+import org.snf4j.core.session.ISessionConfig;
 
 /**
  * Base implementation of the {@link IDatagramHandler} interface.
@@ -45,6 +46,17 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 	}
 	
 	/**
+	 * Constructor creating an unnamed datagram-oriented handler with given session
+	 * configuration object.
+	 * 
+	 * @param config 
+	 *            the session configuration object
+	 */	
+	 protected AbstractDatagramHandler(ISessionConfig config) {
+		super(config);
+	}
+	
+	/**
 	 * Constructor creating a named datagram-oriented handler.
 	 * 
 	 * @param name
@@ -52,6 +64,19 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 	 */
 	protected AbstractDatagramHandler(String name) {
 		super(name);
+	}
+	
+	/**
+	 * Constructor creating a named datagram-oriented handler with given session
+	 * configuration object.
+	 * 
+	 * @param name
+	 *            the name for this handler
+	 * @param config 
+	 *            the session configuration object
+	 */
+	protected AbstractDatagramHandler(String name, ISessionConfig config) {
+		super(name, config);
 	}
 
 	/**

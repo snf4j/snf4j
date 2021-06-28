@@ -125,6 +125,8 @@ public class Server {
 	public volatile boolean throwInEvent;
 	public volatile boolean throwInCreateSession;
 	public volatile boolean throwInTimer;
+	public volatile RuntimeException throwIn;
+	
 	public final AtomicInteger throwInEventCount = new AtomicInteger();
 	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	public final AtomicInteger throwInTimerCount = new AtomicInteger();
@@ -512,7 +514,7 @@ public class Server {
 	class Handler extends AbstractStreamHandler {
 
 		Handler() {
-			super(null);
+			super();
 		}
 		
 		void record(String data) {
@@ -777,7 +779,7 @@ public class Server {
 			LockUtils.notify(dataReadLock);
 			
 			if (throwInRead) {
-				throw new NullPointerException();
+				throw throwIn != null ? throwIn : new NullPointerException();
 			}
 		}
 

@@ -1043,6 +1043,77 @@ public class DTLSSessionTest extends DTLSTest {
 		waitFor(100);
 		assertEquals("", c.getRecordedData(true));
 	}
+	
+	@Test
+	public void testCloseControllingException() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.ssl = true;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().write(nop());
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(100);
+		c.clearDataLocks();
+		s.clearDataLocks();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		Exception e = new Exception("Ex2");
+		c.throwInRead = true;
+		c.throwIn = new SessionTest.CloseControllingException("Ex1", ICloseControllingException.CloseType.NONE, e);
+		s.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO()|EXC|DS|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE()|", s.getRecordedData(true));
+		c.throwIn = new SessionTest.CloseControllingException("Ex1", ICloseControllingException.CloseType.GENTLE, e);
+		s.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		s.waitForSessionEnding(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|ECHO()|EXC|DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE()|DR|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.ssl = true;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().write(nop());
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		waitFor(100);
+		c.clearDataLocks();
+		s.clearDataLocks();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		s.throwInRead = true;
+		s.throwIn = new SessionTest.CloseControllingException("Ex1", ICloseControllingException.CloseType.NONE, e);
+		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO()|EXC|DS|", s.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		s.throwIn = new SessionTest.CloseControllingException("Ex1", ICloseControllingException.CloseType.GENTLE, e);
+		c.getSession().write(new Packet(PacketType.ECHO).toBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|ECHO()|EXC|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE()|DR|DS|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+	}
 
 	@Test
 	public void testCloseInSessionCreatedEvent() throws Exception {

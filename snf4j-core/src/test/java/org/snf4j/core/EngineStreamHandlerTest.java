@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -334,6 +334,32 @@ public class EngineStreamHandlerTest {
 		assertEquals("DS|DR|ECHO()|EXC|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+		
+		Throwable t = new RuntimeException("Ex2");
+		s = new Server(PORT, true);
+		s.throwInRead = true;
+		s.throwIn = new SessionTest.CloseControllingException("Ex1", ICloseControllingException.CloseType.NONE, t);
+		s.exceptionRecordException = true;
+		c = new Client(PORT, true);
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+		s.resetDataLocks();
+		c.resetDataLocks();
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertEquals("DS|DR|ECHO()|EXC|(Ex2)|DS|", s.getRecordedData(true));
+		s.throwIn = new SessionTest.CloseControllingException("Ex1", ICloseControllingException.CloseType.GENTLE, t);
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE()|DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertEquals("DR|ECHO()|EXC|(Ex2)|DS|SCL|SEN|", s.getRecordedData(true));
 		
 	}
 	
