@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package org.snf4j.core;
 
 import java.nio.ByteBuffer;
 
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 
 public class TestStreamSession extends StreamSession {
@@ -65,4 +66,13 @@ public class TestStreamSession extends StreamSession {
 		}
 		return super.getInBuffer();
 	}
+	
+	public IFuture<Void> execute(Runnable task) {
+		return super.execute(task);
+	}
+	
+	public void executenf(Runnable task) {
+		super.executenf(task);
+	}
+	
 }

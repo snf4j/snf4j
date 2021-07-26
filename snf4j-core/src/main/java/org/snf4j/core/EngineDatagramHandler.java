@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -368,7 +368,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 						return true;
 					}
 					else {
-						session.superQuickClose();
+						superClose();
 					}
 					tryReleaseInAppBuffer();
 					return false;
@@ -490,7 +490,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 						}
 						return true;
 					}
-					session.superClose();
+					superClose();
 					break;
 					
 				case BUFFER_UNDERFLOW:
@@ -516,6 +516,11 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	@Override
 	void superQuickClose() {
 		session.superQuickClose();		
+	}
+	
+	@Override
+	void superClose() {
+		session.superClose();
 	}
 	
 	@Override

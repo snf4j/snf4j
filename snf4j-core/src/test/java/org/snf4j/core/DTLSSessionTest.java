@@ -1049,6 +1049,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
 		s.ssl = true;
+		s.timer = new TestTimer();
 		c = new DatagramHandler(PORT);
 		c.ssl = true;
 		s.startServer();
@@ -1083,6 +1084,7 @@ public class DTLSSessionTest extends DTLSTest {
 		s = new DatagramHandler(PORT);
 		s.useDatagramServerHandler = true;
 		s.ssl = true;
+		s.timer = new TestTimer();
 		c = new DatagramHandler(PORT);
 		c.ssl = true;
 		s.startServer();
@@ -2400,6 +2402,68 @@ public class DTLSSessionTest extends DTLSTest {
 		p.getPipeline().add("1", codec.BBBBE());
 		testOptimizedDataCopyingWrite(p);
 		testOptimizedDataCopyingWrite(null);
+	}
+	
+	@Test
+	public void testCloseAndResponseWithClose() throws Exception {
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		c.waitForCloseMessage = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.loop.execute(new Runnable() {
+			@Override
+			public void run() {
+				c.session.write(new Packet(PacketType.WRITE_AND_CLOSE, "12345").toBytes());
+				c.session.close();
+			}
+		});
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		String r = c.getRecordedData(true);
+		r = r.replace("DR|", "").replace("DS|", "");
+		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE_RESPONSE(12345)|SCL|SEN|", r);
+		r = s.getRecordedData(true);
+		r = r.replace("DR|", "").replace("DS|", "");
+		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE(12345)|SCL|SEN|", r);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.waitForCloseMessage = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		s.loop.execute(new Runnable() {
+			@Override
+			public void run() {
+				s.session.write(new Packet(PacketType.WRITE_AND_CLOSE, "12345").toBytes());
+				s.session.close();
+			}
+		});
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		r = s.getRecordedData(true);
+		r = r.replace("DR|", "").replace("DS|", "");
+		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE_RESPONSE(12345)|SCL|SEN|", r);
+		r = c.getRecordedData(true);
+		r = r.replace("DR|", "").replace("DS|", "");
+		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE(12345)|SCL|SEN|", r);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
 	}
 	
 }

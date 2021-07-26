@@ -661,6 +661,36 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 	
+	@Override
+	public IFuture<Void> execute(Runnable task) {
+		if (task == null) {
+			throw new IllegalArgumentException("task is null");
+		}
+		if (loop == null) {
+			throw new IllegalStateException("session not associated with selector loop");
+		}
+		if (loop.inLoop()) {
+			task.run();
+			return futuresController.getSuccessfulFuture();
+		}
+		return loop.execute(task);
+	}
+	
+	@Override
+	public void executenf(Runnable task) {
+		if (task == null) {
+			throw new IllegalArgumentException("task is null");
+		}
+		if (loop == null) {
+			throw new IllegalStateException("session not associated with selector loop");
+		}
+		if (loop.inLoop()) {
+			task.run();
+		}
+		else {
+			loop.executenf(task);
+		}
+	}
 	
 	final boolean wasException() {
 		return (eventBits & EventType.EXCEPTION_CAUGHT.bitMask()) != 0;

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentMap;
 
+import org.snf4j.core.SelectorLoopStoppingException;
 import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IHandler;
@@ -318,4 +319,36 @@ public interface ISession {
 	 */
 	void release(ByteBuffer buffer);
 
+	/**
+	 * Executes a task in the selector-loop's thread this session is registered
+	 * with. If this method is called in the selector-loop's thread the task is
+	 * executed synchronously.
+	 * 
+	 * @param task task to be executed in the selector-loop's thread
+	 * @throws SelectorLoopStoppingException if selector loop is in the process of
+	 *                                       stopping
+	 * @throws IllegalArgumentException      if {@code task} is null
+	 * @throws IllegalStateException         if the session is not associated with
+	 *                                       a selector loop
+	 * @return the future associated with the specified task
+	 */
+	IFuture<Void> execute(Runnable task);
+	
+	/**
+	 * Executes a task in the selector-loop's thread this session is registered
+	 * with. If this method is called in the selector-loop's thread the task is
+	 * executed synchronously.
+	 * <p>
+	 * This method should be used whenever there will be no need to synchronize
+	 * on a future associated with the specified task. This will save some
+	 * resources and may improve performance.
+	 * 
+	 * @param task task to be executed in the selector-loop's thread
+	 * @throws SelectorLoopStoppingException if selector loop is in the process of
+	 *                                       stopping
+	 * @throws IllegalArgumentException      if {@code task} is null
+	 * @throws IllegalStateException         if the session is not associated with
+	 *                                       a selector loop
+	 */
+	void executenf(Runnable task);
 }

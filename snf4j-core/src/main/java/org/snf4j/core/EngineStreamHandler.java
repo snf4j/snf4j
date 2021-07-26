@@ -218,11 +218,16 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						logger.debug("Unwrapping has been closed for {}", session);
 					}
 					if (!engine.isOutboundDone()) {
+						synchronized (writeLock) {
+							if (closing == ClosingState.NONE) {
+								closing = ClosingState.SENDING;
+							}
+						}
 						tryReleaseInAppBuffer();
 						return true;
 					}
 					else {
-						superQuickClose();
+						superClose();
 					}
 					tryReleaseInAppBuffer();
 					return false;
@@ -381,6 +386,11 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 	@Override
 	final void superQuickClose() {
 		session.superQuickClose();		
+	}
+	
+	@Override
+	final void superClose() {
+		session.superClose();
 	}
 	
 	private final void flush() {

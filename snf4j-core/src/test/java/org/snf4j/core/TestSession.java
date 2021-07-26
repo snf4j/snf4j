@@ -229,4 +229,13 @@ public class TestSession implements ISession {
 		this.buffer = buffer;
 	}
 
+	@Override
+	public IFuture<Void> execute(Runnable task) {
+		return null;
+	}
+
+	@Override
+	public void executenf(Runnable task) {
+	}
+
 }

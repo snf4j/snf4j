@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -302,5 +302,14 @@ public class TestDummyDatagramSession implements IDatagramSession {
 
 	@Override
 	public void release(ByteBuffer buffer) {
+	}
+
+	@Override
+	public IFuture<Void> execute(Runnable task) {
+		return null;
+	}
+
+	@Override
+	public void executenf(Runnable task) {
 	}
 }

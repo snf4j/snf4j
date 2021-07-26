@@ -63,6 +63,7 @@ import org.snf4j.core.codec.zip.GzipDecoder;
 import org.snf4j.core.codec.zip.GzipEncoder;
 import org.snf4j.core.codec.zip.ZlibDecoder;
 import org.snf4j.core.codec.zip.ZlibEncoder;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
@@ -3295,6 +3296,116 @@ public class SessionTest {
 		assertTrue(data == b2[0]);
 		
 		
+	}
+	
+	@Test
+	public void testExecute() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		final TestStreamSession tss = new TestStreamSession(new TestHandler("test"));
+		c.initSession = tss;
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(100);
+		
+		ExecuteTask task = new ExecuteTask(0);
+		tss.execute(task).sync(TIMEOUT);
+		assertNotNull(task.thread);
+		assertFalse(task.thread == Thread.currentThread());
+		assertTrue(task.thread.getName().startsWith("selector-loop-"));
+		Thread thread = task.thread;
+		
+		task = new ExecuteTask(200);
+		IFuture<Void> f = tss.execute(task);
+		waitFor(100);
+		assertFalse(f.isDone());
+		f.sync(200);
+		
+		task = new ExecuteTask(200);
+		tss.executenf(task);
+		waitFor(100);
+		assertNull(task.thread);
+		waitFor(200);
+		assertTrue(thread == task.thread);
+		
+		final ExecuteTask task2 = new ExecuteTask(200);
+		final StringBuilder sb = new StringBuilder();
+		c.loop.execute(new Runnable() {
+			@Override
+			public void run() {
+				sb.append(tss.execute(task2));
+			}
+		});
+		waitFor(100);
+		assertNull(task2.thread);
+		assertEquals("", sb.toString());
+		waitFor(200);
+		assertTrue(thread == task2.thread);
+		assertTrue(sb.toString().endsWith("SuccessfulFuture[successful]"));
+		
+		final ExecuteTask task3 = new ExecuteTask(200);
+		sb.setLength(0);
+		c.loop.execute(new Runnable() {
+			@Override
+			public void run() {
+				tss.executenf(task3);
+			}
+		});
+		waitFor(100);
+		assertNull(task3.thread);
+		waitFor(200);
+		assertTrue(thread == task3.thread);
+	
+		
+		TestStreamSession tss2 = new TestStreamSession(new TestHandler("test"));		
+		try {
+			tss2.execute(task);
+			fail();
+		}
+		catch (IllegalStateException e) {
+		}
+		try {
+			tss2.executenf(task);
+			fail();
+		}
+		catch (IllegalStateException e) {
+		}
+		try {
+			tss2.execute(null);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
+		try {
+			tss2.executenf(null);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
+		
+	}
+	
+	static class ExecuteTask implements Runnable {
+
+		volatile Thread thread;
+		
+		int sleep;
+		
+		ExecuteTask(int sleep) {
+			this.sleep = sleep;
+		}
+		
+		@Override
+		public void run() {
+			if (sleep > 0) {
+				try {
+					Thread.sleep(sleep);
+				} catch (InterruptedException e) {
+				}
+			}
+			thread = Thread.currentThread();
+		}
 	}
 	
 	public static class CloseControllingException extends RuntimeException implements ICloseControllingException {
