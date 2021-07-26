@@ -1674,6 +1674,7 @@ public class SSLSessionTest {
 			assertEquals("DS|DR|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		}
 		
+		
 	}	
 
 	@Test
@@ -2379,5 +2380,81 @@ public class SSLSessionTest {
 		p.getPipeline().add("1", codec.BBBBE());
 		testOptimizedDataCopyingWrite(p);
 		testOptimizedDataCopyingWrite(null);
+	}
+	
+	@Test
+	public void testCloseAndResponseWithClose() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.loop.execute(new Runnable() {
+			@Override
+			public void run() {
+				c.session.write(new Packet(PacketType.WRITE_AND_CLOSE, "12345").toBytes());
+				c.session.close();
+			}
+		});
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		String r = c.getRecordedData(true);
+		r = r.replace("DR|", "").replace("DS|", "");
+		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE_RESPONSE(12345)|SCL|SEN|", r);
+		r = s.getRecordedData(true);
+		r = r.replace("DR|", "").replace("DS|", "");
+		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE(12345)|SCL|SEN|", r);
+	}
+	
+	@Test
+	public void testCloseAndWaitForCloseMessage() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		ByteBuffer[] bufs = getBuffers((SSLSession)s.session, "outAppBuffers");
+		bufs[0].put(new Packet(PacketType.NOP).toBytes());
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		EngineStreamHandler h = getInternal((EngineStreamSession) s.session);
+		h.closing = ClosingState.SENDING;
+		c.session.quickClose();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		
 	}
 }

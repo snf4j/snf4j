@@ -315,6 +315,10 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 		super.quickClose();
 	}
 	
+	void superClose() {
+		super.close();
+	}
+	
 	@Override
 	public void dirtyClose() {
 		SelectionKey key = this.key;

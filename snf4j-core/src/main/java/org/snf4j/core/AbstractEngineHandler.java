@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -123,8 +123,11 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	
 	abstract boolean needUnwrap();
 	
-	/** Quickly close super session */
+	/** Quickly closes super session */
 	abstract void superQuickClose();
+	
+	/** Gently closes super session */
+	abstract void superClose();
 	
 	/** Method is always running in the same selector loop's thread */
 	@Override
@@ -162,8 +165,10 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 				if (closing == ClosingState.FINISHED) {
 					break;
 				}
-				if (handshaking && closing == ClosingState.SENDING) {
-					closing = ClosingState.FINISHING;
+				synchronized (writeLock) {
+					if (handshaking && closing == ClosingState.SENDING) {
+						closing = ClosingState.FINISHING;
+					}
 				}
 				wrapNeeded = handleClosing();
 			}
