@@ -37,6 +37,8 @@ public class TestStreamSession extends StreamSession {
 	public volatile int getOutBuffersExceptionDelay;
 	
 	public volatile boolean getInBufferException;
+
+	public volatile boolean copyInBufferException;
 	
 	public TestStreamSession(String name, IStreamHandler handler) {
 		super(name, handler);
@@ -65,6 +67,14 @@ public class TestStreamSession extends StreamSession {
 			throw new IllegalStateException();
 		}
 		return super.getInBuffer();
+	}
+	
+	@Override
+	int copyInBuffer(InternalSession oldSession) {
+		if (copyInBufferException) {
+			throw new IllegalStateException();
+		}
+		return super.copyInBuffer(oldSession);
 	}
 	
 	public IFuture<Void> execute(Runnable task) {

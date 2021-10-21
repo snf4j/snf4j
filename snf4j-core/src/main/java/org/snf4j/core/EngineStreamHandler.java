@@ -36,7 +36,6 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.future.ITwoThresholdFuture;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionIncident;
-import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.IStreamSession;
@@ -73,6 +72,10 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		return handler;
 	}
 	
+	ByteBuffer getInNetBuffer() {
+		return inNetBuffer;
+	}
+	
 	@Override
 	final boolean handleClosing() {
 		ClosingState closing = this.closing;
@@ -83,14 +86,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 					for (int i=outAppBuffers.length-1; i>=0; --i) {
 						outAppBuffers[i].clear();
 					}
-					engine.closeOutbound();
-					if (isReadyPending) {
-						try {
-							engine.closeInbound();
-						} catch (SessionIncidentException e) {
-							// Ignore
-						}
-					}
+					closeOutbound();
 					return true;
 				}
 			}
@@ -162,10 +158,10 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						
 						try {
 							if (session.optimizeBuffers) {
-								inAppBuffer = StreamSession.consumeBuffer(inAppBuffer, reader, allocator);
+								inAppBuffer = StreamSession.consumeBuffer(inAppBuffer, reader, allocator, session.consumeController);
 							}
 							else {
-								StreamSession.consumeBuffer(inAppBuffer, reader);
+								StreamSession.consumeBuffer(inAppBuffer, reader, session.consumeController);
 							}
 						}
 						catch (PipelineDecodeException e) {
@@ -296,7 +292,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 				else {
 					if (closing == ClosingState.SENDING || engine.isInboundDone()) {
 						closing = ClosingState.FINISHING;
-						engine.closeOutbound();
+						closeOutbound();
 					}
 					if (lastIndex >= 0) {
 						try {

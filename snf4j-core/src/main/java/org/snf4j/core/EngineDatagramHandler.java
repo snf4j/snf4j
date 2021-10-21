@@ -40,7 +40,6 @@ import org.snf4j.core.future.ITwoThresholdFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionIncident;
-import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.session.IDatagramSession;
 import org.snf4j.core.session.IEngineSession;
@@ -173,14 +172,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 			if (!engine.isOutboundDone()) {
 				synchronized (writeLock) {
 					releaseBuffers(outAppBuffers);
-					engine.closeOutbound();
-					if (isReadyPending) {
-						try {
-							engine.closeInbound();
-						} catch (SessionIncidentException e) {
-							// Ignore
-						}
-					}
+					closeOutbound();
 					return true;
 				}
 			}			

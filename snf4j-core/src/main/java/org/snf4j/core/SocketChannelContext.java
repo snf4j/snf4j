@@ -78,6 +78,9 @@ class SocketChannelContext extends SessionChannelContext<StreamSession> {
 			int spinCount = context.maxWriteSpinCount;
 			
 			do {
+				if (context.isSwitching) {
+					break;
+				}
 				spinCount = loop.handleWriting(context, key, spinCount);
 			} while (spinCount > 0 && key.isValid() && ((key.interestOps() & SelectionKey.OP_WRITE) != 0));
 		}

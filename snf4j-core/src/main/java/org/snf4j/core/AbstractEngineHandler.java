@@ -319,6 +319,17 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 		}
 	}
 	
+	void closeOutbound() {
+		engine.closeOutbound();
+		if (isReadyPending) {
+			try {
+				engine.closeInbound();
+			} catch (SessionIncidentException e) {
+				// Ignore
+			}
+		}
+	}
+	
 	void preCreated() {
 		engine.init();
 		minAppBufferSize = engine.getMinApplicationBufferSize();

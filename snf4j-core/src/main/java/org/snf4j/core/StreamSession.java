@@ -39,6 +39,7 @@ import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
+import org.snf4j.core.session.ISessionPipeline;
 import org.snf4j.core.session.IStreamSession;
 import org.snf4j.core.session.IllegalSessionStateException;
 import org.snf4j.core.session.SessionState;
@@ -71,6 +72,74 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	private final int minOutBufferCapacity;
 	
 	IEncodeTaskWriter encodeTaskWriter;
+	
+	final IConsumeController consumeController = new IConsumeController() {
+
+		@Override
+		public boolean skipConsuming() {
+			return isSwitching || closeCalled.get();
+		}	
+	};
+
+	ByteBuffer[] getInBuffersForCopying() {
+		if (inBuffer == null || inBuffer.position() == 0) {
+			return EMPTY_ARRAY;
+		}
+		return new ByteBuffer[] {inBuffer};
+	}
+	
+	@Override
+	int copyInBuffer(InternalSession oldSession) {
+		ByteBuffer[] oldBufs = ((StreamSession)oldSession).getInBuffersForCopying();
+		int totalSize = 0;
+		
+		for (int i=0; i<oldBufs.length; ++i) {
+			totalSize += oldBufs[i].position();
+		}
+		if (totalSize == 0) {
+			return 0;
+		}
+		
+		ByteBuffer dup, buf = getInBuffer();
+		
+		if (maxInBufferCapacity < totalSize) {
+			release(buf);
+			inBuffer = buf = allocate(totalSize);
+		}
+		if (buf.remaining() >= totalSize) {
+			for (ByteBuffer oldBuf: oldBufs) {
+				oldBuf.flip();
+				buf.put(oldBuf);
+			}
+			return buf.position();
+		}
+		
+		for (ByteBuffer oldBuf: oldBufs) {
+			oldBuf.flip();
+			for (;;) {
+				buf = getInBuffer();
+				if (buf.remaining() >= oldBuf.remaining()) {
+					buf.put(oldBuf);
+					break;
+				}
+				dup = oldBuf.duplicate();
+				dup.limit(dup.position() + buf.remaining());
+				buf.put(dup);
+				oldBuf.position(dup.position());
+			}
+		}
+		return buf.position();
+	}
+
+	@Override
+	SessionPipeline<?> createPipeline() {
+		return new StreamSessionPipeline(this);
+	}
+	
+	@Override
+	public ISessionPipeline<IStreamSession> getPipeline() {
+		return (StreamSessionPipeline) getPipeline0();
+	}
 	
 	/**
 	 * Constructs a named stream-oriented session associated with a handler.
@@ -536,7 +605,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return outBuffers;
 	}
 
-	static ByteBuffer consumeBuffer(ByteBuffer inBuffer, IStreamReader handler, IByteBufferAllocator allocator) {
+	static ByteBuffer consumeBuffer(ByteBuffer inBuffer, IStreamReader handler, IByteBufferAllocator allocator, IConsumeController consumeController) {
 		int available = handler.available(inBuffer, false);
 		if (available > 0) {
 			inBuffer.flip();
@@ -555,6 +624,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 				data.flip();
 				inBuffer.position(dup.position());
 				handler.read(data);
+				if (consumeController.skipConsuming()) {
+					break;
+				}
 				available = handler.available(inBuffer, true);
 				if (available == inBuffer.remaining()) {
 					handler.read(inBuffer);
@@ -566,7 +638,7 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return inBuffer;
 	}
 	
-	static void consumeBuffer(ByteBuffer inBuffer, IStreamReader handler) {
+	static void consumeBuffer(ByteBuffer inBuffer, IStreamReader handler, IConsumeController consumeController) {
 		boolean hasArray = inBuffer.hasArray();
 		int available;
 		byte[] array;
@@ -593,6 +665,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			if (inBuffer.hasRemaining()) {
 				if (hasArray) {
 					while ((available = handler.available(array, arrayOff + inBuffer.position(), inBuffer.remaining())) > 0) {
+						if (consumeController.skipConsuming()) {
+							break;
+						}
 						data = new byte[available];
 						inBuffer.get(data);
 						handler.read(data);
@@ -600,6 +675,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 				}
 				else {
 					while ((available = handler.available(inBuffer, true)) > 0) {
+						if (consumeController.skipConsuming()) {
+							break;
+						}
 						data = new byte[available];
 						inBuffer.get(data);
 						handler.read(data);
@@ -621,12 +699,13 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	/**
 	 * Informs that input buffer has new data that may be ready to consume.
 	 */
+	@Override
 	void consumeInBuffer() {
 		if (optimizeBuffers) {
-			inBuffer = consumeBuffer(inBuffer, superCodec(), allocator);
+			inBuffer = consumeBuffer(inBuffer, superCodec(), allocator, consumeController);
 		}
 		else {
-			consumeBuffer(inBuffer, superCodec());
+			consumeBuffer(inBuffer, superCodec(), consumeController);
 		}
 	}
 

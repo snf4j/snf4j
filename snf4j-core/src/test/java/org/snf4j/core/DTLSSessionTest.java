@@ -1072,10 +1072,14 @@ public class DTLSSessionTest extends DTLSTest {
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DR|ECHO()|EXC|DS|", c.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|", s.getRecordedData(true));
+		assertFalse(c.session.getCloseFuture().isDone());
 		c.throwIn = new SessionTest.CloseControllingException("Ex1", ICloseControllingException.CloseType.GENTLE, e);
 		s.getSession().write(new Packet(PacketType.ECHO).toBytes());
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
+		assertTrue(c.session.getReadyFuture().isSuccessful());
+		assertTrue(c.session.getCloseFuture().isSuccessful());
+		assertTrue(c.session.getEndFuture().isSuccessful());
 		assertEquals("DR|ECHO()|EXC|DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|DR|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);

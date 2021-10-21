@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -1985,10 +1986,14 @@ public class SessionTest {
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
 		assertEquals("DR|ECHO()|EXC|(Ex2)|DS|", s.getRecordedData(true));
+		assertFalse(s.session.getCloseFuture().isDone());
 		s.throwIn = new CloseControllingException("Ex1", ICloseControllingException.CloseType.GENTLE, e);
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(s.session.getReadyFuture().isSuccessful());
+		assertTrue(s.session.getCloseFuture().isSuccessful());
+		assertTrue(s.session.getEndFuture().isSuccessful());
 		assertEquals("DS|DR|ECHO_RESPONSE()|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DR|ECHO()|EXC|(Ex2)|DS|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
@@ -3386,6 +3391,97 @@ public class SessionTest {
 		
 	}
 	
+	static void assertBuffer(ByteBuffer b, int size, int capacity) {
+		assertEquals(size, b.position());
+		assertEquals(capacity, b.capacity());
+		assertEquals(capacity, b.limit());
+		b.flip();
+		assertEquals(size, b.remaining());
+		byte[] bytes = new byte[b.remaining()];
+		b.get(bytes);
+		assertArrayEquals(bytes(bytes.length), bytes);
+	}
+	
+	static byte[] bytes(int size) {
+		byte[] bytes = new byte[size];
+		for (int i=0; i<size; ++i) {
+			bytes[i] = (byte) i;
+		}
+		return bytes;
+	}
+	
+	@Test
+	public void testCopyInBuffer() throws Exception {
+		Client c = new Client(PORT);
+		c.minInBufferCapacity = 16;
+		c.maxInBufferCapacity = 64;
+		StreamSession s1 = new StreamSession(c.createHandler());
+		c.minInBufferCapacity = 128;
+		c.maxInBufferCapacity = 128;
+		StreamSession s2 = new StreamSession(c.createHandler());
+		
+		assertEquals(0, s2.getInBuffersForCopying().length);
+		ByteBuffer b1 = s1.getInBuffer();
+		ByteBuffer b2 = s2.getInBuffer();
+		assertEquals(0, s2.getInBuffersForCopying().length);
+		
+		assertEquals(16, b1.capacity());
+		assertEquals(128, b2.capacity());
+		assertEquals(0, s1.copyInBuffer(s2));
+		assertBuffer(b1, 0, 16);
+		b1.clear();
+		b2.clear();
+		b2.put(bytes(10));
+		assertEquals(1, s2.getInBuffersForCopying().length);
+		assertEquals(10, s1.copyInBuffer(s2));
+		assertBuffer(b1, 10, 16);
+		b1.clear();
+		b2.clear();
+		b2.put(bytes(16));
+		assertEquals(16, s1.copyInBuffer(s2));
+		assertBuffer(b1, 16, 16);
+		b1.clear();
+		b2.clear();
+		b2.put(bytes(17));
+		assertEquals(17, s1.copyInBuffer(s2));
+		b1 = s1.getInBuffer();
+		assertBuffer(b1, 17, 32);
+		b1.clear();
+		b2.clear();
+		b2.put(bytes(64));
+		assertEquals(64, s1.copyInBuffer(s2));
+		b1 = getInBuffer(s1);
+		assertBuffer(b1, 64, 64);
+		
+		c.minInBufferCapacity = 16;
+		c.maxInBufferCapacity = 64;
+		s1 = new StreamSession(c.createHandler());
+		b1 = s1.getInBuffer();
+		assertEquals(16, b1.capacity());
+		b1.clear();
+		b2.clear();
+		b2.put(bytes(63));
+		assertEquals(63, s1.copyInBuffer(s2));
+		b1 = getInBuffer(s1);
+		assertBuffer(b1, 63, 64);
+		
+		c.minInBufferCapacity = 16;
+		c.maxInBufferCapacity = 64;
+		s1 = new StreamSession(c.createHandler());
+		b1 = s1.getInBuffer();
+		assertEquals(16, b1.capacity());
+		b1.clear();
+		b2.clear();
+		b2.put(bytes(100));
+		assertEquals(100, s1.copyInBuffer(s2));
+		b1 = getInBuffer(s1);
+		assertBuffer(b1, 100, 100);
+		
+		TestInternalSession session = new TestInternalSession("1", new TestHandler(""), null);
+		assertEquals(0, session.copyInBuffer(null));
+		session.consumeInBuffer();
+	}
+
 	static class ExecuteTask implements Runnable {
 
 		volatile Thread thread;

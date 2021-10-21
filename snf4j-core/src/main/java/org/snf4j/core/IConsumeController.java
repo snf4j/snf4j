@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,45 +25,7 @@
  */
 package org.snf4j.core;
 
-import org.snf4j.core.handler.IStreamHandler;
-
-
-public class TestOwnSSLSession extends SSLSession {
-	volatile long sleepHandleClosingInProgress;
+interface IConsumeController {
 	
-	volatile int skipClose;
-
-	public volatile boolean copyInBufferException;
-
-	public TestOwnSSLSession(IStreamHandler handler, boolean clientMode) throws Exception {
-		super(handler, clientMode);
-	}
-
-	void handleClosingInProgress() {
-		if (sleepHandleClosingInProgress > 0) {
-			try {
-				Thread.sleep(sleepHandleClosingInProgress);
-			} catch (InterruptedException e) {
-				//Ignore
-			}
-		}
-		super.handleClosingInProgress();
-	}
-	
-	@Override
-	int copyInBuffer(InternalSession oldSession) {
-		if (copyInBufferException) {
-			throw new IllegalStateException();
-		}
-		return super.copyInBuffer(oldSession);
-	}
-	
-	@Override
-	void close(boolean isEos) {
-		if (skipClose > 0) {
-			--skipClose;
-			return;
-		}
-		super.close(isEos);
-	}
+	boolean skipConsuming();
 }

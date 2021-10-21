@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,45 +25,44 @@
  */
 package org.snf4j.core;
 
-import org.snf4j.core.handler.IStreamHandler;
+import org.snf4j.core.session.ISessionPipeline;
+import org.snf4j.core.session.IStreamSession;
 
+class StreamSessionPipeline extends SessionPipeline<StreamSession> implements ISessionPipeline<IStreamSession> {
 
-public class TestOwnSSLSession extends SSLSession {
-	volatile long sleepHandleClosingInProgress;
-	
-	volatile int skipClose;
-
-	public volatile boolean copyInBufferException;
-
-	public TestOwnSSLSession(IStreamHandler handler, boolean clientMode) throws Exception {
-		super(handler, clientMode);
+	StreamSessionPipeline(StreamSession owner) {
+		super(owner);
 	}
 
-	void handleClosingInProgress() {
-		if (sleepHandleClosingInProgress > 0) {
-			try {
-				Thread.sleep(sleepHandleClosingInProgress);
-			} catch (InterruptedException e) {
-				//Ignore
-			}
+	StreamSession check(IStreamSession session) {
+		if (session instanceof StreamSession) {
+			return (StreamSession) session;
 		}
-		super.handleClosingInProgress();
+		throw new IllegalArgumentException("session is not an instance of StreamSession class");
 	}
 	
 	@Override
-	int copyInBuffer(InternalSession oldSession) {
-		if (copyInBufferException) {
-			throw new IllegalStateException();
-		}
-		return super.copyInBuffer(oldSession);
+	public void addFirst(Object key, IStreamSession session) {
+		super.addFirst(key, check(session));
 	}
-	
+
 	@Override
-	void close(boolean isEos) {
-		if (skipClose > 0) {
-			--skipClose;
-			return;
-		}
-		super.close(isEos);
+	public void addAfter(Object baseKey, Object key, IStreamSession session) {
+		super.addAfter(baseKey, key, check(session));
+	}
+
+	@Override
+	public void add(Object key, IStreamSession session) {
+		super.add(key, check(session));
+	}
+
+	@Override
+	public void addBefore(Object baseKey, Object key, IStreamSession session) {
+		super.addBefore(baseKey, key, check(session));
+	}
+
+	@Override
+	public IStreamSession replace(Object oldKey, Object key, IStreamSession session) {
+		return super.replace(oldKey, key, check(session));
 	}
 }

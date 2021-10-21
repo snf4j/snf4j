@@ -348,6 +348,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 		
 		if (ctx.isSession()) {
 			ctx.handle(this, key);
+			if (areSwitchings) {
+				handleSwitchings();
+			}
 		}
 		else if (key.isAcceptable()) {
 			return handleAccepting(key);
@@ -434,6 +437,12 @@ public class SelectorLoop extends InternalSelectorLoop {
 			}
 			
 			if (acceptedKey != null) {
+				InternalSession first = session.getFirstInPipeline();
+					
+				if (first != null) {
+					ctx = ctx.wrap(session = first);
+					acceptedKey.attach(ctx);
+				}
 				if (fireCreatedEvent(session, channel)) {
 					if (debugEnabled) {
 						logger.debug("Channel {} is associated with {}", ctx.toString(channel), session);
@@ -461,7 +470,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		return key;
 	}
 	
-	final void handleConnecting(final InternalSession session, final SelectionKey key) {
+	final void handleConnecting(InternalSession session, final SelectionKey key) {
 		ChannelContext<?> ctx = (ChannelContext<?>)key.attachment();
 		
 		if (debugEnabled) {
@@ -469,7 +478,12 @@ public class SelectorLoop extends InternalSelectorLoop {
 		}
 
 		boolean finished = false;
-		
+		InternalSession first = session.getFirstInPipeline();
+			
+		if (first != null) {
+			ctx = ctx.wrap(session = first);
+			key.attach(ctx);
+		}
 		if (fireCreatedEvent(session, key.channel())) {
 			try {
 				if (controller.processConnection(key.channel())) {
@@ -599,6 +613,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 		else if (bytes < 0){
 			if (debugEnabled) {
 				logger.debug("Closing channel in {} after reaching end-of-stream", session);
+			}
+			if (session.pipelineItem != null) {
+				session.pipelineItem.markEos();
 			}
 			session.close(true);
 		}

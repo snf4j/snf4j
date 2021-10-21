@@ -26,6 +26,7 @@
 package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -354,6 +355,7 @@ public class EngineStreamHandlerTest {
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE()|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|DR|ECHO()|EXC|(Ex2)|DS|", s.getRecordedData(true));
+		assertFalse(s.session.getCloseFuture().isDone());
 		s.throwIn = new SessionTest.CloseControllingException("Ex1", ICloseControllingException.CloseType.GENTLE, t);
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForSessionEnding(TIMEOUT);
@@ -363,7 +365,9 @@ public class EngineStreamHandlerTest {
 			assertEquals("DS|DR|ECHO_RESPONSE()|DS|SCL|SEN|", recordedData);
 		}
 		assertEquals("DR|ECHO()|EXC|(Ex2)|DS|SCL|SEN|", s.getRecordedData(true));
-		
+		assertTrue(s.session.getReadyFuture().isSuccessful());
+		assertTrue(s.session.getCloseFuture().isSuccessful());
+		assertTrue(s.session.getEndFuture().isSuccessful());		
 	}
 	
 	@Test

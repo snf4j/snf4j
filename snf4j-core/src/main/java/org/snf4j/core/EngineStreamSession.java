@@ -100,6 +100,20 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 	}
 	
 	@Override
+	ByteBuffer[] getInBuffersForCopying() {
+		ByteBuffer[] ins, superIns = super.getInBuffersForCopying();
+		ByteBuffer in = internal.getInNetBuffer();
+		
+		if (in == null || in.position() == 0) {
+			return superIns;
+		}
+		ins = new ByteBuffer[superIns.length+1];
+		ins[0] = in;
+		System.arraycopy(superIns, 0, ins, 1, superIns.length);
+		return ins;
+	}
+	
+	@Override
 	public void setExecutor(Executor executor) {
 		this.executor = executor;
 	}

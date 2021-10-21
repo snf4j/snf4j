@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,8 @@ public enum PacketType {
 	WRITE_AND_QUICK_CLOSE,
 	WRITE_AND_WAIT,
 	WRITE_AND_WAIT_RESPONSE,
+	WRITE_CLOSE_AND_CLOSE,
+	WRITE_CLOSE_AND_QUICK_CLOSE,
 	SUSPEND_WRITE_CLOSE,
 	IN_LOOP,
 	IN_LOOP_RESPONSE,

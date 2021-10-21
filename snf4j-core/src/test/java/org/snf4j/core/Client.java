@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
+import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
 
 public class Client extends Server {
@@ -51,6 +52,17 @@ public class Client extends Server {
 
 	public Client(int port, boolean ssl) {
 		super(port, ssl);
+	}
+	
+	@Override
+	public StreamSession addPreSession(String name, boolean ssl, IStreamHandler h) throws Exception {
+		if (ssl) {
+			StreamSession s;
+			
+			preSessions.add(s = new SSLSession(name, h == null ? createHandler() : h, true));
+			return s;
+		}
+		return super.addPreSession(name, ssl, h);
 	}
 
 	public StreamSession createSession() throws Exception {
@@ -108,30 +120,39 @@ public class Client extends Server {
 			session.setChannel(sc);
 			session.preCreated();
 			session.event(SessionEvent.CREATED);
+			registeredSession = session;
 			loop.register(sc, session);
 		}
 		else {
 			if (initSession == null) {
 				if (ssl) {
 					if (useTestSession) {
-						loop.register(sc, new TestOwnSSLSession(new Handler(), true));
+						session = new TestOwnSSLSession(new Handler(), true);
 					}
 					else {
-						loop.register(sc, new SSLSession(sslRemoteAddress ? sc.getRemoteAddress() : null, new Handler(), true));
+						session = new SSLSession(sslRemoteAddress ? sc.getRemoteAddress() : null, new Handler(), true);
 					}
 				}
 				else {
 					if (useTestSession) {
-						loop.register(sc, new TestStreamSession(new Handler()));
+						session = new TestStreamSession(new Handler());
 					}
 					else {
-						loop.register(sc, new Handler());
+						session = new StreamSession(new Handler());
 					}
 				}
 			}
 			else {
-				loop.register(sc, initSession);
+				session = initSession;
 			}
+			for (StreamSession s: preSessions) {
+				session.getPipeline().add(s.getName(), s);
+			}
+			if (getPipeline) {
+				session.getPipeline();
+			}
+			registeredSession = session;
+			loop.register(sc, session);
 		}
 
 		if (firstRegistrate) {
