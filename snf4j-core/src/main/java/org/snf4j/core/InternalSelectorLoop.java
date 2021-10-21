@@ -1115,7 +1115,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		Item<?> item = session.pipelineItem;
 		
 		if (item != null) {
-			List<InternalSession> sessions = new LinkedList<>();
+			List<InternalSession> sessions = new LinkedList<InternalSession>();
 			InternalSession owner = item.owner();
 			Throwable cause = item.cause();
 
