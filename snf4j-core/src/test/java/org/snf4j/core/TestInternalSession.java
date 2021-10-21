@@ -33,6 +33,7 @@ import org.snf4j.core.handler.IHandler;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
+import org.snf4j.core.session.ISessionPipeline;
 import org.snf4j.core.session.IStreamSession;
 
 public class TestInternalSession extends InternalSession implements IStreamSession {
@@ -76,6 +77,11 @@ public class TestInternalSession extends InternalSession implements IStreamSessi
 	}
 
 	@Override
+	SessionPipeline<?> createPipeline() {
+		return null;
+	}
+
+	@Override
 	void preCreated() {
 	}
 
@@ -85,6 +91,11 @@ public class TestInternalSession extends InternalSession implements IStreamSessi
 
 	@Override
 	public IStreamSession getParent() {
+		return null;
+	}
+
+	@Override
+	public ISessionPipeline<IStreamSession> getPipeline() {
 		return null;
 	}
 

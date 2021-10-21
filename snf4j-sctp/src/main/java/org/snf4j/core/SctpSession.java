@@ -83,6 +83,11 @@ public class SctpSession extends InternalSctpSession implements ISctpSession {
 	}
 	
 	@Override
+	SessionPipeline<?> createPipeline() {
+		return null;
+	}
+	
+	@Override
 	HandlerResult notification(Notification notification, SctpNotificationType type) {
 		if (type == SctpNotificationType.ASSOCIATION_CHANGE) {
 			if (((AssociationChangeNotification)notification).event() == AssocChangeEvent.SHUTDOWN) {

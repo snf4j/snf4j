@@ -97,6 +97,14 @@ public class DatagramSessionTest {
 	}
 	
 	@Test
+	public void testCreatePipeline() {
+		DatagramSession session = new DatagramSession(handler);
+		assertNull(session.createPipeline());
+		assertNull(session.getPipeline0());
+		assertNull(session.getPipeline0());
+	}
+	
+	@Test
 	public void testGetAddress() throws Exception {
 		DatagramSession session = new DatagramSession(handler);
 		assertNull(session.getParent());

@@ -34,6 +34,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -42,6 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.snf4j.core.SessionPipeline.Item;
 import org.snf4j.core.factory.DefaultSelectorLoopStructureFactory;
 import org.snf4j.core.factory.DefaultThreadFactory;
 import org.snf4j.core.factory.ISelectorLoopStructureFactory;
@@ -55,7 +58,6 @@ import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.ExceptionLogger;
 import org.snf4j.core.logger.IExceptionLogger;
 import org.snf4j.core.logger.ILogger;
-import org.snf4j.core.session.ISession;
 
 abstract class InternalSelectorLoop extends IdentifiableObject implements IFutureExecutor {
 
@@ -116,6 +118,10 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 	private final Object registrationLock = new Object();
 	
 	private Set<SelectionKey> invalidatedKeys = new HashSet<SelectionKey>();
+	
+	boolean areSwitchings;
+	
+	final List<InternalSession> switchings = new LinkedList<InternalSession>();
 	
 	boolean debugEnabled;
 	
@@ -513,8 +519,11 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 						ChannelContext<?> ctx = (ChannelContext<?>) key.attachment();
 						
 						if (ctx.isSession()) {
-							ISession session = ctx.getSession();
+							InternalSession session = ctx.getSession();
 							
+							if (session.pipelineItem != null) {
+								session.pipelineItem.markEos();
+							}
 							stoppingKeys.add(key);
 							switch (stopping.get()) {
 							case QUICK:
@@ -761,6 +770,9 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			}
 			if (future != null) {
 				future.success();
+			}
+			if (areSwitchings) {
+				handleSwitchings();
 			}
 		}
 		catch (Exception e) {
@@ -1100,6 +1112,30 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		fireEvent(session, SessionEvent.ENDING);
 		session.postEnding();
 		
+		Item<?> item = session.pipelineItem;
+		
+		if (item != null) {
+			List<InternalSession> sessions = new LinkedList<InternalSession>();
+			InternalSession owner = item.owner();
+			Throwable cause = item.cause();
+
+			while ((item = item.next) != null) {
+				if (item.session().getConfig().alwaysNotifiedBeingInPipeline()) {
+					sessions.add(item.session());
+				}
+			}
+			sessions.add(owner);
+			for (Iterator<InternalSession> i = sessions.iterator(); i.hasNext();) {
+				InternalSession s = i.next();
+				
+				fireCreatedEvent(s, session.channel);
+				if (cause != null) {
+					fireException(s, cause);
+				}
+				fireEndingEvent(s, skipCloseWhenEmpty);
+			}
+		}
+		
 		switch (session.getConfig().getEndingAction()) {
 		case STOP:
 			stop();
@@ -1195,7 +1231,54 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			}
 		}
 	}
+	
+	void switchSession(InternalSession session) {
+		if (debugEnabled) {
+			logger.debug("Switching of {}", session);
+		}
+		fireEvent(session, SessionEvent.CLOSED);
+		fireEvent(session, SessionEvent.ENDING);
 
+		InternalSession newSession = session.pipelineItem.next();
+		SelectionKey key = session.key;
+		int bytes;
+
+		key.attach(((ChannelContext<?>)key.attachment()).wrap(newSession));
+		if (!fireCreatedEvent(newSession, key.channel())) {
+			fireEndingEvent(newSession, false);
+			return;
+		}
+		newSession.setSelectionKey(key);
+		try {
+			key.interestOps(SelectionKey.OP_READ);
+			fireEvent(newSession, SessionEvent.OPENED);
+			bytes = newSession.copyInBuffer(session);
+			session.postEnding();
+			if (bytes > 0) {
+				long currentTime = System.currentTimeMillis();
+
+				if (traceEnabled) {
+					logger.trace("{} byte(s) copied from input buffer in {}", bytes, newSession);
+				}
+				newSession.calculateThroughput(currentTime, false);
+				newSession.incReadBytes(bytes, currentTime);
+				fireEvent(newSession, DataEvent.RECEIVED, bytes);
+				newSession.consumeInBuffer();
+			}
+		} catch (Exception e) {
+			elogger.error(logger, "Switching from {} to {} failed: {}", session, newSession, e);
+			fireException(newSession, e);
+		}
+	}
+
+	void handleSwitchings() {
+		for (InternalSession session: switchings) {
+			switchSession(session);
+		}
+		switchings.clear();
+		areSwitchings = false;
+	}
+	
 	private final void handleInvalidKey(SelectionKey key, Set<SelectionKey> stoppingKeys) throws IOException {
 		handleInvalidKey(key, stoppingKeys, false);
 	}

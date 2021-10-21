@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -74,6 +74,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	private long datagramServerSessionNoReopenPeriod = 60000;
 	
 	private int maxWriteSpinCount = 16;
+	
+	private boolean alwaysNotifiedBeingInPipeline;
 	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
@@ -423,8 +425,39 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * <p>
 	 * The default value is <code>16</code>
 	 */
+	@Override
 	public int getMaxWriteSpinCount() {
 		return maxWriteSpinCount;
 	}
+
+	/**
+	 * Configures if the session being associated with the session pipeline should
+	 * be notified in a situation when the connection is closed and the processing
+	 * of the session was not initiated yet.
+	 * <p>
+	 * If the returned value is {@code false} the session that was not processed yet
+	 * will not be notified (i.e. session events will not be fired). However, this
+	 * does not apply to the session that owns the pipeline as it will always be
+	 * notified.
+	 * 
+	 * @param notify {@code true} to always notify the session being associated with
+	 *               the pipeline
+	 * @return this session config object
+	 * @see #alwaysNotifiedBeingInPipeline()
+	 */
+	public DefaultSessionConfig setAlwaysNotifiedBeingInPipeline(boolean notify) {
+		alwaysNotifiedBeingInPipeline = notify;
+		return this;
+	}
 	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * The default value is <code>false</code>
+	 */
+	@Override
+	public boolean alwaysNotifiedBeingInPipeline() {
+		return alwaysNotifiedBeingInPipeline;
+	}
 }

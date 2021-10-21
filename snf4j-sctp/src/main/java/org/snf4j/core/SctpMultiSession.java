@@ -78,6 +78,11 @@ public class SctpMultiSession extends InternalSctpSession implements ISctpMultiS
 	}
 	
 	@Override
+	SessionPipeline<?> createPipeline() {
+		return null;
+	}	
+	
+	@Override
 	public ISctpMultiSession getParent() {
 		return null;
 	}

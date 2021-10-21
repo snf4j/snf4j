@@ -88,6 +88,14 @@ public class SctpMultiSessionTest extends SctpTest {
 	}
 	
 	@Test
+	public void testCreatePipeline() {
+		SctpMultiSession session = new SctpMultiSession(new TestSctpHandler());
+		assertNull(session.createPipeline());
+		assertNull(session.getPipeline0());
+		assertNull(session.getPipeline0());
+	}
+	
+	@Test
 	public void testGetParent() throws Exception {
 		assumeSupported();
 		ms = new SctpClient(PORT);

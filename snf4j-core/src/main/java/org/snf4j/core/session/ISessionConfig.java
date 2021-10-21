@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -257,4 +257,20 @@ public interface ISessionConfig {
 	 * @return the maximum loop count for write operations
 	 */
 	int getMaxWriteSpinCount();
+	
+	/**
+	 * Determines if the session being associated with the session pipeline should
+	 * be notified in a situation when the connection is closed and the processing
+	 * of the session was not initiated yet.
+	 * <p>
+	 * If the returned value is {@code false} the session that was not processed yet
+	 * will not be notified (i.e. session events will not be fired). However, this
+	 * does not apply to the session that owns the pipeline as it will always be
+	 * notified.
+	 * 
+	 * @return {@code true} to always notify the session being associated with the
+	 *         pipeline
+	 */
+	boolean alwaysNotifiedBeingInPipeline();
+	
 }

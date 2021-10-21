@@ -33,6 +33,7 @@ import java.nio.channels.SelectionKey;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.snf4j.core.SessionPipeline.Item;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.codec.ICodecExecutor;
 import org.snf4j.core.codec.ICodecPipeline;
@@ -125,6 +126,12 @@ abstract class InternalSession extends AbstractSession implements ISession {
 
 	final int maxWriteSpinCount;
 	
+	volatile SessionPipeline<?> pipeline;
+	
+	Item<?> pipelineItem;
+	
+	boolean isSwitching;
+	
 	protected InternalSession(String name, IHandler handler, CodecExecutorAdapter codec, ILogger logger) {
 		super("Session-", 
 				nextId.incrementAndGet(), 
@@ -175,6 +182,34 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	}
 	
 	abstract IEncodeTaskWriter getEncodeTaskWriter(); 
+	
+	abstract SessionPipeline<?> createPipeline();
+		
+	SessionPipeline<?> getPipeline0() {
+		if (pipeline == null) {
+			synchronized (this) {
+				if (pipeline == null) {
+					pipeline = createPipeline();
+				}
+			}
+		}
+		return pipeline;
+	}
+	
+	void setPipeline(SessionPipeline<?> pipeline) {
+		synchronized (this) {
+			this.pipeline = pipeline;
+		}
+	}
+	
+	InternalSession getFirstInPipeline() {
+		synchronized (this) {
+			if (pipeline != null) {
+				return pipeline.first();
+			}
+		}
+		return null;
+	}
 	
 	void abortFutures(Throwable cause) {
 		futuresController.abort(cause);
@@ -400,7 +435,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 							if (isEos) {
 								//Executed in the selector loop thread, so we can skip sending events now
 								closing = ClosingState.FINISHED;
-								key.channel().close();
+								close(key.channel());
 							}
 							else {
 								//To enable gentle close OP_READ must be set 
@@ -409,13 +444,13 @@ abstract class InternalSession extends AbstractSession implements ISession {
 									lazyWakeup();
 								}
 								closing = ClosingState.FINISHING;
-								((ChannelContext<?>)key.attachment()).shutdown(key.channel());
+								shutdown(key);
 							}
 						}
 					}
 					else if (isEos) {
 						closing = ClosingState.FINISHED;
-						key.channel().close();
+						close(key.channel());
 					}
 
 					if (!key.isValid()) {
@@ -439,7 +474,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 				synchronized (writeLock) {
 					key = detectRebuild(key);
 					closing = ClosingState.FINISHED;
-					key.channel().close();
+					close(key.channel());
 				}
 			}
 			catch (Exception e) {
@@ -478,11 +513,11 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			try {
 				if (isEOS) {
 					closing = ClosingState.FINISHED;
-					key.channel().close();
+					close(key.channel());
 				}
 				else {
 					closing = ClosingState.FINISHING;
-					((ChannelContext<?>)key.attachment()).shutdown(key.channel());
+					shutdown(key);
 				}
 			} catch (Exception e) {
 			}
@@ -768,6 +803,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			t = e.getClosingCause();
 			switch (e.getCloseType()) {
 			case GENTLE:
+				if (pipelineItem != null) {
+					pipelineItem.cause(t);
+				}
 				controlCloseException(t);
 				close();
 				return null;
@@ -778,6 +816,9 @@ abstract class InternalSession extends AbstractSession implements ISession {
 				
 			default:
 			}
+		}
+		if (pipelineItem != null) {
+			pipelineItem.cause(t);
 		}
 		return t;
 	}
@@ -814,8 +855,39 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	
 	abstract void postEnding();
 	
+	int copyInBuffer(InternalSession oldSession) {
+		return 0;
+	}
+	
+	void consumeInBuffer() {
+	}
+	
 	void close(SelectableChannel channel) throws IOException {
-		channel.close();
+		if (channel.isOpen()) {
+			if (pipelineItem == null || pipelineItem.canClose()) {
+				channel.close();
+			}
+			else {
+				execute(new Runnable() {
+
+					@Override
+					public void run() {
+						isSwitching = true;
+						loop.areSwitchings = true;
+						loop.switchings.add(InternalSession.this);
+					}
+				});
+			}
+		}
+	}
+	
+	void shutdown(SelectionKey key) throws Exception {
+		if (pipelineItem != null) {
+			close(key.channel());
+		}
+		else {
+			((ChannelContext<?>)key.attachment()).shutdown(key.channel());
+		}
 	}
 	
 	void closeAndFinish(SelectableChannel channel) {

@@ -84,6 +84,7 @@ public class Server {
 	public volatile SocketAddress sessionRemote;
 	public volatile boolean sslRemoteAddress;
 	public StreamSession initSession;
+	public StreamSession registeredSession;
 	public ThreadFactory threadFactory;
 	public ISelectorLoopController controller;
 	public long throughputCalcInterval = 1000;
@@ -111,6 +112,7 @@ public class Server {
 	public volatile int availableCounter;
 	
 	public volatile int minInBufferCapacity = 1024;
+	public volatile int maxInBufferCapacity = -1;
 	public volatile int minOutBufferCapacity = 1024;
 	
 	public volatile boolean exceptionRecordException;
@@ -155,6 +157,9 @@ public class Server {
 	
 	volatile int maxSSLAppBufRatio = 100;
 	volatile int maxSSLNetBufRatio = 100;
+	
+	volatile boolean getPipeline;
+	List<StreamSession> preSessions = new LinkedList<StreamSession>();
 	
 	static {
 		eventMapping.put(EventType.SESSION_CREATED, "SCR");
@@ -211,6 +216,18 @@ public class Server {
 		}
 	}
 	
+	public StreamSession addPreSession(String name, boolean ssl, IStreamHandler h) throws Exception {
+		StreamSession s;
+		
+		if (ssl) {
+			preSessions.add(s = new SSLSession(name, h == null ? createHandler() : h, false));
+		}
+		else {
+			preSessions.add(s = new StreamSession(name, h == null ? createHandler() : h));
+		}
+		return s;
+	}
+	
 	public void resetDataLocks() {
 		dataReceivedLock.set(false);
 		dataReadLock.set(false);
@@ -242,6 +259,10 @@ public class Server {
 	
 	public StreamSession getSession() {
 		return session;
+	}
+	
+	public IStreamHandler createHandler() {
+		return new Handler();
 	}
 	
 	public SelectorLoop getSelectLoop() {
@@ -451,11 +472,22 @@ public class Server {
 			if (throwInCreateSession) {
 				throw new Exception("");
 			}
+			StreamSession s;
+			
 			if (ssl) {
-				return new SSLSession(channel.socket().getRemoteSocketAddress(), createHandler(channel), false);
+				s = new SSLSession(channel.socket().getRemoteSocketAddress(), createHandler(channel), false);
 			}
-			return useTestSession ? new TestStreamSession(createHandler(channel)) : 
-				new StreamSession(createHandler(channel));
+			else {
+				s =  useTestSession ? new TestStreamSession(createHandler(channel)) : 
+					new StreamSession(createHandler(channel));
+			}
+			for (StreamSession ps: preSessions) {
+				s.getPipeline().add(ps.getName(), ps);
+			}
+			if (getPipeline) {
+				s.getPipeline();
+			}
+			return s;
 		}
 		
 		@Override
@@ -564,6 +596,9 @@ public class Server {
 			};
 			
 			config.setMinInBufferCapacity(minInBufferCapacity);
+			if (maxInBufferCapacity != -1) {
+				config.setMaxInBufferCapacity(maxInBufferCapacity);
+			}
 			config.setMinOutBufferCapacity(minOutBufferCapacity);
 			config.setThroughputCalculationInterval(throughputCalcInterval);
 			config.setEndingAction(endingAction);
@@ -717,6 +752,16 @@ public class Server {
 				break;
 				
 			case QUICK_CLOSE:
+				getSession().quickClose();
+				break;
+				
+			case WRITE_CLOSE_AND_CLOSE:
+				getSession().write(new Packet(PacketType.CLOSE).toBytes());
+				getSession().close();
+				break;
+
+			case WRITE_CLOSE_AND_QUICK_CLOSE:
+				getSession().write(new Packet(PacketType.CLOSE).toBytes());
 				getSession().quickClose();
 				break;
 				

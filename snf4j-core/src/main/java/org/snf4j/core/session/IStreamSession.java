@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2019 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,24 @@ public interface IStreamSession extends ISession {
 
 	@Override
 	IStreamSession getParent();
+	
+	/**
+	 * Gets the pipeline of stream-oriented sessions currently associated with this
+	 * session.
+	 * <p>
+	 * The pipeline determines the sessions that will be processed prior to the
+	 * session being the owner of the pipeline. All sessions in the pipeline along
+	 * with the owning session will operate on the same connection (i.e the socket
+	 * channel).
+	 * <p>
+	 * Unless the pipeline is marked for closing or a failure occurred closing of a
+	 * session in the pipeline moves the processing to the next session in the
+	 * pipeline or if the closed session was the last one in the pipeline to the
+	 * session being the owner of the pipeline.
+	 * 
+	 * @return the pipeline of stream-oriented sessions.
+	 */
+	ISessionPipeline<IStreamSession> getPipeline();
 	
 	/**
 	 * Writes <code>data.length</code> bytes from the specified byte array

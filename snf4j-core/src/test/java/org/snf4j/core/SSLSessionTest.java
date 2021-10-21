@@ -28,6 +28,7 @@ package org.snf4j.core;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -2457,4 +2458,52 @@ public class SSLSessionTest {
 		
 		
 	}
+	
+	@Test
+	public void testCopyInBuffer() throws Exception {
+		Client c = new Client(PORT);
+		c.minInBufferCapacity = 16;
+		c.maxInBufferCapacity = 64;
+		SSLSession s1 = new SSLSession(c.createHandler(), true);
+		c.minInBufferCapacity = 128;
+		c.maxInBufferCapacity = 128;
+		SSLSession s2 = new SSLSession(c.createHandler(), true);
+		
+		assertEquals(0, s2.getInBuffersForCopying().length);
+		ByteBuffer b1 = s1.getInBuffer();
+		ByteBuffer b2 = s2.getInBuffer();
+		ByteBuffer b2i = getBuffer(s2, "inNetBuffer");
+		assertEquals(0, s2.getInBuffersForCopying().length);
+		
+		assertEquals(16, b1.capacity());
+		assertEquals(128, b2.capacity());
+
+		assertNull(b2i);
+		SessionTest.assertBuffer(b1, 0, 16);
+		b1.clear();
+		b2.clear();
+		b2.put(SessionTest.bytes(10));
+		assertEquals(1, s2.getInBuffersForCopying().length);
+		assertEquals(10, s1.copyInBuffer(s2));
+		SessionTest.assertBuffer(b1, 10, 16);
+
+		s2.preCreated();
+		b2 = s2.getInBuffer();
+		b2i = getBuffer(s2, "inNetBuffer");
+		assertNotNull(b2i);
+		b1.clear();
+		b2.clear();
+		b2.put(SessionTest.bytes(10));
+		assertEquals(10, s1.copyInBuffer(s2));
+		SessionTest.assertBuffer(b1, 10, 16);
+		
+		b1.clear();
+		b2.clear();
+		byte[] b = SessionTest.bytes(10);
+		b2.put(b, 5, 5);
+		b2i.put(b, 0, 5);
+		assertEquals(2, s2.getInBuffersForCopying().length);
+		assertEquals(10, s1.copyInBuffer(s2));
+		SessionTest.assertBuffer(b1, 10, 16);
+	}	
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,6 +57,7 @@ public class DefaultSessionConfigTest {
 		assertEquals(60000, c.getEngineHandshakeTimeout());
 		assertEquals(60000, c.getDatagramServerSessionNoReopenPeriod());
 		assertEquals(16, c.getMaxWriteSpinCount());
+		assertFalse(c.alwaysNotifiedBeingInPipeline());
 
 		c.setMinInBufferCapacity(10).setMaxInBufferCapacity(100).setMinOutBufferCapacity(1000)
 			.setThroughputCalculationInterval(5000).setIgnorePossiblyIncompleteDatagrams(false)
@@ -65,6 +66,7 @@ public class DefaultSessionConfigTest {
 			.setWaitForInboundCloseMessage(true).setEngineHandshakeTimeout(1001)
 			.setDatagramServerSessionNoReopenPeriod(1002)
 			.setMaxWriteSpinCount(8)
+			.setAlwaysNotifiedBeingInPipeline(true)
 			.getClass();
 
 		assertEquals(10, c.getMinInBufferCapacity());
@@ -80,6 +82,7 @@ public class DefaultSessionConfigTest {
 		assertEquals(1001, c.getEngineHandshakeTimeout());
 		assertEquals(1002, c.getDatagramServerSessionNoReopenPeriod());
 		assertEquals(8, c.getMaxWriteSpinCount());
+		assertTrue(c.alwaysNotifiedBeingInPipeline());
 		
 		SSLEngine engine = c.createSSLEngine(true);
 		assertNotNull(engine);

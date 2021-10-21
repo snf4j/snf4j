@@ -68,6 +68,14 @@ import com.sun.nio.sctp.SctpChannel;
 public class SctpSessionTest extends SctpTest {	
 	
 	@Test
+	public void testCreatePipeline() {
+		SctpSession session = new SctpSession(new TestSctpHandler());
+		assertNull(session.createPipeline());
+		assertNull(session.getPipeline0());
+		assertNull(session.getPipeline0());
+	}
+	
+	@Test
 	public void testGetParent() throws Exception {
 		assumeSupported();
 		startClientServer();

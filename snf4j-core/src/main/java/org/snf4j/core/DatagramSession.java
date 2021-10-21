@@ -96,6 +96,11 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		return encodeTaskWriter;
 	}
 	
+	@Override
+	SessionPipeline<?> createPipeline() {
+		return null;
+	}
+	
 	/**
 	 * Constructs a datagram-oriented session associated with a handler. 
 	 * 
