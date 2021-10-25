@@ -166,4 +166,34 @@ public interface ISessionPipeline<T extends ISession> {
 	 * @param cause the closing cause
 	 */
 	void markClosed(Throwable cause);
+	
+	/**
+	 * Marks this pipeline for closing and gently closes the currently processed
+	 * session in the pipeline.
+	 * <p>
+	 * If the session owning this pipeline has not been registered with a selector
+	 * loop all session in the pipeline will be closed by calling the
+	 * {@link ISession#close() close()} method.
+	 */
+	void close();
+	
+	/**
+	 * Marks this pipeline for closing and quickly closes the currently processed
+	 * session in the pipeline.
+	 * <p>
+	 * If the session owning this pipeline has not been registered with a selector
+	 * loop all session in the pipeline will be closed by calling the
+	 * {@link ISession#quickClose() quickClose()} method.
+	 */
+	void quickClose();
+	
+	/**
+	 * Marks this pipeline for closing and dirty closes the currently processed
+	 * session in the pipeline.
+	 * <p>
+	 * If the session owning this pipeline has not been registered with a selector
+	 * loop all session in the pipeline will be closed by calling the
+	 * {@link ISession#dirtyClose() dirtyClose()} method.
+	 */
+	void dirtyClose();
 }

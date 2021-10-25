@@ -40,6 +40,8 @@ public class TestStreamSession extends StreamSession {
 
 	public volatile boolean copyInBufferException;
 	
+	public volatile StoppingType closeType;
+	
 	public TestStreamSession(String name, IStreamHandler handler) {
 		super(name, handler);
 	}
@@ -85,4 +87,21 @@ public class TestStreamSession extends StreamSession {
 		super.executenf(task);
 	}
 	
+	@Override
+	public void close() {
+		closeType = StoppingType.GENTLE;
+		super.close();
+	}	
+
+	@Override
+	public void quickClose() {
+		closeType = StoppingType.QUICK;
+		super.quickClose();
+	}	
+
+	@Override
+	public void dirtyClose() {
+		closeType = StoppingType.DIRTY;
+		super.dirtyClose();
+	}	
 }

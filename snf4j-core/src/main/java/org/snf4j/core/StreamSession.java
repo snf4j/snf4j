@@ -141,6 +141,25 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		return (StreamSessionPipeline) getPipeline0();
 	}
 	
+	@Override
+	public SessionState getState() {
+		SelectionKey key = this.key;
+
+		if (key == null) {
+			return SessionState.OPENING;
+		}
+		if (key.isValid()) {
+			Object attachement = key.attachment();
+			
+			if (attachement instanceof ChannelContext) {
+				if (((ChannelContext<?>)attachement).context == this) {
+					return SessionState.OPEN;
+				}
+			}
+		}
+		return SessionState.CLOSING;
+	}
+	
 	/**
 	 * Constructs a named stream-oriented session associated with a handler.
 	 * 

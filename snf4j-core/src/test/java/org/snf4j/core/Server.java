@@ -172,7 +172,7 @@ public class Server {
 		eventMapping.put(EventType.EXCEPTION_CAUGHT, "EXC");
 	}
 	
-	public SSLContext getSSLContext() throws Exception {
+	public static SSLContext getSSLContext() throws Exception {
 		if (sslContext == null) {
 			synchronized (Server.class) {
 				if (sslContext == null) {
@@ -180,7 +180,7 @@ public class Server {
 					KeyStore ts = KeyStore.getInstance("JKS");
 					char[] password = "password".toCharArray();
 
-					File file = new File(getClass().getClassLoader().getResource("keystore.jks").getFile());
+					File file = new File(Server.class.getClassLoader().getResource("keystore.jks").getFile());
 
 					ks.load(new FileInputStream(file), password);
 					ts.load(new FileInputStream(file), password);

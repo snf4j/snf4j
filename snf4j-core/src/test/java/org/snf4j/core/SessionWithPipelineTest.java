@@ -27,7 +27,9 @@ package org.snf4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.After;
 import org.junit.Before;
@@ -36,6 +38,7 @@ import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionPipeline;
 import org.snf4j.core.session.IStreamSession;
+import org.snf4j.core.session.IllegalSessionStateException;
 
 public class SessionWithPipelineTest {
 
@@ -52,6 +55,8 @@ public class SessionWithPipelineTest {
 	boolean releasableAllocator;
 	
 	boolean optimizeDataCopying;
+	
+	boolean useTestSession;
 	
 	@Before
 	public void before() {
@@ -78,12 +83,14 @@ public class SessionWithPipelineTest {
 		s.allocator = new TestAllocator(directAllocator, releasableAllocator);
 		s.ignoreAvailableException = true;
 		s.optimizeDataCopying = optimizeDataCopying;
+		s.useTestSession = useTestSession;
 		c = new Client(PORT, ssls[ssls.length-1]);
 		c.waitForCloseMessage = true;
 		c.allocator = new TestAllocator(directAllocator, releasableAllocator);
 		c.ignoreAvailableException = true;
 		c.optimizeDataCopying = optimizeDataCopying;
-
+		c.useTestSession = useTestSession;
+		
 		for (int i=0; i<ssls.length-1; ++i) {
 			s.addPreSession("S" + i, ssls[i], null);
 			c.addPreSession("C" + i, ssls[i], null);
@@ -785,5 +792,266 @@ public class SessionWithPipelineTest {
 		assertFutures(s.preSessions.get(2), false);
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+	}
+
+	void assertClosed(Server s, int i) throws Exception {
+		if (i == -1) {
+			assertClosed(s.registeredSession);
+		}
+		else {
+			assertClosed(s.preSessions.get(i));
+		}
+	}
+	
+	void assertClosed(StreamSession s) throws Exception {
+		assertFalse(s.isOpen());
+		try {
+			s.write(new byte[1]);
+			fail();
+		}
+		catch (IllegalSessionStateException e) {
+		}
+	}
+
+	void assertClosed(StreamSession s, int i, boolean expected) {
+		if (i >= 0) {
+			Object key = s.getPipeline().getKeys().get(i);
+			
+			s = (StreamSession) s.getPipeline().get(key);
+		}
+		assertEquals(expected, s.closeCalled.get());
+	}
+	
+	void assertClosing(Server s, int i) throws Exception {
+		if (i == -1) {
+			assertClosing(s.registeredSession);
+		}
+		else {
+			assertClosing(s.preSessions.get(i));
+		}
+	}
+	
+	void assertClosing(StreamSession s) throws Exception {
+		assertFalse(s.isOpen());
+		assertTrue(s.write(new byte[1]).await(TIMEOUT).isCancelled());
+	}
+	
+	@Test
+	public void testPipelineClose() throws Exception {
+		start(false);
+		assertEquals(0, c.registeredSession.getPipeline().getKeys().size());
+		c.registeredSession.getPipeline().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertClosed(c, -1);
+		stop();
+		
+		start(false, false);
+		assertEquals(1, c.registeredSession.getPipeline().getKeys().size());
+		c.registeredSession.getPipeline().close();
+		waitFor(100);
+		assertEquals("SCL|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|SCR|SEN|", s.getRecordedData(true));
+		assertClosed(c, -1);
+		assertClosed(c, 0);
+		stop();
+
+		start(false, false, false);
+		assertEquals(2, c.registeredSession.getPipeline().getKeys().size());
+		c.registeredSession.getPipeline().close();
+		waitFor(100);
+		assertEquals("SCL|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|SCR|SEN|", s.getRecordedData(true));
+		assertFutures(c.preSessions.get(0), true);
+		assertFutures(c.preSessions.get(1), false);
+		assertFutures(s.preSessions.get(0), true);
+		assertFutures(s.preSessions.get(1), false);
+		assertClosed(c, -1);
+		assertClosed(c, 0);
+		assertClosed(c, 1);
+		assertClosed(c.registeredSession, 1, true);
+		stop();
+
+		start(false, false, false);
+		assertEquals(2, c.registeredSession.getPipeline().getKeys().size());
+		c.preSessions.get(0).close();
+		waitFor(100);
+		assertClosing(c, 0);
+		assertTrue(c.preSessions.get(0).write(new byte[1]).await(TIMEOUT).isCancelled());
+		assertFalse(c.preSessions.get(0).isOpen());
+		assertEquals("SCL|SEN|SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		c.registeredSession.getPipeline().close();
+		waitFor(100);
+		assertEquals("SCL|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|SCR|SEN|", s.getRecordedData(true));
+		assertFutures(c.preSessions.get(0), true);
+		assertFutures(c.preSessions.get(1), true);
+		assertFutures(s.preSessions.get(0), true);
+		assertFutures(s.preSessions.get(1), false);
+		assertClosed(c, -1);
+		assertClosed(c, 0);
+		assertClosed(c, 1);
+		stop();
+		
+		start(false, false, false);
+		assertEquals(2, c.registeredSession.getPipeline().getKeys().size());
+		c.registeredSession.getPipeline().addFirst("1", new StreamSession(c.createHandler()));
+		c.preSessions.get(0).close();
+		waitFor(100);
+		assertClosing(c, 0);
+		assertEquals("SCL|SEN|SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		c.registeredSession.getPipeline().close();
+		waitFor(100);
+		assertEquals("SCL|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|SCR|SEN|", s.getRecordedData(true));
+		assertFutures(c.preSessions.get(0), true);
+		assertFutures(c.preSessions.get(1), true);
+		assertFutures(s.preSessions.get(0), true);
+		assertFutures(s.preSessions.get(1), false);
+		assertClosed(c, -1);
+		assertClosed(c, 0);
+		assertClosed(c, 1);
+		assertClosed(c.registeredSession, 0, false);
+		stop();
+		
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		StreamSession session = c.createSession();
+		session.getPipeline().close();
+		assertClosed(session, -1, true);
+		c.start();
+		waitFor(100);
+		assertEquals("SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		session = c.createSession();
+		session.getPipeline().add("1", new StreamSession(c.createHandler()));
+		session.getPipeline().close();
+		assertClosed(session, -1, true);
+		assertClosed(session, 0, true);
+		c.start();
+		waitFor(100);
+		assertEquals("SCR|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		c = new Client(PORT);
+		session = c.createSession();
+		session.getPipeline().add("1", new StreamSession(c.createHandler()));
+		session.getPipeline().add("2", new StreamSession(c.createHandler()));
+		session.getPipeline().close();
+		assertClosed(session, -1, true);
+		assertClosed(session, 0, true);
+		assertClosed(session, 1, true);
+		c.start();
+		waitFor(100);
+		assertEquals("SCR|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+	}
+	
+	@Test
+	public void testPipelineCloseTypes() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		c.useTestSession = true;
+		TestStreamSession session = (TestStreamSession)c.createSession();
+		TestStreamSession session1 = new TestStreamSession(c.createHandler());
+		TestStreamSession session2 = new TestStreamSession(c.createHandler());
+		session.getPipeline().add("1", session1);
+		session.getPipeline().add("2", session2);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		session.getPipeline().close();
+		waitFor(100);
+		assertEquals("SCL|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals(StoppingType.GENTLE, session1.closeType);
+		assertEquals(StoppingType.GENTLE, session2.closeType);
+		assertNull(session.closeType);
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		c.useTestSession = true;
+		session = (TestStreamSession)c.createSession();
+		session1 = new TestStreamSession(c.createHandler());
+		session2 = new TestStreamSession(c.createHandler());
+		session.getPipeline().add("1", session1);
+		session.getPipeline().add("2", session2);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		session.getPipeline().quickClose();
+		waitFor(100);
+		assertEquals("SCL|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals(StoppingType.QUICK, session1.closeType);
+		assertEquals(StoppingType.GENTLE, session2.closeType);
+		assertNull(session.closeType);
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT);
+		c.useTestSession = true;
+		session = (TestStreamSession)c.createSession();
+		session1 = new TestStreamSession(c.createHandler());
+		session2 = new TestStreamSession(c.createHandler());
+		session.getPipeline().add("1", session1);
+		session.getPipeline().add("2", session2);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		session.getPipeline().dirtyClose();
+		waitFor(100);
+		assertEquals("SCL|SEN|SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals(StoppingType.DIRTY, session1.closeType);
+		assertEquals(StoppingType.GENTLE, session2.closeType);
+		assertNull(session.closeType);
+		c.stop(TIMEOUT);
+
+		session = new TestStreamSession(c.createHandler());
+		session1 = new TestStreamSession(c.createHandler());
+		session2 = new TestStreamSession(c.createHandler());
+		session.getPipeline().add("1", session1);
+		session.getPipeline().add("2", session2);
+		session.getPipeline().close();
+		assertEquals(StoppingType.GENTLE, session1.closeType);
+		assertEquals(StoppingType.GENTLE, session2.closeType);
+		assertEquals(StoppingType.GENTLE, session.closeType);
+		
+		session = new TestStreamSession(c.createHandler());
+		session1 = new TestStreamSession(c.createHandler());
+		session2 = new TestStreamSession(c.createHandler());
+		session.getPipeline().add("1", session1);
+		session.getPipeline().add("2", session2);
+		session.getPipeline().quickClose();
+		assertEquals(StoppingType.QUICK, session1.closeType);
+		assertEquals(StoppingType.QUICK, session2.closeType);
+		assertEquals(StoppingType.QUICK, session.closeType);
+
+		session = new TestStreamSession(c.createHandler());
+		session1 = new TestStreamSession(c.createHandler());
+		session2 = new TestStreamSession(c.createHandler());
+		session.getPipeline().add("1", session1);
+		session.getPipeline().add("2", session2);
+		session.getPipeline().dirtyClose();
+		assertEquals(StoppingType.DIRTY, session1.closeType);
+		assertEquals(StoppingType.DIRTY, session2.closeType);
+		assertEquals(StoppingType.DIRTY, session.closeType);
 	}
 }

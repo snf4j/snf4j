@@ -34,10 +34,15 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
+import javax.net.ssl.SSLEngine;
+
 import org.snf4j.core.factory.AbstractSessionFactory;
 import org.snf4j.core.handler.AbstractStreamHandler;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.SSLEngineCreateException;
 
 public class HttpProxy {
 	
@@ -77,15 +82,19 @@ public class HttpProxy {
 			trace.append('|');
 		}
 	}
-	
+
 	public void start(long millis) throws Exception {
+		start(millis, false);
+	}
+	
+	public void start(long millis, boolean ssl) throws Exception {
 		loop = new SelectorLoop();
 		loop.start();
 		
 		ServerSocketChannel ssc = ServerSocketChannel.open();
 		ssc.configureBlocking(false);
 		ssc.socket().bind(new InetSocketAddress(port));
-		loop.register(ssc, new SessionFactory()).sync(millis);
+		loop.register(ssc, new SessionFactory(ssl)).sync(millis);
 	}
 	
 	public void stop(long millis) throws InterruptedException {
@@ -97,7 +106,30 @@ public class HttpProxy {
 	}
 	
 	class ServerHandler extends AbstractStreamHandler {
-
+		
+		@Override
+		public ISessionConfig getConfig() {
+			DefaultSessionConfig config = new DefaultSessionConfig() {
+			
+				@Override
+				public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+					SSLEngine engine;
+					
+					try {
+						engine = Server.getSSLContext().createSSLEngine();
+					} catch (Exception e) {
+						throw new SSLEngineCreateException(e);
+					}
+					engine.setUseClientMode(clientMode);
+					if (!clientMode) {
+						engine.setNeedClientAuth(true);
+					}
+					return engine;
+				}
+			};
+			return config;
+		}
+		
 		@Override
 		public void read(Object msg) {
 			if (client != null) {
@@ -219,6 +251,10 @@ public class HttpProxy {
 	
 	class SessionFactory extends AbstractSessionFactory {
 
+		SessionFactory(boolean ssl) {
+			super(ssl);
+		}
+		
 		@Override
 		protected IStreamHandler createHandler(SocketChannel channel) {
 			return new ServerHandler();

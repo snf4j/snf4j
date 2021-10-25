@@ -55,6 +55,8 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.net.ssl.SSLEngine;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -79,6 +81,7 @@ import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.core.session.IllegalSessionStateException;
+import org.snf4j.core.session.SSLEngineCreateException;
 import org.snf4j.core.session.SessionState;
 import org.snf4j.core.session.UnsupportedSessionTimer;
 import org.snf4j.core.timer.DefaultTimer;
@@ -268,6 +271,11 @@ public class SessionTest {
 		assertEquals(SessionState.OPENING, s.getState());
 		assertFalse(s.isOpen());
 		s.setSelectionKey(key);
+		assertNull(key.attachment());
+		assertEquals(SessionState.CLOSING, s.getState());
+		key.attach(new SocketChannelContext(new StreamSession(new TestHandler(""))));
+		assertEquals(SessionState.CLOSING, s.getState());
+		key.attach(new SocketChannelContext(s));
 		assertEquals(SessionState.OPEN, s.getState());
 		assertTrue(s.isOpen());
 		key.channel().close();
@@ -3679,6 +3687,45 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCR|EXC|(HTTP proxy response status code: 201)|SEN|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
+	}
+
+	@Test
+	public void testConnectByProxySsl() throws Exception {
+		p = new HttpProxy(PORT+1);
+		p.start(TIMEOUT, true);
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT+1);
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
+			@Override
+			public ISessionConfig getConfig() {
+				DefaultSessionConfig config = new DefaultSessionConfig() {
+				
+					@Override
+					public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+						SSLEngine engine;
+						
+						try {
+							engine = Server.getSSLContext().createSSLEngine();
+						} catch (Exception e) {
+							throw new SSLEngineCreateException(e);
+						}
+						engine.setUseClientMode(clientMode);
+						if (!clientMode) {
+							engine.setNeedClientAuth(true);
+						}
+						return engine;
+					}
+				};
+				config.setWaitForInboundCloseMessage(true);
+				return config;
+			}
+		});
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
 	}
 	
 	@Test
