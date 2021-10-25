@@ -107,26 +107,22 @@ public class HttpProxy {
 	
 	class ServerHandler extends AbstractStreamHandler {
 		
+		final boolean proxy;
+		
+		ServerHandler(boolean proxy) {
+			this.proxy = proxy;
+		}
+		
 		@Override
 		public ISessionConfig getConfig() {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
 			
 				@Override
 				public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
-					SSLEngine engine;
-					
-					try {
-						engine = Server.getSSLContext().createSSLEngine();
-					} catch (Exception e) {
-						throw new SSLEngineCreateException(e);
-					}
-					engine.setUseClientMode(clientMode);
-					if (!clientMode) {
-						engine.setNeedClientAuth(true);
-					}
-					return engine;
+					return Server.createSSLEngine(null, clientMode);
 				}
 			};
+			config.setWaitForInboundCloseMessage(true);
 			return config;
 		}
 		
@@ -197,7 +193,7 @@ public class HttpProxy {
 				break;
 				
 			case ENDING:
-				if (client != null) {
+				if (!proxy && client != null) {
 					client.close();
 					client = null;
 				}
@@ -235,11 +231,12 @@ public class HttpProxy {
 				else {
 					server.writenf(s.getBytes());
 				}
+				server.close();
 				break;
 				
 			case ENDING:
 				if (server != null) {
-					server.close();
+					server.getPipeline().close();
 					server = null;
 				}
 				break;
@@ -251,13 +248,28 @@ public class HttpProxy {
 	
 	class SessionFactory extends AbstractSessionFactory {
 
+		final boolean ssl;
+		
 		SessionFactory(boolean ssl) {
-			super(ssl);
+			this.ssl = ssl;
+		}
+		
+		@Override
+		public StreamSession create(SocketChannel channel) throws Exception {
+			StreamSession s = super.create(channel);
+			
+			if (ssl) {
+				s.getPipeline().add("proxy", new SSLSession("P", new ServerHandler(true), false));
+			}
+			else {
+				s.getPipeline().add("proxy", new StreamSession("P", new ServerHandler(true)));
+			}
+			return s;
 		}
 		
 		@Override
 		protected IStreamHandler createHandler(SocketChannel channel) {
-			return new ServerHandler();
+			return new ServerHandler(false);
 		}
 		
 	}

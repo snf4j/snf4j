@@ -101,6 +101,7 @@ public class SessionTest {
 	@Before
 	public void before() {
 		s = c = null;
+		p = null;
 	}
 	
 	@After
@@ -3696,6 +3697,7 @@ public class SessionTest {
 		s = new Server(PORT);
 		s.start();
 		c = new Client(PORT+1);
+		c.waitForCloseMessage = true;
 		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
 			@Override
 			public ISessionConfig getConfig() {
@@ -3703,18 +3705,7 @@ public class SessionTest {
 				
 					@Override
 					public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
-						SSLEngine engine;
-						
-						try {
-							engine = Server.getSSLContext().createSSLEngine();
-						} catch (Exception e) {
-							throw new SSLEngineCreateException(e);
-						}
-						engine.setUseClientMode(clientMode);
-						if (!clientMode) {
-							engine.setNeedClientAuth(true);
-						}
-						return engine;
+						return Server.createSSLEngine(null, clientMode);
 					}
 				};
 				config.setWaitForInboundCloseMessage(true);
@@ -3722,10 +3713,20 @@ public class SessionTest {
 			}
 		});
 		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.session.writenf(new Packet(PacketType.ECHO, "123").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(123)|", c.getRecordedData(true));
+		assertEquals("DR|ECHO(123)|DS|", s.getRecordedData(true));
+		c.session.close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|SCL|SEN|", c.getRecordedData(true));
-		assertEquals("SCR|SOP|RDY|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
 	}
 	
 	@Test

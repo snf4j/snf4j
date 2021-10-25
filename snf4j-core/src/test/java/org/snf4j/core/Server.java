@@ -199,6 +199,28 @@ public class Server {
 		return sslContext;
 	}
 	
+	public static SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+		SSLEngine engine;
+		try {
+			if (clientMode && remoteAddress instanceof InetSocketAddress) {
+				String host = ((InetSocketAddress)remoteAddress).getHostString();
+				int port = ((InetSocketAddress)remoteAddress).getPort();
+				
+				engine = getSSLContext().createSSLEngine(host, port);
+			}
+			else {
+				engine = getSSLContext().createSSLEngine();
+			}
+		} catch (Exception e) {
+			throw new SSLEngineCreateException(e);
+		}
+		engine.setUseClientMode(clientMode);
+		if (!clientMode) {
+			engine.setNeedClientAuth(true);
+		}
+		return engine;
+	}
+	
 	public Server(int port) {
 		this.port = port;
 		lastServers.add(this);
@@ -563,25 +585,7 @@ public class Server {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
 				@Override
 				public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
-					SSLEngine engine;
-					try {
-						if (clientMode && remoteAddress instanceof InetSocketAddress) {
-							String host = ((InetSocketAddress)remoteAddress).getHostString();
-							int port = ((InetSocketAddress)remoteAddress).getPort();
-							
-							engine = getSSLContext().createSSLEngine(host, port);
-						}
-						else {
-							engine = getSSLContext().createSSLEngine();
-						}
-					} catch (Exception e) {
-						throw new SSLEngineCreateException(e);
-					}
-					engine.setUseClientMode(clientMode);
-					if (!clientMode) {
-						engine.setNeedClientAuth(true);
-					}
-					return new TestSSLEngine(engine);
+					return new TestSSLEngine(Server.createSSLEngine(remoteAddress, clientMode));
 				}
 				
 				@Override
