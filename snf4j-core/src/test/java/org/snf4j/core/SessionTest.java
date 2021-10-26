@@ -3745,7 +3745,7 @@ public class SessionTest {
 		//timed out connection
 		final TestTimer timer = new TestTimer();
 		final TestAllocator allocator = new TestAllocator(true,true);
-		DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {
+		final DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {
 			@Override
 			public IByteBufferAllocator getAllocator() {
 				return allocator;
