@@ -315,7 +315,7 @@ class SessionPipeline<T extends InternalSession> {
 		close0(current, type);
 	}
 	
-	private void close(StoppingType type) {
+	private void close(final StoppingType type) {
 		T session = null;
 		Item<?>[] itemArray = EMPTY;
 		
