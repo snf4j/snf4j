@@ -3560,9 +3560,9 @@ public class SessionTest {
 		p.appendPacket = null;
 		p.getTrace();
 		
-		TestTimer timer = new TestTimer();
-		TestAllocator allocator = new TestAllocator(true,true);
-		DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {
+		final TestTimer timer = new TestTimer();
+		final TestAllocator allocator = new TestAllocator(true,true);
+		final DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {
 			@Override
 			public IByteBufferAllocator getAllocator() {
 				return allocator;
@@ -3699,7 +3699,7 @@ public class SessionTest {
 		s.start();
 		c = new Client(PORT+1);
 		c.waitForCloseMessage = true;
-		DefaultSessionConfig config = new DefaultSessionConfig() {
+		final DefaultSessionConfig config = new DefaultSessionConfig() {
 			@Override
 			public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
 				return Server.createSSLEngine(null, clientMode);
@@ -3743,8 +3743,8 @@ public class SessionTest {
 		c.stop(TIMEOUT);
 
 		//timed out connection
-		TestTimer timer = new TestTimer();
-		TestAllocator allocator = new TestAllocator(true,true);
+		final TestTimer timer = new TestTimer();
+		final TestAllocator allocator = new TestAllocator(true,true);
 		DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {
 			@Override
 			public IByteBufferAllocator getAllocator() {
