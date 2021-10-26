@@ -3603,10 +3603,11 @@ public class SessionTest {
 
 		//not reachable URI
 		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
 		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT+2))));
 		c.start();
 		c.waitForSessionEnding(TIMEOUT*5);
-		assertEquals("SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|EXC|(Incomplete HTTP proxy protocol)|SEN|", c.getRecordedData(true));
 		w = "CONNECT 127.0.0.1:7779 HTTP/1.1|Host: 127.0.0.1:7779||";
 		assertEquals(w, p.getTrace());
 		assertEquals(0, c.session.getReadBytes());
@@ -3646,7 +3647,7 @@ public class SessionTest {
 		c.session.getPipeline().markClosed();
 		c.preSessions.get(0).close();
 		c.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCR|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|EXC|(Incomplete HTTP proxy protocol)|SEN|", c.getRecordedData(true));
 		assertEquals("", timer.getTrace(true));
 		c.stop(TIMEOUT);
 
@@ -3698,17 +3699,16 @@ public class SessionTest {
 		s.start();
 		c = new Client(PORT+1);
 		c.waitForCloseMessage = true;
+		DefaultSessionConfig config = new DefaultSessionConfig() {
+			@Override
+			public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+				return Server.createSSLEngine(null, clientMode);
+			}
+		};
+		config.setWaitForInboundCloseMessage(true);
 		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
 			@Override
 			public ISessionConfig getConfig() {
-				DefaultSessionConfig config = new DefaultSessionConfig() {
-				
-					@Override
-					public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
-						return Server.createSSLEngine(null, clientMode);
-					}
-				};
-				config.setWaitForInboundCloseMessage(true);
 				return config;
 			}
 		});
@@ -3727,6 +3727,71 @@ public class SessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("SCL|SEN|", c.getRecordedData(true));
 		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		
+		//not reachable URI
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT+2))) {
+				@Override
+				public ISessionConfig getConfig() {
+					return config;
+				}
+		});
+		c.start();
+		c.waitForSessionEnding(TIMEOUT*5);
+		assertEquals("SCR|EXC|(Incomplete HTTP proxy protocol)|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		//timed out connection
+		TestTimer timer = new TestTimer();
+		TestAllocator allocator = new TestAllocator(true,true);
+		DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {
+			@Override
+			public IByteBufferAllocator getAllocator() {
+				return allocator;
+			}
+			
+			@Override
+			public ITimer getTimer() {
+				return timer;
+			}
+		};
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 200) {
+			@Override
+			public ISessionStructureFactory getFactory() {
+				return factory;
+			}
+
+			@Override
+			public ISessionConfig getConfig() {
+				return config;
+			}
+		});
+		p.skipConnection = true;
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(Proxy connection timed out)|SEN|", c.getRecordedData(true));
+		assertEquals("200|", timer.getTrace(true).replace("c60000|", "").replace("60000|", ""));
+		c.stop(TIMEOUT);
+
+		//201 status code
+		p.skipConnection = false;
+		p.status = "201 Error";
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
+			@Override
+			public ISessionConfig getConfig() {
+				return config;
+			}
+		});
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(HTTP proxy response status code: 201)|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
 	}
 	
 	@Test

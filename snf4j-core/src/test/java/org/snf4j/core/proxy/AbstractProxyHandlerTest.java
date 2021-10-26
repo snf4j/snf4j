@@ -192,6 +192,7 @@ public class AbstractProxyHandlerTest {
 		c.stop(TIMEOUT);
 		
 		//connection with 0 timeout
+		waitFor(100);
 		s.getRecordedData(true);
 		h = new TestHandler(0);
 		h.skipClose = true;

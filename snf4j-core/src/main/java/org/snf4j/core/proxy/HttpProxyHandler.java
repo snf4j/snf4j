@@ -32,6 +32,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.snf4j.core.handler.SessionEvent;
+
 /**
  * Handles client proxy connections via the HTTP tunneling protocol. For more
  * details about the protocol refer to <a href=
@@ -77,7 +79,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	private int headersLength;
 	
 	/**
-	 * Constructs an HTTP tunnel connection pre-handler with the default (10 seconds)
+	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
 	 * connection timeout.
 	 * 
 	 * @param uri the URI identifying the remote host to which the HTTP tunnel
@@ -88,7 +90,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	}
 	
 	/**
-	 * Constructs an HTTP tunnel connection pre-handler with the default (10 seconds)
+	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
 	 * connection timeout and an option to change the default handling of line
 	 * terminators.
 	 * 
@@ -108,7 +110,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	}
 
 	/**
-	 * Constructs an HTTP tunnel connection pre-handler with the specified connection
+	 * Constructs an HTTP tunnel connection handler with the specified connection
 	 * timeout.
 	 * 
 	 * @param uri               the URI identifying the remote host to which the
@@ -122,7 +124,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	}
 	
 	/**
-	 * Constructs an HTTP tunnel connection pre-handler with the specified connection
+	 * Constructs an HTTP tunnel connection handler with the specified connection
 	 * timeout and an option to change the default handling of line terminators.
 	 * 
 	 * @param uri                  the URI identifying the remote host to which the
@@ -234,6 +236,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 				if (sc != OK) {
 					throw new ProxyConnectionException("HTTP proxy response status code: " + sc);
 				}
+				getSession().getPipeline().markDone();
 				statusCode = sc;
 			}
 			else if (line.isEmpty()) {
@@ -252,11 +255,19 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 		read(bytes);
 	}
 
+	@Override
+	public void event(SessionEvent event) {
+		if (event == SessionEvent.OPENED) {
+			getSession().getPipeline().markUndone(new ProxyConnectionException("Incomplete HTTP proxy protocol"));
+		}
+		super.event(event);
+	}
+	
 	/**
 	 * Appends an HTTP header to the HTTP CONNECT method request being sent to an
 	 * HTTP proxy server.
 	 * <p>
-	 * There is no need to append the Host header as it appended by default.
+	 * There is no need to append the Host header as it is appended by default.
 	 * 
 	 * @param name  the name of the HTTP header
 	 * @param value the value of the HTTP header

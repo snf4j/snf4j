@@ -31,6 +31,7 @@ import static org.junit.Assert.fail;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.junit.Test;
 import org.snf4j.core.TestSession;
@@ -148,20 +149,20 @@ public class HttpProxyHandlerTest {
 		p.read((Object)null);
 		assertEquals("", s .getTrace());
 		p.read("HTTP/1.1 200 OK\r\n\r\n".getBytes());
-		assertEquals("C|", s .getTrace());
+		assertEquals("DONE|C|", s .getTrace());
 
 		p = new HttpProxyHandler(new URI("http://host:80"));
 		p.setSession(s);
 		ByteBuffer bb = ByteBuffer.allocate(100);
 		bb.put("HTTP/1.1 200 OK\r\n\r\n".getBytes()).flip();
 		p.read(bb);
-		assertEquals("R|C|", s.getTrace());
+		assertEquals("R|DONE|C|", s.getTrace());
 		assertTrue(bb == s.released);
 		
 		p = new HttpProxyHandler(new URI("http://host:80"));
 		p.setSession(s);
 		p.read("HTTP/1.1 200 OK\r\nUser-Agent: Unknown/0.0\r\n\r\n".getBytes());
-		assertEquals("C|", s.getTrace());
+		assertEquals("DONE|C|", s.getTrace());
 
 		p = new HttpProxyHandler(new URI("http://host:80"));
 		p.setSession(s);
@@ -172,22 +173,24 @@ public class HttpProxyHandlerTest {
 		catch (ProxyConnectionException e) {
 			assertEquals("Unexpected internal EOF handling", e.getMessage());
 		}
+		assertEquals("DONE|", s.getTrace());
+
 		p = new HttpProxyHandler(new URI("http://host:80"), true);
 		p.setSession(s);
 		p.read("HTTP/1.1 200 OK\nUser-Agent: Unknown/0.0\r\n\n".getBytes());
-		assertEquals("C|", s.getTrace());
+		assertEquals("DONE|C|", s.getTrace());
 		
 		p = new HttpProxyHandler(new URI("http://host:80"));
 		p.setSession(s);
 		p.read("HTTP/1.1 200 OK\r\n".getBytes());
-		assertEquals("", s.getTrace());
+		assertEquals("DONE|", s.getTrace());
 		p.read("\r\n".getBytes());
 		assertEquals("C|", s.getTrace());
 
 		p = new HttpProxyHandler(new URI("http://host:80"));
 		p.setSession(s);
 		p.read("HTTP/1.1 200 OK OK OK\r\n".getBytes());
-		assertEquals("", s.getTrace());
+		assertEquals("DONE|", s.getTrace());
 		p.read("User-Agent: Unknown/0.0\r\n".getBytes());
 		assertEquals("", s.getTrace());
 		p.read("\r\n".getBytes());
@@ -329,7 +332,83 @@ public class HttpProxyHandlerTest {
 
 		@Override
 		public ISessionPipeline<IStreamSession> getPipeline() {
-			return null;
+			return new ISessionPipeline<IStreamSession>() {
+
+				@Override
+				public void addFirst(Object key, IStreamSession session) {
+				}
+
+				@Override
+				public void addAfter(Object baseKey, Object key, IStreamSession session) {
+				}
+
+				@Override
+				public void add(Object key, IStreamSession session) {
+				}
+
+				@Override
+				public void addBefore(Object baseKey, Object key, IStreamSession session) {
+				}
+
+				@Override
+				public IStreamSession replace(Object oldKey, Object key, IStreamSession session) {
+					return null;
+				}
+
+				@Override
+				public IStreamSession remove(Object key) {
+					return null;
+				}
+
+				@Override
+				public IStreamSession get(Object key) {
+					return null;
+				}
+
+				@Override
+				public IStreamSession getOwner() {
+					return null;
+				}
+
+				@Override
+				public List<Object> getKeys() {
+					return null;
+				}
+
+				@Override
+				public void markClosed() {
+				}
+
+				@Override
+				public void markClosed(Throwable cause) {
+				}
+
+				@Override
+				public void markUndone() {
+				}
+
+				@Override
+				public void markUndone(Throwable cause) {
+				}
+
+				@Override
+				public void markDone() {
+					trace.append("DONE");
+				}
+
+				@Override
+				public void close() {
+				}
+
+				@Override
+				public void quickClose() {
+				}
+
+				@Override
+				public void dirtyClose() {
+				}
+				
+			};
 		}
 
 		@Override

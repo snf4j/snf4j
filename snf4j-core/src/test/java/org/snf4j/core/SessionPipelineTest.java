@@ -532,6 +532,53 @@ public class SessionPipelineTest {
 	}
 	
 	@Test
+	public void testUndone() {
+		StreamSessionPipeline p = (StreamSessionPipeline) s1.getPipeline();
+		p.add("2", s2);
+		p.first();
+		Item<?> i2 = s2.pipelineItem;
+		Exception e1 = new Exception("E1");
+		Exception e2 = new Exception("E2");
+		
+		assertNull(i2.cause());
+		assertFalse(i2.canClose());
+		p.markUndone();
+		assertNull(i2.cause());
+		assertTrue(i2.canClose());
+		p.markDone();
+		assertNull(i2.cause());
+		assertFalse(i2.canClose());
+		p.markUndone(e1);
+		assertTrue(i2.cause() == e1);
+		assertTrue(i2.canClose());
+		p.markDone();
+		assertNull(i2.cause());
+		assertFalse(i2.canClose());
+
+		p.markUndone();
+		assertNull(i2.cause());
+		assertTrue(i2.canClose());
+		p.markUndone(e1);
+		assertTrue(i2.cause() == e1);
+		assertTrue(i2.canClose());
+		p.markClosed();
+		assertTrue(i2.cause() == e1);
+		assertTrue(i2.canClose());
+		p.markDone();
+		assertNull(i2.cause());
+		assertTrue(i2.canClose());
+		p.markUndone(e1);
+		assertTrue(i2.cause() == e1);
+		assertTrue(i2.canClose());
+		p.markClosed(e2);
+		assertTrue(i2.cause() == e2);
+		assertTrue(i2.canClose());
+		p.markDone();
+		assertTrue(i2.cause() == e2);
+		assertTrue(i2.canClose());
+	}
+	
+	@Test
 	public void testItem() {
 		StreamSessionPipeline p = (StreamSessionPipeline) s1.getPipeline();
 

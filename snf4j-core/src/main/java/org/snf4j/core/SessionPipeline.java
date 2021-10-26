@@ -52,6 +52,10 @@ class SessionPipeline<T extends InternalSession> {
 	
 	private volatile Throwable cause;
 	
+	private volatile boolean undone;
+	
+	private volatile Throwable undoneCause;
+	
 	SessionPipeline(T owner) {
 		this.owner = owner;
 	}
@@ -259,9 +263,23 @@ class SessionPipeline<T extends InternalSession> {
 		eos = true;
 	}
 	
-	public void markClosed(Throwable t) {
-		cause = t;
+	public void markClosed(Throwable cause) {
+		this.cause = cause;
 		eos = true;
+	}
+
+	public void markUndone() {
+		markUndone(null);
+	}
+	
+	public void markUndone(Throwable cause) {
+		undone = true;
+		undoneCause = cause;
+	}
+	
+	public void markDone() {
+		undone = false;
+		undoneCause = null;
 	}
 
 	private void close0(InternalSession current, StoppingType type) {
@@ -375,7 +393,9 @@ class SessionPipeline<T extends InternalSession> {
 		}
 		
 		Throwable cause() {
-			return pipeline.cause;
+			Throwable cause = pipeline.cause;
+			
+			return cause != null ? cause : pipeline.undoneCause;
 		}
 		
 		void cause(Throwable cause) {
@@ -398,7 +418,7 @@ class SessionPipeline<T extends InternalSession> {
 		}
 		
 		boolean canClose() {
-			return pipeline.eos || pipeline.cause != null;
+			return pipeline.eos || pipeline.cause != null || pipeline.undone;
 		}
 		
 		void unlink() {

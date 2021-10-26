@@ -32,7 +32,7 @@ import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.core.timer.ITimerTask;
 
 /**
- * Base implementation for pre-handlers handling client connections via proxy
+ * Base implementation for handlers processing client connections via proxy
  * protocols.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
@@ -48,7 +48,7 @@ abstract public class AbstractProxyHandler extends AbstractStreamHandler {
 	private ITimerTask connectionTimer;
 	
 	/**
-	 * Constructs a proxy connection pre-handler with the specified connection
+	 * Constructs a proxy connection handler with the specified connection
 	 * timeout.
 	 * <p>
 	 * NOTE: The connection timeout will have no effect if the associated session
@@ -66,7 +66,7 @@ abstract public class AbstractProxyHandler extends AbstractStreamHandler {
 	}
 	
 	/**
-	 * Constructs a proxy connection pre-handler with the default (10 seconds)
+	 * Constructs a proxy connection handler with the default (10 seconds)
 	 * connection timeout.
 	 * <p>
 	 * NOTE: The connection timeout will have no effect if the associated session
