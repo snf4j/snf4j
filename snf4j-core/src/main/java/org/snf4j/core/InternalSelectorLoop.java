@@ -1123,6 +1123,9 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 				if (item.session().getConfig().alwaysNotifiedBeingInPipeline()) {
 					sessions.add(item.session());
 				}
+				else {
+					item.session().close();
+				}
 			}
 			sessions.add(owner);
 			for (Iterator<InternalSession> i = sessions.iterator(); i.hasNext();) {

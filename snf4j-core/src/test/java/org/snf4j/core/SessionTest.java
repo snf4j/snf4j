@@ -38,6 +38,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.Socket;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -52,6 +55,8 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.net.ssl.SSLEngine;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,19 +69,25 @@ import org.snf4j.core.codec.zip.GzipDecoder;
 import org.snf4j.core.codec.zip.GzipEncoder;
 import org.snf4j.core.codec.zip.ZlibDecoder;
 import org.snf4j.core.codec.zip.ZlibEncoder;
+import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
+import org.snf4j.core.proxy.HttpProxyHandler;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.core.session.IllegalSessionStateException;
+import org.snf4j.core.session.SSLEngineCreateException;
 import org.snf4j.core.session.SessionState;
 import org.snf4j.core.session.UnsupportedSessionTimer;
 import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.ITimer;
 import org.snf4j.core.timer.ITimerTask;
+import org.snf4j.core.timer.TestTimer;
 
 public class SessionTest {
 	long TIMEOUT = 2000;
@@ -85,16 +96,19 @@ public class SessionTest {
 	
 	Server s;
 	Client c;
+	HttpProxy p;
 	
 	@Before
 	public void before() {
 		s = c = null;
+		p = null;
 	}
 	
 	@After
 	public void after() throws InterruptedException {
 		if (c != null) c.stop(TIMEOUT);
 		if (s != null) s.stop(TIMEOUT);
+		if (p != null) p.stop(TIMEOUT);
 	}
 	
 	private void waitFor(long millis) throws InterruptedException {
@@ -258,6 +272,11 @@ public class SessionTest {
 		assertEquals(SessionState.OPENING, s.getState());
 		assertFalse(s.isOpen());
 		s.setSelectionKey(key);
+		assertNull(key.attachment());
+		assertEquals(SessionState.CLOSING, s.getState());
+		key.attach(new SocketChannelContext(new StreamSession(new TestHandler(""))));
+		assertEquals(SessionState.CLOSING, s.getState());
+		key.attach(new SocketChannelContext(s));
 		assertEquals(SessionState.OPEN, s.getState());
 		assertTrue(s.isOpen());
 		key.channel().close();
@@ -3482,6 +3501,352 @@ public class SessionTest {
 		session.consumeInBuffer();
 	}
 
+	int countPipes(String s) {
+		return s.length() - s.replace("|", "").length();
+	}
+
+	@Test
+	public void testConnectByProxy() throws Exception {
+		//successful connection
+		p = new HttpProxy(PORT+1);
+		p.start(TIMEOUT);
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT+1);
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
+			@Override
+			public void event(DataEvent event, long length) {
+				c.record(event.name() + "(" + length + ")");
+			}
+		});
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SENT(57)|RECEIVED(39)|SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		String w = "CONNECT 127.0.0.1:7777 HTTP/1.1|Host: 127.0.0.1:7777||";
+		String r = "HTTP/1.1 200 Connection established||";
+		assertEquals(w+r, p.getTrace());
+		assertEquals(r.length() + countPipes(r), c.preSessions.get(0).getReadBytes());
+		assertEquals(w.length() + countPipes(w), c.preSessions.get(0).getWrittenBytes());
+		c.write(new Packet(PacketType.ECHO, "123"));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|ECHO(123)|DS|", s.getRecordedData(true));
+		assertEquals("DS|DR|ECHO_RESPONSE(123)|", c.getRecordedData(true));
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		//successful connection with appended packet
+		p.appendPacket = new Packet(PacketType.NOP, "123");
+		c = new Client(PORT+1);
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)));
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		assertEquals("SCR|SOP|RDY|DR|NOP(123)|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		p.appendPacket = null;
+		p.getTrace();
+		
+		final TestTimer timer = new TestTimer();
+		final TestAllocator allocator = new TestAllocator(true,true);
+		final DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {
+			@Override
+			public IByteBufferAllocator getAllocator() {
+				return allocator;
+			}
+			
+			@Override
+			public ITimer getTimer() {
+				return timer;
+			}
+		};
+		
+		//successful connection with buffer optimization
+		c = new Client(PORT+1);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(true,true);
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT), 200) {
+			@Override
+			public void event(DataEvent event, long length) {
+				throw new RuntimeException();
+			}
+			
+			@Override
+			public ISessionStructureFactory getFactory() {
+				return factory;
+			}
+		});
+		((DefaultSessionConfig)c.preSessions.get(0).getConfig()).setOptimizeDataCopying(true);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals(w+r, p.getTrace());
+		waitFor(300);
+		assertEquals("", c.getRecordedData(true));
+		assertEquals("200|c200|", timer.getTrace(true));
+		c.stop(TIMEOUT);
+
+		//not reachable URI
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT+2))));
+		c.start();
+		c.waitForSessionEnding(TIMEOUT*5);
+		assertEquals("SCR|EXC|(Incomplete HTTP proxy protocol)|SEN|", c.getRecordedData(true));
+		w = "CONNECT 127.0.0.1:7779 HTTP/1.1|Host: 127.0.0.1:7779||";
+		assertEquals(w, p.getTrace());
+		assertEquals(0, c.session.getReadBytes());
+		assertEquals(w.length() + countPipes(w), c.preSessions.get(0).getWrittenBytes());
+		c.stop(TIMEOUT);
+
+		//timed out connection
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 200) {
+			@Override
+			public ISessionStructureFactory getFactory() {
+				return factory;
+			}
+		});
+		p.skipConnection = true;
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(Proxy connection timed out)|SEN|", c.getRecordedData(true));
+		assertEquals("200|", timer.getTrace(true));
+		c.stop(TIMEOUT);
+		
+		//timed out connection with 0 delay
+		c = new Client(PORT+1);
+		c.timer = new TestTimer();
+		c.exceptionRecordException = true;
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 0) {
+			@Override
+			public ISessionStructureFactory getFactory() {
+				return factory;
+			}
+		});
+		p.skipConnection = true;
+		c.start();
+		waitFor(200);
+		assertEquals("", c.getRecordedData(true));
+		c.session.getPipeline().markClosed();
+		c.preSessions.get(0).close();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(Incomplete HTTP proxy protocol)|SEN|", c.getRecordedData(true));
+		assertEquals("", timer.getTrace(true));
+		c.stop(TIMEOUT);
+
+		//timed out connection with other timer
+		c = new Client(PORT+1);
+		c.timer = new TestTimer();
+		c.exceptionRecordException = true;
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 300) {
+			@Override
+			public ISessionStructureFactory getFactory() {
+				return factory;
+			}
+		});
+		p.skipConnection = true;
+		c.start();
+		waitFor(100);
+		c.preSessions.get(0).getTimer().scheduleEvent("TEST", 100);
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(Proxy connection timed out)|SEN|", c.getRecordedData(true));
+		assertEquals("300|100|", timer.getTrace(true));
+		c.stop(TIMEOUT);
+		
+		//URI without host
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", false, new HttpProxyHandler(new URI(null, null, "", "")));
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(Undefined host)|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		//201 status code
+		p.skipConnection = false;
+		p.status = "201 Error";
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)));
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(HTTP proxy response status code: 201)|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+	}
+
+	@Test
+	public void testConnectByProxySsl() throws Exception {
+		p = new HttpProxy(PORT+1);
+		p.start(TIMEOUT, true);
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT+1);
+		c.waitForCloseMessage = true;
+		final DefaultSessionConfig config = new DefaultSessionConfig() {
+			@Override
+			public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+				return Server.createSSLEngine(null, clientMode);
+			}
+		};
+		config.setWaitForInboundCloseMessage(true);
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
+			@Override
+			public ISessionConfig getConfig() {
+				return config;
+			}
+		});
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.session.writenf(new Packet(PacketType.ECHO, "123").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(123)|", c.getRecordedData(true));
+		assertEquals("DR|ECHO(123)|DS|", s.getRecordedData(true));
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		
+		//not reachable URI
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT+2))) {
+				@Override
+				public ISessionConfig getConfig() {
+					return config;
+				}
+		});
+		c.start();
+		c.waitForSessionEnding(TIMEOUT*5);
+		assertEquals("SCR|EXC|(Incomplete HTTP proxy protocol)|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		//timed out connection
+		final TestTimer timer = new TestTimer();
+		final TestAllocator allocator = new TestAllocator(true,true);
+		final DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {
+			@Override
+			public IByteBufferAllocator getAllocator() {
+				return allocator;
+			}
+			
+			@Override
+			public ITimer getTimer() {
+				return timer;
+			}
+		};
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 200) {
+			@Override
+			public ISessionStructureFactory getFactory() {
+				return factory;
+			}
+
+			@Override
+			public ISessionConfig getConfig() {
+				return config;
+			}
+		});
+		p.skipConnection = true;
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(Proxy connection timed out)|SEN|", c.getRecordedData(true));
+		assertEquals("200|", timer.getTrace(true).replace("c60000|", "").replace("60000|", ""));
+		c.stop(TIMEOUT);
+
+		//201 status code
+		p.skipConnection = false;
+		p.status = "201 Error";
+		c = new Client(PORT+1);
+		c.exceptionRecordException = true;
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
+			@Override
+			public ISessionConfig getConfig() {
+				return config;
+			}
+		});
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|(HTTP proxy response status code: 201)|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+	}
+	
+	@Test
+	public void testHttpProxy() throws Exception {
+		s = new Server(PORT);
+		s.start();
+		
+		HttpProxy proxy = new HttpProxy(PORT+1);
+		proxy.start(TIMEOUT);
+		
+		Socket socket = new Socket(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT+1)));
+	
+		try {
+			socket.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT));
+
+			byte[] buf = new byte[100];
+			int i;
+
+			socket.getOutputStream().write(new Packet(PacketType.ECHO, "123").toBytes());
+			i = socket.getInputStream().read(buf);
+			assertTrue(i > 0);
+			Packet p = Packet.fromBytes(buf, 0, i);
+			assertEquals(PacketType.ECHO_RESPONSE, p.type);
+			assertEquals("123", p.payload);
+
+			socket.getOutputStream().write(new Packet(PacketType.ECHO, "4567890").toBytes());
+			i = socket.getInputStream().read(buf);
+			assertTrue(i > 0);
+			p = Packet.fromBytes(buf, 0, i);
+			assertEquals(PacketType.ECHO_RESPONSE, p.type);
+			assertEquals("4567890", p.payload);
+		}
+		finally {
+			socket.close();
+			proxy.stop(TIMEOUT);
+		}
+		
+		proxy = new HttpProxy(PORT+1);
+		try {
+			proxy.status = "400 Bad Request";
+			proxy.start(TIMEOUT);
+			socket = new Socket(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT+1)));
+			try {
+				socket.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT));
+				fail();
+			}
+			catch (Throwable e) {
+			}
+		}
+		finally {
+			proxy.stop(TIMEOUT);
+		}
+		
+	}
+	
 	static class ExecuteTask implements Runnable {
 
 		volatile Thread thread;

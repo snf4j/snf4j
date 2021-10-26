@@ -38,6 +38,7 @@ import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
 
@@ -59,7 +61,11 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.LoggerRecorder;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
+import org.snf4j.core.proxy.HttpProxyHandler;
+import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.IllegalSessionStateException;
+import org.snf4j.core.session.SSLEngineCreateException;
 import org.snf4j.core.timer.TestTimer;
 
 public class SSLSessionTest {
@@ -69,6 +75,7 @@ public class SSLSessionTest {
 	
 	Server s;
 	Client c;
+	HttpProxy p;
 	
 	static final String CLIENT_RDY_TAIL;
 	static final boolean TLS1_3;
@@ -90,6 +97,7 @@ public class SSLSessionTest {
 	@Before
 	public void before() {
 		s = c = null;
+		p = null;
 		AFTER_TIMEOUT = 0;
 	}
 	
@@ -97,6 +105,7 @@ public class SSLSessionTest {
 	public void after() throws InterruptedException {
 		if (c != null) c.stop(TIMEOUT+AFTER_TIMEOUT);
 		if (s != null) s.stop(TIMEOUT+AFTER_TIMEOUT);
+		if (p != null) p.stop(TIMEOUT+AFTER_TIMEOUT);
 	}
 
 	static void assertTLSVariants(String expected, String actual) {
@@ -2505,5 +2514,77 @@ public class SSLSessionTest {
 		assertEquals(2, s2.getInBuffersForCopying().length);
 		assertEquals(10, s1.copyInBuffer(s2));
 		SessionTest.assertBuffer(b1, 10, 16);
-	}	
+	}
+	
+	@Test
+	public void testConnectByProxy() throws Exception {
+		p = new HttpProxy(PORT+1);
+		p.start(TIMEOUT);
+		s = new Server(PORT,true);
+		s.start();
+		c = new Client(PORT+1,true);
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)));
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		c.getRecordedData(true);
+		c.resetDataLocks();
+		s.getRecordedData(true);
+		s.resetDataLocks();
+		c.session.writenf(new Packet(PacketType.ECHO, "22").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(22)|", c.getRecordedData(true));
+		assertEquals("DR|ECHO(22)|DS|", s.getRecordedData(true));
+		assertTrue(c.session instanceof SSLSession);
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|DS|SCL|SEN|", s.getRecordedData(true));
+	}
+
+	@Test
+	public void testConnectByProxySsl() throws Exception {
+		p = new HttpProxy(PORT+1);
+		p.start(TIMEOUT, true);
+		s = new Server(PORT,true);
+		s.start();
+		c = new Client(PORT+1,true);
+		c.waitForCloseMessage = true;
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
+			@Override
+			public ISessionConfig getConfig() {
+				DefaultSessionConfig config = new DefaultSessionConfig() {
+				
+					@Override
+					public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+						return Server.createSSLEngine(null, clientMode);
+					}
+				};
+				config.setWaitForInboundCloseMessage(true);
+				return config;
+			}
+		});
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		c.getRecordedData(true);
+		c.resetDataLocks();
+		s.getRecordedData(true);
+		s.resetDataLocks();
+		c.session.writenf(new Packet(PacketType.ECHO, "22").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(22)|", c.getRecordedData(true));
+		assertEquals("DR|ECHO(22)|DS|", s.getRecordedData(true));
+		assertTrue(c.session instanceof SSLSession);
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DR|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|DS|SCL|SEN|", s.getRecordedData(true));
+	}
 }

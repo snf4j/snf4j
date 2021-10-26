@@ -25,6 +25,7 @@
  */
 package org.snf4j.core;
 
+import java.nio.channels.SelectionKey;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -33,6 +34,8 @@ import java.util.NoSuchElementException;
 
 class SessionPipeline<T extends InternalSession> {
 
+	private final static Item<?>[] EMPTY = new Item<?>[0];
+	
 	private final T owner;
 
 	private final LinkedList<Item<T>> items = new LinkedList<Item<T>>();
@@ -48,6 +51,10 @@ class SessionPipeline<T extends InternalSession> {
 	private volatile boolean eos;
 	
 	private volatile Throwable cause;
+	
+	private volatile boolean undone;
+	
+	private volatile Throwable undoneCause;
 	
 	SessionPipeline(T owner) {
 		this.owner = owner;
@@ -256,9 +263,110 @@ class SessionPipeline<T extends InternalSession> {
 		eos = true;
 	}
 	
-	public void markClosed(Throwable t) {
-		cause = t;
+	public void markClosed(Throwable cause) {
+		this.cause = cause;
 		eos = true;
+	}
+
+	public void markUndone() {
+		markUndone(null);
+	}
+	
+	public void markUndone(Throwable cause) {
+		undone = true;
+		undoneCause = cause;
+	}
+	
+	public void markDone() {
+		undone = false;
+		undoneCause = null;
+	}
+
+	private void close0(InternalSession current, StoppingType type) {
+		switch (type) {
+		case GENTLE:
+			current.close();
+			break;
+			
+		case QUICK:
+			current.quickClose();
+			break;
+			
+		case DIRTY:
+			current.dirtyClose();
+			break;
+		}
+	}
+	
+	private void close0(StoppingType type) {
+		Item<T> item = first;
+		T current = owner;
+		
+		while (item != null) {
+			T session = item.session();
+			SelectionKey key = session.key;
+			
+			if (key != null && ((ChannelContext<?>)key.attachment()).getSession() == session) {
+				current = session;
+				break;
+			}
+			item = item.next;
+		}
+		close0(current, type);
+	}
+	
+	private void close(final StoppingType type) {
+		T session = null;
+		Item<?>[] itemArray = EMPTY;
+		
+		markClosed();
+		if (owner.loop != null) {
+			session = owner;
+		}
+		else {
+			synchronized (items) {
+				Item<T> item = first;
+
+				while (item != null) {
+					if (item.session().loop != null) {
+						session = item.session();
+						break;
+					}
+					item = item.next;
+				}
+				if (session == null && !items.isEmpty()) {
+					itemArray = items.toArray(new Item<?>[items.size()]);
+				}
+			}
+		}
+		
+		if (session != null) {
+			session.execute(new Runnable() {
+
+				@Override
+				public void run() {
+					close0(type);
+				}
+			});
+		}
+		else {
+			for (Item<?> item: itemArray) {
+				close0(item.session(), type);
+			}
+			close0(owner, type);
+		}
+	}
+	
+	public void close() {
+		close(StoppingType.GENTLE);
+	}	
+
+	public void quickClose() {
+		close(StoppingType.QUICK);
+	}	
+	
+	public void dirtyClose() {
+		close(StoppingType.DIRTY);
 	}
 	
 	static class Item<T extends InternalSession> {
@@ -285,7 +393,9 @@ class SessionPipeline<T extends InternalSession> {
 		}
 		
 		Throwable cause() {
-			return pipeline.cause;
+			Throwable cause = pipeline.cause;
+			
+			return cause != null ? cause : pipeline.undoneCause;
 		}
 		
 		void cause(Throwable cause) {
@@ -308,7 +418,7 @@ class SessionPipeline<T extends InternalSession> {
 		}
 		
 		boolean canClose() {
-			return pipeline.eos || pipeline.cause != null;
+			return pipeline.eos || pipeline.cause != null || pipeline.undone;
 		}
 		
 		void unlink() {

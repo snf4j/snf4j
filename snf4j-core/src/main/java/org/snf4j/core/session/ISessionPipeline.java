@@ -151,8 +151,8 @@ public interface ISessionPipeline<T extends ISession> {
 	 * Marks this pipeline for closing.
 	 * <p>
 	 * Marking a pipeline for closing changes the way the session's close methods
-	 * work. Calling the close methods in such case will close the connection instead of passing
-	 * the processing to the next session in the pipeline.
+	 * work. Calling the close methods in such case will close the connection
+	 * instead of passing the processing to the next session in the pipeline.
 	 */
 	void markClosed();
 	
@@ -160,10 +160,64 @@ public interface ISessionPipeline<T extends ISession> {
 	 * Marks this pipeline for closing with specified cause.
 	 * <p>
 	 * Marking a pipeline for closing changes the way the session's close methods
-	 * work. Calling the close methods in such case will close the connection instead of passing
-	 * the processing to the next session in the pipeline.
+	 * work. Calling the close methods in such case will close the connection
+	 * instead of passing the processing to the next session in the pipeline.
 	 * 
 	 * @param cause the closing cause
 	 */
 	void markClosed(Throwable cause);
+
+	/**
+	 * Marks this pipeline as undone.
+	 * <p>
+	 * Marking a pipeline as undone changes the way the session's close methods
+	 * work. Calling the close methods in such state will close the connection
+	 * instead of passing the processing to the next session in the pipeline.
+	 */
+	void markUndone();
+	
+	/**
+	 * Marks this pipeline as undone with specified cause.
+	 * <p>
+	 * Marking a pipeline as undone changes the way the session's close methods
+	 * work. Calling the close methods in such state will close the connection
+	 * instead of passing the processing to the next session in the pipeline.
+	 */
+	void markUndone(Throwable cause);
+	
+	/**
+	 * Marks this pipeline as done. It simply reverts the undone state. 
+	 */
+	void markDone();
+	
+	/**
+	 * Marks this pipeline for closing and gently closes the currently processed
+	 * session in the pipeline.
+	 * <p>
+	 * If the session owning this pipeline has not been registered with a selector
+	 * loop all session in the pipeline will be closed by calling the
+	 * {@link ISession#close() close()} method.
+	 */
+	void close();
+	
+	/**
+	 * Marks this pipeline for closing and quickly closes the currently processed
+	 * session in the pipeline.
+	 * <p>
+	 * If the session owning this pipeline has not been registered with a selector
+	 * loop all session in the pipeline will be closed by calling the
+	 * {@link ISession#quickClose() quickClose()} method.
+	 */
+	void quickClose();
+	
+	/**
+	 * Marks this pipeline for closing and dirty closes the currently processed
+	 * session in the pipeline.
+	 * <p>
+	 * If the session owning this pipeline has not been registered with a selector
+	 * loop all session in the pipeline will be closed by calling the
+	 * {@link ISession#dirtyClose() dirtyClose()} method.
+	 */
+	void dirtyClose();
+	
 }

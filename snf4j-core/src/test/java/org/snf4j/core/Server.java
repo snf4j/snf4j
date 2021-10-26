@@ -172,7 +172,7 @@ public class Server {
 		eventMapping.put(EventType.EXCEPTION_CAUGHT, "EXC");
 	}
 	
-	public SSLContext getSSLContext() throws Exception {
+	public static SSLContext getSSLContext() throws Exception {
 		if (sslContext == null) {
 			synchronized (Server.class) {
 				if (sslContext == null) {
@@ -180,7 +180,7 @@ public class Server {
 					KeyStore ts = KeyStore.getInstance("JKS");
 					char[] password = "password".toCharArray();
 
-					File file = new File(getClass().getClassLoader().getResource("keystore.jks").getFile());
+					File file = new File(Server.class.getClassLoader().getResource("keystore.jks").getFile());
 
 					ks.load(new FileInputStream(file), password);
 					ts.load(new FileInputStream(file), password);
@@ -197,6 +197,28 @@ public class Server {
 			}
 		}
 		return sslContext;
+	}
+	
+	public static SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+		SSLEngine engine;
+		try {
+			if (clientMode && remoteAddress instanceof InetSocketAddress) {
+				String host = ((InetSocketAddress)remoteAddress).getHostString();
+				int port = ((InetSocketAddress)remoteAddress).getPort();
+				
+				engine = getSSLContext().createSSLEngine(host, port);
+			}
+			else {
+				engine = getSSLContext().createSSLEngine();
+			}
+		} catch (Exception e) {
+			throw new SSLEngineCreateException(e);
+		}
+		engine.setUseClientMode(clientMode);
+		if (!clientMode) {
+			engine.setNeedClientAuth(true);
+		}
+		return engine;
 	}
 	
 	public Server(int port) {
@@ -563,25 +585,7 @@ public class Server {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
 				@Override
 				public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
-					SSLEngine engine;
-					try {
-						if (clientMode && remoteAddress instanceof InetSocketAddress) {
-							String host = ((InetSocketAddress)remoteAddress).getHostString();
-							int port = ((InetSocketAddress)remoteAddress).getPort();
-							
-							engine = getSSLContext().createSSLEngine(host, port);
-						}
-						else {
-							engine = getSSLContext().createSSLEngine();
-						}
-					} catch (Exception e) {
-						throw new SSLEngineCreateException(e);
-					}
-					engine.setUseClientMode(clientMode);
-					if (!clientMode) {
-						engine.setNeedClientAuth(true);
-					}
-					return new TestSSLEngine(engine);
+					return new TestSSLEngine(Server.createSSLEngine(remoteAddress, clientMode));
 				}
 				
 				@Override
