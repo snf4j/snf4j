@@ -2,7 +2,7 @@
 <!--
  ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MIT License ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  ~ 
- ~ Copyright (c) 2017-2021 SNF4J contributors
+ ~ Copyright (c) 2021 SNF4J contributors
  ~ 
  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
  ~ of this software and associated documentation files (the "Software"), to deal
@@ -34,10 +34,10 @@
     <version>1.8.0-SNAPSHOT</version>
   </parent>
     
-  <artifactId>snf4j-example</artifactId>
+  <artifactId>snf4j-websocket</artifactId>
   <packaging>jar</packaging>
-  <name>SNF4J/Example</name>
-  <description>The SNF4J examples</description>
+  <name>SNF4J/WebSocket</name>
+  <description>The SNF4J module for WebSocket protocol</description>
   <url>http://snf4j.org</url>
 
   <dependencies>
@@ -46,42 +46,31 @@
       <artifactId>snf4j-core</artifactId> 
       <version>${project.version}</version>
     </dependency>
-
     <dependency>
       <groupId>org.snf4j</groupId> 
-      <artifactId>snf4j-sctp</artifactId> 
+      <artifactId>snf4j-core</artifactId> 
       <version>${project.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.snf4j</groupId> 
-      <artifactId>snf4j-websocket</artifactId> 
-      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
   </dependencies> 
   
   <build>
     <plugins>
-    
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>cobertura-maven-plugin</artifactId>
-        <version>${version.cobertura.plugin}</version>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${version.surefire.plugin}</version>
         <configuration>
-          <formats>
-            <format>html</format>
-            <format>xml</format>
-          </formats>
-          <check />
-          <instrumentation>
-            <excludes>
-              <exclude>org/snf4j/example/**/*.class</exclude>
-            </excludes>
-          </instrumentation>
-        </configuration>
+          <systemProperties>
+            <property>
+              <name>org.snf4j.LoggerFactory</name>
+              <value>org.snf4j.core.logger.TestingLoggerFactory</value>
+            </property>
+          </systemProperties>
+        </configuration>        
       </plugin>
-
-      <plugin>
+        <plugin>
         <artifactId>maven-resources-plugin</artifactId>
         <version>${version.resources.plugin}</version>
         <executions>
@@ -105,8 +94,7 @@
           </execution>
         </executions>
       </plugin>
-
-    </plugins>    
-  </build>
-  
-</project>
+  </plugins>
+  </build> 
+    
+ </project>

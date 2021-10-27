@@ -112,6 +112,8 @@
     <module>snf4j-core-log4j2</module>
     <module>snf4j-sctp</module>
     <module>snf4j-example</module>
+    <module>snf4j-websocket</module>
+
   </modules>
   
   <dependencies>
