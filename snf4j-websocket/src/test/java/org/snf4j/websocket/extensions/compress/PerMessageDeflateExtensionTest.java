@@ -42,7 +42,7 @@ import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
 import org.snf4j.websocket.IWebSocketSessionConfig;
-import org.snf4j.websocket.extensions.ExtensionGroup;
+import org.snf4j.websocket.extensions.GroupIdentifier;
 import org.snf4j.websocket.extensions.IExtension;
 import org.snf4j.websocket.extensions.InvalidExtensionException;
 import org.snf4j.websocket.extensions.compress.PerMessageDeflateExtension.NoContext;
@@ -141,18 +141,18 @@ public class PerMessageDeflateExtensionTest {
 	}
 	
 	void assertOffer(String expected, PerMessageDeflateExtension e) {
-		String[] items = e.offer();
+		List<String> items = e.offer();
 		StringBuilder sb = new StringBuilder();
 		
-		assertTrue(items.length > 0);
-		sb.append(items[0]);
+		assertTrue(items.size() > 0);
+		sb.append(items.get(0));
 
-		for (int i=1; i<items.length; i += 2) {
+		for (int i=1; i<items.size(); i += 2) {
 			sb.append(';');
-			sb.append(items[i]);
-			if (items[i+1] != null) {
+			sb.append(items.get(i));
+			if (items.get(i+1) != null) {
 				sb.append('=');
-				sb.append(items[i+1]);
+				sb.append(items.get(i+1));
 			}
 		}
 		assertEquals(expected, reformat(sb.toString()));
@@ -365,7 +365,7 @@ public class PerMessageDeflateExtensionTest {
 	@Test
 	public void testNameAndGroup() {
 		assertEquals("permessage-deflate", new PerMessageDeflateExtension().getName());
-		assertEquals(ExtensionGroup.COMPRESS, new PerMessageDeflateExtension().getGroup());
+		assertEquals(GroupIdentifier.COMPRESSION, new PerMessageDeflateExtension().getGroupId());
 	}
 	
 	@Test

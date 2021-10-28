@@ -28,12 +28,14 @@ package org.snf4j.websocket.handshake;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
 import org.snf4j.core.SSLSession;
 import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.session.ISession;
 import org.snf4j.websocket.IWebSocketSessionConfig;
-import org.snf4j.websocket.extensions.ExtensionGroup;
 import org.snf4j.websocket.extensions.IExtension;
 import org.snf4j.websocket.extensions.InvalidExtensionException;
 
@@ -291,7 +293,6 @@ public class Handshaker implements IHandshaker {
 	
 	void acceptExtensions(HandshakeRequest request) throws HandshakeAcceptException {
 		String s = request.getValue(HandshakeUtils.SEC_WEB_SOCKET_EXTENSIONS);
-		boolean[] groups = new boolean[ExtensionGroup.values().length];
 		
 		if (s != null && !s.isEmpty()) {
 			try {
@@ -299,14 +300,16 @@ public class Handshaker implements IHandshaker {
 				IExtension[] supportedExtensions = config.getSupportedExtensions();
 
 				if (supportedExtensions != null) {
+					Set<Object> groups = new HashSet<Object>();
+
 					for (String extension: extensions) {
 						List<String> splitted = HandshakeUtils.extension(extension);
 
 						for (IExtension supportedExtension: supportedExtensions) {
 							IExtension e = supportedExtension.acceptOffer(splitted);
 							
-							if (e != null && !groups[e.getGroup().ordinal()]) {
-								groups[e.getGroup().ordinal()] = true;
+							if (e != null && !groups.contains(e.getGroupId())) {
+								groups.add(e.getGroupId());
 								addExtension(e);
 							}
 						}
@@ -488,7 +491,7 @@ public class Handshaker implements IHandshaker {
 		if (supported != null && supported.length > 0) {
 			if (received != null) {
 				List<String> extensions = HttpUtils.values(received);
-				boolean[] groups = new boolean[ExtensionGroup.values().length];
+				Set<Object> groups = new HashSet<Object>();
 				
 				for (String e: extensions) {
 					List<String> extension = HandshakeUtils.extension(e);
@@ -506,11 +509,11 @@ public class Handshaker implements IHandshaker {
 						}
 						
 						if (ext != null) {
-							if (groups[ext.getGroup().ordinal()] || !addExtension(ext)) {
+							if (groups.contains(ext.getGroupId()) || !addExtension(ext)) {
 								this.extensions = null;
 								return false;
 							}
-							groups[ext.getGroup().ordinal()] = true;
+							groups.add(ext.getGroupId());
 							valid = true;
 							break;
 						}

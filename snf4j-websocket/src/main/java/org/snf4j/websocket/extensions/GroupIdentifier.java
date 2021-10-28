@@ -25,9 +25,13 @@
  */
 package org.snf4j.websocket.extensions;
 
-public enum ExtensionGroup {
-	USER1,
-	USER2,
-	USER3,
-	COMPRESS
+/**
+ * An {@code enum} that represents predefined identifiers for extension groups.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public enum GroupIdentifier {
+	
+	/** Identifies a group of compression extensions */
+	COMPRESSION
 }

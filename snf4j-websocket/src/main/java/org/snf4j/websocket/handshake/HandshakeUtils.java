@@ -225,16 +225,20 @@ class HandshakeUtils {
 		return parsed;
 	}
 	
-	static String extension(String[] items) {
+	static String extension(List<String> items) {
 		StringBuilder sb = new StringBuilder();
+		Iterator<String> i = items.iterator();
 		
-		sb.append(items[0]);
-		for (int i=1; i<items.length; i+=2) {
+		sb.append(i.next());
+		for (; i.hasNext();) {
+			String s;
+			
 			sb.append("; ");
-			sb.append(items[i]);
-			if (items[i+1] != null) {
+			sb.append(i.next());
+			s = i.next();
+			if (s != null) {
 				sb.append("=");
-				sb.append(items[i+1]);
+				sb.append(s);
 			}
 		}
 		return sb.toString();

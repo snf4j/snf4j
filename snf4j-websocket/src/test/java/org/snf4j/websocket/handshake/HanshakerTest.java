@@ -43,7 +43,7 @@ import org.snf4j.core.StreamSession;
 import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.handler.TestHandler;
 import org.snf4j.websocket.DefaultWebSocketSessionConfig;
-import org.snf4j.websocket.extensions.ExtensionGroup;
+import org.snf4j.websocket.extensions.GroupIdentifier;
 import org.snf4j.websocket.extensions.IExtension;
 import org.snf4j.websocket.extensions.InvalidExtensionException;
 
@@ -611,7 +611,8 @@ public class HanshakerTest extends HandshakeTest {
 	@Test
 	public void testValidateExtensions() throws Exception {
 		Config config = new Config(uri());
-	
+		String USER1 = "USER1";
+		
 		assertEquals(0, assertValidate(true, config).getExtensions().length);
 		config.setSupportedExtensions();
 		key = null;
@@ -648,7 +649,7 @@ public class HanshakerTest extends HandshakeTest {
 		e = assertValidate(false, config).getExtensions();
 		assertEquals(0, e.length);
 
-		ext1.group(ExtensionGroup.USER1);
+		ext1.group(USER1);
 		key = null;
 		extensions = "ext0; param0, ext1; param1";
 		e = assertValidate(true, config).getExtensions();
@@ -661,7 +662,7 @@ public class HanshakerTest extends HandshakeTest {
 		assertEquals(2, e.length);
 		assertTrue(ext0 == e[1]);
 		assertTrue(ext1 == e[0]);
-		ext1.group(ExtensionGroup.COMPRESS);
+		ext1.group(GroupIdentifier.COMPRESSION);
 		
 		key = null;
 		extensions = "ext1; param1";
@@ -688,7 +689,7 @@ public class HanshakerTest extends HandshakeTest {
 		extensions = "ext0; param0_2, ext0; param0";
 		e = assertValidate(false, config).getExtensions();
 		assertEquals(0, e.length);
-		ext0_2.group(ExtensionGroup.USER1);
+		ext0_2.group(USER1);
 		key = null;
 		extensions = "ext0; param0_2, ext0; param0";
 		e = assertValidate(false, config).getExtensions();
@@ -737,11 +738,12 @@ public class HanshakerTest extends HandshakeTest {
 	public void testAcceptExtensionGrouping() throws Exception {
 		Config config = new Config(uri());
 		Handshaker h;
-
+		String USER1 = "USER1";
+		
 		Extension e1_1 = new Extension("e1").offer("e1");
 		Extension e1_2 = new Extension("e1").offer("e1","p1");
 		Extension e2_1 = new Extension("e2").offer("e2");
-		Extension e2_2 = new Extension("e2").offer("e2","p1").group(ExtensionGroup.USER1);
+		Extension e2_2 = new Extension("e2").offer("e2","p1").group(USER1);
 		
 		e1_1.accept(e1_1).response("e1");
 		e1_2.accept(e1_2).response("e1","p1");
@@ -767,12 +769,14 @@ public class HanshakerTest extends HandshakeTest {
 	public void testAcceptExtensions() throws Exception {
 		Config config = new Config(uri());
 		Handshaker h;
+		String USER1 = "USER1";
+		String USER2 = "USER2";
 		
 		Extension e1 = new Extension("e1").offer("e1","p1");
-		Extension e2 = new Extension("e2").response("e2", "p2").group(ExtensionGroup.USER1);
+		Extension e2 = new Extension("e2").response("e2", "p2").group(USER1);
 		Extension e3 = new Extension("e3").offer("e3","e3").accept(e2);
 		Extension e4 = new Extension("e4").offer("e4","p4");
-		Extension e5 = new Extension("e5").response("e5", "p5").group(ExtensionGroup.USER2);
+		Extension e5 = new Extension("e5").response("e5", "p5").group(USER2);
 		Extension e6 = new Extension("e6").offer("e6","e6").accept(e5);
 		
 		//no extension
@@ -962,15 +966,15 @@ public class HanshakerTest extends HandshakeTest {
 
 		String name;
 		
-		String[] offer;
+		List<String> offer;
 		
-		String[] response;
+		List<String> response;
 		
 		IExtension accept;
 		
 		InvalidExtensionException acceptException;
 		
-		ExtensionGroup group = ExtensionGroup.COMPRESS;
+		Object group = GroupIdentifier.COMPRESSION;
 		
 		StringBuilder trace = new StringBuilder();
 		
@@ -1000,11 +1004,11 @@ public class HanshakerTest extends HandshakeTest {
 		}
 
 		@Override
-		public ExtensionGroup getGroup() {
+		public Object getGroupId() {
 			return group;
 		}
 
-		Extension group(ExtensionGroup group) {
+		Extension group(Object group) {
 			this.group = group;
 			return this;
 		}
@@ -1022,12 +1026,12 @@ public class HanshakerTest extends HandshakeTest {
 		}
 
 		@Override
-		public String[] offer() {
+		public List<String> offer() {
 			return offer;
 		}
 		
 		@Override
-		public String[] response() {
+		public List<String> response() {
 			return response;
 		}
 
@@ -1036,12 +1040,15 @@ public class HanshakerTest extends HandshakeTest {
 			return this;
 		}
 		
-		String[] prepare(String[] items) {
+		List<String> prepare(String[] items) {
+			List<String> list = new ArrayList<String>();
 			if (items.length < 2) {
-				return items;
+				for (String item: items) {
+					list.add(item);
+				}
+				return list;
 			}
 			
-			List<String> list = new ArrayList<String>();
 			list.add(items[0]);
 			for (int i=1; i<items.length; ++i) {
 				String item = items[i];
@@ -1056,7 +1063,7 @@ public class HanshakerTest extends HandshakeTest {
 					list.add(null);
 				}
 			}
-			return list.toArray(new String[list.size()]);
+			return list;
 		}
 		
 		Extension offer(String... offer) {
@@ -1075,14 +1082,14 @@ public class HanshakerTest extends HandshakeTest {
 				throw acceptException;
 			}
 			
-			if (offer.length == extension.size()) {
-				for (int i=0; i<offer.length; ++i) {
-					if (offer[i] == null) {
+			if (offer.size() == extension.size()) {
+				for (int i=0; i<offer.size(); ++i) {
+					if (offer.get(i) == null) {
 						if (extension.get(i) != null) {
 							return null;
 						}
 					}
-					else if (!offer[i].equals(extension.get(i))) {
+					else if (!offer.get(i).equals(extension.get(i))) {
 						return null;
 					}
 				}

@@ -29,7 +29,7 @@ import java.util.List;
 
 import org.snf4j.websocket.extensions.InvalidExtensionException;
 
-public class PerMessageDeflateParams {
+class PerMessageDeflateParams {
 	
 	final static String CLIENT_NO_CONTEXT = "client_no_context_takeover";
 

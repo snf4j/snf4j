@@ -55,7 +55,7 @@ abstract class DeflateEncoder extends DeflateCodec implements IEncoder<Frame,Fra
 	abstract boolean removeTail(Frame frame);
 	
 	@Override
-	protected IEventDrivenCodec codec() {
+	IEventDrivenCodec codec() {
 		return encoder;
 	}
 	

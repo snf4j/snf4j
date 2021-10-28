@@ -28,18 +28,39 @@ package org.snf4j.websocket.extensions.compress;
 import java.util.List;
 
 import org.snf4j.core.session.ISession;
-import org.snf4j.websocket.extensions.IExtension;
 import org.snf4j.websocket.frame.Frame;
 import org.snf4j.websocket.frame.Opcode;
 
+/**
+ * The per-message implementation of deflate decoder (decompressor).
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 public class PerMessageDeflateDecoder extends DeflateDecoder {
 
     private boolean compressing; 	
     
+	/**
+	 * Constructs a per-message deflate decoder with specified context takeover
+	 * control and minimum upper bound on the decompressed size.
+	 * 
+	 * @param noContext       {@code true} to prevent from using the context
+	 *                        takeover
+	 * @param minInflateBound determines the minimum upper bound on the decompressed
+	 *                        size. Setting this parameter to proper value may speed
+	 *                        up the decompression of highly compressed data.
+	 */
     public PerMessageDeflateDecoder(boolean noContext, int minInflateBound) {
 		super(noContext, minInflateBound);
 	}
     
+	/**
+	 * Constructs a per-message deflate decoder with specified context takeover
+	 * control.
+	 * 
+	 * @param noContext       {@code true} to prevent from using the context
+	 *                        takeover
+	 */
     public PerMessageDeflateDecoder(boolean noContext) {
 		super(noContext);
 	}
@@ -60,7 +81,7 @@ public class PerMessageDeflateDecoder extends DeflateDecoder {
 
 	@Override
 	int rsvBits(Frame frame) {
-		return frame.isRsvBit1() ? frame.getRsvBits() ^ IExtension.RSV1 : frame.getRsvBits();
+		return frame.isRsvBit1() ? frame.getRsvBits() ^ Frame.RSV1 : frame.getRsvBits();
 	}
 	
 	@SuppressWarnings("incomplete-switch")

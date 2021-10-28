@@ -73,7 +73,7 @@ abstract class DeflateDecoder extends DeflateCodec implements IDecoder<Frame,Fra
 	}
 	
 	@Override
-	protected IEventDrivenCodec codec() {
+	IEventDrivenCodec codec() {
 		return decoder;
 	}
 	

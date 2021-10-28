@@ -28,14 +28,26 @@ package org.snf4j.websocket.extensions.compress;
 import java.util.List;
 
 import org.snf4j.core.session.ISession;
-import org.snf4j.websocket.extensions.IExtension;
 import org.snf4j.websocket.frame.Frame;
 import org.snf4j.websocket.frame.Opcode;
 
+/**
+ * The per-message implementation of deflate encoder (compressor).
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 public class PerMessageDeflateEncoder extends DeflateEncoder {
 
     private boolean compressing; 	
     
+	/**
+	 * Constructs a per-message deflate encoder with specified compression level and
+	 * the context takeover control.
+	 * 
+	 * @param compressionLevel the compression level (0-9)
+	 * @param noContext        {@code true} to prevent from using the context
+	 *                         takeover
+	 */
 	public PerMessageDeflateEncoder(int compressionLevel, boolean noContext) {
 		super(compressionLevel, noContext);
 	}
@@ -59,7 +71,7 @@ public class PerMessageDeflateEncoder extends DeflateEncoder {
 		switch (frame.getOpcode()) {
 		case TEXT:
 		case BINARY:
-			return frame.getRsvBits() | IExtension.RSV1;
+			return frame.getRsvBits() | Frame.RSV1;
 		
 		default:
 			return frame.getRsvBits();

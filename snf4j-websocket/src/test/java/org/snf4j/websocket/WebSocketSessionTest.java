@@ -53,7 +53,6 @@ import org.snf4j.websocket.frame.Frame;
 import org.snf4j.websocket.frame.FrameAggregator;
 import org.snf4j.websocket.frame.PingFrame;
 import org.snf4j.websocket.frame.PongFrame;
-import org.snf4j.websocket.extensions.ExtensionGroup;
 import org.snf4j.websocket.extensions.IExtension;
 import org.snf4j.websocket.extensions.TestExtension;
 import org.snf4j.websocket.extensions.compress.DeflateCodecTest;
@@ -897,11 +896,12 @@ public class WebSocketSessionTest extends HandshakeTest {
 	}
 	
 	void testExtensions(boolean ssl) throws Exception {
+		String USER1 = "USER1";
 		IExtension e1A = new TestExtension("ext1", 'A', 4);
 		IExtension e1B = new TestExtension("ext1", 'B', 4);
 		IExtension e2C = new TestExtension("ext2", 'C', 4, true);
-		IExtension e3D = new TestExtension("ext3", ExtensionGroup.USER1, 'D', 4, true);
-		IExtension e1D = new TestExtension("ext1", ExtensionGroup.USER1, 'E', 4, true);
+		IExtension e3D = new TestExtension("ext3", USER1, 'D', 4, true);
+		IExtension e1D = new TestExtension("ext1", USER1, 'E', 4, true);
 		
 		assertExtensions(ssl, extensions(e1A), extensions(e1A), "ex-encoderA|", "ex-decoderA|");
 		assertExtensions(ssl, extensions(e1A), null, "", "");

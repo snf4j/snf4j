@@ -25,28 +25,53 @@
  */
 package org.snf4j.websocket.extensions.compress;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.codec.IDecoder;
 import org.snf4j.core.codec.IEncoder;
 import org.snf4j.websocket.IWebSocketSessionConfig;
-import org.snf4j.websocket.extensions.ExtensionGroup;
+import org.snf4j.websocket.extensions.GroupIdentifier;
 import org.snf4j.websocket.extensions.IExtension;
 import org.snf4j.websocket.extensions.InvalidExtensionException;
 import org.snf4j.websocket.frame.Frame;
 
+/**
+ * The WebSocket Per-Message Compression Extension as described in RFC 7692
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 public class PerMessageDeflateExtension implements IExtension {
 	
 	final static String NAME = "permessage-deflate";
 	
+	/**
+	 * The default key identifying the pre-message deflate decoder
+	 * {@link PerMessageDeflateDecoder} in the default codec pipeline created by the
+	 * SNF4J framework.
+	 */
 	public final static String PERMESSAGE_DEFLATE_DECODER = "permessage-deflate-decoder";
 	
+	/**
+	 * The default key identifying the pre-message deflate encoder
+	 * {@link PerMessageDeflateEncoder} in the default codec pipeline created by the
+	 * SNF4J framework.
+	 */
 	public final static String PERMESSAGE_DEFLATE_ENCODER = "permessage-deflate-encoder";
 	
+	/** 
+	 * The context takeover control options
+	 */
 	public enum NoContext {
+		
+		/** The no context takeover is forbidden */
 		FORBIDDEN,
+		
+		/** The context takeover is the preferred option but can be changed during the negotiation */
 		OPTIONAL,
+		
+		/** The no context takeover is required */
 		REQUIRED
 	}
 	
@@ -62,6 +87,19 @@ public class PerMessageDeflateExtension implements IExtension {
 	
 	private PerMessageDeflateParams params;
 	
+	/**
+	 * Constructs a pre-message deflate extension with specified compression level,
+	 * minimum upper bound on the decompressed size and the context takeover control
+	 * options for compression/decompression.
+	 * 
+	 * @param compressionLevel    the compression level (0-9)
+	 * @param minInflateBound     determines the minimum upper bound on the
+	 *                            decompressed size. Setting this parameter to
+	 *                            proper value may speed up the decompression of
+	 *                            highly compressed data.
+	 * @param compressNoContext   the context takeover control for compression
+	 * @param decompressNoContext the context takeover control for decompression
+	 */
 	public PerMessageDeflateExtension(int compressionLevel, int minInflateBound, NoContext compressNoContext, NoContext decompressNoContext) {
         if (compressionLevel < 0 || compressionLevel > 9) {
             throw new IllegalArgumentException(
@@ -73,14 +111,34 @@ public class PerMessageDeflateExtension implements IExtension {
 		this.minInflateBound = minInflateBound;
 	}
 	
+	/**
+	 * Constructs a pre-message deflate extension with specified compression level
+	 * and the context takeover control options for compression/decompression.
+	 * 
+	 * @param compressionLevel    the compression level (0-9)
+	 * @param compressNoContext   the context takeover control for compression
+	 * @param decompressNoContext the context takeover control for decompression
+	 */
 	public PerMessageDeflateExtension(int compressionLevel, NoContext compressNoContext, NoContext decompressNoContext) {
 		this(compressionLevel, 0, compressNoContext, decompressNoContext);
 	}
 	
+	/**
+	 * Constructs a pre-message deflate extension with specified compression level
+	 * and the {@link NoContext#OPTIONAL OPTIONAL} context takeover control option for
+	 * compression/decompression.
+	 * 
+	 * @param compressionLevel the compression level (0-9)
+	 */
 	public PerMessageDeflateExtension(int compressionLevel) {
 		this(compressionLevel, NoContext.OPTIONAL, NoContext.OPTIONAL);
 	}
 	
+	/**
+	 * Constructs a pre-message deflate extension with default compression level (6)
+	 * and the {@link NoContext#OPTIONAL OPTIONAL} context takeover control option for
+	 * compression/decompression.
+	 */
 	public PerMessageDeflateExtension() {
 		this(6, NoContext.OPTIONAL, NoContext.OPTIONAL);
 	}
@@ -92,14 +150,24 @@ public class PerMessageDeflateExtension implements IExtension {
 		this.clientMode = clientMode;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @return "permessage-deflate"
+	 */
 	@Override
 	public String getName() {
 		return NAME;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @return {@link GroupIdentifier#COMPRESSION}
+	 */
 	@Override
-	public ExtensionGroup getGroup() {
-		return ExtensionGroup.COMPRESS;
+	public Object getGroupId() {
+		return GroupIdentifier.COMPRESSION;
 	}
 
 	boolean wrongName(List<String> extension) {
@@ -107,12 +175,12 @@ public class PerMessageDeflateExtension implements IExtension {
 	}
 	
 	@Override
-	public IExtension acceptOffer(List<String> extension) throws InvalidExtensionException {
-		if (wrongName(extension)) {
+	public IExtension acceptOffer(List<String> offer) throws InvalidExtensionException {
+		if (wrongName(offer)) {
 			return null;
 		}
 
-		PerMessageDeflateParams params = PerMessageDeflateParams.parse(extension);
+		PerMessageDeflateParams params = PerMessageDeflateParams.parse(offer);
 		boolean clientNoContext = false;
 		boolean serverNoContext = false;
 		
@@ -151,12 +219,12 @@ public class PerMessageDeflateExtension implements IExtension {
 	}
 
 	@Override
-	public IExtension validateResponse(List<String> extension) throws InvalidExtensionException {
-		if (wrongName(extension)) {
+	public IExtension validateResponse(List<String> response) throws InvalidExtensionException {
+		if (wrongName(response)) {
 			return null;
 		}
 		
-		PerMessageDeflateParams params = PerMessageDeflateParams.parse(extension);
+		PerMessageDeflateParams params = PerMessageDeflateParams.parse(response);
 		boolean clientNoContext = false;
 		boolean serverNoContext = false;
 		
@@ -195,55 +263,35 @@ public class PerMessageDeflateExtension implements IExtension {
 	}
 
 	@Override
-	public String[] offer() {
-		int len = 1;
+	public List<String> offer() {
+		List<String> offer = new ArrayList<String>();
+		
+		offer.add(NAME);
 		
 		if (compressNoContext == NoContext.REQUIRED) {
-			len += 2;
+			offer.add(PerMessageDeflateParams.CLIENT_NO_CONTEXT);
+			offer.add(null);
 		}
 		if (decompressNoContext == NoContext.REQUIRED) {
-			len += 2;
-		}
-		
-		String[] offer = new String[len];
-		int i = 0;
-		
-		offer[i++] = NAME;
-		
-		if (compressNoContext == NoContext.REQUIRED) {
-			offer[i] = PerMessageDeflateParams.CLIENT_NO_CONTEXT;
-			i += 2;
-		}
-		if (decompressNoContext == NoContext.REQUIRED) {
-			offer[i] = PerMessageDeflateParams.SERVER_NO_CONTEXT;
-			i += 2;
+			offer.add(PerMessageDeflateParams.SERVER_NO_CONTEXT);
+			offer.add(null);
 		}
 		return offer;
 	}
 
 	@Override
-	public String[] response() {
-		int len = 1;
+	public List<String> response() {
+		List<String> response = new ArrayList<String>();
+		
+		response.add(NAME);
 		
 		if (params.isClientNoContext()) {
-			len += 2;
+			response.add(PerMessageDeflateParams.CLIENT_NO_CONTEXT);
+			response.add(null);
 		}
 		if (params.isServerNoContext()) {
-			len += 2;
-		}
-		
-		String[] response = new String[len];
-		int i = 0;
-		
-		response[i++] = NAME;
-		
-		if (params.isClientNoContext()) {
-			response[i] = PerMessageDeflateParams.CLIENT_NO_CONTEXT;
-			i += 2;
-		}
-		if (params.isServerNoContext()) {
-			response[i] = PerMessageDeflateParams.SERVER_NO_CONTEXT;
-			i += 2;
+			response.add(PerMessageDeflateParams.SERVER_NO_CONTEXT);
+			response.add(null);
 		}
 		return response;
 	}

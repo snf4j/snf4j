@@ -34,6 +34,15 @@ public class Frame {
 	
 	final static byte[] EMPTY_PAYLOAD = new byte[0];
 	
+	/** The reserved bit 1 */
+    public final static int RSV1 = 0x04;
+    
+	/** The reserved bit 2 */
+    public final static int RSV2 = 0x02;
+    
+	/** The reserved bit 3 */
+    public final static int RSV3 = 0x01; 	
+
 	private final Opcode opcode;
 	
 	private final boolean finalFragment;
@@ -83,7 +92,7 @@ public class Frame {
 	 * @return {@code true} if the reserved bit 1 is set
 	 */
 	public boolean isRsvBit1() {
-		return (rsvBits & 4) != 0;
+		return (rsvBits & RSV1) != 0;
 	}
 
 	/**
@@ -92,7 +101,7 @@ public class Frame {
 	 * @return {@code true} if the reserved bit 2 is set
 	 */
 	public boolean isRsvBit2() {
-		return (rsvBits & 2) != 0;
+		return (rsvBits & RSV2) != 0;
 	}
 
 	/**
@@ -101,7 +110,7 @@ public class Frame {
 	 * @return {@code true} if the reserved bit 3 is set
 	 */
 	public boolean isRsvBit3() {
-		return (rsvBits & 1) != 0;
+		return (rsvBits & RSV3) != 0;
 	}
 
 	/**

@@ -37,7 +37,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.snf4j.core.codec.ICodecPipeline;
-import org.snf4j.websocket.extensions.ExtensionGroup;
+import org.snf4j.websocket.extensions.GroupIdentifier;
 import org.snf4j.websocket.extensions.IExtension;
 import org.snf4j.websocket.extensions.InvalidExtensionException;
 import org.snf4j.websocket.handshake.HandshakeFrame;
@@ -127,8 +127,8 @@ public class DefaultWebSocketSessionConfigTest {
 		}
 
 		@Override
-		public ExtensionGroup getGroup() {
-			return ExtensionGroup.COMPRESS;
+		public Object getGroupId() {
+			return GroupIdentifier.COMPRESSION;
 		}
 
 		@Override
@@ -137,12 +137,12 @@ public class DefaultWebSocketSessionConfigTest {
 		}
 
 		@Override
-		public String[] offer() {
+		public List<String> offer() {
 			return null;
 		}
 
 		@Override
-		public String[] response() {
+		public List<String> response() {
 			return null;
 		}
 

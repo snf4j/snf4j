@@ -25,55 +25,32 @@
  */
 package org.snf4j.websocket.extensions;
 
-/**
- * Indicates problems with decoding or validation of Web Socket extensions.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class InvalidExtensionException extends Exception {
-	
-	private static final long serialVersionUID = 3993487132055720905L;
-	
-	/**
-	 * Constructs a new exception without the detail message.
-	 */
-	public InvalidExtensionException() {
-	}
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-	/**
-	 * Constructs a new exception with the specified detail message.
-	 *
-	 * @param message
-	 *            the detail message.
-	 */
-	public InvalidExtensionException(String message) {
-		super(message);
-	}
+import org.junit.Test;
+
+public class InvalidExtensionExceptionTest {
 	
-	/**
-	 * Constructs a new exception with the specified detail message and cause.
-	 *
-	 * @param message
-	 *            the detail message.
-	 * @param cause
-	 *            the cause
-	 */
-	public InvalidExtensionException(String message, Throwable cause) {
-		super(message, cause);
-	}
+	@Test
+	public void testConstructor() {
+		InvalidExtensionException e = new InvalidExtensionException();
+		assertNull(e.getMessage());
+		assertNull(e.getCause());
+		
+		e = new InvalidExtensionException("Test1");
+		assertEquals("Test1", e.getMessage());
+		assertNull(e.getCause());
+		
+		Exception c = new Exception("Test2");
+		e = new InvalidExtensionException("Test1", c);
+		assertEquals("Test1", e.getMessage());
+		assertTrue(c == e.getCause());
 	
-	/**
-	 * Constructs a new exception with the specified cause and a detail message
-	 * of <tt>(cause==null ? null : cause.toString())</tt> (which typically
-	 * contains the class and detail message of <tt>cause</tt>). This
-	 * constructor is useful for exceptions that are little more than wrappers
-	 * for other throwables.
-	 *
-	 * @param cause
-	 *            the cause
-	 */
-	public InvalidExtensionException(Throwable cause) {
-		super(cause);
+		e = new InvalidExtensionException(c);
+		assertEquals("java.lang.Exception: Test2", e.getMessage());
+		assertTrue(c == e.getCause());
 	}
 
 }

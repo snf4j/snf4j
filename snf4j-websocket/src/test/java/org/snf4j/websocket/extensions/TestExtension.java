@@ -25,6 +25,7 @@
  */
 package org.snf4j.websocket.extensions;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.snf4j.core.codec.ICodecPipeline;
@@ -38,13 +39,13 @@ public class TestExtension implements IExtension {
 	
 	private final String name;
 	
-	private final ExtensionGroup group;
+	private final Object group;
 	
 	private final int rsv;
 	
 	private final boolean skip;
 	
-	public TestExtension(String name, ExtensionGroup group, char mask, int rsv, boolean skip) {
+	public TestExtension(String name, Object group, char mask, int rsv, boolean skip) {
 		this.mask = mask;
 		this.name = name;
 		this.group = group;
@@ -53,11 +54,11 @@ public class TestExtension implements IExtension {
 	}
 
 	public TestExtension(String name, char mask, int rsv, boolean skip) {
-		this(name, ExtensionGroup.COMPRESS, mask, rsv, skip);
+		this(name, GroupIdentifier.COMPRESSION, mask, rsv, skip);
 	}
 
 	public TestExtension(String name, char mask, int rsv) {
-		this(name, ExtensionGroup.COMPRESS, mask, rsv, false);
+		this(name, GroupIdentifier.COMPRESSION, mask, rsv, false);
 	}
 	
 	@Override
@@ -66,7 +67,7 @@ public class TestExtension implements IExtension {
 	}
 
 	@Override
-	public ExtensionGroup getGroup() {
+	public Object getGroupId() {
 		return group;
 	}
 	
@@ -99,12 +100,16 @@ public class TestExtension implements IExtension {
 	}
 
 	@Override
-	public String[] offer() {
-		return new String[] {name, MASK_PARAM, ""+mask};
+	public List<String> offer() {
+		ArrayList<String> list = new ArrayList<String>();
+		list.add(name);
+		list.add(MASK_PARAM);
+		list.add(""+mask);
+		return list;
 	}
 
 	@Override
-	public String[] response() {
+	public List<String> response() {
 		return offer();
 	}
 

@@ -31,6 +31,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -43,11 +44,24 @@ public class HandshakeUtilsTest {
 		return new URI("ws://server.org" + s);
 	}
 	
+	public static List<String> list(String[] items) {
+		ArrayList<String> list = new ArrayList<String>();
+		
+		for (String item: items) {
+			list.add(item);
+		}
+		return list;
+	}
+	
 	public static List<String> parseExtension(String s) {
 		return HandshakeUtils.extension(s);
 	}
 	
 	public static String parseExtension(String[] s) {
+		return HandshakeUtils.extension(list(s));
+	}
+
+	public static String parseExtension(List<String> s) {
 		return HandshakeUtils.extension(s);
 	}
 	
@@ -162,10 +176,10 @@ public class HandshakeUtilsTest {
 	
 	@Test
 	public void testExtensions() {
-		assertEquals("ext1", HandshakeUtils.extension(new String[] {"ext1"}));
-		assertEquals("ext1; p1", HandshakeUtils.extension(new String[] {"ext1", "p1", null}));
-		assertEquals("ext1; p1=v1", HandshakeUtils.extension(new String[] {"ext1", "p1", "v1"}));
-		assertEquals("ext1; p1=v1; p2; p3=v3", HandshakeUtils.extension(new String[] {"ext1", "p1", "v1", "p2", null, "p3", "v3"}));
+		assertEquals("ext1", HandshakeUtils.extension(list(new String[] {"ext1"})));
+		assertEquals("ext1; p1", HandshakeUtils.extension(list(new String[] {"ext1", "p1", null})));
+		assertEquals("ext1; p1=v1", HandshakeUtils.extension(list(new String[] {"ext1", "p1", "v1"})));
+		assertEquals("ext1; p1=v1; p2; p3=v3", HandshakeUtils.extension(list(new String[] {"ext1", "p1", "v1", "p2", null, "p3", "v3"})));
 
 		assertArrayEquals(new String[0], HandshakeUtils.extension("").toArray());
 		assertArrayEquals(new String[] {"ext1"}, HandshakeUtils.extension("ext1").toArray());
