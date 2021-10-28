@@ -62,7 +62,7 @@ public class HttpProxy {
 	
 	StringBuilder trace = new StringBuilder();
 	
-	HttpProxy(int port) {
+	public HttpProxy(int port) {
 		this.port = port;
 	}
 	

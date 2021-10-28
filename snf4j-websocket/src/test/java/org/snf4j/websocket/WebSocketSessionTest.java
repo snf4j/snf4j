@@ -36,9 +36,15 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Arrays;
 
+import javax.net.ssl.SSLEngine;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.HttpProxy;
+import org.snf4j.core.SSLSession;
+import org.snf4j.core.Server;
+import org.snf4j.core.StreamSession;
 import org.snf4j.core.TestHandler;
 import org.snf4j.core.allocator.CachingAllocator;
 import org.snf4j.core.allocator.DefaultAllocator;
@@ -48,6 +54,10 @@ import org.snf4j.core.codec.IEncoder;
 import org.snf4j.core.codec.zip.ZlibDecoder;
 import org.snf4j.core.codec.zip.ZlibEncoder;
 import org.snf4j.core.future.IFuture;
+import org.snf4j.core.proxy.HttpProxyHandler;
+import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.SSLEngineCreateException;
 import org.snf4j.core.timer.TestTimer;
 import org.snf4j.websocket.frame.Frame;
 import org.snf4j.websocket.frame.FrameAggregator;
@@ -85,9 +95,12 @@ public class WebSocketSessionTest extends HandshakeTest {
 	
 	WSClient c;
 	
+	HttpProxy p;
+	
 	@Before
 	public void before() {
 		s = c = null;
+		p = null;
 		serverHandleClose = clientHandleClose = false;
 		traceCloseDetails = false;
 	}
@@ -96,6 +109,7 @@ public class WebSocketSessionTest extends HandshakeTest {
 	public void after() throws InterruptedException {
 		if (c != null) c.stop(TIMEOUT);
 		if (s != null) s.stop(TIMEOUT);
+		if (p != null) p.stop(TIMEOUT);
 	}
 	
 	void waitFor(long millis) throws InterruptedException {
@@ -1530,6 +1544,89 @@ public class WebSocketSessionTest extends HandshakeTest {
 	@Test
 	public void testHandshakeInfoSsl() throws Exception {
 		testHandshakeInfo(true);
+	}
+	
+	void testProxyConnection(boolean ssl) throws Exception {
+		//clear proxy
+		p = new HttpProxy(PORT+1);
+		p.start(TIMEOUT);
+		s = new WSServer(PORT, ssl);
+		s.start();
+		c = new WSClient(PORT+1, ssl) {
+			
+			@Override
+			StreamSession createSession(IWebSocketHandler handler) throws Exception {
+				StreamSession s = super.createSession(handler);
+				
+				s.getPipeline().add("proxy", new StreamSession(new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT))));
+				return s;
+			}			
+		};
+		c.start();
+		c.waitForReady(TIMEOUT);
+		s.waitForReady(TIMEOUT);
+		assertEquals("CR|OP|RE|", c.getTrace());
+		assertEquals("CR|OP|RE|", s.getTrace());
+		c.session.write(new TextFrame("Hello!")).sync(TIMEOUT);
+		s.waitForMsgRead(TIMEOUT);
+		assertEquals("F(TEXT)|", s.getTrace());
+		((IWebSocketSession)c.session).close(CloseFrame.NORMAL);
+		c.waitForEnding(TIMEOUT);
+		s.waitForEnding(TIMEOUT);
+		assertEquals("CL|EN|", c.getTrace());
+		assertEquals("F(CLOSE)|CL|EN|", s.getTrace());
+		c.stop(TIMEOUT);
+		p.stop(TIMEOUT);
+		
+		//secure proxy
+		p = new HttpProxy(PORT+1);
+		p.start(TIMEOUT, true);
+		final DefaultSessionConfig config = new DefaultSessionConfig() {
+			@Override
+			public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+				return Server.createSSLEngine(null, clientMode);
+			}
+		};
+		config.setWaitForInboundCloseMessage(true);
+		c = new WSClient(PORT+1, ssl) {
+			
+			@Override
+			StreamSession createSession(IWebSocketHandler handler) throws Exception {
+				StreamSession s = super.createSession(handler);
+				
+				s.getPipeline().add("proxy", new SSLSession(new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
+					@Override
+					public ISessionConfig getConfig() {
+						return config;
+					}
+				}, true));
+				return s;
+			}			
+		};
+		s.resetDataLocks();
+		c.start();
+		c.waitForReady(TIMEOUT);
+		s.waitForReady(TIMEOUT);
+		assertEquals("CR|OP|RE|", c.getTrace());
+		assertEquals("CR|OP|RE|", s.getTrace());
+		c.session.write(new TextFrame("Hello!")).sync(TIMEOUT);
+		s.waitForMsgRead(TIMEOUT);
+		assertEquals("F(TEXT)|", s.getTrace());
+		((IWebSocketSession)c.session).close(CloseFrame.NORMAL);
+		c.waitForEnding(TIMEOUT);
+		s.waitForEnding(TIMEOUT);
+		assertEquals("CL|EN|", c.getTrace());
+		assertEquals("F(CLOSE)|CL|EN|", s.getTrace());
+	}
+
+	@Test
+	public void testProxyConnection() throws Exception {
+		testProxyConnection(false);
+	}
+	
+	@Test
+	public void testProxyConnectionSsl() throws Exception {
+		testProxyConnection(true);
 	}
 	
 	static class Handler extends TestHandler implements IWebSocketHandler {
