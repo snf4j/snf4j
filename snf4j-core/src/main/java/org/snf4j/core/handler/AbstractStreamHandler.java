@@ -49,7 +49,8 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 	 * configuration object.
 	 * 
 	 * @param config 
-	 *            the session configuration object
+	 *            the session configuration object, or {@code null} to
+	 *            use the default configuration
 	 */	
 	 protected AbstractStreamHandler(ISessionConfig config) {
 		super(config);
@@ -72,7 +73,8 @@ abstract public class AbstractStreamHandler extends AbstractHandler implements I
 	 * @param name
 	 *            the name for this handler
 	 * @param config 
-	 *            the session configuration object
+	 *            the session configuration object, or {@code null} to
+	 *            use the default configuration
 	 */
 	protected AbstractStreamHandler(String name, ISessionConfig config) {
 		super(name, config);

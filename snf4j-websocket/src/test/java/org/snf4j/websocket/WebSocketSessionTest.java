@@ -58,7 +58,6 @@ import org.snf4j.core.codec.zip.ZlibEncoder;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.proxy.HttpProxyHandler;
 import org.snf4j.core.session.DefaultSessionConfig;
-import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.SSLEngineCreateException;
 import org.snf4j.core.timer.TestTimer;
 import org.snf4j.websocket.frame.Frame;
@@ -1622,12 +1621,7 @@ public class WebSocketSessionTest extends HandshakeTest {
 			StreamSession createSession(IWebSocketHandler handler) throws Exception {
 				StreamSession s = super.createSession(handler);
 				
-				s.getPipeline().add("proxy", new SSLSession(new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
-					@Override
-					public ISessionConfig getConfig() {
-						return config;
-					}
-				}, true));
+				s.getPipeline().add("proxy", new SSLSession(new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT), config), true));
 				return s;
 			}			
 		};

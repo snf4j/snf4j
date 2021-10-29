@@ -29,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -36,18 +37,61 @@ import java.util.List;
 import org.junit.Test;
 import org.snf4j.core.TestSession;
 import org.snf4j.core.TraceBuilder;
+import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.ISessionPipeline;
 import org.snf4j.core.session.IStreamSession;
 
 public class HttpProxyHandlerTest {
 
+	void assertContructor(HttpProxyHandler h, URI uri, long timeout, boolean both, ISessionConfig config, ISessionStructureFactory factory) throws Exception {
+		Field f = HttpProxyHandler.class.getDeclaredField("minEof");
+		f.setAccessible(true);
+		assertEquals(both ? 1 :2, f.getInt(h));
+		f = HttpProxyHandler.class.getDeclaredField("uri");
+		f.setAccessible(true);
+		assertTrue(uri == f.get(h));
+		f = AbstractProxyHandler.class.getDeclaredField("connectionTimeout");
+		f.setAccessible(true);
+		assertEquals(timeout, f.getLong(h));
+		if (config == null) {
+			assertTrue(h.getConfig().getClass() == DefaultSessionConfig.class);
+		}
+		else {
+			assertTrue(h.getConfig() == config);
+		}
+		if (factory == null) {
+			factory = DefaultSessionStructureFactory.DEFAULT;
+		}
+		assertTrue(h.getFactory() == factory);
+	}
+	
 	@Test()
 	public void testContructor() throws Exception {
+		DefaultSessionConfig c = new DefaultSessionConfig();
+		DefaultSessionStructureFactory f = new DefaultSessionStructureFactory() {};
+		
 		try {
 			new HttpProxyHandler(null);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("uri is null", e.getMessage());
+		}
+		try {
+			new HttpProxyHandler(null, c);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("uri is null", e.getMessage());
+		}
+		try {
+			new HttpProxyHandler(null, c, f);
 			fail();
 		}
 		catch (IllegalArgumentException e) {
@@ -61,12 +105,43 @@ public class HttpProxyHandlerTest {
 			assertEquals("uri is null", e.getMessage());
 		}
 		try {
-			new HttpProxyHandler(new URI("http://host"), -10);
+			new HttpProxyHandler(null, 10, c);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("uri is null", e.getMessage());
+		}
+		try {
+			new HttpProxyHandler(null, 10, c, f);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("uri is null", e.getMessage());
+		}
+		URI uri = new URI("http://host");
+		try {
+			new HttpProxyHandler(uri, -10);
 			fail();
 		}
 		catch (IllegalArgumentException e) {
 			assertEquals("connectionTimeout is negative", e.getMessage());
 		}
+		
+		assertContructor(new HttpProxyHandler(uri), uri, 10000, false, null, null);
+		assertContructor(new HttpProxyHandler(uri,c), uri, 10000, false, c, null);
+		assertContructor(new HttpProxyHandler(uri,c,f), uri, 10000, false, c, f);
+
+		assertContructor(new HttpProxyHandler(uri, true), uri, 10000, true, null, null);
+		assertContructor(new HttpProxyHandler(uri, true,c), uri, 10000, true, c, null);
+		assertContructor(new HttpProxyHandler(uri, true,c,f), uri, 10000, true, c, f);
+
+		assertContructor(new HttpProxyHandler(uri,999), uri, 999, false, null, null);
+		assertContructor(new HttpProxyHandler(uri,999,c), uri, 999, false, c, null);
+		assertContructor(new HttpProxyHandler(uri,999,c,f), uri, 999, false, c, f);
+
+		assertContructor(new HttpProxyHandler(uri,999, true), uri, 999, true, null, null);
+		assertContructor(new HttpProxyHandler(uri,999, true,c), uri, 999, true, c, null);
+		assertContructor(new HttpProxyHandler(uri,999, true, c,f), uri, 999, true, c, f);
 	}
 	
 	byte[] bytes(String s, int off, int pad) {
