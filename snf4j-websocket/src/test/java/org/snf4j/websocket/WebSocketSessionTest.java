@@ -775,7 +775,7 @@ public class WebSocketSessionTest extends HandshakeTest {
 			assertTrue(c.getTrace().endsWith("|CL|EN|"));
 		}
 		else {
-			assertEquals("CR|OP|CL|EN|", c.getTrace());
+			assertTrue(c.getTrace().endsWith("|CL|EN|"));
 			assertEquals("CR|OP|EX|Buffer allocation failure: maximum capacity (8192) reached|CL|EN|", s.getTrace());
 		}
 		c.stop(TIMEOUT);
