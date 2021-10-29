@@ -191,7 +191,7 @@ public class PerMessageDeflateExtension implements IExtension {
 				clientNoContext = true;
 			}
 		} else if (decompressNoContext == NoContext.REQUIRED) {
-			return null;
+			clientNoContext = true;
 		}
 		
 		if (params.isServerNoContext()) {
@@ -201,7 +201,7 @@ public class PerMessageDeflateExtension implements IExtension {
 				serverNoContext = true;
 			}
 		} else if (compressNoContext == NoContext.REQUIRED) {
-			return null;
+			serverNoContext = true;
 		}
 		
 		Integer size = params.getServerMaxWindow();

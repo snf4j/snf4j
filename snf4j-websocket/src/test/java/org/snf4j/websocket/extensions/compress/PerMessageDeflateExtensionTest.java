@@ -336,19 +336,19 @@ public class PerMessageDeflateExtensionTest {
 		assertResponse(e2, "EX; SN");
 		
 		e = new PerMessageDeflateExtension(6, REQUIRED, REQUIRED);
-		assertAccept(e, "EX", null);
+		assertAccept(e, "EX", params(true, true));
 		assertAccept(e, "EX;CN;SN", params(true, true));
-		assertAccept(e, "EX;CN", null);
-		assertAccept(e, "EX;SN", null);
+		assertAccept(e, "EX;CN", params(true, true));
+		assertAccept(e, "EX;SN", params(true, true));
 		
 		e = new PerMessageDeflateExtension(6, FORBIDDEN, REQUIRED);
-		assertAccept(e, "EX", null);
+		assertAccept(e, "EX", params(false, true));
 		assertAccept(e, "EX;CN;SN", null);
 		assertAccept(e, "EX;CN", params(false, true));
 		assertAccept(e, "EX;SN", null);
 		
 		e = new PerMessageDeflateExtension(6, REQUIRED, FORBIDDEN);
-		assertAccept(e, "EX", null);
+		assertAccept(e, "EX", params(true, false));
 		assertAccept(e, "EX;CN;SN", null);
 		assertAccept(e, "EX;CN", null);
 		assertAccept(e, "EX;SN", params(true, false));

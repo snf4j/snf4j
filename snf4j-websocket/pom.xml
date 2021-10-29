@@ -81,7 +81,7 @@
               <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <outputDirectory>${basedir}/target/classes</outputDirectory>
+              <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
               <resources>          
                 <resource>
                   <directory>../snf4j-core/src/test/resources</directory>

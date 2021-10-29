@@ -31,10 +31,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 import javax.net.ssl.SSLEngine;
 
@@ -1102,33 +1104,59 @@ public class WebSocketSessionTest extends HandshakeTest {
 		testCompression(true);
 	}
 
-	void assertNoCompression(boolean ssl, int encoders, int decoders, NoContext... noContext) throws Exception {
-		startClientServer(ssl, extensions(new PerMessageDeflateExtension(
+	void assertNoCompression(boolean ssl, boolean invalid, int encoders, int decoders, NoContext... noContext) throws Exception {
+		s = new WSServer(PORT, ssl);
+		s.extensions = extensions(new PerMessageDeflateExtension(
+				6, 
+				noContext[2],
+				noContext[3]
+		));
+		c = new WSClient(PORT, ssl);
+		c.extensions = extensions(new PerMessageDeflateExtension(
 				6,
 				noContext[0], 
-				noContext[1])), 
-				extensions(new PerMessageDeflateExtension(
-						6, 
-						noContext[2],
-						noContext[3]
-						)));
+				noContext[1]
+		));
+		s.start();
+		c.start();
+		c.waitForOpen(TIMEOUT);
+		s.waitForOpen(TIMEOUT);
+		s.session.getReadyFuture().sync(TIMEOUT);
+		s.waitForReady(TIMEOUT);
+		s.resetDataLocks();
+		assertEquals("CR|OP|RE|", s.getTrace());
 		assertEquals(encoders, s.session.getCodecPipeline().encoderKeys().size());
-		assertEquals(encoders, c.session.getCodecPipeline().encoderKeys().size());
 		assertEquals(decoders, s.session.getCodecPipeline().decoderKeys().size());
-		assertEquals(decoders, c.session.getCodecPipeline().decoderKeys().size());
+
+		try {
+			c.session.getReadyFuture().sync(TIMEOUT);
+			if (invalid) {
+				fail();
+			}
+			c.waitForReady(TIMEOUT);
+			c.resetDataLocks();
+			assertEquals("CR|OP|RE|", c.getTrace());
+			assertEquals(encoders, c.session.getCodecPipeline().encoderKeys().size());
+			assertEquals(decoders, c.session.getCodecPipeline().decoderKeys().size());
+		}
+		catch (ExecutionException e) {
+			if (!invalid) {
+				throw e;
+			}
+		}
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
 	}
 	
 	void testNoCompression(boolean ssl) throws Exception {
-		assertNoCompression(ssl, 2, 3, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.FORBIDDEN);
-		assertNoCompression(ssl, 1, 2, NoContext.REQUIRED, NoContext.REQUIRED, NoContext.FORBIDDEN, NoContext.FORBIDDEN);
-		assertNoCompression(ssl, 1, 2, NoContext.REQUIRED, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.FORBIDDEN);
-		assertNoCompression(ssl, 1, 2, NoContext.FORBIDDEN, NoContext.REQUIRED, NoContext.FORBIDDEN, NoContext.FORBIDDEN);		
-		assertNoCompression(ssl, 1, 2, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.REQUIRED, NoContext.REQUIRED);
-		assertNoCompression(ssl, 1, 2, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.REQUIRED, NoContext.FORBIDDEN);
-		assertNoCompression(ssl, 1, 2, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.REQUIRED);
+		assertNoCompression(ssl, false, 2, 3, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.FORBIDDEN);
+		assertNoCompression(ssl, false, 1, 2, NoContext.REQUIRED, NoContext.REQUIRED, NoContext.FORBIDDEN, NoContext.FORBIDDEN);
+		assertNoCompression(ssl, false, 1, 2, NoContext.REQUIRED, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.FORBIDDEN);
+		assertNoCompression(ssl, false, 1, 2, NoContext.FORBIDDEN, NoContext.REQUIRED, NoContext.FORBIDDEN, NoContext.FORBIDDEN);		
+		assertNoCompression(ssl, true, 2, 3, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.REQUIRED, NoContext.REQUIRED);
+		assertNoCompression(ssl, true, 2, 3, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.REQUIRED, NoContext.FORBIDDEN);
+		assertNoCompression(ssl, true, 2, 3, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.FORBIDDEN, NoContext.REQUIRED);
 	}
 	
 	@Test
