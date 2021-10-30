@@ -1462,7 +1462,8 @@ public class WebSocketSessionTest extends HandshakeTest {
 		s.waitForReady(TIMEOUT);
 		c.resetDataLocks();
 		s.resetDataLocks();
-
+		waitFor(200);
+		
 		long allocated = sm.getAllocatedCount();
 		if (ssl) {
 			assertEquals(allocated, sm.getAllocatedCount());
