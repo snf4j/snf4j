@@ -1478,6 +1478,7 @@ public class WebSocketSessionTest extends HandshakeTest {
 		}
 		for (int i=0; i<100; ++i) {
 			c.session.write(new TextFrame("ABCD")).sync(TIMEOUT);
+			waitFor(20);
 		}
 		waitFor(100);
 		if (ssl) {
