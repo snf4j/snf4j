@@ -38,6 +38,7 @@ import org.snf4j.core.Server;
 import org.snf4j.core.TraceBuilder;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
+import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.timer.ITimer;
 import org.snf4j.core.timer.TestTimer;
 
@@ -73,6 +74,63 @@ public class AbstractProxyHandlerTest {
 	@Test(expected=IllegalArgumentException.class)
 	public void testNegativeTimeout() {
 		new TestHandler(-1);
+	}
+	
+	@Test
+	public void testConstructor() {
+		AbstractProxyHandler h = new AbstractProxyHandler(10, null, null) {
+
+			@Override
+			public void read(Object msg) {
+			}
+
+			@Override
+			protected void handleReady() throws Exception {
+			}
+		};
+		assertTrue(h.getConfig().getClass() == DefaultSessionConfig.class);
+		assertTrue(h.getFactory() == DefaultSessionStructureFactory.DEFAULT);
+		
+		DefaultSessionConfig config = new DefaultSessionConfig();
+		DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {};
+		h = new AbstractProxyHandler(10, config, factory) {
+
+			@Override
+			public void read(Object msg) {
+			}
+
+			@Override
+			protected void handleReady() throws Exception {
+			}
+		};
+		assertTrue(h.getConfig() == config);
+		assertTrue(h.getFactory() == factory);
+
+		h = new AbstractProxyHandler(null, null) {
+
+			@Override
+			public void read(Object msg) {
+			}
+
+			@Override
+			protected void handleReady() throws Exception {
+			}
+		};
+		assertTrue(h.getConfig().getClass() == DefaultSessionConfig.class);
+		assertTrue(h.getFactory() == DefaultSessionStructureFactory.DEFAULT);
+		
+		h = new AbstractProxyHandler(config, factory) {
+
+			@Override
+			public void read(Object msg) {
+			}
+
+			@Override
+			protected void handleReady() throws Exception {
+			}
+		};
+		assertTrue(h.getConfig() == config);
+		assertTrue(h.getFactory() == factory);
 	}
 	
 	@Test

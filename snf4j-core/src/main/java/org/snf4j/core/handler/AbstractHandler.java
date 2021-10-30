@@ -42,9 +42,9 @@ public abstract class AbstractHandler implements IHandler {
 
 	private ISession session;
 	
-	private String name;
+	private final String name;
 	
-	private ISessionConfig config;
+	private final ISessionConfig config;
 	
 	/**
 	 * Default constructor creating an unnamed handler.
@@ -57,10 +57,12 @@ public abstract class AbstractHandler implements IHandler {
 	 * Default constructor creating an unnamed handler with given session
 	 * configuration object.
 	 * 
-	 * @param config the session configuration object
+	 * @param config the session configuration object, or {@code null} to
+	 *               use the default configuration
 	 */
 	protected AbstractHandler(ISessionConfig config) {
-		this.config = config;
+		this.config = config != null ? config : new DefaultSessionConfig();
+		this.name = null;
 	}
 	
 	/**
@@ -77,11 +79,12 @@ public abstract class AbstractHandler implements IHandler {
 	 * Constructor creating a named handler with given session configuration object.
 	 * 
 	 * @param name   the name for this handler
-	 * @param config the session configuration object
+	 * @param config the session configuration object, or {@code null} to
+	 *               use the default configuration
 	 */
 	protected AbstractHandler(String name, ISessionConfig config) {
 		this.name = name;
-		this.config = config;
+		this.config = config != null ? config : new DefaultSessionConfig();
 	}
 	
 	@Override

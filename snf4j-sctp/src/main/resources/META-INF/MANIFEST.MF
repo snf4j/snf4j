@@ -15,8 +15,8 @@ Import-Package: org.snf4j.core;version=${parsedVersion.osgiVersion},
   org.snf4j.core.future;version=${parsedVersion.osgiVersion},
   org.snf4j.core.handler;version=${parsedVersion.osgiVersion},
   org.snf4j.core.logger;version=${parsedVersion.osgiVersion},
+  org.snf4j.core.pool;version=${parsedVersion.osgiVersion},
   org.snf4j.core.session;version=${parsedVersion.osgiVersion},
   org.snf4j.core.thread;version=${parsedVersion.osgiVersion},
-  org.snf4j.core.pool;version=${parsedVersion.osgiVersion},
   org.snf4j.core.timer;version=${parsedVersion.osgiVersion}
 Fragment-Host: org.snf4j.snf4j-core

@@ -35,6 +35,7 @@ import org.junit.Test;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.session.ISessionConfig;
 
 public class AbstractHandlerTest {
 
@@ -62,6 +63,40 @@ public class AbstractHandlerTest {
 		
 		h.setSession(s2);
 		assertTrue(s2 == h.getSession());
+	}
+	
+	@Test
+	public void testConstructor() {
+		AbstractHandler h = new AbstractHandler("n1", null) {
+			@Override
+			public void read(Object msg) {
+			}
+		};
+		assertTrue(h.getConfig().getClass() == DefaultSessionConfig.class);
+		assertEquals("n1", h.getName());
+		
+		DefaultSessionConfig config = new DefaultSessionConfig();
+		h = new AbstractHandler(null, config) {
+			@Override
+			public void read(Object msg) {
+			}
+		};
+		assertTrue(h.getConfig() == config);
+		assertNull(h.getName());
+		
+		h = new AbstractHandler((ISessionConfig)null) {
+			@Override
+			public void read(Object msg) {
+			}
+		};
+		assertTrue(h.getConfig().getClass() == DefaultSessionConfig.class);
+
+		h = new AbstractHandler(config) {
+			@Override
+			public void read(Object msg) {
+			}
+		};
+		assertTrue(h.getConfig() == config);
 	}
 	
 	@Test

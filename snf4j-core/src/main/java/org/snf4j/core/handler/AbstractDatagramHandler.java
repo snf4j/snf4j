@@ -50,7 +50,8 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 	 * configuration object.
 	 * 
 	 * @param config 
-	 *            the session configuration object
+	 *            the session configuration object, or {@code null} to
+	 *            use the default configuration
 	 */	
 	 protected AbstractDatagramHandler(ISessionConfig config) {
 		super(config);
@@ -73,7 +74,8 @@ public abstract class AbstractDatagramHandler extends AbstractHandler implements
 	 * @param name
 	 *            the name for this handler
 	 * @param config 
-	 *            the session configuration object
+	 *            the session configuration object, or {@code null} to
+	 *            use the default configuration
 	 */
 	protected AbstractDatagramHandler(String name, ISessionConfig config) {
 		super(name, config);

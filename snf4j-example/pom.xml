@@ -52,6 +52,12 @@
       <artifactId>snf4j-sctp</artifactId> 
       <version>${project.version}</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.snf4j</groupId> 
+      <artifactId>snf4j-websocket</artifactId> 
+      <version>${project.version}</version>
+    </dependency>
   </dependencies> 
   
   <build>
