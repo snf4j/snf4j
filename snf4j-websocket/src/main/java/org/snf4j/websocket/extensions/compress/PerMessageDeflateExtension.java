@@ -77,15 +77,15 @@ public class PerMessageDeflateExtension implements IExtension {
 	
 	private final int compressionLevel;
 
-	private NoContext compressNoContext;
+	private final NoContext compressNoContext;
 	
-	private NoContext decompressNoContext;
+	private final NoContext decompressNoContext;
 	
-	private boolean clientMode;
+	private final boolean clientMode;
 	
-	private int minInflateBound;
+	private final int minInflateBound;
 	
-	private PerMessageDeflateParams params;
+	private final PerMessageDeflateParams params;
 	
 	/**
 	 * Constructs a pre-message deflate extension with specified compression level,
@@ -109,6 +109,8 @@ public class PerMessageDeflateExtension implements IExtension {
 		this.compressNoContext = compressNoContext;
 		this.decompressNoContext = decompressNoContext;
 		this.minInflateBound = minInflateBound;
+		clientMode = false;
+		params = null;
 	}
 	
 	/**
@@ -148,6 +150,8 @@ public class PerMessageDeflateExtension implements IExtension {
 		this.minInflateBound = minInflateBound;
 		this.params = params;
 		this.clientMode = clientMode;
+		compressNoContext = null;
+		decompressNoContext = null;
 	}
 	
 	/**
