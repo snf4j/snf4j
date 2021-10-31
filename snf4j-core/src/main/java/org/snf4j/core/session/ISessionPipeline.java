@@ -177,11 +177,13 @@ public interface ISessionPipeline<T extends ISession> {
 	void markUndone();
 	
 	/**
-	 * Marks this pipeline as undone with specified cause.
+	 * Marks this pipeline as undone with the specified cause.
 	 * <p>
 	 * Marking a pipeline as undone changes the way the session's close methods
 	 * work. Calling the close methods in such state will close the connection
 	 * instead of passing the processing to the next session in the pipeline.
+	 * 
+	 * @param cause the cause of the undone state
 	 */
 	void markUndone(Throwable cause);
 	
