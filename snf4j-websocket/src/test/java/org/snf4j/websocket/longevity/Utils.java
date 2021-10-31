@@ -31,6 +31,7 @@ import java.net.URI;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -46,6 +47,7 @@ import org.snf4j.websocket.SSLWebSocketSession;
 import org.snf4j.websocket.WebSocketSession;
 import org.snf4j.websocket.frame.BinaryFrame;
 import org.snf4j.websocket.frame.Frame;
+import org.snf4j.websocket.frame.TextFrame;
 
 public class Utils implements Config {
 	
@@ -95,7 +97,10 @@ public class Utils implements Config {
 	}
 	
 	static Frame randomFrame() {
-		return new BinaryFrame(randomPacket().getBytes());
+		if (Utils.randomBoolean(Utils.BINARY_FRAME_RATIO)) {
+			return new BinaryFrame(randomPacket().getBytes());
+		}
+		return new TextFrame(Base64.getEncoder().encodeToString(randomPacket().getBytes()));
 	}
 	
 	static Packet randomNopPacket() {

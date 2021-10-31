@@ -45,6 +45,8 @@ public interface Config {
 	
 	static final int COMPRESSED_NO_CONTEXT_TAKEOVER_RATIO = 50;
 	
+	static final int BINARY_FRAME_RATIO = 50;
+	
 	static final String HOST = "127.0.0.1";
 
 	static final int FIRST_PORT = 8000;

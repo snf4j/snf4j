@@ -25,6 +25,8 @@
  */
 package org.snf4j.websocket.longevity;
 
+import java.util.Base64;
+
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.websocket.AbstractWebSocketHandler;
@@ -52,7 +54,7 @@ abstract public class AbstractHandler extends AbstractWebSocketHandler {
 			f = new BinaryFrame(p.getBytes());
 		}
 		else {
-			f = new TextFrame(p.getBytes());
+			f = new TextFrame(Base64.getEncoder().encodeToString(p.getBytes()));
 		}
 		getSession().writenf(f);
 		Statistics.incPackets();
@@ -67,7 +69,14 @@ abstract public class AbstractHandler extends AbstractWebSocketHandler {
 	@Override
 	public void read(Object msg) {
 		Frame f = (Frame) msg;
-		Packet p = new Packet(f.getPayload());
+		Packet p;
+		
+		if (f.getOpcode() == Opcode.BINARY) {
+			p = new Packet(f.getPayload());
+		}
+		else {
+			p = new Packet(Base64.getDecoder().decode(((TextFrame)f).getText()));
+		}
 		
 		switch (p.getType()) {
 		case ECHO:
