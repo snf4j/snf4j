@@ -47,7 +47,7 @@ public interface Config {
 	
 	static final String HOST = "127.0.0.1";
 
-	static final int FIRST_PORT = 7000;
+	static final int FIRST_PORT = 8000;
 	
 	static final int[] PORTS = new int[] {FIRST_PORT};
 	
