@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="keywords" content="java, non-blocking,asynchronous,networking,framework,socket,nio,udp,tcp,sctp,ssl,tls,dtls,protocol engine">
+    <meta name="keywords" content="java,non-blocking,asynchronous,networking,framework,socket,nio,udp,tcp,sctp,ssl,tls,dtls,protocol engine,websocket">
     <meta name="description" content="An asynchronous event-driven network application framework for quick and easy development of network applications">
     <meta name="author" content="SNF4J.ORG">
 
@@ -43,16 +43,13 @@
 
         <ul class="navbar-nav flex-row ml-md-auto d-none d-md-flex">
           <li class="nav-item p-2">
-            <a href="https://bintray.com/snf4j/maven" rel="nofollow" aria-label="Bintray"><img src="https://api.bintray.com/packages/snf4j/maven/snf4j/images/download.svg" alt="Bintray" title="Bintray"></a>
-          </li>
-          <li class="nav-item p-2">
             <a href="https://search.maven.org/search?q=g:org.snf4j%20AND%20a:snf4j-core&amp;core=gav"><img src="https://img.shields.io/maven-central/v/org.snf4j/snf4j-core.svg" alt="Maven Central" title="Central Repository"></a>
           </li>
           <li class="nav-item p-2">
             <a href="https://www.javadoc.io/doc/org.snf4j/snf4j-core"><img src="https://www.javadoc.io/badge/org.snf4j/snf4j-core.svg" alt="Javadocs" title="Javadocs"></a>
           </li>
           <li class="nav-item p-2">
-            <a href="https://travis-ci.com/snf4j/snf4j" rel="nofollow"><img src="https://camo.githubusercontent.com/c9113c7acaff88a0e074fc0794690161442de8be/68747470733a2f2f7472617669732d63692e6f72672f736e66346a2f736e66346a2e7376673f6272616e63683d6d6173746572" alt="Build Status" title="Build Status" data-canonical-src="https://travis-ci.com/snf4j/snf4j.svg?branch=master"></a>
+            <a href="https://github.com/snf4j/snf4j/actions" rel="nofollow"><img src="https://github.com/snf4j/snf4j/actions/workflows/ci.yml/badge.svg" alt="Build Status" title="Build Status"></a>
           </li>
           <li class="nav-item p-2">
             <a href="https://codecov.io/github/snf4j/snf4j" rel="nofollow"><img src="https://camo.githubusercontent.com/7186edc4508f9b532d2649a23d033d9e5f0d4d3d/68747470733a2f2f696d672e736869656c64732e696f2f636f6465636f762f632f6769746875622f736e66346a2f736e66346a2e737667" alt="Coverage Status" title="Coverage Status" data-canonical-src="https://img.shields.io/codecov/c/github/snf4j/snf4j.svg"></a>        
@@ -93,15 +90,16 @@
     <ul>
      <li> Unified API for transport layer types: TCP, UDP and SCTP
      <li> Event-driven API for developing asynchronous network applications
-     <li> Customizable protocol engines for transport layer types: TCP, UDP and SCTP	
+     <li> Customizable protocol engines for transport layer types: TCP and UDP	
      <li> Utilities for development of UDP server applications
      <li> Simple API for customizable encoder-decoder pipelines
      <li> Provide ease of programing multi-thread applications in a single-thread way
+	 <li> Building pipelines of sessions sharing the same socket channel
     </ul>
 
     <h4>Performance and Scalability</h4>
 
-    <ul>
+    <ul>	
      <li> Support for minimized or even zero unnecessary memory copying
      <li> Support for low memory utilization in multi-session applications
      <li> Lower latency
@@ -110,10 +108,18 @@
      <li> Customizable byte buffer allocators
     </ul>
 
+    <h4>Supported Protocols</h4>
+
+    <ul>
+	 <li> HTTP Web Proxy Connect Protocol
+     <li> WebSocket Protocol
+    </ul>
+
     <h4>Security</h4>
 
     <ul>
      <li> Complete support for SSL/TLS/DTLS protocols
+	 <li> Secure Web Proxy Connect
     </ul>
 
     <h4>Integration</h4>
@@ -287,6 +293,7 @@ loop.join();
   <p>
   <h4>Project</h4>
   <ul>
+  <li>Central Repository: <a class="text-secondary" href="https://search.maven.org/search?q=g:org.snf4j" target="_blank" rel="noopener" aria-label="Central Repository">https://search.maven.org/search?q=g:org.snf4j</a>
   <li>GitHub Repository: <a class="text-secondary" href="https://github.com/snf4j/snf4j" target="_blank" rel="noopener" aria-label="GitHub Repository">https://github.com/snf4j/snf4j</a>
   <li>License: <a class="text-secondary" href="https://github.com/snf4j/snf4j/blob/master/LICENSE" target="_blank" rel="noopener" aria-label="MIT License">https://github.com/snf4j/snf4j/blob/master/LICENSE</a>
   <li>Release Notes: <a class="text-secondary" href="https://github.com/snf4j/snf4j/blob/master/RELEASE-NOTES.md" target="_blank" rel="noopener" aria-label="Release Notes">https://github.com/snf4j/snf4j/blob/master/RELEASE-NOTES.md</a>
@@ -300,12 +307,6 @@ loop.join();
   <li>Javadocs: <a class="text-secondary" href="https://www.javadoc.io/doc/org.snf4j/snf4j-core" target="_blank" rel="noopener" aria-label="Javadocs">https://www.javadoc.io/doc/org.snf4j/snf4j-core</a>
   <li>Examples: <a class="text-secondary" href="https://github.com/snf4j/snf4j/tree/master/snf4j-example/src/main/java/org/snf4j/example" target="_blank" rel="noopener" aria-label="Javadocs">https://github.com/snf4j/snf4j/tree/master/snf4j-example</a>
   </ul>
-
-  <h4>Download</h4>
-  <ul>
-  <li>Central Repository: <a class="text-secondary" href="https://search.maven.org/search?q=g:org.snf4j" target="_blank" rel="noopener" aria-label="Central Repository">https://search.maven.org/search?q=g:org.snf4j</a>
-  <li>Bintray: <a class="text-secondary" href="https://bintray.com/snf4j/maven" target="_blank" rel="noopener" aria-label="Bintray">https://bintray.com/snf4j/maven</a>
-  </ul> 
   
   </div>
 </main>

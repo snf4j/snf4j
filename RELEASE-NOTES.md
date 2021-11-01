@@ -1,3 +1,14 @@
+#### 1.8.0
+ - 2021-11-01 - [changes](https://github.com/snf4j/snf4j/compare/v1.7.0...v1.8.0)
+ - Migrated from Travis-CI to GitHub Action [(#67)](https://github.com/snf4j/snf4j/pull/67)
+ - Generic inbound type in IBaseDecoder [(#68)](https://github.com/snf4j/snf4j/pull/68)
+ - Improved output splitting produced by ZlibDecoder [(#70)](https://github.com/snf4j/snf4j/pull/70)
+ - Controlling session closing by type of thrown exception [(#72)](https://github.com/snf4j/snf4j/pull/72)
+ - Added direct task execution from session object [(#75)](https://github.com/snf4j/snf4j/pull/75)
+ - Added support for pipeline of sessions operating on single connection [(#76)](https://github.com/snf4j/snf4j/pull/76)
+ - Added support for connection through HTTP proxy [(#77)](https://github.com/snf4j/snf4j/pull/77)
+ - Support for WebSocket protocol [(#78)](https://github.com/snf4j/snf4j/pull/78)
+
 #### 1.7.0
  - 2021-03-20 - [changes](https://github.com/snf4j/snf4j/compare/v1.6.0...v1.7.0)
  - Added channel context for selector loop genericity [(#55)](https://github.com/snf4j/snf4j/pull/55)
