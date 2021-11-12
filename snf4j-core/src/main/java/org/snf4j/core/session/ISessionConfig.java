@@ -123,9 +123,9 @@ public interface ISessionConfig {
 	 * In addition, setting this parameter to <code>true</code> when the allocator
 	 * associated with the session supports releasing of no longer used buffers will
 	 * also cause data copy optimization between session's internal byte buffers. In
-	 * such situation user's implementation is responsible for releasing of no
-	 * longer used buffers that was passed to session handlers or codecs by calling
-	 * {@link ISession#release}.
+	 * such situation user's implementation is responsible for releasing (calling 
+	 * {@link ISession#release}) of no longer used buffers that was passed to session 
+	 * handlers or codecs.
 	 * 
 	 * @return <code>true</code> if the data copy optimization should be enabled
 	 */

@@ -32,6 +32,7 @@ import static org.junit.Assert.fail;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
@@ -45,7 +46,9 @@ import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.ISessionPipeline;
+import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.core.session.IStreamSession;
+import org.snf4j.core.session.UnsupportedSessionTimer;
 
 public class HttpProxyHandlerTest {
 
@@ -297,6 +300,7 @@ public class HttpProxyHandlerTest {
 	void assertConnect(URI uri, String expected) {
 		HttpProxyHandler p = new HttpProxyHandler(uri);
 		Session s = new Session();
+		s.dataCopyingOptimized = true;
 		p.setSession(s);
 		
 		p.event(SessionEvent.READY);
@@ -340,8 +344,9 @@ public class HttpProxyHandlerTest {
 		
 		p.appendHeader("User-Agent", "snf4j");
 		p.event(SessionEvent.READY);
-		assertEquals("WR=CONNECT host:99 HTTP/1.1;Host: host:99;User-Agent: snf4j;;|", s.getTrace());
+		assertEquals("WR=CONNECT host:99 HTTP/1.1;Host: host:99;User-Agent: snf4j;;|R|", s.getTrace());
 		p.appendHeader("Proxy-Authorization", "Basic dGVzdDoxMjPCow==");
+		s.dataCopyingOptimized = true;
 		p.event(SessionEvent.READY);
 		assertEquals("WR=CONNECT host:99 HTTP/1.1;Host: host:99;User-Agent: snf4j;Proxy-Authorization: Basic dGVzdDoxMjPCow==;;|", s.getTrace());
 	}
@@ -361,7 +366,7 @@ public class HttpProxyHandlerTest {
 		Session s = new Session();
 		p.setSession(s);
 		p.event(SessionEvent.READY);
-		assertEquals("WR=CONNECT host:80 HTTP/1.1;Host: host;;|", s.getTrace());
+		assertEquals("WR=CONNECT host:80 HTTP/1.1;Host: host;;|R|", s.getTrace());
 	}
 	
 	static class Session extends TestSession implements IStreamSession {
@@ -369,6 +374,10 @@ public class HttpProxyHandlerTest {
 		final TraceBuilder trace = new TraceBuilder();
 		
 		ByteBuffer released;
+		
+		boolean dataCopyingOptimized;
+		
+		boolean writeBytes;
 		
 		String getTrace() {
 			return trace.get(true);
@@ -405,6 +414,16 @@ public class HttpProxyHandlerTest {
 			trace.append("DC");
 		}
 
+		@Override
+		public boolean isDataCopyingOptimized() {
+			return dataCopyingOptimized;
+		}
+		
+		@Override
+		public ISessionTimer getTimer() {
+			return UnsupportedSessionTimer.INSTANCE;
+		}
+		
 		@Override
 		public ISessionPipeline<IStreamSession> getPipeline() {
 			return new ISessionPipeline<IStreamSession>() {
@@ -460,10 +479,12 @@ public class HttpProxyHandlerTest {
 
 				@Override
 				public void markUndone() {
+					trace.append("UNDONE");
 				}
 
 				@Override
 				public void markUndone(Throwable cause) {
+					trace.append("UNDONE(" + cause.getMessage()+")");
 				}
 
 				@Override
@@ -519,7 +540,12 @@ public class HttpProxyHandlerTest {
 			byte[] d = new byte[data.remaining()];
 			
 			data.get(d);
-			trace.append("WR=" + new String(d).replace("\r\n", ";"));
+			if (writeBytes) {
+				trace.append("WR=" + Arrays.toString(d));
+			}
+			else {
+				trace.append("WR=" + new String(d).replace("\r\n", ";"));
+			}
 		}
 
 		@Override

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,30 +23,50 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.proxy;
 
-public class TraceBuilder {
-	private StringBuilder trace = new StringBuilder();
+class Socks4Reply implements ISocksReply {
+
+	private final int status;
 	
-	public void append(String s) {
-		synchronized (trace) {
-			trace.append(s);
-			trace.append('|');
-			if (trace.length() > 10000) {
-				throw new IllegalStateException("Trace to big");
-			}
-		}
+	private final String address;
+	
+	private final int port;
+	
+	Socks4Reply(int status, String address, int port) {
+		this.status = status;
+		this.address = address;
+		this.port = port;
 	}
 	
-	public String get(boolean clear) {
-		String s;
-		
-		synchronized(trace) {
-			s = trace.toString();
-			if (clear) {
-				trace.setLength(0);
-			}
-		}
-		return s;
-	}	
+	@Override
+	public boolean isSuccessful() {
+		return status == Socks4Status.SUCCESS.code();
+	}
+
+	@Override
+	public int getStatus() {
+		return status;
+	}
+
+	@Override
+	public String getStatusDescription() {
+		return Socks4Status.valueOf(status).description();
+	}
+
+	@Override
+	public int getPort() {
+		return port;
+	}
+
+	@Override
+	public String getAddress() {
+		return address;
+	}
+
+	@Override
+	public AddressType getAddressType() {
+		return AddressType.IPV4;
+	}
+
 }

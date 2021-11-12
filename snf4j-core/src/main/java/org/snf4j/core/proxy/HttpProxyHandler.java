@@ -35,6 +35,7 @@ import java.util.List;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.IStreamSession;
 
 /**
  * Handles client proxy connections via the HTTP tunneling protocol. For more
@@ -532,6 +533,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 			host = toBytes(uriHost);
 		}
 		
+		IStreamSession session = getSession();
 		ByteBuffer frame;
 		
 		synchronized (headers) {
@@ -548,7 +550,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 				+ headersLength
 				+ CRLF.length;
 		
-			frame = getSession().allocate(length);
+			frame = session.allocate(length);
 			frame.put(HTTP_CONNECT);
 			frame.put(SP);
 			frame.put(fullHost);
@@ -568,7 +570,10 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 		
 		frame.put(CRLF);
 		frame.flip();
-		getSession().writenf(frame);
+		session.writenf(frame);
+		if (!session.isDataCopyingOptimized()) {
+			session.release(frame);
+		}
 	}
 
 	@Override

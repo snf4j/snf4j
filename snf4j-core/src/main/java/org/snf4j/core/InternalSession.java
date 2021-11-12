@@ -685,6 +685,11 @@ abstract class InternalSession extends AbstractSession implements ISession {
 	}
 	
 	@Override
+	public boolean isDataCopyingOptimized() {
+		return optimizeCopying;
+	}
+	
+	@Override
 	public ByteBuffer allocate(int capacity) {
 		return allocator.allocate(capacity);
 	}

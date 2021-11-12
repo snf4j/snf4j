@@ -305,6 +305,21 @@ public interface ISession {
 	ISessionTimer getTimer();
 	
 	/**
+	 * Tells if the processing of data is optimized to reduce data copying between
+	 * byte buffers.
+	 * <p>
+	 * Checking this flag can be helpful in determining if a buffer allocated by the
+	 * {@link #allocate} method need to be released after passing it to the
+	 * session's write/send methods. For example, if the returned value is
+	 * {@code true} the buffer will be released automatically and so it should not
+	 * be released by a user's implementation.
+	 * 
+	 * @return {@code true} if the processing of data is optimized
+	 * @see ISessionConfig#optimizeDataCopying()
+	 */
+	boolean isDataCopyingOptimized();
+	
+	/**
 	 * Allocates a byte buffer by using the allocator associated with this session.
 	 * 
 	 * @param capacity minimal required capacity
