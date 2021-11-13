@@ -65,8 +65,8 @@ class Socks4Reply implements ISocksReply {
 	}
 
 	@Override
-	public AddressType getAddressType() {
-		return AddressType.IPV4;
+	public SocksAddressType getAddressType() {
+		return SocksAddressType.IPV4;
 	}
 
 }

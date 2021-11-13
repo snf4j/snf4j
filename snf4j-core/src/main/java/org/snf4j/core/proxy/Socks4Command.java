@@ -25,9 +25,17 @@
  */
 package org.snf4j.core.proxy;
 
+/**
+ * An {@code enum} that defines types of commands for the SOCKS4 proxy handler.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 public enum Socks4Command {
 	
+	/** The CONNECT command */
 	CONNECT((byte)1),
+	
+	/** The BIND command */
 	BIND((byte)2);
 	
 	private final byte code;

@@ -25,7 +25,20 @@
  */
 package org.snf4j.core.proxy;
 
+/**
+ * A listener for replies sent from the SOCKS servers. 
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 public interface ISocksReplyListener {
 
+	/**
+	 * Called when a reply is received by a SOCKS client.
+	 * 
+	 * @param reply      the reply information sent from the SOCKS server.
+	 * @param replyIndex the index of a received reply. {@code 1} for the first
+	 *                   reply and {@code 2} for the second reply of the BIND
+	 *                   command
+	 */
 	void replyReceived(ISocksReply reply, int replyIndex);
 }

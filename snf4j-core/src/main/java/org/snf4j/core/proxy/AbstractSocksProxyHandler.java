@@ -36,6 +36,12 @@ import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.IStreamSession;
 
+/**
+ * Base implementation for handlers processing client connections via SOCKS
+ * proxy protocols.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
 abstract public class AbstractSocksProxyHandler extends AbstractProxyHandler {
 	
 	private final InetSocketAddress address;
@@ -46,12 +52,45 @@ abstract public class AbstractSocksProxyHandler extends AbstractProxyHandler {
 	
 	volatile AbstractSocksState state;
 	
+	/**
+	 * Constructs a SOCKS proxy connection handler with the specified destination
+	 * address, connection timeout, configuration and factory.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address           the destination address
+	 * @param connectionTimeout the SOCKS proxy connection timeout in milliseconds,
+	 *                          or {@code 0} to wait an infinite amount of time for
+	 *                          establishing of the SOCKS connection.
+	 * @param config            the session configuration object, or {@code null} to
+	 *                          use the default configuration
+	 * @param factory           the factory that will be used to configure the
+	 *                          internal structure of the associated session, or
+	 *                          {@code null} to use the default factory
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	protected AbstractSocksProxyHandler(InetSocketAddress address, long connectionTimeout, ISessionConfig config, ISessionStructureFactory factory) {
 		super(connectionTimeout, config, factory);
 		checkNull(address, "address");
 		this.address = address;
 	}
 
+	/**
+	 * Constructs a SOCKS proxy connection handler with the specified destination
+	 * address, the default (10 seconds) connection timeout, configuration and factory.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address           the destination address
+	 * @param config            the session configuration object, or {@code null} to
+	 *                          use the default configuration
+	 * @param factory           the factory that will be used to configure the
+	 *                          internal structure of the associated session, or
+	 *                          {@code null} to use the default factory
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	protected AbstractSocksProxyHandler(InetSocketAddress address, ISessionConfig config, ISessionStructureFactory factory) {
 		super(config, factory);
 		checkNull(address, "address");
@@ -64,10 +103,20 @@ abstract public class AbstractSocksProxyHandler extends AbstractProxyHandler {
 		}
 	}
 	
+	/**
+	 * Returns the destination address.
+	 * 
+	 * @return the destination address
+	 */
 	public InetSocketAddress getAddress() {
 		return address;
 	}
-	
+
+	/**
+	 * Returns replies sent from the SOCKS server.
+	 * 
+	 * @return the replies sent from the SOCKS server
+	 */
 	public ISocksReply[] getReplies() {
 		ISocksReply[] replyArray;
 		
@@ -77,6 +126,11 @@ abstract public class AbstractSocksProxyHandler extends AbstractProxyHandler {
 		return replyArray;
 	}
 	
+	/**
+	 * Adds a listener for replies sent from the SOCKS server
+	 * 
+	 * @param listener a listener for replies
+	 */
 	public void addReplyListener(ISocksReplyListener listener) {
 		synchronized (replies) {
 			if (replyListeners == null) {

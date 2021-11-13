@@ -110,7 +110,7 @@ class Socks5CommandState extends AbstractSocksState implements ISocks5 {
 		
 		int statusCode = (int)data[STATUS_INDEX] & 0xff;
 		Socks5Status status = Socks5Status.valueOf(statusCode);
-		AddressType addrType = AddressType.valueOf(data[ATYP_INDEX]);
+		SocksAddressType addrType = SocksAddressType.valueOf(data[ATYP_INDEX]);
 		String addr;
 		int addrLen;
 		
@@ -149,7 +149,7 @@ class Socks5CommandState extends AbstractSocksState implements ISocks5 {
 	@Override
 	void handleReady() {
 		InetSocketAddress address = handler.getAddress();
-		AddressType addrType = null;
+		SocksAddressType addrType = null;
 		int addrLen = 0;
 		String host;
 		byte[] addrBytes;
@@ -164,12 +164,12 @@ class Socks5CommandState extends AbstractSocksState implements ISocks5 {
 		if (addrBytes == null) {
 			addrBytes = NetworkUtil.ipv6ToBytes(host);
 			if (addrBytes != null) {
-				addrType = AddressType.IPV6;
+				addrType = SocksAddressType.IPV6;
 				addrLen = 16;
 			}
 		}
 		else {
-			addrType = AddressType.IPV4;
+			addrType = SocksAddressType.IPV4;
 			addrLen = 4;
 		}
 		if (addrBytes == null) {
@@ -177,7 +177,7 @@ class Socks5CommandState extends AbstractSocksState implements ISocks5 {
 			if (addrBytes.length > 255) {
 				throw new ProxyConnectionException("Destination domain name length too long");
 			}
-			addrType = AddressType.DOMAIN;
+			addrType = SocksAddressType.DOMAIN;
 			addrLen = addrBytes.length + 1;
 		}
 		
@@ -187,7 +187,7 @@ class Socks5CommandState extends AbstractSocksState implements ISocks5 {
 		buf.put(command.code());
 		buf.put((byte)0);
 		buf.put(addrType.code());
-		if (addrType == AddressType.DOMAIN) {
+		if (addrType == SocksAddressType.DOMAIN) {
 			buf.put((byte)addrBytes.length);
 		}
 		buf.put(addrBytes);

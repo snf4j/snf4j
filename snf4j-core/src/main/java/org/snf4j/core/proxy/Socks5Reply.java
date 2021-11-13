@@ -31,11 +31,11 @@ class Socks5Reply implements ISocksReply {
 	
 	private final String address;
 	
-	private final AddressType addressType;
+	private final SocksAddressType addressType;
 	
 	private final int port;
 	
-	Socks5Reply(int status, AddressType addressType, String address, int port) {
+	Socks5Reply(int status, SocksAddressType addressType, String address, int port) {
 		this.status = status;
 		this.addressType = addressType;
 		this.address = address;
@@ -68,7 +68,7 @@ class Socks5Reply implements ISocksReply {
 	}
 
 	@Override
-	public AddressType getAddressType() {
+	public SocksAddressType getAddressType() {
 		return addressType;
 	}
 
