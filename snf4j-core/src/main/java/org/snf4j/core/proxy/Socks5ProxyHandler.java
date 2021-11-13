@@ -41,26 +41,119 @@ public class Socks5ProxyHandler extends AbstractSocksProxyHandler {
 
 	private final Socks5CommandState commandState;
 	
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command and the
+	 * default (10 seconds) connection timeout.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address the destination address to the host to which the connection
+	 *                should be proxied
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address) {
 		this(address, Socks5Command.CONNECT, null, null, null, null);
 	}
 
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command, the
+	 * default (10 seconds) connection timeout and configuration.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address the destination address to the host to which the connection
+	 *                should be proxied
+	 * @param config  the session configuration object, or {@code null} to use the
+	 *                default configuration
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, ISessionConfig config) {
 		this(address, Socks5Command.CONNECT, null, null, config, null);
 	}
 
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command, the
+	 * default (10 seconds) connection timeout, configuration and factory.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address the destination address to the host to which the connection
+	 *                should be proxied
+	 * @param config  the session configuration object, or {@code null} to use the
+	 *                default configuration
+	 * @param factory the factory that will be used to configure the internal
+	 *                structure of the associated session, or {@code null} to use
+	 *                the default factory
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, ISessionConfig config, ISessionStructureFactory factory) {
 		this(address, Socks5Command.CONNECT, null, null, config, factory);
 	}
 	
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command, user's
+	 * name/password and the default (10 seconds) connection timeout.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address  the destination address to the host to which the connection
+	 *                 should be proxied
+	 * @param username the user's name, or {@code null} for an empty name
+	 * @param password the user's password, or {@code null} for an empty password
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, String username, String password) {
 		this(address, Socks5Command.CONNECT, username, password, null, null);
 	}
 
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command, user's
+	 * name/password, the default (10 seconds) connection timeout and configuration.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address  the destination address to the host to which the connection
+	 *                 should be proxied
+	 * @param username the user's name, or {@code null} for an empty name
+	 * @param password the user's password, or {@code null} for an empty password
+	 * @param config   the session configuration object, or {@code null} to use the
+	 *                 default configuration
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, String username, String password, ISessionConfig config) {
 		this(address, Socks5Command.CONNECT, username, password, config, null);
 	}
 
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command, user's
+	 * name/password, the default (10 seconds) connection timeout, configuration and
+	 * factory.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address  the destination address to the host to which the connection
+	 *                 should be proxied
+	 * @param username the user's name, or {@code null} for an empty name
+	 * @param password the user's password, or {@code null} for an empty password
+	 * @param config   the session configuration object, or {@code null} to use the
+	 *                 default configuration
+	 * @param factory  the factory that will be used to configure the internal
+	 *                 structure of the associated session, or {@code null} to use
+	 *                 the default factory
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, String username, String password, ISessionConfig config, ISessionStructureFactory factory) {
 		this(address, Socks5Command.CONNECT, username, password, config, factory);
 	}
@@ -162,26 +255,139 @@ public class Socks5ProxyHandler extends AbstractSocksProxyHandler {
 		this(address, command, username, password, config, null);
 	}
 	
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command and
+	 * connection timeout.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address           the destination address to the host to which the
+	 *                          connection should be proxied
+	 * @param connectionTimeout the SOCKS5 proxy connection timeout in milliseconds,
+	 *                          or {@code 0} to wait an infinite amount of time for
+	 *                          establishing of the SOCKS5 connection.
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, long connectionTimeout) {
 		this(address, Socks5Command.CONNECT, null, null, connectionTimeout, null, null);
 	}
 	
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command,
+	 * connection timeout and configuration.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address           the destination address to the host to which the
+	 *                          connection should be proxied
+	 * @param connectionTimeout the SOCKS5 proxy connection timeout in milliseconds,
+	 *                          or {@code 0} to wait an infinite amount of time for
+	 *                          establishing of the SOCKS5 connection.
+	 * @param config            the session configuration object, or {@code null} to
+	 *                          use the default configuration
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, long connectionTimeout, ISessionConfig config) {
 		this(address, Socks5Command.CONNECT, null, null, connectionTimeout, config, null);
 	}
 
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command,
+	 * connection timeout, configuration and factory.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address           the destination address to the host to which the
+	 *                          connection should be proxied
+	 * @param connectionTimeout the SOCKS5 proxy connection timeout in milliseconds,
+	 *                          or {@code 0} to wait an infinite amount of time for
+	 *                          establishing of the SOCKS5 connection.
+	 * @param config            the session configuration object, or {@code null} to
+	 *                          use the default configuration
+	 * @param factory           the factory that will be used to configure the
+	 *                          internal structure of the associated session, or
+	 *                          {@code null} to use the default factory
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, long connectionTimeout, ISessionConfig config, ISessionStructureFactory factory) {
 		this(address, Socks5Command.CONNECT, null, null, connectionTimeout, config, factory);
 	}
 
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command, user's
+	 * name/password and connection timeout.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address           the destination address to the host to which the
+	 *                          connection should be proxied
+	 * @param username          the user's name, or {@code null} for an empty name
+	 * @param password          the user's password, or {@code null} for an empty
+	 *                          password
+	 * @param connectionTimeout the SOCKS5 proxy connection timeout in milliseconds,
+	 *                          or {@code 0} to wait an infinite amount of time for
+	 *                          establishing of the SOCKS5 connection.
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, String username, String password, long connectionTimeout) {
 		this(address, Socks5Command.CONNECT, username, password, connectionTimeout, null, null);
 	}
 
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command, user's
+	 * name/password, connection timeout and configuration.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address           the destination address to the host to which the
+	 *                          connection should be proxied
+	 * @param username          the user's name, or {@code null} for an empty name
+	 * @param password          the user's password, or {@code null} for an empty
+	 *                          password
+	 * @param connectionTimeout the SOCKS5 proxy connection timeout in milliseconds,
+	 *                          or {@code 0} to wait an infinite amount of time for
+	 *                          establishing of the SOCKS5 connection.
+	 * @param config            the session configuration object, or {@code null} to
+	 *                          use the default configuration
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, String username, String password, long connectionTimeout, ISessionConfig config) {
 		this(address, Socks5Command.CONNECT, username, password, connectionTimeout, config, null);
 	}
 
+	/**
+	 * Constructs a SOCKS5 proxy connection handler with the specified destination
+	 * address, the default ({@link Socks5Command#CONNECT CONNECT}) command, user's
+	 * name/password, connection timeout, configuration and factory.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param address           the destination address to the host to which the
+	 *                          connection should be proxied
+	 * @param username          the user's name, or {@code null} for an empty name
+	 * @param password          the user's password, or {@code null} for an empty
+	 *                          password
+	 * @param connectionTimeout the SOCKS5 proxy connection timeout in milliseconds,
+	 *                          or {@code 0} to wait an infinite amount of time for
+	 *                          establishing of the SOCKS5 connection.
+	 * @param config            the session configuration object, or {@code null} to
+	 *                          use the default configuration
+	 * @param factory           the factory that will be used to configure the
+	 *                          internal structure of the associated session, or
+	 *                          {@code null} to use the default factory
+	 * @throws IllegalArgumentException if the address is null
+	 */
 	public Socks5ProxyHandler(InetSocketAddress address, String username, String password, long connectionTimeout, ISessionConfig config, ISessionStructureFactory factory) {
 		this(address, Socks5Command.CONNECT, username, password, connectionTimeout, config, factory);
 	}

@@ -703,6 +703,110 @@ public class Socks5ProxyHandlerTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 	}
+
+	@Test
+	public void testBind() throws Exception {
+		Server s = new Server(PORT);
+		s.addPreSession("S", false, new ProxyHandler(bytes(5,0), bytes(5,0,0,1,1,2,3,4,0,80,5,0,0,1,10,20,30,40,1,80)));
+		s.start();
+		Client c = new Client(PORT);
+		Socks5ProxyHandler p = new Socks5ProxyHandler(uaddr("127.0.0.1", 80), Socks5Command.BIND, "user1", "pass1");
+		p.addReplyListener(replyListener);
+		c.addPreSession("C", false, p);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals("1;true;0;IPV4;1.2.3.4;80;|2;true;0;IPV4;10.20.30.40;336;|", replyListener.tracer.get(true));
+		c.session.writenf(new Packet(PacketType.NOP, "1").toBytes());
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1)|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT);
+		s.addPreSession("S", false, new ProxyHandler(bytes(5,0), bytes(5,0,0,1,1,2,3,4,0,80,5,1,0,1,10,20,30,40,1,80)).fastClose());
+		s.start();
+		c = new Client(PORT);
+		p = new Socks5ProxyHandler(uaddr("127.0.0.1", 80), Socks5Command.BIND, "user1", "pass1");
+		p.addReplyListener(replyListener);
+		c.addPreSession("C", false, p);
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SEN|", s.getRecordedData(true));
+		assertEquals("1;true;0;IPV4;1.2.3.4;80;|2;false;1;IPV4;10.20.30.40;336;|", replyListener.tracer.get(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	
+		s = new Server(PORT);
+		s.addPreSession("S", false, new ProxyHandler(bytes(5,0), bytes(5,2,0,1,1,2,3,4,0,80)).fastClose());
+		s.start();
+		c = new Client(PORT);
+		p = new Socks5ProxyHandler(uaddr("127.0.0.1", 80), Socks5Command.BIND, "user1", "pass1");
+		p.addReplyListener(replyListener);
+		c.addPreSession("C", false, p);
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|EXC|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SEN|", s.getRecordedData(true));
+		assertEquals("1;false;2;IPV4;1.2.3.4;80;|", replyListener.tracer.get(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+
+	@Test
+	public void testUdpAssociate() throws Exception {
+		Server s = new Server(PORT);
+		s.addPreSession("S", false, new ProxyHandler(bytes(5,0), bytes(5,0,0,1,1,2,3,4,0,80)));
+		s.start();
+		Client c = new Client(PORT);
+		Socks5ProxyHandler p = new Socks5ProxyHandler(uaddr("127.0.0.1", 80), Socks5Command.UDP_ASSOCIATE, "user1", "pass1");
+		p.addReplyListener(replyListener);
+		c.addPreSession("C", false, p);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals("1;true;0;IPV4;1.2.3.4;80;|", replyListener.tracer.get(true));
+		c.session.writenf(new Packet(PacketType.NOP, "1").toBytes());
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1)|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		s = new Server(PORT);
+		s.addPreSession("S", false, new ProxyHandler(bytes(5,0), bytes(5,0,0,1,1,2,3,4,0,80)));
+		s.start();
+		c = new Client(PORT);
+		p = new Socks5ProxyHandler(uaddr("0.0.0.0", 0), Socks5Command.UDP_ASSOCIATE, "user1", "pass1");
+		p.addReplyListener(replyListener);
+		c.addPreSession("C", false, p);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		assertEquals("1;true;0;IPV4;1.2.3.4;80;|", replyListener.tracer.get(true));
+		c.session.writenf(new Packet(PacketType.NOP, "1").toBytes());
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1)|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
 	
 	class ProxyHandler extends AbstractStreamHandler {
 
