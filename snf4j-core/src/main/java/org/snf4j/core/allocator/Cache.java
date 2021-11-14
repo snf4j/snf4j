@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 package org.snf4j.core.allocator;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 class Cache {
 	
@@ -132,6 +133,7 @@ class Cache {
 			
 			cache[size] = null;
 			b.clear();
+			b.order(ByteOrder.BIG_ENDIAN);
 			touchAll(touch, touchAll);
 			return b;
 		}

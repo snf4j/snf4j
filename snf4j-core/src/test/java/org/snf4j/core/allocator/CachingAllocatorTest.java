@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -619,4 +620,18 @@ public class CachingAllocatorTest {
 		DefaultAllocatorMetricTest.assertMetric(m, "0;0;257;256;0;0;0;0", 0);	
 		
 	}	
+	
+	@Test
+	public void testBigEndian() {
+		CachingAllocator a = new CachingAllocator(false, 2);	
+		
+		ByteBuffer b = a.allocate(10);
+		assertTrue(b.order() == ByteOrder.BIG_ENDIAN);
+		b.order(ByteOrder.LITTLE_ENDIAN);
+		assertTrue(b.order() == ByteOrder.LITTLE_ENDIAN);
+		a.release(b);
+		ByteBuffer b2 = a.allocate(10);
+		assertTrue(b2 == b);
+		assertTrue(b2.order() == ByteOrder.BIG_ENDIAN);
+	}
 }

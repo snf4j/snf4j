@@ -29,6 +29,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 
@@ -80,6 +81,12 @@ public class NetworkUtilTest {
 	
 	@Test
 	public void testIpv6ToBytes() {
+		try {
+			NetworkUtil.ipv6ToBytes("::", bytes(0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
 		assertIpv6ToBytes(bytes(6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6), false, "", 1);
 		assertIpv6ToBytes(bytes(6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6), false, ":", 1);
 		assertIpv6ToBytes(bytes(6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6), false, "[", 1);
@@ -251,6 +258,12 @@ public class NetworkUtilTest {
 	
 	@Test
 	public void testIpv6ToString() {
+		try {
+			NetworkUtil.ipv6ToString(bytes(0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5), 1, false, false);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
 		assertEquals("::", NetworkUtil.ipv6ToString(bytes(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0), 1, false));
 		assertEquals("1::", NetworkUtil.ipv6ToString(bytes(0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0), 1, false));
 		assertEquals("1:2::", NetworkUtil.ipv6ToString(bytes(0,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0), 1, false));
@@ -319,6 +332,12 @@ public class NetworkUtilTest {
 	
 	@Test
 	public void testIpv4ToBytes() {
+		try {
+			NetworkUtil.ipv4ToBytes("0.0.0.0", bytes(0,0,0,0), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
 		assertIpv4ToBytes(bytes(0,0,0,0,0,0), false, "", 1);
 		assertIpv4ToBytes(bytes(0,0,0,0,0,0), false, "1", 1);
 		assertIpv4ToBytes(bytes(0,0,0,0,0,0), false, "1.", 1);
@@ -371,22 +390,32 @@ public class NetworkUtilTest {
 		assertEquals("255.255.255.255", NetworkUtil.ipv4ToString(bytes(0,255,255,255,255), 1));
 		assertEquals("1.2.3.4", NetworkUtil.ipv4ToString(bytes(1,2,3,4)));
 		assertEquals("255.255.255.255", NetworkUtil.ipv4ToString(bytes(255,255,255,255)));
+		
+		assertEquals("1.2.3.4", NetworkUtil.ipv4ToString(0x01020304));
+		assertEquals("255.255.255.255", NetworkUtil.ipv4ToString(-1));
 	}
-	
+
 	@Test
-	public void toShort() {
-		assertEquals(0, NetworkUtil.toShort(bytes(1,0,0), 1));
-		assertEquals(1, NetworkUtil.toShort(bytes(0,0,1), 1));
-		assertEquals(256, NetworkUtil.toShort(bytes(0,1,0), 1));
-		assertEquals(255, NetworkUtil.toShort(bytes(0,0,255), 1));
-		assertEquals(-1, NetworkUtil.toShort(bytes(0,255,255), 1));
-		assertEquals(0x7fff, NetworkUtil.toShort(bytes(0,0x7f,255), 1));
-		assertEquals(-1, NetworkUtil.toShort(bytes(255,255)));
-		assertEquals(0x7fff, NetworkUtil.toShort(bytes(0x7f,255)));
+	public void testIpv4ToInt() {
+		assertEquals(0, NetworkUtil.ipv4ToInt("0.0.0.0"));
+		assertEquals(0x01020304, NetworkUtil.ipv4ToInt("1.2.3.4"));
+		assertEquals(-1, NetworkUtil.ipv4ToInt("255.255.255.255"));
+		try {
+			assertEquals(0x01020304, NetworkUtil.ipv4ToInt("1.2.3"));
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+		}
 	}
 	
 	@Test
 	public void toPort() {
+		try {
+			NetworkUtil.toPort(bytes(1,2), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
 		assertEquals(0, NetworkUtil.toPort(bytes(1,0,0), 1));
 		assertEquals(1, NetworkUtil.toPort(bytes(0,0,1), 1));
 		assertEquals(256, NetworkUtil.toPort(bytes(0,1,0), 1));
@@ -396,4 +425,170 @@ public class NetworkUtilTest {
 		assertEquals(0x0ffff, NetworkUtil.toPort(bytes(255,255)));
 		assertEquals(0x07fff, NetworkUtil.toPort(bytes(0x7f,255)));
 	}
+
+	@Test
+	public void portToBytes() {
+		try {
+			NetworkUtil.portToBytes((short)0, bytes(0,0), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
+		byte[] b = bytes(0,0,0);
+		NetworkUtil.portToBytes(0, b, 0);
+		assertArrayEquals(bytes(0,0,0), b);
+		b = bytes(0,0,0);
+		NetworkUtil.portToBytes(258, b, 0);
+		assertArrayEquals(bytes(1,2,0), b);
+		b = bytes(0,0,0);
+		NetworkUtil.portToBytes(258, b, 1);
+		assertArrayEquals(bytes(0,1,2), b);
+		b = bytes(0,0,0);
+		NetworkUtil.portToBytes(0xffff, b, 1);
+		assertArrayEquals(bytes(0,-1,-1), b);
+		b = bytes(0,0,0);
+		NetworkUtil.portToBytes(-1, b, 1);
+		assertArrayEquals(bytes(0,-1,-1), b);
+		assertArrayEquals(bytes(1,3), NetworkUtil.portToBytes(259));
+	}
+	
+	@Test
+	public void toShort() {
+		try {
+			NetworkUtil.toShort(bytes(1,2), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
+		assertEquals(0x0203, NetworkUtil.toShort(bytes(1,2,3), 1));
+		assertEquals((short)0xff00, NetworkUtil.toShort(bytes(1,255,0), 1));
+		assertEquals(255, NetworkUtil.toShort(bytes(1,0,255), 1));
+		assertEquals(-1, NetworkUtil.toShort(bytes(1,255,255), 1));
+		assertEquals(0x0102, NetworkUtil.toShort(bytes(1,2)));
+		assertEquals((short)0xfffe, NetworkUtil.toShort(bytes(255,254)));
+	}
+
+	@Test
+	public void toInt() {
+		try {
+			NetworkUtil.toInt(bytes(1,2,3,4), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
+		assertEquals(0x02030405, NetworkUtil.toInt(bytes(1,2,3,4,5), 1));
+		assertEquals(0xff000000, NetworkUtil.toInt(bytes(1,255,0,0,0), 1));
+		assertEquals(0x00ff0000, NetworkUtil.toInt(bytes(1,0,255,0,0), 1));
+		assertEquals(0x0000ff00, NetworkUtil.toInt(bytes(1,0,0,255,0), 1));
+		assertEquals(0x000000ff, NetworkUtil.toInt(bytes(1,0,0,0,255), 1));
+		assertEquals(-1, NetworkUtil.toInt(bytes(1,255,255,255,255), 1));
+		assertEquals(0x01020304, NetworkUtil.toInt(bytes(1,2,3,4)));
+		assertEquals(0xfffefdfc, NetworkUtil.toInt(bytes(255,254,253,252)));
+	}
+
+	@Test
+	public void toLong() {
+		try {
+			NetworkUtil.toLong(bytes(1,2,3,4,5,6,7,8), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
+		assertEquals(0x0203040506070809L, NetworkUtil.toLong(bytes(1,2,3,4,5,6,7,8,9), 1));
+		assertEquals(0xff00000000000000L, NetworkUtil.toLong(bytes(1,255,0,0,0,0,0,0,0), 1));
+		assertEquals(0x00ff000000000000L, NetworkUtil.toLong(bytes(1,0,255,0,0,0,0,0,0), 1));
+		assertEquals(0x0000ff0000000000L, NetworkUtil.toLong(bytes(1,0,0,255,0,0,0,0,0), 1));
+		assertEquals(0x000000ff00000000L, NetworkUtil.toLong(bytes(1,0,0,0,255,0,0,0,0), 1));
+		assertEquals(0x00000000ff000000L, NetworkUtil.toLong(bytes(1,0,0,0,0,255,0,0,0), 1));
+		assertEquals(0x0000000000ff0000L, NetworkUtil.toLong(bytes(1,0,0,0,0,0,255,0,0), 1));
+		assertEquals(0x000000000000ff00L, NetworkUtil.toLong(bytes(1,0,0,0,0,0,0,255,0), 1));
+		assertEquals(0x00000000000000ffL, NetworkUtil.toLong(bytes(1,0,0,0,0,0,0,0,255), 1));
+		assertEquals(-1, NetworkUtil.toLong(bytes(1,255,255,255,255,255,255,255,255), 1));
+		assertEquals(0x0102030405060708L, NetworkUtil.toLong(bytes(1,2,3,4,5,6,7,8)));
+		assertEquals(0xfffefdfcfbfaf9f8L, NetworkUtil.toLong(bytes(255,254,253,252,251,250,249,248)));
+	}
+	
+	void assertToBytes(short v, int off, int... expected) {
+		byte[] b = new byte[2+off];
+		byte[] e = bytes(expected);
+		
+		NetworkUtil.toBytes(v, b, off);
+		assertArrayEquals(e, b);
+		if (off == 0) {
+			assertArrayEquals(e, NetworkUtil.toBytes(v));
+		}
+	}
+
+	void assertToBytes(int v, int off, int... expected) {
+		byte[] b = new byte[4+off];
+		byte[] e = bytes(expected);
+		
+		NetworkUtil.toBytes(v, b, off);
+		assertArrayEquals(e, b);
+		if (off == 0) {
+			assertArrayEquals(e, NetworkUtil.toBytes(v));
+		}
+	}
+
+	void assertToBytes(long v, int off, int... expected) {
+		byte[] b = new byte[8+off];
+		byte[] e = bytes(expected);
+		
+		NetworkUtil.toBytes(v, b, off);
+		assertArrayEquals(e, b);
+		if (off == 0) {
+			assertArrayEquals(e, NetworkUtil.toBytes(v));
+		}
+	}
+	
+	@Test
+	public void toBytes() {
+		//short
+		try {
+			NetworkUtil.toBytes((short)0, bytes(0,0), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
+		assertToBytes((short)0x0102, 1, 0,1,2);
+		assertToBytes((short)0x0102, 0, 1,2);
+		assertToBytes((short)0xff00, 1, 0,255,0);
+		assertToBytes((short)0x00ff, 1, 0,0,255);
+		assertToBytes((short)0xfffe, 1, 0,255,254);
+		
+		//int
+		try {
+			NetworkUtil.toBytes(0, bytes(0,0,0,0), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
+		assertToBytes(0x01020304, 1, 0,1,2,3,4);
+		assertToBytes(0x01020304, 0, 1,2,3,4);
+		assertToBytes(0xff000000, 1, 0,255,0,0,0);
+		assertToBytes(0x00ff0000, 1, 0,0,255,0,0);
+		assertToBytes(0x0000ff00, 1, 0,0,0,255,0);
+		assertToBytes(0x000000ff, 1, 0,0,0,00,255);
+		assertToBytes(0xfffefdfc, 1, 0,255,254,253,252);
+		
+		//long
+		try {
+			NetworkUtil.toBytes((long)0, bytes(0,0,0,0,0,0,0,0), 1);
+			fail();
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+		}
+		assertToBytes(0x0102030405060708L, 1, 0,1,2,3,4,5,6,7,8);
+		assertToBytes(0x0102030405060708L, 0, 1,2,3,4,5,6,7,8);
+		assertToBytes(0xff00000000000000L, 1, 0,255,0,0,0,0,0,0,0);
+		assertToBytes(0x00ff000000000000L, 1, 0,0,255,0,0,0,0,0,0);
+		assertToBytes(0x0000ff0000000000L, 1, 0,0,0,255,0,0,0,0,0);
+		assertToBytes(0x000000ff00000000L, 1, 0,0,0,0,255,0,0,0,0);
+		assertToBytes(0x00000000ff000000L, 1, 0,0,0,0,0,255,0,0,0);
+		assertToBytes(0x0000000000ff0000L, 1, 0,0,0,0,0,0,255,0,0);
+		assertToBytes(0x000000000000ff00L, 1, 0,0,0,0,0,0,0,255,0);
+		assertToBytes(0x00000000000000ffL, 1, 0,0,0,0,0,0,0,0,255);
+		assertToBytes(0xfffefdfcfbfaf9f8L, 1, 0,255,254,253,252,251,250,249,248);
+	}
+			
 }
