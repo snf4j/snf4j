@@ -35,7 +35,7 @@ class Socks4CommandState extends AbstractSocksState implements ISocks4 {
 
 	private final static byte REPLY_VERSION = 0;
 
-	private final static int READ_SIZE = 8;
+	private final static int RESPONSE_SIZE = 8;
 	
 	private final static byte[] DOMAIN_MARKER = new byte[] {0,0,0,1};
 	
@@ -56,8 +56,8 @@ class Socks4CommandState extends AbstractSocksState implements ISocks4 {
 	}
 
 	@Override
-	int readSize() {
-		return READ_SIZE;
+	int responseSize() {
+		return RESPONSE_SIZE;
 	}
 
 	@Override

@@ -41,7 +41,7 @@ class SocksDoneState extends AbstractSocksState {
 	}
 
 	@Override
-	int readSize() {
+	int responseSize() {
 		return 0;
 	}
 	

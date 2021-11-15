@@ -46,12 +46,12 @@ abstract class AbstractSocksState {
 	}
 
 	int available(byte[] data, int off, int len) {
-		int size = readSize();
+		int size = responseSize();
 		
 		return len < size ? 0 : size;
 	}
 	
-	abstract int readSize();
+	abstract int responseSize();
 	
 	abstract AbstractSocksState read(byte[] data);
 	

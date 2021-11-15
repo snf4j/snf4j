@@ -34,7 +34,7 @@ class Socks5PasswordAuthState extends AbstractSocksState {
 	
 	private final static byte SUCCESS = 0;
 	
-	private final static int READ_SIZE = 2;
+	private final static int RESPONSE_SIZE = 2;
 
 	final static int STATUS_INDEX = 1;
 	
@@ -66,8 +66,8 @@ class Socks5PasswordAuthState extends AbstractSocksState {
 	}
 	
 	@Override
-	int readSize() {
-		return READ_SIZE;
+	int responseSize() {
+		return RESPONSE_SIZE;
 	}
 	
 	@Override

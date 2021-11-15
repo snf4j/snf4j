@@ -31,7 +31,7 @@ class Socks5InitState extends AbstractSocksState implements ISocks5 {
 	
 	final static byte METHOD_INDEX = 1;
 
-	private final static int READ_SIZE = 2;
+	private final static int RESPONSE_SIZE = 2;
 
 	private final Socks5AuthMethod[] authMethods;
 	
@@ -44,8 +44,8 @@ class Socks5InitState extends AbstractSocksState implements ISocks5 {
 	}
 
 	@Override
-	int readSize() {
-		return READ_SIZE;
+	int responseSize() {
+		return RESPONSE_SIZE;
 	}
 	
 	@Override

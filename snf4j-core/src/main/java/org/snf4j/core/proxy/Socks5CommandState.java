@@ -97,7 +97,7 @@ class Socks5CommandState extends AbstractSocksState implements ISocks5 {
 	}
 
 	@Override
-	int readSize() {
+	int responseSize() {
 		//Ignored as we override available methods
 		return 0;
 	}

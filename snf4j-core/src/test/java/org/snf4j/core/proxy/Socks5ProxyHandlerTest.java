@@ -239,7 +239,7 @@ public class Socks5ProxyHandlerTest {
 		p = new Socks5ProxyHandler(uaddr("127.0.0.1", 80), "user1", "pass1");
 		p.setSession(new HttpProxyHandlerTest.Session());
 		p.read(bytes(5,0));
-		assertEquals(0, p.state.readSize());
+		assertEquals(0, p.state.responseSize());
 		
 		//ipv4
 		b = bytes(5,0,0,1,1,2,3,4,0,80,0);
@@ -535,7 +535,7 @@ public class Socks5ProxyHandlerTest {
 		assertTrue(SocksDoneState.class == p.state.getClass());
 		assertTrue(p.state == p.state.read(null));
 		p.state.handleReady();
-		assertEquals(0, p.state.readSize());
+		assertEquals(0, p.state.responseSize());
 		p.read((byte[])null);
 	}	
 	
