@@ -2987,6 +2987,8 @@ public class SessionTest {
 		s.waitForSessionReady(TIMEOUT);
 		c.waitForSessionReady(TIMEOUT);
 		StreamSession session = s.getSession();
+		assertTrue(session.isDataCopyingOptimized());
+		assertFalse(c.getSession().isDataCopyingOptimized());
 		assertNull(getInBuffer(session));
 		assertEquals(0, getOutBuffers(session).length);
 		

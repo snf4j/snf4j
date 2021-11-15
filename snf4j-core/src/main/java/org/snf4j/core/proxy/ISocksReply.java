@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,30 +23,54 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.proxy;
 
-public class TraceBuilder {
-	private StringBuilder trace = new StringBuilder();
+/**
+ * Reply information sent from the SOCKS server. 
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public interface ISocksReply {
 	
-	public void append(String s) {
-		synchronized (trace) {
-			trace.append(s);
-			trace.append('|');
-			if (trace.length() > 10000) {
-				throw new IllegalStateException("Trace to big");
-			}
-		}
-	}
-	
-	public String get(boolean clear) {
-		String s;
+	/**
+	 * Tells if the reply is successful.
+	 * 
+	 * @return {@code true} if the reply is successful
+	 */
+	boolean isSuccessful();
 		
-		synchronized(trace) {
-			s = trace.toString();
-			if (clear) {
-				trace.setLength(0);
-			}
-		}
-		return s;
-	}	
+	/**
+	 * Returns the status in the received reply.
+	 * 
+	 * @return the status of the reply
+	 */
+	int getStatus();
+	
+	/**
+	 * Returns the description of the status in the received reply.
+	 * @return
+	 */
+	String getStatusDescription();
+	
+	/**
+	 * Returns the port in the received reply.
+	 * 
+	 * @return the port
+	 */
+	int getPort();
+	
+	/**
+	 * Returns the address in the received reply.
+	 * 
+	 * @return the address
+	 */
+	String getAddress();
+	
+	/**
+	 * Returns the type of the address in the received reply.
+	 * 
+	 * @return the type of the address
+	 */
+	SocksAddressType getAddressType();
+	
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,30 +23,10 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
 
-public class TraceBuilder {
-	private StringBuilder trace = new StringBuilder();
-	
-	public void append(String s) {
-		synchronized (trace) {
-			trace.append(s);
-			trace.append('|');
-			if (trace.length() > 10000) {
-				throw new IllegalStateException("Trace to big");
-			}
-		}
-	}
-	
-	public String get(boolean clear) {
-		String s;
-		
-		synchronized(trace) {
-			s = trace.toString();
-			if (clear) {
-				trace.setLength(0);
-			}
-		}
-		return s;
-	}	
-}
+/**
+ * Provides utilities classes that are used by the API.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+package org.snf4j.core.util;

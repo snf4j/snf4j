@@ -312,4 +312,9 @@ public class TestDummyDatagramSession implements IDatagramSession {
 	@Override
 	public void executenf(Runnable task) {
 	}
+
+	@Override
+	public boolean isDataCopyingOptimized() {
+		return false;
+	}
 }

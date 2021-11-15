@@ -238,4 +238,9 @@ public class TestSession implements ISession {
 	public void executenf(Runnable task) {
 	}
 
+	@Override
+	public boolean isDataCopyingOptimized() {
+		return false;
+	}
+
 }

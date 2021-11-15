@@ -1123,7 +1123,7 @@ public class WebSocketSessionTest extends HandshakeTest {
 		s.session.getReadyFuture().sync(TIMEOUT);
 		s.waitForReady(TIMEOUT);
 		s.resetDataLocks();
-		assertEquals("CR|OP|RE|", s.getTrace());
+		assertEquals("CR|OP|RE|", s.getTrace().replace("RE|CL|EN|", "RE|"));
 		assertEquals(encoders, s.session.getCodecPipeline().encoderKeys().size());
 		assertEquals(decoders, s.session.getCodecPipeline().decoderKeys().size());
 

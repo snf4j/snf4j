@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,30 +23,39 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.proxy;
 
-public class TraceBuilder {
-	private StringBuilder trace = new StringBuilder();
+enum Socks4Status {
 	
-	public void append(String s) {
-		synchronized (trace) {
-			trace.append(s);
-			trace.append('|');
-			if (trace.length() > 10000) {
-				throw new IllegalStateException("Trace to big");
-			}
-		}
+	SUCCESS(90, "Request granted"),
+	REJECTED_OR_FAILED(91, "Request rejected or failed"),
+	IDENTD_UNREACHABLE(92, "Request rejected becasue SOCKS server cannot connect to identd on the client"),
+	IDENTD_AUTH_FAILURE(93, "Request rejected because the client program and identd report different user-ids"),
+	UNKNOWN(-1, "Unknown");
+	
+	private final int code;
+	
+	private final String description;
+	
+	Socks4Status(int code, String description) {
+		this.code = code;
+		this.description = description;
 	}
 	
-	public String get(boolean clear) {
-		String s;
-		
-		synchronized(trace) {
-			s = trace.toString();
-			if (clear) {
-				trace.setLength(0);
+	public int code() {
+		return code;
+	}
+	
+	public String description() {
+		return description;
+	}
+	
+	public static Socks4Status valueOf(int code) {
+		for (Socks4Status value: values()) {
+			if (value.code == code) {
+				return value;
 			}
 		}
-		return s;
-	}	
+		return UNKNOWN;
+	}
 }

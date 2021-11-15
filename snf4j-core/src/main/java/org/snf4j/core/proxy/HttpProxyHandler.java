@@ -35,6 +35,7 @@ import java.util.List;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.IStreamSession;
 
 /**
  * Handles client proxy connections via the HTTP tunneling protocol. For more
@@ -89,6 +90,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 * 
 	 * @param uri the URI identifying the remote host to which the HTTP tunnel
 	 *            should be established
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri) {	
 		this(uri, false, null, null);
@@ -105,6 +107,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 *               should be established
 	 * @param config the session configuration object, or {@code null} to use the
 	 *               default configuration
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, ISessionConfig config) {	
 		this(uri, false, config, null);
@@ -124,6 +127,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 * @param factory the factory that will be used to configure the internal
 	 *                structure of the associated session, or {@code null} to use
 	 *                the default factory
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, ISessionConfig config, ISessionStructureFactory factory) {	
 		this(uri, false, config, factory);
@@ -143,6 +147,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 *                             terminators in the responses from a HTTP proxy
 	 *                             server, or otherwise (default option) only CRLF
 	 *                             will be allowed
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, boolean allowBothTerminators) {	
 		this(uri, allowBothTerminators, null, null);
@@ -164,6 +169,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 *                             will be allowed
 	 * @param config               the session configuration object, or {@code null}
 	 *                             to use the default configuration
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, boolean allowBothTerminators, ISessionConfig config) {	
 		this(uri, allowBothTerminators, config, null);
@@ -188,6 +194,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 * @param factory              the factory that will be used to configure the
 	 *                             internal structure of the associated session, or
 	 *                             {@code null} to use the default factory
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, boolean allowBothTerminators, ISessionConfig config, ISessionStructureFactory factory) {	
 		super(config, factory);
@@ -210,6 +217,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 * @param connectionTimeout the proxy connection timeout in milliseconds, or
 	 *                          {@code 0} to wait an infinite amount of time for 
 	 *                          establishing the HTTP tunnel.
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, long connectionTimeout) {
 		this(uri, connectionTimeout, false);
@@ -229,6 +237,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 *                          establishing the HTTP tunnel.
 	 * @param config            the session configuration object, or {@code null} to
 	 *                          use the default configuration
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, long connectionTimeout, ISessionConfig config) {
 		this(uri, connectionTimeout, false, config, null);
@@ -251,6 +260,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 * @param factory           the factory that will be used to configure the
 	 *                          internal structure of the associated session, or
 	 *                          {@code null} to use the default factory
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, long connectionTimeout, ISessionConfig config, ISessionStructureFactory factory) {
 		this(uri, connectionTimeout, false, config, factory);
@@ -272,6 +282,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 *                             terminators in the responses from a HTTP proxy
 	 *                             server, or otherwise (default option) only CRLF
 	 *                             will be allowed
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, long connectionTimeout, boolean allowBothTerminators) {
 		this(uri, connectionTimeout, allowBothTerminators, null, null);
@@ -296,6 +307,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 *                             will be allowed
 	 * @param config               the session configuration object, or {@code null}
 	 *                             to use the default configuration
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, long connectionTimeout, boolean allowBothTerminators, ISessionConfig config) {
 		this(uri, connectionTimeout, allowBothTerminators, config, null);
@@ -323,6 +335,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 * @param factory              the factory that will be used to configure the
 	 *                             internal structure of the associated session, or
 	 *                             {@code null} to use the default factory
+	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, long connectionTimeout, boolean allowBothTerminators, ISessionConfig config, ISessionStructureFactory factory) {
 		super(connectionTimeout, config, factory);
@@ -532,6 +545,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 			host = toBytes(uriHost);
 		}
 		
+		IStreamSession session = getSession();
 		ByteBuffer frame;
 		
 		synchronized (headers) {
@@ -548,7 +562,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 				+ headersLength
 				+ CRLF.length;
 		
-			frame = getSession().allocate(length);
+			frame = session.allocate(length);
 			frame.put(HTTP_CONNECT);
 			frame.put(SP);
 			frame.put(fullHost);
@@ -568,7 +582,10 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 		
 		frame.put(CRLF);
 		frame.flip();
-		getSession().writenf(frame);
+		session.writenf(frame);
+		if (!session.isDataCopyingOptimized()) {
+			session.release(frame);
+		}
 	}
 
 	@Override

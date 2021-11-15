@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,30 +23,37 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core;
+package org.snf4j.core.proxy;
 
-public class TraceBuilder {
-	private StringBuilder trace = new StringBuilder();
+import java.nio.ByteBuffer;
+
+abstract class AbstractSocksState {
 	
-	public void append(String s) {
-		synchronized (trace) {
-			trace.append(s);
-			trace.append('|');
-			if (trace.length() > 10000) {
-				throw new IllegalStateException("Trace to big");
-			}
-		}
+	final static byte VER_INDEX = 0;
+	
+	protected final AbstractSocksProxyHandler handler;
+	
+	AbstractSocksState(AbstractSocksProxyHandler handler) {
+		this.handler = handler;
 	}
 	
-	public String get(boolean clear) {
-		String s;
+	protected int length(ByteBuffer data, boolean flipped) {
+		return flipped ? data.remaining() : data.position();
+	}
+	
+	int available(ByteBuffer data, boolean flipped) {
+		return available(null, 0, length(data, flipped));
+	}
+
+	int available(byte[] data, int off, int len) {
+		int size = responseSize();
 		
-		synchronized(trace) {
-			s = trace.toString();
-			if (clear) {
-				trace.setLength(0);
-			}
-		}
-		return s;
-	}	
+		return len < size ? 0 : size;
+	}
+	
+	abstract int responseSize();
+	
+	abstract AbstractSocksState read(byte[] data);
+	
+	abstract void handleReady();
 }
