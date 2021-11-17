@@ -1092,6 +1092,7 @@ public class SSLSessionTest {
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
 		c.getRecordedData(true);
 		s.getRecordedData("RDY|", true);
 		
