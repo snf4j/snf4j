@@ -3580,7 +3580,7 @@ public class SessionTest {
 		c = new Client(PORT+1);
 		c.optimizeDataCopying = true;
 		c.allocator = new TestAllocator(true,true);
-		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT), 200) {
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + PORT)) {
 			@Override
 			public void event(DataEvent event, long length) {
 				throw new RuntimeException();
@@ -3590,7 +3590,7 @@ public class SessionTest {
 			public ISessionStructureFactory getFactory() {
 				return factory;
 			}
-		});
+		}.connectionTimeout(200));
 		((DefaultSessionConfig)c.preSessions.get(0).getConfig()).setOptimizeDataCopying(true);
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
@@ -3606,11 +3606,11 @@ public class SessionTest {
 		//not reachable URI
 		c = new Client(PORT+1);
 		c.exceptionRecordException = true;
-		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT+2))));
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT+2)), "u1", "p1"));
 		c.start();
 		c.waitForSessionEnding(TIMEOUT*5);
 		assertEquals("SCR|EXC|(Incomplete HTTP proxy protocol)|SEN|", c.getRecordedData(true));
-		w = "CONNECT 127.0.0.1:7779 HTTP/1.1|Host: 127.0.0.1:7779||";
+		w = "CONNECT 127.0.0.1:7779 HTTP/1.1|Host: 127.0.0.1:7779|Proxy-Authorization: Basic dTE6cDE=||";
 		assertEquals(w, p.getTrace());
 		assertEquals(0, c.session.getReadBytes());
 		assertEquals(w.length() + countPipes(w), c.preSessions.get(0).getWrittenBytes());
@@ -3619,12 +3619,12 @@ public class SessionTest {
 		//timed out connection
 		c = new Client(PORT+1);
 		c.exceptionRecordException = true;
-		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 200) {
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT))) {
 			@Override
 			public ISessionStructureFactory getFactory() {
 				return factory;
 			}
-		});
+		}.connectionTimeout(200));
 		p.skipConnection = true;
 		c.start();
 		c.waitForSessionEnding(TIMEOUT);
@@ -3636,12 +3636,12 @@ public class SessionTest {
 		c = new Client(PORT+1);
 		c.timer = new TestTimer();
 		c.exceptionRecordException = true;
-		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 0) {
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT))) {
 			@Override
 			public ISessionStructureFactory getFactory() {
 				return factory;
 			}
-		});
+		}.connectionTimeout(0));
 		p.skipConnection = true;
 		c.start();
 		waitFor(200);
@@ -3657,12 +3657,12 @@ public class SessionTest {
 		c = new Client(PORT+1);
 		c.timer = new TestTimer();
 		c.exceptionRecordException = true;
-		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 300) {
+		c.addPreSession("C", false, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT))) {
 			@Override
 			public ISessionStructureFactory getFactory() {
 				return factory;
 			}
-		});
+		}.connectionTimeout(300));
 		p.skipConnection = true;
 		c.start();
 		waitFor(100);
@@ -3760,7 +3760,7 @@ public class SessionTest {
 		};
 		c = new Client(PORT+1);
 		c.exceptionRecordException = true;
-		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT)), 200) {
+		c.addPreSession("C", true, new HttpProxyHandler(new URI("http://127.0.0.1:" + (PORT))) {
 			@Override
 			public ISessionStructureFactory getFactory() {
 				return factory;
@@ -3770,7 +3770,7 @@ public class SessionTest {
 			public ISessionConfig getConfig() {
 				return config;
 			}
-		});
+		}.connectionTimeout(200));
 		p.skipConnection = true;
 		c.start();
 		c.waitForSessionEnding(TIMEOUT);

@@ -47,63 +47,12 @@ abstract public class AbstractProxyHandler extends AbstractStreamHandler {
 	
 	private final static Object CONNECTION_TIMER_EVENT = new Object();
 	
-	private final long connectionTimeout;
+	private volatile long connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
 	
 	private final ISessionStructureFactory factory;
 
 	private ITimerTask connectionTimer;
 	
-	/**
-	 * Constructs a proxy connection handler with the specified connection timeout,
-	 * configuration and factory.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param connectionTimeout the proxy connection timeout in milliseconds, or
-	 *                          {@code 0} to wait an infinite amount of time for the
-	 *                          proxy connection.
-	 * @param config            the session configuration object, or {@code null} to
-	 *                          use the default configuration
-	 * @param factory           the factory that will be used to configure the
-	 *                          internal structure of the associated session, or
-	 *                          {@code null} to use the default factory
-	 */
-	protected AbstractProxyHandler(long connectionTimeout, ISessionConfig config, ISessionStructureFactory factory) {
-		super(config);
-		this.factory = factory != null ? factory : DefaultSessionStructureFactory.DEFAULT;
-		if (connectionTimeout < 0) {
-			throw new IllegalArgumentException("connectionTimeout is negative");
-		}
-		this.connectionTimeout = connectionTimeout;
-	}
-
-	/**
-	 * Constructs a proxy connection handler with the specified connection
-	 * timeout.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param connectionTimeout the proxy connection timeout in milliseconds, or
-	 *                          {@code 0} to wait an infinite amount of time for the
-	 *                          proxy connection.
-	 */
-	protected AbstractProxyHandler(long connectionTimeout) {
-		this(connectionTimeout, null, null);
-	}
-
-	/**
-	 * Constructs a proxy connection handler with the default (10 seconds)
-	 * connection timeout.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 */
-	protected AbstractProxyHandler() {
-		this(DEFAULT_CONNECTION_TIMEOUT, null, null);
-	}
-
 	/**
 	 * Constructs a proxy connection handler with the default (10 seconds)
 	 * connection timeout, configuration and factory.
@@ -118,7 +67,34 @@ abstract public class AbstractProxyHandler extends AbstractStreamHandler {
 	 *                the default factory
 	 */
 	protected AbstractProxyHandler(ISessionConfig config, ISessionStructureFactory factory) {
-		this(DEFAULT_CONNECTION_TIMEOUT, config, factory);
+		super(config);
+		this.factory = factory != null ? factory : DefaultSessionStructureFactory.DEFAULT;
+	}
+	
+	/**
+	 * Configures the proxy connection timeout.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param connectionTimeout the proxy connection timeout in milliseconds, or 0
+	 *                          to wait an infinite amount of time for establishing
+	 *                          the HTTP tunnel
+	 * @return this handler
+	 * @throws IllegalArgumentException if the connection timeout is negative 
+	 */
+	public AbstractProxyHandler connectionTimeout(long connectionTimeout) {
+		if (connectionTimeout < 0) {
+			throw new IllegalArgumentException("connectionTimeout is negative");
+		}
+		this.connectionTimeout = connectionTimeout;
+		return this;
+	}
+	
+	final void checkNull(Object value, String name) {
+		if (value == null) {
+			throw new IllegalArgumentException(name + " is null");
+		}
 	}
 	
 	@Override

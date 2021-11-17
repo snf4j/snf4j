@@ -23,55 +23,57 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.proxy;
+package org.snf4j.benchmark.api;
 
-/**
- * Reply information sent from the SOCKS server. 
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public interface ISocksReply {
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+public class BenchmarkWrapper implements Benchmark {
+	private String name;
+	private Method preRun;
+	private Method run;
+	private Object benchmark;
 	
-	/**
-	 * Tells if the reply is successful.
-	 * 
-	 * @return {@code true} if the reply is successful
-	 */
-	boolean isSuccessful();
-		
-	/**
-	 * Returns the status code in the received reply.
-	 * 
-	 * @return the status code
-	 */
-	int getStatus();
+	BenchmarkWrapper(String name, Object benchmark, Method preRun, Method run) {
+		this.name = name;
+		this.benchmark = benchmark;
+		this.preRun = preRun;
+		this.run = run;
+	}
 	
-	/**
-	 * Returns the description of the status in the received reply.
-	 * 
-	 * @return the status description
-	 */
-	String getStatusDescription();
+	void setPreRun(Method preRun) {
+		this.preRun = preRun;
+	}
 	
-	/**
-	 * Returns the port in the received reply.
-	 * 
-	 * @return the port
-	 */
-	int getPort();
+	void setRun(Method run) {
+		this.run = run;
+	}
 	
-	/**
-	 * Returns the address in the received reply.
-	 * 
-	 * @return the address
-	 */
-	String getAddress();
-	
-	/**
-	 * Returns the type of the address in the received reply.
-	 * 
-	 * @return the type of the address
-	 */
-	SocksAddressType getAddressType();
-	
+	@Override
+	public String getName() {
+		return name;
+	}
+
+	@Override
+	public void preRun() {
+		if (preRun != null) {
+			try {
+				preRun.invoke(benchmark, new Object[0]);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	@Override
+	public void run() {
+		if (run != null) {
+			try {
+				run.invoke(benchmark, new Object[0]);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
 }

@@ -152,36 +152,15 @@ public class Socks5ProxyHandlerTest {
 		assertContructor(new Socks5ProxyHandler(a,U, "u1", "p1", c), a, U, "u1", "p1", 10000, c, null);
 		assertContructor(new Socks5ProxyHandler(a,U, "u1", "p1", c, f), a, U, "u1", "p1", 10000, c, f);
 
-		assertContructor(new Socks5ProxyHandler(a,33), a, C, null, null, 33, null, null);
-		assertContructor(new Socks5ProxyHandler(a,33,c), a, C, null, null, 33, c, null);
-		assertContructor(new Socks5ProxyHandler(a,33,c,f), a, C, null, null, 33, c, f);
-		assertContructor(new Socks5ProxyHandler(a, "u1", "p1", 33), a, C, "u1", "p1", 33, null, null);
-		assertContructor(new Socks5ProxyHandler(a, "u1", "p1", 33, c), a, C, "u1", "p1", 33, c, null);
-		assertContructor(new Socks5ProxyHandler(a, "u1", "p1", 33, c, f), a, C, "u1", "p1", 33, c, f);
-		assertContructor(new Socks5ProxyHandler(a,B,33), a, B, null, null, 33, null, null);
-		assertContructor(new Socks5ProxyHandler(a,B,33,c), a, B, null, null, 33, c, null);
-		assertContructor(new Socks5ProxyHandler(a,B,33,c,f), a, B, null, null, 33, c, f);
-		assertContructor(new Socks5ProxyHandler(a,U, "u1", "p1",33), a, U, "u1", "p1", 33, null, null);
-		assertContructor(new Socks5ProxyHandler(a,U, "u1", "p1",33, c), a, U, "u1", "p1", 33, c, null);
-		assertContructor(new Socks5ProxyHandler(a,U, "u1", "p1",33, c, f), a, U, "u1", "p1", 33, c, f);
+		assertContructor(new Socks5ProxyHandler(a).connectionTimeout(33), a, C, null, null, 33, null, null);
 		
 		assertContructor(new Socks5ProxyHandler(a,U, null, "p1", c, f), a, U, null, "p1", 10000, c, f);
 		assertContructor(new Socks5ProxyHandler(a,U, "u1", null, c, f), a, U, "u1", null, 10000, c, f);
 		assertContructor(new Socks5ProxyHandler(a,U, "", "", c, f), a, U, null, null, 10000, c, f);
 		assertContructor(new Socks5ProxyHandler(a,U, "u1", null, null, null), a, U, "u1", null, 10000, null, null);
-		assertContructor(new Socks5ProxyHandler(a,U, null, "p1",33, c, f), a, U, null, "p1", 33, c, f);
-		assertContructor(new Socks5ProxyHandler(a,U, "u1", null,33, c, f), a, U, "u1", null, 33, c, f);
-		assertContructor(new Socks5ProxyHandler(a,U, "", "",33, c, f), a, U, null, null, 33, c, f);
-		assertContructor(new Socks5ProxyHandler(a,U, "u1", "p1",33, null, null), a, U, "u1", "p1", 33, null, null);
 		
 		try {
 			new Socks5ProxyHandler(a, null, "u1", "p1", c, f);
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("command is null", e.getMessage());
-		}
-		try {
-			new Socks5ProxyHandler(a, null, "u1", "p1", 100, c, f);
 		}
 		catch (IllegalArgumentException e) {
 			assertEquals("command is null", e.getMessage());

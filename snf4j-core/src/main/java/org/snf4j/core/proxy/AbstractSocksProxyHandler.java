@@ -51,30 +51,6 @@ abstract public class AbstractSocksProxyHandler extends AbstractProxyHandler {
 	private List<ISocksReplyListener> replyListeners;
 	
 	volatile AbstractSocksState state;
-	
-	/**
-	 * Constructs a SOCKS proxy connection handler with the specified destination
-	 * address, connection timeout, configuration and factory.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param address           the destination address
-	 * @param connectionTimeout the SOCKS proxy connection timeout in milliseconds,
-	 *                          or {@code 0} to wait an infinite amount of time for
-	 *                          establishing of the SOCKS connection.
-	 * @param config            the session configuration object, or {@code null} to
-	 *                          use the default configuration
-	 * @param factory           the factory that will be used to configure the
-	 *                          internal structure of the associated session, or
-	 *                          {@code null} to use the default factory
-	 * @throws IllegalArgumentException if the address is null
-	 */
-	protected AbstractSocksProxyHandler(InetSocketAddress address, long connectionTimeout, ISessionConfig config, ISessionStructureFactory factory) {
-		super(connectionTimeout, config, factory);
-		checkNull(address, "address");
-		this.address = address;
-	}
 
 	/**
 	 * Constructs a SOCKS proxy connection handler with the specified destination
@@ -95,12 +71,6 @@ abstract public class AbstractSocksProxyHandler extends AbstractProxyHandler {
 		super(config, factory);
 		checkNull(address, "address");
 		this.address = address;
-	}
-	
-	final void checkNull(Object value, String name) {
-		if (value == null) {
-			throw new IllegalArgumentException(name + " is null");
-		}
 	}
 	
 	/**

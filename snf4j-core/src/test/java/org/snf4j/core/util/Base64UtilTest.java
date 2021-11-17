@@ -23,20 +23,61 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.websocket.handshake;
+package org.snf4j.core.util;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import org.junit.Test;
 
-public class Base64Test {
+public class Base64UtilTest {
+	
+	@Test
+	public void testIsClass() throws Exception {
+		Field f = Base64Util.class.getDeclaredField("JAVA_UTIL_BASE64");
+		
+		f.setAccessible(true);
+		assertEquals(java.util.Base64.class.getName(), f.get(null));
+		assertTrue(Base64Util.isClass(java.util.Base64.class.getName()));
+		assertFalse(Base64Util.isClass("java.util.xxxx"));	
+	}
+	
+	@Test
+	public void testNoJdk() throws Exception {
+		Field f = Base64Util.class.getDeclaredField("USE_JDK");
+		
+		f.setAccessible(true);
+		assertTrue(f.getBoolean(null));
+
+		byte[] encoded = Base64Util.encode(new byte[10], false);
+		assertArrayEquals(encoded, Base64Util.encode(new byte[10]));
+		assertArrayEquals(new byte[10], Base64Util.decode(encoded, false));
+		assertArrayEquals(new byte[10], Base64Util.decode(encoded));
+		try {
+			Base64Util.decode("????".getBytes(StandardCharsets.US_ASCII), false);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("data is not in valid Base64 scheme", e.getMessage());
+		}
+		try {
+			Base64Util.decode("????".getBytes(StandardCharsets.US_ASCII));
+			fail();
+		}
+		catch (Exception e) {
+			assertNotEquals("data is not in valid Base64 scheme", e.getMessage());
+		}
+	}
 	
 	String[] testVectors = new String[] {
 			"","",
@@ -48,9 +89,10 @@ public class Base64Test {
 			"foobar","Zm9vYmFy"};
 
 	@Test
-	public void testEncode() {
+	public void testEncode() throws Exception {
 		for (int i=0; i<testVectors.length; i+=2) {
-			assertEquals(testVectors[i+1], Base64.encode(testVectors[i].getBytes(), StandardCharsets.US_ASCII));
+			assertEquals(testVectors[i+1], Base64Util.encode0(testVectors[i].getBytes(), StandardCharsets.US_ASCII));
+			assertEquals(testVectors[i+1], Base64Util.encode(testVectors[i].getBytes(), StandardCharsets.US_ASCII));
 		}
 		
 		String s,e;
@@ -62,8 +104,10 @@ public class Base64Test {
 				for (int j=0; j<size; ++j) {
 					b[j] = (byte)i;
 				}
-				s = Base64.encode(b, StandardCharsets.US_ASCII);
+				s = Base64Util.encode0(b, StandardCharsets.US_ASCII);
 				e = java.util.Base64.getEncoder().encodeToString(b);
+				assertEquals(Arrays.toString(b), e, s);
+				s = Base64Util.encode(b, StandardCharsets.US_ASCII);
 				assertEquals(Arrays.toString(b), e, s);
 			}
 		}
@@ -72,7 +116,8 @@ public class Base64Test {
 	@Test
 	public void testDecode() {
 		for (int i=0; i<testVectors.length; i+=2) {
-			assertArrayEquals(testVectors[i].getBytes(), Base64.decode(testVectors[i+1], StandardCharsets.US_ASCII));
+			assertArrayEquals(testVectors[i].getBytes(), Base64Util.decode0(testVectors[i+1], StandardCharsets.US_ASCII));
+			assertArrayEquals(testVectors[i].getBytes(), Base64Util.decode(testVectors[i+1], StandardCharsets.US_ASCII));
 		}
 
 		String[] failingVectors = new String[] {
@@ -80,7 +125,13 @@ public class Base64Test {
 				"AA===","AAAAA","AAAAA===","AAAAA==","AAAAA=","AAA?" 
 		};
 		for (int i=0; i<failingVectors.length; ++i) {
-			assertNull(Base64.decode(failingVectors[i], StandardCharsets.US_ASCII));
+			assertNull(Base64Util.decode0(failingVectors[i], StandardCharsets.US_ASCII));
+			try {
+				Base64Util.decode(failingVectors[i], StandardCharsets.US_ASCII);
+				fail();
+			}
+			catch (IllegalArgumentException e) {
+			}
 		}
 
 		String[] okVectors = new String[] {
@@ -88,7 +139,7 @@ public class Base64Test {
 				"AAAABB","AAAABB=","AAAABB==","AZaz09+/" 
 		};
 		for (int i=0; i<okVectors.length; ++i) {
-			assertNotNull(Base64.decode(okVectors[i], StandardCharsets.US_ASCII));
+			assertNotNull(Base64Util.decode0(okVectors[i], StandardCharsets.US_ASCII));
 		}
 		
 		String chars = " AZaz09+/=?";
@@ -122,7 +173,7 @@ public class Base64Test {
 							}
 
 							if (b == null) {
-								if (null != Base64.decode(s, StandardCharsets.US_ASCII)) {
+								if (null != Base64Util.decode0(s, StandardCharsets.US_ASCII)) {
 									if (s.endsWith("==")) {
 										b = java.util.Base64.getDecoder().decode(s.substring(0, s.length()-2));
 									}
@@ -136,7 +187,7 @@ public class Base64Test {
 							}
 
 							if (b != null) {
-								assertArrayEquals(b, Base64.decode(s, StandardCharsets.US_ASCII));
+								assertArrayEquals(b, Base64Util.decode0(s, StandardCharsets.US_ASCII));
 							}
 							s = "ABCD" + s;
 						}

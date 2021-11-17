@@ -36,6 +36,7 @@ import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.IStreamSession;
+import org.snf4j.core.util.Base64Util;
 
 /**
  * Handles client proxy connections via the HTTP tunneling protocol. For more
@@ -69,13 +70,19 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 
 	private final static byte[] HOST = toBytes("Host");
 	
+	private final static byte[] PROXY_AUTHORIZATION = toBytes("Proxy-Authorization");
+	
 	private final static int OK = 200;
 	
 	private final List<byte[]> headers = new LinkedList<byte[]>(); 
 
-	private final int minEof;
+	private volatile int minEof = 2;
 	
 	private final URI uri;
+	
+	private final String username;
+	
+	private final String password;
 	
 	private Integer statusCode;
 	
@@ -93,9 +100,27 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri) {	
-		this(uri, false, null, null);
+		this(uri, (ISessionConfig)null, null);
 	}
 
+	/**
+	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
+	 * connection timeout and user's name/password for the 'Basic' HTTP
+	 * authentication scheme.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param uri      the URI identifying the remote host to which the HTTP tunnel
+	 *                 should be established
+	 * @param username the user's name
+	 * @param password the user's password
+	 * @throws IllegalArgumentException if the uri, username or password is null
+	 */
+	public HttpProxyHandler(URI uri, String username, String password) {	
+		this(uri, username, password, null, null);
+	}
+	
 	/**
 	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
 	 * connection timeout and configuration.
@@ -110,9 +135,29 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 * @throws IllegalArgumentException if the uri is null
 	 */
 	public HttpProxyHandler(URI uri, ISessionConfig config) {	
-		this(uri, false, config, null);
+		this(uri, config, null);
 	}
 
+	/**
+	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
+	 * connection timeout, user's name/password for the 'Basic' HTTP authentication
+	 * scheme and configuration.
+	 * <p>
+	 * NOTE: The connection timeout will have no effect if the associated session
+	 * does not support a session timer.
+	 * 
+	 * @param uri      the URI identifying the remote host to which the HTTP tunnel
+	 *                 should be established
+	 * @param username the user's name
+	 * @param password the user's password
+	 * @param config   the session configuration object, or {@code null} to use the
+	 *                 default configuration
+	 * @throws IllegalArgumentException if the uri, username or password is null
+	 */
+	public HttpProxyHandler(URI uri, String username, String password, ISessionConfig config) {
+		this(uri, username, password, config, null);
+	}
+	
 	/**
 	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
 	 * connection timeout, configuration and factory.
@@ -129,221 +174,44 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 	 *                the default factory
 	 * @throws IllegalArgumentException if the uri is null
 	 */
-	public HttpProxyHandler(URI uri, ISessionConfig config, ISessionStructureFactory factory) {	
-		this(uri, false, config, factory);
-	}
-
-	/**
-	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
-	 * connection timeout and an option to change the default handling of line
-	 * terminators.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param uri                  the URI identifying the remote host to which the
-	 *                             HTTP tunnel should be established
-	 * @param allowBothTerminators {@code true} to allow both CRLF and LF line
-	 *                             terminators in the responses from a HTTP proxy
-	 *                             server, or otherwise (default option) only CRLF
-	 *                             will be allowed
-	 * @throws IllegalArgumentException if the uri is null
-	 */
-	public HttpProxyHandler(URI uri, boolean allowBothTerminators) {	
-		this(uri, allowBothTerminators, null, null);
-	}
-
-	/**
-	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
-	 * connection timeout, an option to change the default handling of line
-	 * terminators and configuration.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param uri                  the URI identifying the remote host to which the
-	 *                             HTTP tunnel should be established
-	 * @param allowBothTerminators {@code true} to allow both CRLF and LF line
-	 *                             terminators in the responses from a HTTP proxy
-	 *                             server, or otherwise (default option) only CRLF
-	 *                             will be allowed
-	 * @param config               the session configuration object, or {@code null}
-	 *                             to use the default configuration
-	 * @throws IllegalArgumentException if the uri is null
-	 */
-	public HttpProxyHandler(URI uri, boolean allowBothTerminators, ISessionConfig config) {	
-		this(uri, allowBothTerminators, config, null);
-	}
-	
-	/**
-	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
-	 * connection timeout, an option to change the default handling of line
-	 * terminators, configuration and factory.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param uri                  the URI identifying the remote host to which the
-	 *                             HTTP tunnel should be established
-	 * @param allowBothTerminators {@code true} to allow both CRLF and LF line
-	 *                             terminators in the responses from a HTTP proxy
-	 *                             server, or otherwise (default option) only CRLF
-	 *                             will be allowed
-	 * @param config               the session configuration object, or {@code null}
-	 *                             to use the default configuration
-	 * @param factory              the factory that will be used to configure the
-	 *                             internal structure of the associated session, or
-	 *                             {@code null} to use the default factory
-	 * @throws IllegalArgumentException if the uri is null
-	 */
-	public HttpProxyHandler(URI uri, boolean allowBothTerminators, ISessionConfig config, ISessionStructureFactory factory) {	
+	public HttpProxyHandler(URI uri, ISessionConfig config, ISessionStructureFactory factory) {
 		super(config, factory);
-		if (uri == null) {
-			throw new IllegalArgumentException("uri is null");
-		}
+		checkNull(uri, "uri");
 		this.uri = uri;
-		minEof = allowBothTerminators ? 1 : 2;
+		username = null;
+		password = null;
 	}
 	
 	/**
-	 * Constructs an HTTP tunnel connection handler with the specified connection
-	 * timeout.
+	 * Constructs an HTTP tunnel connection handler with the default (10 seconds)
+	 * connection timeout, user's name/password for the 'Basic' HTTP authentication
+	 * scheme, configuration and factory.
 	 * <p>
 	 * NOTE: The connection timeout will have no effect if the associated session
 	 * does not support a session timer.
 	 * 
-	 * @param uri               the URI identifying the remote host to which the
-	 *                          HTTP tunnel should be established
-	 * @param connectionTimeout the proxy connection timeout in milliseconds, or
-	 *                          {@code 0} to wait an infinite amount of time for 
-	 *                          establishing the HTTP tunnel.
-	 * @throws IllegalArgumentException if the uri is null
+	 * @param uri      the URI identifying the remote host to which the HTTP tunnel
+	 *                 should be established
+	 * @param username the user's name
+	 * @param password the user's password
+	 * @param config   the session configuration object, or {@code null} to use the
+	 *                 default configuration
+	 * @param factory  the factory that will be used to configure the internal
+	 *                 structure of the associated session, or {@code null} to use
+	 *                 the default factory
+	 * @throws IllegalArgumentException if the uri, username or password is null
 	 */
-	public HttpProxyHandler(URI uri, long connectionTimeout) {
-		this(uri, connectionTimeout, false);
-	}
-
-	/**
-	 * Constructs an HTTP tunnel connection handler with the specified connection
-	 * timeout and configuration.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param uri               the URI identifying the remote host to which the
-	 *                          HTTP tunnel should be established
-	 * @param connectionTimeout the proxy connection timeout in milliseconds, or
-	 *                          {@code 0} to wait an infinite amount of time for
-	 *                          establishing the HTTP tunnel.
-	 * @param config            the session configuration object, or {@code null} to
-	 *                          use the default configuration
-	 * @throws IllegalArgumentException if the uri is null
-	 */
-	public HttpProxyHandler(URI uri, long connectionTimeout, ISessionConfig config) {
-		this(uri, connectionTimeout, false, config, null);
-	}
-
-	/**
-	 * Constructs an HTTP tunnel connection handler with the specified connection
-	 * timeout, configuration and factory.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param uri               the URI identifying the remote host to which the
-	 *                          HTTP tunnel should be established
-	 * @param connectionTimeout the proxy connection timeout in milliseconds, or
-	 *                          {@code 0} to wait an infinite amount of time for
-	 *                          establishing the HTTP tunnel.
-	 * @param config            the session configuration object, or {@code null} to
-	 *                          use the default configuration
-	 * @param factory           the factory that will be used to configure the
-	 *                          internal structure of the associated session, or
-	 *                          {@code null} to use the default factory
-	 * @throws IllegalArgumentException if the uri is null
-	 */
-	public HttpProxyHandler(URI uri, long connectionTimeout, ISessionConfig config, ISessionStructureFactory factory) {
-		this(uri, connectionTimeout, false, config, factory);
-	}
-
-	/**
-	 * Constructs an HTTP tunnel connection handler with the specified connection
-	 * timeout and an option to change the default handling of line terminators.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param uri                  the URI identifying the remote host to which the
-	 *                             HTTP tunnel should be established
-	 * @param connectionTimeout    the proxy connection timeout in milliseconds, or
-	 *                             {@code 0} to wait an infinite amount of time for
-	 *                             establishing the HTTP tunnel.
-	 * @param allowBothTerminators {@code true} to allow both CRLF and LF line
-	 *                             terminators in the responses from a HTTP proxy
-	 *                             server, or otherwise (default option) only CRLF
-	 *                             will be allowed
-	 * @throws IllegalArgumentException if the uri is null
-	 */
-	public HttpProxyHandler(URI uri, long connectionTimeout, boolean allowBothTerminators) {
-		this(uri, connectionTimeout, allowBothTerminators, null, null);
-	}
-
-	/**
-	 * Constructs an HTTP tunnel connection handler with the specified connection
-	 * timeout and an option to change the default handling of line terminators and
-	 * configuration.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param uri                  the URI identifying the remote host to which the
-	 *                             HTTP tunnel should be established
-	 * @param connectionTimeout    the proxy connection timeout in milliseconds, or
-	 *                             {@code 0} to wait an infinite amount of time for
-	 *                             establishing the HTTP tunnel.
-	 * @param allowBothTerminators {@code true} to allow both CRLF and LF line
-	 *                             terminators in the responses from a HTTP proxy
-	 *                             server, or otherwise (default option) only CRLF
-	 *                             will be allowed
-	 * @param config               the session configuration object, or {@code null}
-	 *                             to use the default configuration
-	 * @throws IllegalArgumentException if the uri is null
-	 */
-	public HttpProxyHandler(URI uri, long connectionTimeout, boolean allowBothTerminators, ISessionConfig config) {
-		this(uri, connectionTimeout, allowBothTerminators, config, null);
-	}
-	
-	/**
-	 * Constructs an HTTP tunnel connection handler with the specified connection
-	 * timeout, an option to change the default handling of line terminators,
-	 * configuration and factory.
-	 * <p>
-	 * NOTE: The connection timeout will have no effect if the associated session
-	 * does not support a session timer.
-	 * 
-	 * @param uri                  the URI identifying the remote host to which the
-	 *                             HTTP tunnel should be established
-	 * @param connectionTimeout    the proxy connection timeout in milliseconds, or
-	 *                             {@code 0} to wait an infinite amount of time for
-	 *                             establishing the HTTP tunnel.
-	 * @param allowBothTerminators {@code true} to allow both CRLF and LF line
-	 *                             terminators in the responses from a HTTP proxy
-	 *                             server, or otherwise (default option) only CRLF
-	 *                             will be allowed
-	 * @param config               the session configuration object, or {@code null}
-	 *                             to use the default configuration
-	 * @param factory              the factory that will be used to configure the
-	 *                             internal structure of the associated session, or
-	 *                             {@code null} to use the default factory
-	 * @throws IllegalArgumentException if the uri is null
-	 */
-	public HttpProxyHandler(URI uri, long connectionTimeout, boolean allowBothTerminators, ISessionConfig config, ISessionStructureFactory factory) {
-		super(connectionTimeout, config, factory);
-		if (uri == null) {
-			throw new IllegalArgumentException("uri is null");
-		}
+	public HttpProxyHandler(URI uri, String username, String password, ISessionConfig config, ISessionStructureFactory factory) {
+		super(config, factory);
+		checkNull(uri, "uri");
+		checkNull(username, "username");
+		checkNull(password, "password");
 		this.uri = uri;
-		minEof = allowBothTerminators ? 1 : 2;
+		if (username.indexOf(COLON_TEXT) >= 0) {
+			throw new IllegalArgumentException("username contains a colon");
+		}
+		this.username = username;
+		this.password = password;
 	}
 	
 	private static final byte[] toBytes(String s) {
@@ -366,6 +234,31 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 			}
 			return b == LF ? 1 :0;
 		}
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @throws IllegalArgumentException if the connection timeout is negative 
+	 */
+	@Override
+	public HttpProxyHandler connectionTimeout(long connectionTimeout) {
+		super.connectionTimeout(connectionTimeout);
+		return this;
+	}
+
+	/**
+	 * Configures the handling of line terminators in responses from a HTTP proxy
+	 * server
+	 * 
+	 * @param allow {@code true} to allow both CRLF and LF line terminators in
+	 *              responses from a HTTP proxy server, or otherwise (default
+	 *              option) only CRLF will be allowed.
+	 * @return this handler
+	 */
+	public HttpProxyHandler allowBothTerminators(boolean allow) {
+		minEof = allow ? 1 : 2;
+		return this;
 	}
 	
 	@Override
@@ -531,6 +424,7 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 		
 		byte[] fullHost;
 		byte[] host;
+		byte[] proxyAuth;
 		
 		if (uriPort != -1) {
 			fullHost = toBytes(uriHost + COLON_TEXT + Integer.toString(uriPort));
@@ -543,6 +437,15 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 		}
 		else {
 			host = toBytes(uriHost);
+		}
+		
+		if (username != null) {
+			proxyAuth = toBytes("Basic " + Base64Util.encode(
+					(username + COLON_TEXT + password).getBytes(StandardCharsets.UTF_8), 
+					StandardCharsets.US_ASCII));
+		}
+		else {
+			proxyAuth = null;
 		}
 		
 		IStreamSession session = getSession();
@@ -562,6 +465,13 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 				+ headersLength
 				+ CRLF.length;
 		
+			if (proxyAuth != null) {
+				length += PROXY_AUTHORIZATION.length 
+					+ 2 /* COLON + SP */
+					+ proxyAuth.length
+					+CRLF.length;
+			}
+			
 			frame = session.allocate(length);
 			frame.put(HTTP_CONNECT);
 			frame.put(SP);
@@ -570,6 +480,9 @@ public class HttpProxyHandler extends AbstractProxyHandler {
 			frame.put(HTTP_VERSION);
 			frame.put(CRLF);
 			append(frame, HOST, host);
+			if (proxyAuth != null) {
+				append(frame, PROXY_AUTHORIZATION, proxyAuth);
+			}
 
 			Iterator<byte[]> i = headers.iterator();
 			

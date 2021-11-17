@@ -114,16 +114,11 @@ public class Socks4ProxyHandlerTest {
 		assertContructor(new Socks4ProxyHandler(a, B, "u2"), a, B, "u2", 10000, null, null);
 		assertContructor(new Socks4ProxyHandler(a, B, "u2", c), a, B, "u2", 10000, c, null);
 		assertContructor(new Socks4ProxyHandler(a, B, "u2", c, f), a, B, "u2", 10000, c, f);
-		assertContructor(new Socks4ProxyHandler(a, "u1", 333), a, C, "u1", 333, null, null);
-		assertContructor(new Socks4ProxyHandler(a, "u1", 333, c), a, C, "u1", 333, c, null);
-		assertContructor(new Socks4ProxyHandler(a, "u1", 333, c, f), a, C, "u1", 333, c, f);
-		assertContructor(new Socks4ProxyHandler(a, B, "u1", 333), a, B, "u1", 333, null, null);
-		assertContructor(new Socks4ProxyHandler(a, B, "u1", 333, c), a, B, "u1", 333, c, null);
+
+		assertContructor(new Socks4ProxyHandler(a, "u1").connectionTimeout(333), a, C, "u1", 333, null, null);
 		
 		assertContructor(new Socks4ProxyHandler(a, C, null, c, f), a, C, "", 10000, c, f);
 		assertContructor(new Socks4ProxyHandler(a, C, "u1", null, null), a, C, "u1", 10000, null, null);
-		assertContructor(new Socks4ProxyHandler(a, C, null, 100, c, f), a, C, "", 100, c, f);
-		assertContructor(new Socks4ProxyHandler(a, C, "u1", 100, null, null), a, C, "u1", 100, null, null);
 		try {
 			new Socks4ProxyHandler(null, C, "u1", c, f);
 		}
@@ -132,18 +127,6 @@ public class Socks4ProxyHandlerTest {
 		}
 		try {
 			new Socks4ProxyHandler(a, null, "u1", c, f);
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("command is null", e.getMessage());
-		}
-		try {
-			new Socks4ProxyHandler(null, C, "u1", 100, c, f);
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("address is null", e.getMessage());
-		}
-		try {
-			new Socks4ProxyHandler(a, null, "u1", 100, c, f);
 		}
 		catch (IllegalArgumentException e) {
 			assertEquals("command is null", e.getMessage());

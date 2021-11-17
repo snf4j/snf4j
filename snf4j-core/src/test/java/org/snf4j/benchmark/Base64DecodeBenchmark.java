@@ -23,55 +23,46 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.proxy;
+package org.snf4j.benchmark;
 
-/**
- * Reply information sent from the SOCKS server. 
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public interface ISocksReply {
+import java.util.Random;
+
+import org.snf4j.benchmark.api.Bench;
+import org.snf4j.benchmark.api.BenchmarkRunner;
+
+public class Base64DecodeBenchmark {
 	
-	/**
-	 * Tells if the reply is successful.
-	 * 
-	 * @return {@code true} if the reply is successful
-	 */
-	boolean isSuccessful();
-		
-	/**
-	 * Returns the status code in the received reply.
-	 * 
-	 * @return the status code
-	 */
-	int getStatus();
+	final static int COUNT = 100000;
 	
-	/**
-	 * Returns the description of the status in the received reply.
-	 * 
-	 * @return the status description
-	 */
-	String getStatusDescription();
+	final static byte[] DECODED_DATA = new byte[1000];
 	
-	/**
-	 * Returns the port in the received reply.
-	 * 
-	 * @return the port
-	 */
-	int getPort();
+	final static byte[] ENCODED_DATA;
 	
-	/**
-	 * Returns the address in the received reply.
-	 * 
-	 * @return the address
-	 */
-	String getAddress();
+	static {
+		new Random().nextBytes(DECODED_DATA);
+		ENCODED_DATA = java.util.Base64.getEncoder().encode(DECODED_DATA);
+	}
 	
-	/**
-	 * Returns the type of the address in the received reply.
-	 * 
-	 * @return the type of the address
-	 */
-	SocksAddressType getAddressType();
-	
+	@Bench(name="org.snf4j.core.util.Base64Util.decode()")
+	public void bench1() throws Exception {
+		for (int i=0; i<COUNT; ++i) {
+			org.snf4j.core.util.Base64Util.decode(ENCODED_DATA);
+		}
+	}
+
+	@Bench(name="java.util.Base64.decode()")
+	public void bench2() {
+		for (int i=0; i<COUNT; ++i) {
+			try {
+				java.util.Base64.getDecoder().decode(ENCODED_DATA);
+			}
+			catch (Exception e) {
+			}
+		}
+	}
+
+	public static void main(String[] args) {
+		BenchmarkRunner.run(new Base64DecodeBenchmark());
+	}
+
 }

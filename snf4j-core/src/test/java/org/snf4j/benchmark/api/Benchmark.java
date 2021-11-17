@@ -23,55 +23,10 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.proxy;
+package org.snf4j.benchmark.api;
 
-/**
- * Reply information sent from the SOCKS server. 
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public interface ISocksReply {
-	
-	/**
-	 * Tells if the reply is successful.
-	 * 
-	 * @return {@code true} if the reply is successful
-	 */
-	boolean isSuccessful();
-		
-	/**
-	 * Returns the status code in the received reply.
-	 * 
-	 * @return the status code
-	 */
-	int getStatus();
-	
-	/**
-	 * Returns the description of the status in the received reply.
-	 * 
-	 * @return the status description
-	 */
-	String getStatusDescription();
-	
-	/**
-	 * Returns the port in the received reply.
-	 * 
-	 * @return the port
-	 */
-	int getPort();
-	
-	/**
-	 * Returns the address in the received reply.
-	 * 
-	 * @return the address
-	 */
-	String getAddress();
-	
-	/**
-	 * Returns the type of the address in the received reply.
-	 * 
-	 * @return the type of the address
-	 */
-	SocksAddressType getAddressType();
-	
+public interface Benchmark {
+	String getName();
+	void preRun();
+	void run();
 }

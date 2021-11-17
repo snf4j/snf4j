@@ -33,6 +33,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+import org.snf4j.core.util.Base64Util;
+
 class HandshakeUtils {
 
 	final static String SEC_WEB_SOCKET_KEY = "Sec-WebSocket-Key";
@@ -86,7 +88,7 @@ class HandshakeUtils {
 	}
 	
 	static String generateKey(byte[] bytes) {
-		bytes = Base64.encode(bytes);
+		bytes = Base64Util.encode(bytes);
 		return HttpUtils.ascii(bytes, 0, bytes.length);
 	}
 	
@@ -96,7 +98,7 @@ class HandshakeUtils {
 			byte[] bytes;
 			
 			md.update(HttpUtils.bytes(key));
-			bytes = Base64.encode(md.digest(KEY_GUID));
+			bytes = Base64Util.encode(md.digest(KEY_GUID));
 			return HttpUtils.ascii(bytes, 0, bytes.length);
 		}
 		catch (Exception e) {
@@ -105,10 +107,15 @@ class HandshakeUtils {
 	}
 	
 	static byte[] parseKey(String key) {
-		byte[] bytes = Base64.decode(HttpUtils.bytes(key));
-			
-		if (bytes != null && bytes.length == 16) {
-			return bytes;
+		try {
+			byte[] bytes = Base64Util.decode(HttpUtils.bytes(key));
+
+			if (bytes.length == 16) {
+				return bytes;
+			}
+		}
+		catch (Exception e) {
+			//Ignore
 		}
 		return null;
 	}
