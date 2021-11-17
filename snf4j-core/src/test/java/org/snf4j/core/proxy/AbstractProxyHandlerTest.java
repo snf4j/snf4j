@@ -78,7 +78,7 @@ public class AbstractProxyHandlerTest {
 	
 	@Test
 	public void testConstructor() {
-		AbstractProxyHandler h = new AbstractProxyHandler(10, null, null) {
+		AbstractProxyHandler h = new AbstractProxyHandler(null, null) {
 
 			@Override
 			public void read(Object msg) {
@@ -87,13 +87,13 @@ public class AbstractProxyHandlerTest {
 			@Override
 			protected void handleReady() throws Exception {
 			}
-		};
+		}.connectionTimeout(10);
 		assertTrue(h.getConfig().getClass() == DefaultSessionConfig.class);
 		assertTrue(h.getFactory() == DefaultSessionStructureFactory.DEFAULT);
 		
 		DefaultSessionConfig config = new DefaultSessionConfig();
 		DefaultSessionStructureFactory factory = new DefaultSessionStructureFactory() {};
-		h = new AbstractProxyHandler(10, config, factory) {
+		h = new AbstractProxyHandler(config, factory) {
 
 			@Override
 			public void read(Object msg) {
@@ -102,7 +102,7 @@ public class AbstractProxyHandlerTest {
 			@Override
 			protected void handleReady() throws Exception {
 			}
-		};
+		}.connectionTimeout(10);
 		assertTrue(h.getConfig() == config);
 		assertTrue(h.getFactory() == factory);
 
@@ -285,10 +285,12 @@ public class AbstractProxyHandlerTest {
 		volatile ITimer timer;
 		
 		TestHandler(long connectionTimeout) {
-			super(connectionTimeout);
+			super(null,null);
+			connectionTimeout(connectionTimeout);
 		}
 		
 		TestHandler() {
+			super(null,null);
 		}
 		
 		@Override

@@ -80,20 +80,6 @@ public class HttpProxyHandlerTest {
 		DefaultSessionStructureFactory f = new DefaultSessionStructureFactory() {};
 		
 		try {
-			new HttpProxyHandler(null);
-			fail();
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("uri is null", e.getMessage());
-		}
-		try {
-			new HttpProxyHandler(null, c);
-			fail();
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("uri is null", e.getMessage());
-		}
-		try {
 			new HttpProxyHandler(null, c, f);
 			fail();
 		}
@@ -101,21 +87,7 @@ public class HttpProxyHandlerTest {
 			assertEquals("uri is null", e.getMessage());
 		}
 		try {
-			new HttpProxyHandler(null, 10);
-			fail();
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("uri is null", e.getMessage());
-		}
-		try {
-			new HttpProxyHandler(null, 10, c);
-			fail();
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("uri is null", e.getMessage());
-		}
-		try {
-			new HttpProxyHandler(null, 10, c, f);
+			new HttpProxyHandler(null, "u", "p", c, f);
 			fail();
 		}
 		catch (IllegalArgumentException e) {
@@ -123,28 +95,44 @@ public class HttpProxyHandlerTest {
 		}
 		URI uri = new URI("http://host");
 		try {
-			new HttpProxyHandler(uri, -10);
+			new HttpProxyHandler(uri).connectionTimeout(-10);
 			fail();
 		}
 		catch (IllegalArgumentException e) {
 			assertEquals("connectionTimeout is negative", e.getMessage());
 		}
+		try {
+			new HttpProxyHandler(uri, null, "p", c, f);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("username is null", e.getMessage());
+		}
+		try {
+			new HttpProxyHandler(uri, "u", null, c, f);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("password is null", e.getMessage());
+		}
+		try {
+			new HttpProxyHandler(uri, "u:o", "p", c, f);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("username contains a colon", e.getMessage());
+		}
 		
 		assertContructor(new HttpProxyHandler(uri), uri, 10000, false, null, null);
 		assertContructor(new HttpProxyHandler(uri,c), uri, 10000, false, c, null);
 		assertContructor(new HttpProxyHandler(uri,c,f), uri, 10000, false, c, f);
-
-		assertContructor(new HttpProxyHandler(uri, true), uri, 10000, true, null, null);
-		assertContructor(new HttpProxyHandler(uri, true,c), uri, 10000, true, c, null);
-		assertContructor(new HttpProxyHandler(uri, true,c,f), uri, 10000, true, c, f);
-
-		assertContructor(new HttpProxyHandler(uri,999), uri, 999, false, null, null);
-		assertContructor(new HttpProxyHandler(uri,999,c), uri, 999, false, c, null);
-		assertContructor(new HttpProxyHandler(uri,999,c,f), uri, 999, false, c, f);
-
-		assertContructor(new HttpProxyHandler(uri,999, true), uri, 999, true, null, null);
-		assertContructor(new HttpProxyHandler(uri,999, true,c), uri, 999, true, c, null);
-		assertContructor(new HttpProxyHandler(uri,999, true, c,f), uri, 999, true, c, f);
+		assertContructor(new HttpProxyHandler(uri).allowBothTerminators(true), uri, 10000, true, null, null);
+		assertContructor(new HttpProxyHandler(uri).allowBothTerminators(false), uri, 10000, false, null, null);
+		assertContructor(new HttpProxyHandler(uri).connectionTimeout(999), uri, 999, false, null, null);
+		assertContructor(new HttpProxyHandler(uri).connectionTimeout(999).allowBothTerminators(true), uri, 999, true, null, null);
+		assertContructor(new HttpProxyHandler(uri,"u", "p"), uri, 10000, false, null, null);
+		assertContructor(new HttpProxyHandler(uri,"u", "p",c), uri, 10000, false, c, null);
+		assertContructor(new HttpProxyHandler(uri,"u", "p",c,f), uri, 10000, false, c, f);
 	}
 	
 	byte[] bytes(String s, int off, int pad) {
@@ -194,10 +182,10 @@ public class HttpProxyHandlerTest {
 			assertAvailable(5, p, "ABC\r\n\rXXXXX");
 			assertAvailable(5, p, "ABC\r\n\rD\nXXXXX");
 			assertAvailable(7, p, "ABC\r\n\r\nXXXXX");
-			p = new HttpProxyHandler(new URI("http://host"), 100);
+			p = new HttpProxyHandler(new URI("http://host")).connectionTimeout(100);
 		}
 		
-		p = new HttpProxyHandler(new URI("http://host"), true);
+		p = new HttpProxyHandler(new URI("http://host")).allowBothTerminators(true);
 		for (int i=0; i<2; ++i) {
 			assertAvailable(0, p, "");
 			assertAvailable(2, p, "|");
@@ -215,7 +203,7 @@ public class HttpProxyHandlerTest {
 			assertAvailable(5, p, "A||X");
 			assertAvailable(4, p, "A|\nX");
 			assertAvailable(4, p, "A\n|X");
-			p = new HttpProxyHandler(new URI("http://host"), 100, true);
+			p = new HttpProxyHandler(new URI("http://host")).connectionTimeout(100).allowBothTerminators(true);
 		}	
 	}
 	
@@ -253,7 +241,7 @@ public class HttpProxyHandlerTest {
 		}
 		assertEquals("DONE|", s.getTrace());
 
-		p = new HttpProxyHandler(new URI("http://host:80"), true);
+		p = new HttpProxyHandler(new URI("http://host:80")).allowBothTerminators(true);
 		p.setSession(s);
 		p.read("HTTP/1.1 200 OK\nUser-Agent: Unknown/0.0\r\n\n".getBytes());
 		assertEquals("DONE|C|", s.getTrace());
@@ -349,6 +337,19 @@ public class HttpProxyHandlerTest {
 		s.dataCopyingOptimized = true;
 		p.event(SessionEvent.READY);
 		assertEquals("WR=CONNECT host:99 HTTP/1.1;Host: host:99;User-Agent: snf4j;Proxy-Authorization: Basic dGVzdDoxMjPCow==;;|", s.getTrace());
+	}
+	
+	@Test
+	public void testBasicAuth() throws Exception {
+		HttpProxyHandler p = new HttpProxyHandler(new URI("http://host:99"), "Aladdin", "open sesame");
+		Session s = new Session();
+		p.setSession(s);
+
+		p.event(SessionEvent.READY);
+		assertEquals("WR=CONNECT host:99 HTTP/1.1;Host: host:99;Proxy-Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==;;|R|", s.getTrace());
+		p.appendHeader("User-Agent", "snf4j");
+		p.event(SessionEvent.READY);
+		assertEquals("WR=CONNECT host:99 HTTP/1.1;Host: host:99;Proxy-Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==;User-Agent: snf4j;;|R|", s.getTrace());
 	}
 	
 	@Test
