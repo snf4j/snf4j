@@ -23,56 +23,40 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.benchmark.api;
+package org.snf4j.core.session.ssl;
 
-import java.lang.reflect.Method;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
 
-public class BenchmarkWrapper implements Benchmark {
-	private String name;
-	private Method preRun;
-	private Method run;
-	private Object benchmark;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.junit.Test;
+
+public class SupportedCipherProtocolFiltersTest {
+	@Test
+	public void testFilter() {
+		String[] items = new String[] {"it1","it2"};
+		String[] defaultItems = new String[] {"it3","it4"};
+		Set<String> supportedItems = new HashSet<String>();
+		String[] array;
+
+		supportedItems.add("it2");
+		supportedItems.add("it3");
+		supportedItems.add("it4");
+		
+		array = SupportedCipherProtocolFilters.INSATNCE.filterCiphers(items, defaultItems, supportedItems);
+		assertArrayEquals(new String[] {"it2"}, array);
+		array = SupportedCipherProtocolFilters.INSATNCE.filterCiphers(null, defaultItems, supportedItems);
+		assertArrayEquals(new String[] {"it3","it4"}, array);
+		assertTrue(defaultItems == array);
+		
+		array = SupportedCipherProtocolFilters.INSATNCE.filterProtocols(items, defaultItems, supportedItems);
+		assertArrayEquals(new String[] {"it2"}, array);
+		array = SupportedCipherProtocolFilters.INSATNCE.filterProtocols(null, defaultItems, supportedItems);
+		assertArrayEquals(new String[] {"it3","it4"}, array);
+		assertTrue(defaultItems == array);
+		
 	
-	BenchmarkWrapper(String name, Object benchmark, Method preRun, Method run) {
-		this.name = name;
-		this.benchmark = benchmark;
-		this.preRun = preRun;
-		this.run = run;
 	}
-	
-	void setPreRun(Method preRun) {
-		this.preRun = preRun;
-	}
-	
-	void setRun(Method run) {
-		this.run = run;
-	}
-	
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public void preRun() {
-		if (preRun != null) {
-			try {
-				preRun.invoke(benchmark, new Object[0]);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	@Override
-	public void run() {
-		if (run != null) {
-			try {
-				run.invoke(benchmark, new Object[0]);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
 }

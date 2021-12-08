@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,34 +23,10 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.echo;
 
-import org.snf4j.core.codec.DefaultCodecExecutor;
-import org.snf4j.core.codec.ICodecExecutor;
-import org.snf4j.core.session.DefaultSessionConfig;
-
-public class SessionConfig extends DefaultSessionConfig {
-	
-	private final int pipelineSize;
-	
-	SessionConfig(int pipelineSize) {
-		this.pipelineSize = pipelineSize;
-	}
-
-	@Override
-	public ICodecExecutor createCodecExecutor() {
-		if (pipelineSize <= 0) {
-			return null;
-		}
-		
-		DefaultCodecExecutor executor = new DefaultCodecExecutor();
-
-		for (int i=0; i<pipelineSize; ++i) {
-			executor.getPipeline().add("DECODER"+i, new Decoder());
-			executor.getPipeline().add("ENCODER"+i, new Encoder());
-		}
-		return executor;
-	}
-
-	
-}
+/**
+ * Provides classes and interfaces for configuration of SSL/TLS/DTLS sessions.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+package org.snf4j.core.session.ssl;

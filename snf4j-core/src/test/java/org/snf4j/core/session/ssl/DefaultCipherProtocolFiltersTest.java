@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,34 +23,35 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.echo;
+package org.snf4j.core.session.ssl;
 
-import org.snf4j.core.codec.DefaultCodecExecutor;
-import org.snf4j.core.codec.ICodecExecutor;
-import org.snf4j.core.session.DefaultSessionConfig;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
 
-public class SessionConfig extends DefaultSessionConfig {
-	
-	private final int pipelineSize;
-	
-	SessionConfig(int pipelineSize) {
-		this.pipelineSize = pipelineSize;
-	}
+import org.junit.Test;
 
-	@Override
-	public ICodecExecutor createCodecExecutor() {
-		if (pipelineSize <= 0) {
-			return null;
-		}
+public class DefaultCipherProtocolFiltersTest {
+
+	@Test
+	public void testFilter() {
+		String[] items = new String[] {"it1","it2"};
+		String[] defaultItems = new String[] {"it3","it4"};
+		String[] array;
 		
-		DefaultCodecExecutor executor = new DefaultCodecExecutor();
+		array = DefaultCipherProtocolFilters.INSATNCE.filterCiphers(items, defaultItems, null);
+		assertArrayEquals(new String[] {"it1","it2"}, array);
+		assertTrue(items == array);
 
-		for (int i=0; i<pipelineSize; ++i) {
-			executor.getPipeline().add("DECODER"+i, new Decoder());
-			executor.getPipeline().add("ENCODER"+i, new Encoder());
-		}
-		return executor;
+		array = DefaultCipherProtocolFilters.INSATNCE.filterProtocols(items, defaultItems, null);
+		assertArrayEquals(new String[] {"it1","it2"}, array);
+		assertTrue(items == array);
+
+		array = DefaultCipherProtocolFilters.INSATNCE.filterCiphers(null, defaultItems, null);
+		assertArrayEquals(new String[] {"it3","it4"}, array);
+		assertTrue(defaultItems == array);
+
+		array = DefaultCipherProtocolFilters.INSATNCE.filterProtocols(null, defaultItems, null);
+		assertArrayEquals(new String[] {"it3","it4"}, array);
+		assertTrue(defaultItems == array);
 	}
-
-	
 }
