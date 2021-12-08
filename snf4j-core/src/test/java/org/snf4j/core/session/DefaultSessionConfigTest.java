@@ -32,6 +32,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
+
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
@@ -158,24 +160,24 @@ public class DefaultSessionConfigTest {
 		
 		e = c.createSSLEngine(true);
 		assertTrue(e.getUseClientMode());
-		assertTrue(e.getEnabledProtocols().length > 1);
+		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length > 1);
 		e = c.createSSLEngine(false);
 		assertFalse(e.getUseClientMode());
-		assertTrue(e.getEnabledProtocols().length > 1);
+		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length > 1);
 		
 		c.addSSLEngineBuilder(cb);
 		e = c.createSSLEngine(true);
 		assertTrue(e.getUseClientMode());
-		assertTrue(e.getEnabledProtocols().length == 1);
+		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length == 1);
 		e = c.createSSLEngine(false);
 		assertFalse(e.getUseClientMode());
-		assertTrue(e.getEnabledProtocols().length > 1);
+		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length > 1);
 		c.addSSLEngineBuilder(sb);
 		e = c.createSSLEngine(true);
 		assertTrue(e.getUseClientMode());
-		assertTrue(e.getEnabledProtocols().length == 1);
+		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length == 1);
 		e = c.createSSLEngine(false);
 		assertFalse(e.getUseClientMode());
-		assertTrue(e.getEnabledProtocols().length == 1);	
+		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length == 1);	
 	}
 }

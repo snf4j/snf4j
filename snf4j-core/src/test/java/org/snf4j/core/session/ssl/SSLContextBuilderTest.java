@@ -742,6 +742,7 @@ public class SSLContextBuilderTest {
 		}
 		finally {
 			loop.stop();
+			loop.join(2000);
 		}
 	}
 	
