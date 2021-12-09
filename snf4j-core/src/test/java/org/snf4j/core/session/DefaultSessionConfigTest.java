@@ -161,6 +161,7 @@ public class DefaultSessionConfigTest {
 		defc = SSLContext.getDefault().createSSLEngine();
 		defc.setUseClientMode(true);
 		defs = SSLContext.getDefault().createSSLEngine();
+		defs.setUseClientMode(false);
 		e = c.createSSLEngine(true);
 		assertTrue(e.getUseClientMode());
 		assertArrayEquals(defc.getEnabledProtocols(), e.getEnabledProtocols());
