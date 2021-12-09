@@ -25,14 +25,13 @@
  */
 package org.snf4j.core.session;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import java.util.Arrays;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -156,28 +155,32 @@ public class DefaultSessionConfigTest {
 		context.init(null, null, null);
 		SSLEngineBuilder cb = SSLEngineBuilder.forClient(context).protocols("TLSv1.2");
 		SSLEngineBuilder sb = SSLEngineBuilder.forServer(context).protocols("TLSv1.2");
-		SSLEngine e;
+		SSLEngine e,defc,defs;
+		String[] tls12 = new String[] {"TLSv1.2"};
 		
+		defc = SSLContext.getDefault().createSSLEngine();
+		defc.setUseClientMode(true);
+		defs = SSLContext.getDefault().createSSLEngine();
 		e = c.createSSLEngine(true);
 		assertTrue(e.getUseClientMode());
-		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length > 1);
+		assertArrayEquals(defc.getEnabledProtocols(), e.getEnabledProtocols());
 		e = c.createSSLEngine(false);
 		assertFalse(e.getUseClientMode());
-		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length > 1);
+		assertArrayEquals(defs.getEnabledProtocols(), e.getEnabledProtocols());
 		
 		c.addSSLEngineBuilder(cb);
 		e = c.createSSLEngine(true);
 		assertTrue(e.getUseClientMode());
-		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length == 1);
+		assertArrayEquals(tls12, e.getEnabledProtocols());
 		e = c.createSSLEngine(false);
 		assertFalse(e.getUseClientMode());
-		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length > 1);
+		assertArrayEquals(defs.getEnabledProtocols(), e.getEnabledProtocols());
 		c.addSSLEngineBuilder(sb);
 		e = c.createSSLEngine(true);
 		assertTrue(e.getUseClientMode());
-		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length == 1);
+		assertArrayEquals(tls12, e.getEnabledProtocols());
 		e = c.createSSLEngine(false);
 		assertFalse(e.getUseClientMode());
-		assertTrue(Arrays.toString(e.getEnabledProtocols()), e.getEnabledProtocols().length == 1);	
+		assertArrayEquals(tls12, e.getEnabledProtocols());
 	}
 }
