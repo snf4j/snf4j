@@ -42,14 +42,14 @@ public class Base64EncodeBenchmark {
 		ENCODED_DATA = java.util.Base64.getEncoder().encode(DECODED_DATA);
 	}
 	
-	@Bench(name="org.snf4j.core.util.Base64Util.decode()")
+	@Bench(name="org.snf4j.core.util.Base64Util.encode()")
 	public void bench1() throws Exception {
 		for (int i=0; i<COUNT; ++i) {
 			org.snf4j.core.util.Base64Util.encode(DECODED_DATA);
 		}
 	}
 	
-	@Bench(name="java.util.Base64.decode()")
+	@Bench(name="java.util.Base64.encode()")
 	public void bench2() {
 		for (int i=0; i<COUNT; ++i) {
 			java.util.Base64.getEncoder().encode(DECODED_DATA);

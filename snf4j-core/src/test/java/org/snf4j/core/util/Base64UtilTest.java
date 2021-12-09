@@ -27,57 +27,17 @@ package org.snf4j.core.util;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 
 import org.junit.Test;
 
 public class Base64UtilTest {
-	
-	@Test
-	public void testIsClass() throws Exception {
-		Field f = Base64Util.class.getDeclaredField("JAVA_UTIL_BASE64");
-		
-		f.setAccessible(true);
-		assertEquals(java.util.Base64.class.getName(), f.get(null));
-		assertTrue(Base64Util.isClass(java.util.Base64.class.getName()));
-		assertFalse(Base64Util.isClass("java.util.xxxx"));	
-	}
-	
-	@Test
-	public void testNoJdk() throws Exception {
-		Field f = Base64Util.class.getDeclaredField("USE_JDK");
-		
-		f.setAccessible(true);
-		assertTrue(f.getBoolean(null));
-
-		byte[] encoded = Base64Util.encode(new byte[10], false);
-		assertArrayEquals(encoded, Base64Util.encode(new byte[10]));
-		assertArrayEquals(new byte[10], Base64Util.decode(encoded, false));
-		assertArrayEquals(new byte[10], Base64Util.decode(encoded));
-		try {
-			Base64Util.decode("????".getBytes(StandardCharsets.US_ASCII), false);
-			fail();
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("data is not in valid Base64 scheme", e.getMessage());
-		}
-		try {
-			Base64Util.decode("????".getBytes(StandardCharsets.US_ASCII));
-			fail();
-		}
-		catch (Exception e) {
-			assertNotEquals("data is not in valid Base64 scheme", e.getMessage());
-		}
-	}
 	
 	String[] testVectors = new String[] {
 			"","",
@@ -88,11 +48,33 @@ public class Base64UtilTest {
 			"fooba","Zm9vYmE=",
 			"foobar","Zm9vYmFy"};
 
+	byte[] encode(byte[] data) {
+		byte[] encoded = Base64Util.encode(data, 0, data.length);
+		String encodedStr = new String(encoded, StandardCharsets.US_ASCII);
+		
+		byte[] data2 = new byte[data.length+10];
+		System.arraycopy(data, 0, data2, 4, data.length);
+		assertArrayEquals(Arrays.toString(encoded), encoded, Base64Util.encode(data2, 4, data.length));
+		assertEquals(encodedStr, Base64Util.encode(data2, 4, data.length, StandardCharsets.US_ASCII));
+		Arrays.fill(data2, (byte)0);
+		System.arraycopy(data, 0, data2, 0, data.length);
+		assertArrayEquals(Arrays.toString(encoded), encoded, Base64Util.encode(data2, 0, data.length));
+		assertEquals(encodedStr, Base64Util.encode(data2, 0, data.length, StandardCharsets.US_ASCII));
+		Arrays.fill(data2, (byte)0);
+		System.arraycopy(data, 0, data2, 10, data.length);
+		assertArrayEquals(Arrays.toString(encoded), encoded, Base64Util.encode(data2, 10, data.length));
+		assertEquals(encodedStr, Base64Util.encode(data2, 10, data.length, StandardCharsets.US_ASCII));
+		assertArrayEquals(Arrays.toString(encoded), encoded, Base64Util.encode(data));
+		assertEquals(encodedStr, Base64Util.encode(data, StandardCharsets.US_ASCII));
+		return encoded;
+	}
+	
 	@Test
 	public void testEncode() throws Exception {
 		for (int i=0; i<testVectors.length; i+=2) {
-			assertEquals(testVectors[i+1], Base64Util.encode0(testVectors[i].getBytes(), StandardCharsets.US_ASCII));
-			assertEquals(testVectors[i+1], Base64Util.encode(testVectors[i].getBytes(), StandardCharsets.US_ASCII));
+			byte[] bytes = testVectors[i].getBytes();
+
+			assertEquals(testVectors[i+1], new String(encode(bytes), StandardCharsets.US_ASCII));
 		}
 		
 		String s,e;
@@ -104,7 +86,7 @@ public class Base64UtilTest {
 				for (int j=0; j<size; ++j) {
 					b[j] = (byte)i;
 				}
-				s = Base64Util.encode0(b, StandardCharsets.US_ASCII);
+				s = new String(encode(b), StandardCharsets.US_ASCII);
 				e = java.util.Base64.getEncoder().encodeToString(b);
 				assertEquals(Arrays.toString(b), e, s);
 				s = Base64Util.encode(b, StandardCharsets.US_ASCII);
@@ -113,10 +95,28 @@ public class Base64UtilTest {
 		}
 	}
 
+	byte[] decode(byte[] data, boolean isMime) {
+		byte[] decoded = Base64Util.decode(data, 0, data.length, isMime);
+		byte[] data2 = new byte[data.length+10];
+
+		System.arraycopy(data, 0, data2, 4, data.length);
+		assertArrayEquals(Arrays.toString(decoded), decoded, Base64Util.decode(data2, 4, data.length, isMime));
+		Arrays.fill(data2, (byte)0);
+		System.arraycopy(data, 0, data2, 0, data.length);
+		assertArrayEquals(Arrays.toString(decoded), decoded, Base64Util.decode(data2, 0, data.length, isMime));
+		Arrays.fill(data2, (byte)0);
+		System.arraycopy(data, 0, data2, 10, data.length);
+		assertArrayEquals(Arrays.toString(decoded), decoded, Base64Util.decode(data2, 10, data.length, isMime));
+		if (!isMime) {
+			assertArrayEquals(Arrays.toString(decoded), decoded, Base64Util.decode(data));
+		}
+		return decoded;
+	}
+	
 	@Test
 	public void testDecode() {
 		for (int i=0; i<testVectors.length; i+=2) {
-			assertArrayEquals(testVectors[i].getBytes(), Base64Util.decode0(testVectors[i+1], StandardCharsets.US_ASCII));
+			assertArrayEquals(testVectors[i].getBytes(), decode(testVectors[i+1].getBytes(StandardCharsets.US_ASCII), false));
 			assertArrayEquals(testVectors[i].getBytes(), Base64Util.decode(testVectors[i+1], StandardCharsets.US_ASCII));
 		}
 
@@ -125,13 +125,8 @@ public class Base64UtilTest {
 				"AA===","AAAAA","AAAAA===","AAAAA==","AAAAA=","AAA?" 
 		};
 		for (int i=0; i<failingVectors.length; ++i) {
-			assertNull(Base64Util.decode0(failingVectors[i], StandardCharsets.US_ASCII));
-			try {
-				Base64Util.decode(failingVectors[i], StandardCharsets.US_ASCII);
-				fail();
-			}
-			catch (IllegalArgumentException e) {
-			}
+			assertNull(decode(failingVectors[i].getBytes(StandardCharsets.US_ASCII), false));
+			assertNull(Base64Util.decode(failingVectors[i], StandardCharsets.US_ASCII));
 		}
 
 		String[] okVectors = new String[] {
@@ -139,7 +134,7 @@ public class Base64UtilTest {
 				"AAAABB","AAAABB=","AAAABB==","AZaz09+/" 
 		};
 		for (int i=0; i<okVectors.length; ++i) {
-			assertNotNull(Base64Util.decode0(okVectors[i], StandardCharsets.US_ASCII));
+			assertNotNull(decode(okVectors[i].getBytes(StandardCharsets.US_ASCII), false));
 		}
 		
 		String chars = " AZaz09+/=?";
@@ -166,19 +161,19 @@ public class Base64UtilTest {
 						
 						for (int i=0; i<3; ++i) {
 							try {
-								b = java.util.Base64.getDecoder().decode(s);
+								b = Base64.getDecoder().decode(s);
 							}
 							catch (Exception e) {
 								b = null;
 							}
 
 							if (b == null) {
-								if (null != Base64Util.decode0(s, StandardCharsets.US_ASCII)) {
+								if (null != decode(s.getBytes(StandardCharsets.US_ASCII), false)) {
 									if (s.endsWith("==")) {
-										b = java.util.Base64.getDecoder().decode(s.substring(0, s.length()-2));
+										b = Base64.getDecoder().decode(s.substring(0, s.length()-2));
 									}
 									else if (s.endsWith("=")) {
-										b = java.util.Base64.getDecoder().decode(s.substring(0, s.length()-1));
+										b = Base64.getDecoder().decode(s.substring(0, s.length()-1));
 									}
 									else {
 										fail(s);
@@ -187,7 +182,7 @@ public class Base64UtilTest {
 							}
 
 							if (b != null) {
-								assertArrayEquals(b, Base64Util.decode0(s, StandardCharsets.US_ASCII));
+								assertArrayEquals(b, decode(s.getBytes(StandardCharsets.US_ASCII), false));
 							}
 							s = "ABCD" + s;
 						}
@@ -196,5 +191,41 @@ public class Base64UtilTest {
 			}
 		}
 	}
+	
+	@Test
+	public void testDecodeMime() {
+		String base = "ABCDEFGHIJ";
+		String encoded = Base64.getEncoder().encodeToString(base.getBytes());
+		
+		assertEquals("QUJDREVGR0hJSg==", encoded);
+		assertArrayEquals(base.getBytes(), decode(encoded.getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("\r\nQUJDREVGR0hJSg".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("\r\nQUJDREVGR0hJSg=".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("\r\nQUJDREVGR0hJSg===".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("\r\nQUJDREVGR0hJSg==|".getBytes(), true));
+		assertNull(decode("\r\nQUJDREVGR0hJSg==A".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("\r\nQUJDREVGR0hJSg==".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("QUJD\r\nREVGR0hJSg==".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("QUJDREVGR0hJSg\r\n==".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("QUJDREVGR0hJSg=\r\n=".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("QUJDREVGR0hJSg==\r\n".getBytes(), true));
+		assertArrayEquals(base.getBytes(), decode("QUJ\r\nD\r\nREVGR0hJSg==\r\n".getBytes(), true));
+
+		assertArrayEquals(base.getBytes(), Base64Util.decode("\r\nQUJDREVGR0hJSg".getBytes(), true));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("\r\nQUJDREVGR0hJSg===".getBytes(), true));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("\r\nQUJDREVGR0hJSg==|".getBytes(), true));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("\r\nQUJDREVGR0hJSg==".getBytes(), true));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("QUJD\r\nREVGR0hJSg==".getBytes(), true));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("QUJDREVGR0hJSg\r\n==".getBytes(), true));
+		assertNull(Base64Util.decode("QUJDREVGR0hJSg\r\n==".getBytes()));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("QUJDREVGR0hJSg==\r\n".getBytes(), true));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("QUJ\r\nD\r\nREVGR0hJSg==\r\n".getBytes(), true));
+
+		assertArrayEquals(base.getBytes(), Base64Util.decode("QUJ\r\nD\r\nREVGR0hJSg==\r\n", StandardCharsets.US_ASCII, true));
+		assertNull(Base64Util.decode("QUJ\r\nD\r\nREVGR0hJSg==\r\n", StandardCharsets.US_ASCII, false));
+		assertNull(Base64Util.decode("QUJ\r\nD\r\nREVGR0hJSg==\r\n", StandardCharsets.US_ASCII));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("QUJDREVGR0hJSg==", StandardCharsets.US_ASCII));
+		assertArrayEquals(base.getBytes(), Base64Util.decode("QUJDREVGR0hJSg==", StandardCharsets.US_ASCII, false));
+}
 	
 }

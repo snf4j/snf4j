@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,34 +23,39 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.echo;
+package org.snf4j.core.session.ssl;
 
-import org.snf4j.core.codec.DefaultCodecExecutor;
-import org.snf4j.core.codec.ICodecExecutor;
-import org.snf4j.core.session.DefaultSessionConfig;
+import java.util.Set;
 
-public class SessionConfig extends DefaultSessionConfig {
+/**
+ * Default set of cipher and protocol filters that do not do any filtering. If
+ * no cipher or protocol is requested they return the recommended values.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public final class DefaultCipherProtocolFilters implements CipherFilter, ProtocolFilter {
+
+	/** The instance of this class */
+	public static final DefaultCipherProtocolFilters INSATNCE = new DefaultCipherProtocolFilters();
 	
-	private final int pipelineSize;
+	private DefaultCipherProtocolFilters() {}
+
+	private final String[] filter(String[] items, String[] recommendedItems, Set<String> supportedItems) {
+		if (items == null) {
+			return recommendedItems;
+		}
+		return items;
+	}
 	
-	SessionConfig(int pipelineSize) {
-		this.pipelineSize = pipelineSize;
+	@Override
+	public String[] filterCiphers(String[] ciphers, String[] recommendedCiphers, Set<String> supportedCiphers) {
+		return filter(ciphers, recommendedCiphers, supportedCiphers);
 	}
 
 	@Override
-	public ICodecExecutor createCodecExecutor() {
-		if (pipelineSize <= 0) {
-			return null;
-		}
-		
-		DefaultCodecExecutor executor = new DefaultCodecExecutor();
-
-		for (int i=0; i<pipelineSize; ++i) {
-			executor.getPipeline().add("DECODER"+i, new Decoder());
-			executor.getPipeline().add("ENCODER"+i, new Encoder());
-		}
-		return executor;
+	public String[] filterProtocols(String[] protocols, String[] recommendedProtocols, Set<String> supportedProtocols) {
+		return filter(protocols, recommendedProtocols, supportedProtocols);
 	}
-
+	
 	
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,34 +23,33 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.echo;
+package org.snf4j.core.session.ssl;
 
-import org.snf4j.core.codec.DefaultCodecExecutor;
-import org.snf4j.core.codec.ICodecExecutor;
-import org.snf4j.core.session.DefaultSessionConfig;
+import java.util.Set;
 
-public class SessionConfig extends DefaultSessionConfig {
+import javax.net.ssl.SSLEngine;
+
+/**
+ * A filter providing means for selecting protocols enabled for use on the
+ * {@link SSLEngine} based upon the requested, recommended and supported
+ * protocols.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public interface ProtocolFilter {
 	
-	private final int pipelineSize;
-	
-	SessionConfig(int pipelineSize) {
-		this.pipelineSize = pipelineSize;
-	}
+	/**
+	 * Selects protocols enabled for use on the {@link SSLEngine} based upon the
+	 * requested, recommended and supported protocols.
+	 * 
+	 * @param protocols            the requested protocols, or {@code null} if no
+	 *                             protocol was requested
+	 * @param recommendedProtocols the recommended protocols for the current
+	 *                             {@link SSLEngine}
+	 * @param supportedProtocols   the supported protocols for the current
+	 *                             {@link SSLEngine}
+	 * @return the protocols enabled for use on the current {@link SSLEngine}
+	 */
+	String[] filterProtocols(String[] protocols, String[] recommendedProtocols, Set<String> supportedProtocols);
 
-	@Override
-	public ICodecExecutor createCodecExecutor() {
-		if (pipelineSize <= 0) {
-			return null;
-		}
-		
-		DefaultCodecExecutor executor = new DefaultCodecExecutor();
-
-		for (int i=0; i<pipelineSize; ++i) {
-			executor.getPipeline().add("DECODER"+i, new Decoder());
-			executor.getPipeline().add("ENCODER"+i, new Encoder());
-		}
-		return executor;
-	}
-
-	
 }

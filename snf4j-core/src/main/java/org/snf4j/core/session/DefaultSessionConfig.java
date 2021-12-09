@@ -33,6 +33,7 @@ import javax.net.ssl.SSLEngine;
 
 import org.snf4j.core.EndingAction;
 import org.snf4j.core.codec.ICodecExecutor;
+import org.snf4j.core.session.ssl.SSLEngineBuilder;
 
 /**
  * Default configuration for the session.
@@ -41,6 +42,10 @@ import org.snf4j.core.codec.ICodecExecutor;
  */
 public class DefaultSessionConfig implements ISessionConfig {
 
+	private static final int CLIENT_SSLENGINE_BUILDER = 0;
+	
+	private static final int SERVER_SSLENGINE_BUILDER = 1;
+	
 	/** The minimum size of the input buffer used to read incoming data */
 	private int minInBufferCapacity = 2048;
 
@@ -76,6 +81,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	private int maxWriteSpinCount = 16;
 	
 	private boolean alwaysNotifiedBeingInPipeline;
+	
+	private final SSLEngineBuilder[] engineBuilders = new SSLEngineBuilder[2];
 	
 	/**
 	 * Sets the minimum capacity for the session's input buffer.
@@ -230,13 +237,59 @@ public class DefaultSessionConfig implements ISessionConfig {
 	}
 
 	/**
+	 * Adds a SSLEngine builder that will be used to create the SSLengine for
+	 * sessions associated with this configuration object.
+	 * <p>
+	 * Only two builders can be stored. One per handshaking mode: client or server.
+	 * 
+	 * @param builder an SSLEngine builder to add
+	 * @return this session config object
+	 */
+	public DefaultSessionConfig addSSLEngineBuilder(SSLEngineBuilder builder) {
+		engineBuilders[builder.isForServer() ? SERVER_SSLENGINE_BUILDER : CLIENT_SSLENGINE_BUILDER] = builder;
+		return this;
+	}
+	
+	/**
+	 * Returns the SSLEngine builder configured for specified handshaking mode.
+	 * 
+	 * @param clientMode {@code true} to return the builder for SSL engines
+	 *                   handshaking in the client mode
+	 * @return the SSL engine builder, or {@code null} if the builder is not
+	 *         configured
+	 */
+	public SSLEngineBuilder getSSLEngineBuilder(boolean clientMode) {
+		return engineBuilders[clientMode ? CLIENT_SSLENGINE_BUILDER : SERVER_SSLENGINE_BUILDER];
+	}
+	
+	/**
+	 * Removes the SSLEngine builder configured for specified handshaking mode.
+	 * 
+	 * @param clientMode {@code true} to remove the builder for SSL engines
+	 *                   handshaking in the client mode
+	 * @return this session config object
+	 */
+	public DefaultSessionConfig removeSSLEngineBuilder(boolean clientMode) {
+		engineBuilders[clientMode ? CLIENT_SSLENGINE_BUILDER : SERVER_SSLENGINE_BUILDER] = null;
+		return this;
+	}
+	
+	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * By default it returns value returned by <code>SSLContext.getDefault().createSSLEngine()</code>
+	 * By default, if no SSLEngine builder is configured for the specified
+	 * handshaking mode, it returns the engine created by calling the
+	 * <code>SSLContext.getDefault().createSSLEngine()</code>
 	 */
 	@Override
 	public SSLEngine createSSLEngine(boolean clientMode) throws SSLEngineCreateException {
+		SSLEngineBuilder builder = getSSLEngineBuilder(clientMode);
 		SSLEngine engine;
+		
+		if (builder != null) {
+			return builder.build();
+		}
+	
 		try {
 			engine = SSLContext.getDefault().createSSLEngine();
 		} catch (NoSuchAlgorithmException e) {
@@ -249,7 +302,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * By default it returns value from the {@link #createSSLEngine(boolean)} method.
+	 * By default it returns the engine created by calling the {@link #createSSLEngine(boolean)} method.
 	 */
 	@Override
 	public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {

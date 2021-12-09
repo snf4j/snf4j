@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,34 +23,32 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.example.echo;
+package org.snf4j.core.session.ssl;
 
-import org.snf4j.core.codec.DefaultCodecExecutor;
-import org.snf4j.core.codec.ICodecExecutor;
-import org.snf4j.core.session.DefaultSessionConfig;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-public class SessionConfig extends DefaultSessionConfig {
+import org.junit.Test;
+
+public class SSLContextCreateExceptionTest {
 	
-	private final int pipelineSize;
-	
-	SessionConfig(int pipelineSize) {
-		this.pipelineSize = pipelineSize;
-	}
-
-	@Override
-	public ICodecExecutor createCodecExecutor() {
-		if (pipelineSize <= 0) {
-			return null;
-		}
+	@Test
+	public void testConstructor() {
+		SSLContextCreateException e = new SSLContextCreateException(); 
+		assertNull(e.getMessage());
 		
-		DefaultCodecExecutor executor = new DefaultCodecExecutor();
+		e = new SSLContextCreateException("Test1");
+		assertEquals("Test1", e.getMessage());
 
-		for (int i=0; i<pipelineSize; ++i) {
-			executor.getPipeline().add("DECODER"+i, new Decoder());
-			executor.getPipeline().add("ENCODER"+i, new Encoder());
-		}
-		return executor;
+		Exception cause = new Exception("Cause1");
+		e = new SSLContextCreateException("Test2", cause);
+		assertEquals("Test2", e.getMessage());
+		assertTrue(cause == e.getCause());
+		
+		e = new SSLContextCreateException(cause);
+		assertEquals(cause.toString(), e.getMessage());
+		assertTrue(cause == e.getCause());
 	}
 
-	
 }

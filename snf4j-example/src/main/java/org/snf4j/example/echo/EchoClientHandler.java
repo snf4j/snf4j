@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,15 +35,33 @@ import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractStreamHandler;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.handler.SessionIncident;
+import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.session.ssl.SSLEngineBuilder;
 
 public class EchoClientHandler extends AbstractStreamHandler {
 
 	private static final IByteBufferAllocator ALLOCATOR = new ThreadLocalCachingAllocator(true);
 	
+	private final DefaultSessionConfig config;
+	
 	private long startTime;
 	
 	private long totalBytes;
+	
+	EchoClientHandler() {	
+		this(null);
+	}
+	
+	EchoClientHandler(SSLEngineBuilder builder) {
+		config =  new SessionConfig(EchoClient.PIPELINE_SIZE)
+				.setEndingAction(EndingAction.STOP)
+				.setOptimizeDataCopying(true)
+				.setMinOutBufferCapacity(EchoClient.SIZE << 1);
+		if (builder != null) {
+			config.addSSLEngineBuilder(builder);
+		}
+	}
 	
 	boolean read(int size) {
 		totalBytes += size;
@@ -107,10 +125,7 @@ public class EchoClientHandler extends AbstractStreamHandler {
 	
 	@Override
 	public ISessionConfig getConfig() {
-		return new SessionConfig(EchoClient.PIPELINE_SIZE)
-				.setEndingAction(EndingAction.STOP)
-				.setOptimizeDataCopying(true)
-				.setMinOutBufferCapacity(EchoClient.SIZE << 1);
+		return config;
 	}
 	
 	@Override

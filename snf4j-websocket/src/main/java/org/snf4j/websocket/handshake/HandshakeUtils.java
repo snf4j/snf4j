@@ -107,15 +107,10 @@ class HandshakeUtils {
 	}
 	
 	static byte[] parseKey(String key) {
-		try {
-			byte[] bytes = Base64Util.decode(HttpUtils.bytes(key));
+		byte[] bytes = Base64Util.decode(HttpUtils.bytes(key));
 
-			if (bytes.length == 16) {
-				return bytes;
-			}
-		}
-		catch (Exception e) {
-			//Ignore
+		if (bytes != null && bytes.length == 16) {
+			return bytes;
 		}
 		return null;
 	}

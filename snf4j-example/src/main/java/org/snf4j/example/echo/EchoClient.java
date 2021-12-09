@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2021 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,8 @@ import java.nio.channels.SocketChannel;
 
 import org.snf4j.core.SSLSession;
 import org.snf4j.core.SelectorLoop;
+import org.snf4j.core.session.ssl.SSLContextBuilder;
+import org.snf4j.core.session.ssl.SSLEngineBuilder;
 
 public class EchoClient {
 	static final String PREFIX = "org.snf4j.";
@@ -38,7 +40,7 @@ public class EchoClient {
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 	static final int SIZE = Integer.getInteger(PREFIX+"Size", 512);
 	static final long TOTAL_SIZE = Long.getLong(PREFIX+"TotalSize", 1024*1024*1024);
-	static final boolean SECURE = Integer.getInteger(PREFIX+"Secure") != null;
+	static final boolean SECURE = System.getProperty(PREFIX+"Secure") != null;
 	static final int PIPELINE_SIZE = Integer.getInteger(PREFIX+"PipelineSize", 0);
 	
 	public static void main(String[] args) throws Exception {
@@ -54,7 +56,14 @@ public class EchoClient {
 			
 			// Register the channel
 			if (SECURE) {
-				loop.register(channel, new SSLSession(new EchoClientHandler(), true));
+				
+				// Configure SSL connection
+				SSLEngineBuilder builder = SSLContextBuilder.forClient()
+					.keyManager(KeyStoreLoader.keyManagerFactory())
+					.trustManager(KeyStoreLoader.trustManagerFactory())
+					.engineBuilder();
+				
+				loop.register(channel, new SSLSession(new EchoClientHandler(builder), true));
 			}
 			else {
 				loop.register(channel, new EchoClientHandler());

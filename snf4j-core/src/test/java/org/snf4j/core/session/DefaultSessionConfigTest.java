@@ -25,6 +25,7 @@
  */
 package org.snf4j.core.session;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -32,10 +33,12 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
 import org.junit.Test;
 import org.snf4j.core.EndingAction;
+import org.snf4j.core.session.ssl.SSLEngineBuilder;
 
 public class DefaultSessionConfigTest {
 
@@ -112,5 +115,73 @@ public class DefaultSessionConfigTest {
 		catch (IllegalArgumentException e) {
 		}
 		
+	}
+	
+	@Test
+	public void testAddSSLEngineBuilder() throws Exception {
+		DefaultSessionConfig c = new DefaultSessionConfig();
+		SSLContext context = SSLContext.getDefault();
+		SSLEngineBuilder cb1 = SSLEngineBuilder.forClient(context);
+		SSLEngineBuilder cb2 = SSLEngineBuilder.forClient(context);
+		SSLEngineBuilder sb1 = SSLEngineBuilder.forServer(context);
+		SSLEngineBuilder sb2 = SSLEngineBuilder.forServer(context);
+		
+		assertNull(c.getSSLEngineBuilder(true));
+		assertNull(c.getSSLEngineBuilder(false));
+		assertTrue (c == c.addSSLEngineBuilder(cb1));
+		assertTrue(cb1 == c.getSSLEngineBuilder(true));
+		assertNull(c.getSSLEngineBuilder(false));
+		c.addSSLEngineBuilder(sb1);
+		assertTrue(cb1 == c.getSSLEngineBuilder(true));
+		assertTrue(sb1 == c.getSSLEngineBuilder(false));
+		c.addSSLEngineBuilder(cb2);
+		assertTrue(cb2 == c.getSSLEngineBuilder(true));
+		assertTrue(sb1 == c.getSSLEngineBuilder(false));
+		c.addSSLEngineBuilder(sb2);
+		assertTrue(cb2 == c.getSSLEngineBuilder(true));
+		assertTrue(sb2 == c.getSSLEngineBuilder(false));
+		assertTrue (c == c.removeSSLEngineBuilder(true));
+		assertNull(c.getSSLEngineBuilder(true));
+		assertTrue(sb2 == c.getSSLEngineBuilder(false));
+		c.removeSSLEngineBuilder(false);
+		assertNull(c.getSSLEngineBuilder(true));
+		assertNull(c.getSSLEngineBuilder(false));
+	}
+	
+	@Test
+	public void testCreateSSLEngine() throws Exception {
+		DefaultSessionConfig c = new DefaultSessionConfig();
+		SSLContext context = SSLContext.getInstance("TLS");
+		context.init(null, null, null);
+		SSLEngineBuilder cb = SSLEngineBuilder.forClient(context).protocols("TLSv1.2");
+		SSLEngineBuilder sb = SSLEngineBuilder.forServer(context).protocols("TLSv1.2");
+		SSLEngine e,defc,defs;
+		String[] tls12 = new String[] {"TLSv1.2"};
+		
+		defc = SSLContext.getDefault().createSSLEngine();
+		defc.setUseClientMode(true);
+		defs = SSLContext.getDefault().createSSLEngine();
+		defs.setUseClientMode(false);
+		e = c.createSSLEngine(true);
+		assertTrue(e.getUseClientMode());
+		assertArrayEquals(defc.getEnabledProtocols(), e.getEnabledProtocols());
+		e = c.createSSLEngine(false);
+		assertFalse(e.getUseClientMode());
+		assertArrayEquals(defs.getEnabledProtocols(), e.getEnabledProtocols());
+		
+		c.addSSLEngineBuilder(cb);
+		e = c.createSSLEngine(true);
+		assertTrue(e.getUseClientMode());
+		assertArrayEquals(tls12, e.getEnabledProtocols());
+		e = c.createSSLEngine(false);
+		assertFalse(e.getUseClientMode());
+		assertArrayEquals(defs.getEnabledProtocols(), e.getEnabledProtocols());
+		c.addSSLEngineBuilder(sb);
+		e = c.createSSLEngine(true);
+		assertTrue(e.getUseClientMode());
+		assertArrayEquals(tls12, e.getEnabledProtocols());
+		e = c.createSSLEngine(false);
+		assertFalse(e.getUseClientMode());
+		assertArrayEquals(tls12, e.getEnabledProtocols());
 	}
 }
