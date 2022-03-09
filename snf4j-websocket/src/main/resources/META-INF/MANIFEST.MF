@@ -20,4 +20,5 @@ Import-Package: org.snf4j.core;version=${parsedVersion.osgiVersion},
   org.snf4j.core.proxy;version=${parsedVersion.osgiVersion},
   org.snf4j.core.session;version=${parsedVersion.osgiVersion},
   org.snf4j.core.thread;version=${parsedVersion.osgiVersion},
-  org.snf4j.core.timer;version=${parsedVersion.osgiVersion}
+  org.snf4j.core.timer;version=${parsedVersion.osgiVersion},
+  org.snf4j.core.util;version=${parsedVersion.osgiVersion}

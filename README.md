@@ -29,6 +29,7 @@ The framework is designed to be simple in use and moderately easy to understand.
 ## Supported Protocols
 
 * HTTP Web Proxy Connect Protocol
+* SOCKS Protocols
 * WebSocket Protocol
  
 ## Security

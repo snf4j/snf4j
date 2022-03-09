@@ -1,3 +1,9 @@
+#### 1.9.0
+ - 2022-03-09 - [changes](https://github.com/snf4j/snf4j/compare/v1.8.0...v1.9.0)
+ - Support for connection through SOCKS proxy [(#81)](https://github.com/snf4j/snf4j/pull/81)
+ - Added proxy basic HTTP authentication scheme [(#82)](https://github.com/snf4j/snf4j/pull/82)
+ - Added builders for SSLContext and SSLEngine [(#83)](https://github.com/snf4j/snf4j/pull/83)
+
 #### 1.8.0
  - 2021-11-01 - [changes](https://github.com/snf4j/snf4j/compare/v1.7.0...v1.8.0)
  - Migrated from Travis-CI to GitHub Action [(#67)](https://github.com/snf4j/snf4j/pull/67)
