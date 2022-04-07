@@ -4016,6 +4016,9 @@ public class SessionTest {
 			}
 			catch (Throwable e) {
 			}
+			finally {
+				socket.close();
+			}
 		}
 		finally {
 			proxy.stop(TIMEOUT);

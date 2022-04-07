@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1261,6 +1261,7 @@ public class SctpSessionTest extends SctpTest {
 		
 		assertNull(session.getEncodeTaskWriter().write((SocketAddress)null, nopb("1233"), true));
 		assertNull(session.getEncodeTaskWriter().write((SocketAddress)null, nopbb("1233"), true));
+		assertNull(session.getEncodeTaskWriter().write((SocketAddress)null, new SingleByteBufferHolder(nopbb("1233")), true));
 		
 		session.write(nop("456")).sync(TIMEOUT);
 		assertWrite("DR|NOP(456e)|");
@@ -2030,6 +2031,19 @@ public class SctpSessionTest extends SctpTest {
 		assertWrite("DR|NOP(1)|");
 		assertAllocatorDeltas(0, 1, 0);
 		assertEquals(0, getOut(c).size());
+
+		p11.replace("E1", "E1", new ArrayToHolderEncoder(true));
+		session.writenf(nopb("12"));
+		assertWrite("DR|NOP(12)|");
+		assertAllocatorDeltas(1, 1, 0);
+		assertEquals(0, getOut(c).size());
+
+		p11.replace("E1", "E1", new ArrayToHolderEncoder(false));
+		session.writenf(nopb("1234"));
+		assertWrite("DR|NOP(1234)|");
+		assertAllocatorDeltas(3, 3, 0);
+		assertEquals(0, getOut(c).size());
+		
 		c.stop(TIMEOUT);
 		assertAllocatorDeltas(1, 1, 0);
 		
@@ -2097,6 +2111,35 @@ public class SctpSessionTest extends SctpTest {
 		c.stop(TIMEOUT);
 		assertAllocatorDeltas(0, 0, 2);
 		
+	}
+	
+	class ArrayToHolderEncoder implements IEncoder<byte[],IByteBufferHolder> {
+
+		boolean single;
+		
+		ArrayToHolderEncoder(boolean single) {
+			this.single = single;
+		}
+		
+		@Override
+		public Class<byte[]> getInboundType() {
+			return byte[].class;
+		}
+
+		@Override
+		public Class<IByteBufferHolder> getOutboundType() {
+			return IByteBufferHolder.class;
+		}
+
+		@Override
+		public void encode(ISession session, byte[] data, List<IByteBufferHolder> out) throws Exception {
+			if (single) {
+				out.add(SessionTest.createHolder(session, data));
+			}
+			else {
+				out.add(SessionTest.createHolder(session, data, 1));
+			}
+		}
 	}
 	
 	class BufferToBufferEncoder implements IEncoder<ByteBuffer,ByteBuffer> {

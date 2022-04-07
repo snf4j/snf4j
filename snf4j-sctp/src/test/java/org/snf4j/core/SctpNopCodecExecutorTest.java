@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,7 @@ public class SctpNopCodecExecutorTest {
 		assertNull(e.getBaseDecoder());
 		assertFalse(e.hasDecoders());
 		assertNull(e.encode(null, (ByteBuffer)null));
+		assertNull(e.encode(null, (IByteBufferHolder)null));
 		assertNull(e.encode(null, (byte[])null));
 		assertNull(e.encode(null, (Object)null));
 		assertNull(e.decode(null, (byte[])null));

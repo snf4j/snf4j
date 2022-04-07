@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -78,6 +78,23 @@ class SctpEncodeTask extends EncodeTask {
 	@Override
 	protected IFuture<Void> write(ByteBuffer data, boolean withFuture) {
 		return writer.write(msgInfo, data, withFuture);
+	}
+
+	@Override
+	protected IFuture<Void> write(IByteBufferHolder data, boolean withFuture) {
+		ByteBuffer[] bufs = data.toArray();
+		
+		if (bufs.length == 1) {
+			return writer.write(msgInfo, bufs[0], withFuture);
+		}
+		ByteBuffer newBuf = session.allocate(data.remaining());
+		
+		for (ByteBuffer buf: bufs) {
+			newBuf.put(buf);
+			session.release(buf);
+		}
+		newBuf.flip();
+		return writer.write(msgInfo, newBuf, withFuture);
 	}
 	
 	@Override
