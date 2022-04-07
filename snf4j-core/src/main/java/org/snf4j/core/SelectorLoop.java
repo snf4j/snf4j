@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -691,7 +691,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 	final int handleWriting(final DatagramSession session, final SelectionKey key, int spinCount) {
 		long totalBytes = 0;
 		long leftBytes = 0;
-		int bytes;
+		long bytes;
 		Exception exception = null;
 		
 		if (traceEnabled) {
@@ -705,13 +705,35 @@ public class SelectorLoop extends InternalSelectorLoop {
 		
 		try {
 			while (spinCount > 0 && (record = outQueue.peek()) != null) {
-				long length = record.buffer.remaining();
+				long length = record.holder.remaining();
+				ByteBuffer[] buffers = record.holder.toArray();
 				
 				if (isConnected) {
-					bytes = channel.write(record.buffer);
+					if (buffers.length == 1) {
+						bytes = channel.write(buffers[0]);
+					}
+					else {
+						bytes = channel.write(buffers);
+					}
 				}
 				else if (record.address != null) {
-					bytes = channel.send(record.buffer, record.address);
+					if (buffers.length == 1) {
+						bytes = channel.send(buffers[0], record.address);
+					}
+					else {
+						ByteBuffer newBuffer = session.allocate((int)length);
+						
+						for (ByteBuffer buffer: buffers) {
+							newBuffer.put(buffer);
+							if (record.release) {
+								session.release(buffer);
+							}
+						}
+						newBuffer.flip();
+						record.holder = new SingleByteBufferHolder(newBuffer);
+						record.release = true;
+						bytes = channel.send(newBuffer, record.address);
+					}
 				}
 				else {
 					throw new NotYetConnectedException();
@@ -725,7 +747,9 @@ public class SelectorLoop extends InternalSelectorLoop {
 					totalBytes += bytes;
 					--spinCount;
 					if (record.release) {
-						session.release(record.buffer);
+						for (ByteBuffer buffer: record.holder.toArray()) {
+							session.release(buffer);
+						}
 					}
 					if (record.address != null) {
 						fireEvent(session, DataEvent.SENT, bytes, record.address);

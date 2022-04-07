@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -246,7 +246,7 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 		return needFuture ? futuresController.getCancelledFuture() : null;
 		
 	}
-	
+
 	@Override
 	public IFuture<Void> write(ByteBuffer data) {
 		if (data == null) {
@@ -272,6 +272,15 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 				write0(data, data.remaining(), false);
 			}
 		}		
+	}
+
+	private final IFuture<Void> write0(IByteBufferHolder holder, boolean needFuture) {
+		checkKey(key);
+		if (closing == ClosingState.NONE) {
+			return internal.write(holder, -1, needFuture);
+		}
+		return needFuture ? futuresController.getCancelledFuture() : null;
+		
 	}
 	
 	@Override
@@ -304,7 +313,34 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 			}
 		}
 	}
-		
+
+	@Override
+	public IFuture<Void> write(IByteBufferHolder holder) {
+		if (holder == null) {
+			throw new NullPointerException();
+		} else if (holder.remaining() == 0) {
+			return futuresController.getSuccessfulFuture();
+		}
+		if (codec != null) {
+			return new EncodeTask(this, holder).register();
+		}
+		return write0(holder, true);
+	}
+
+	@Override
+	public void writenf(IByteBufferHolder holder) {
+		if (holder == null) {
+			throw new NullPointerException();
+		} else if (holder.remaining() > 0) {
+			if (codec != null) {
+				new EncodeTask(this, holder).registernf();
+			}
+			else {
+				write0(holder, false);
+			}
+		}		
+	}
+	
 	@Override
 	public void close() {
 		SelectionKey key = this.key;
@@ -365,6 +401,11 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 		@Override
 		public IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture) {
 			return write0(bytes, 0, bytes.length, withFuture);
+		}
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, IByteBufferHolder holder, boolean withFuture) {
+			return write0(holder, withFuture);
 		}
 	}
 }

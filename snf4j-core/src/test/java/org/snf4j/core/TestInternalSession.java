@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -142,6 +142,15 @@ public class TestInternalSession extends InternalSession implements IStreamSessi
 
 	@Override
 	public void writenf(Object msg) {
+	}
+
+	@Override
+	public IFuture<Void> write(IByteBufferHolder holder) {
+		return null;
+	}
+
+	@Override
+	public void writenf(IByteBufferHolder holder) {
 	}
 
 }

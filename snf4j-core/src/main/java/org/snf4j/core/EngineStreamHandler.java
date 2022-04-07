@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -453,7 +453,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		return future;
 	}	
 
-	IFuture<Void> write(ByteBuffer data, int length, boolean needFuture) {
+	IFuture<Void> write(Object data, int length, boolean needFuture) {
 		ITwoThresholdFuture<Void> future;
 		
 		synchronized (writeLock) {
@@ -466,12 +466,27 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 			
 			boolean optimize = session.optimizeBuffers;
 			
-			if (optimize && data.remaining() == length) {
+			if (length == -1) {
+				IByteBufferHolder holder = (IByteBufferHolder)data;
+				
+				if (outAppBuffers.length == 0) {
+					outAppBuffers = DEFAULT_ARRAY;
+					outAppBuffers[0] = optimize ? null : allocator.allocate(minAppBufferSize);
+				}
+				length = holder.remaining();
+				if (optimize) {
+					outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, holder);
+				}
+				else {
+					outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, minAppBufferSize, holder);
+				}
+			}
+			else if (optimize && ((ByteBuffer)data).remaining() == length) {
 				if (outAppBuffers.length == 0) {
 					outAppBuffers = DEFAULT_ARRAY;
 					outAppBuffers[0] = null;
 				}
-				outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, data);				
+				outAppBuffers = StreamSession.putToBuffers(outAppBuffers, allocator, (ByteBuffer)data);				
 			}
 			else {
 				if (outAppBuffers.length == 0) {

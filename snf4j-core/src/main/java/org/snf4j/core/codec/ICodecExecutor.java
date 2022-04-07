@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ package org.snf4j.core.codec;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.snf4j.core.IByteBufferHolder;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
@@ -141,6 +142,24 @@ public interface ICodecExecutor {
 	 *             if one of the encoders failed during the encoding
 	 */
 	List<Object> encode(ISession session, ByteBuffer data) throws Exception;
+
+	/**
+	 * Encodes bytes from a byte buffer holder.
+	 * <p>
+	 * This method should ignore all changes in the associated pipeline that
+	 * have not been synchronized yet by calling {@link #syncEncoders}.
+	 * 
+	 * @param session
+	 *            the session for which the encoding is performed
+	 * @param data
+	 *            the bytes to encode
+	 * @return a list of produced outbound objects, or {@code null} if the
+	 *         pipeline is empty or has no encoders that produce outbound
+	 *         object(s)
+	 * @throws Exception
+	 *             if one of the encoders failed during the encoding
+	 */
+	List<Object> encode(ISession session, IByteBufferHolder data) throws Exception;
 
 	/**
 	 * Encodes bytes from a byte array.

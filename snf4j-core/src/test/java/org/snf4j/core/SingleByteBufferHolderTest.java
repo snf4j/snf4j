@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2022 SNF4J contributors
+ * Copyright (c) 2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,39 +23,44 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.codec;
+package org.snf4j.core;
 
-class DecoderContext extends CodecContext {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
+import java.nio.ByteBuffer;
+
+import org.junit.Test;
+
+public class SingleByteBufferHolderTest {
 	
-	final private IDecoder<?,?> decoder;
-	
-	DecoderContext(Object key, IDecoder<?,?> decoder) {
-		super(key, decoder);
-		this.decoder = decoder;
-	}
-	
-	@SuppressWarnings("rawtypes")
-	final IDecoder getDecoder() {
-		return decoder;
+	@Test
+	public void testAll() {
+		ByteBuffer b = ByteBuffer.allocate(100);
+		
+		b.put(new byte[] {1,2}).flip();
+		SingleByteBufferHolder h = new SingleByteBufferHolder(b);
+		assertEquals(2, h.remaining());
+		assertTrue(h.hasRemaining());
+		assertSame(b, h.toArray()[0]);
+		assertEquals(1, h.toArray().length);
+		b.get();
+		assertEquals(1, h.remaining());
+		assertTrue(h.hasRemaining());
+		b.get();
+		assertEquals(0, h.remaining());
+		assertFalse(h.hasRemaining());
+		b.clear().flip();
+		assertEquals(0, h.remaining());
+		assertFalse(h.hasRemaining());
+		assertFalse(h.isMessage());
 	}
 
-	@Override
-	final boolean isValid(CodecContext previous) {
-		if (previous == null) {
-			return inboundByte && !inboundHolder;
-		}
-		if (previous instanceof DecoderContext) {
-			if (previous.clogged) {
-				return isValid(previous.prev);
-			}
-			return decoder.getInboundType().isAssignableFrom(((DecoderContext)previous).decoder.getOutboundType());
-		}
-		return false;
+	@Test (expected = IllegalArgumentException.class)
+	public void testFailure() {
+		new SingleByteBufferHolder(null);
 	}
 	
-	@Override
-	final boolean isDecoder() {
-		return true;
-	}
-
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,8 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import org.junit.Test;
+import org.snf4j.core.ByteBufferHolder;
+import org.snf4j.core.IByteBufferHolder;
 import org.snf4j.core.session.ISession;
 
 public class DecoderContextTest {
@@ -58,6 +60,7 @@ public class DecoderContextTest {
 		assertEquals("Name1", ctx.getKey());
 		assertFalse(ctx.isInboundByte());
 		assertFalse(ctx.isInboundByteArray());
+		assertFalse(ctx.isInboundHolder());
 		assertFalse(ctx.isValid(null));
 		assertTrue(ctx.isValid(new DecoderContext("",new BA())));
 		assertTrue(ctx.isValid(new DecoderContext("",new BAA())));
@@ -68,27 +71,44 @@ public class DecoderContextTest {
 		ctx = get(new baB());
 		assertTrue(ctx.isInboundByte());
 		assertTrue(ctx.isInboundByteArray());
+		assertFalse(ctx.isInboundHolder());
 		assertTrue(ctx.isValid(null));
 
 		ctx = get(new bbB());
 		assertTrue(ctx.isInboundByte());
 		assertFalse(ctx.isInboundByteArray());
+		assertFalse(ctx.isInboundHolder());
 		assertTrue(ctx.isValid(null));
 
 		ctx = get(new bbbB());
 		assertFalse(ctx.isInboundByte());
 		assertFalse(ctx.isInboundByteArray());
+		assertFalse(ctx.isInboundHolder());
 		assertFalse(ctx.isValid(null));
 
 		ctx = get(new bb0B());
 		assertTrue(ctx.isInboundByte());
 		assertFalse(ctx.isInboundByteArray());
+		assertFalse(ctx.isInboundHolder());
 		assertTrue(ctx.isValid(null));
 		assertFalse(ctx.isClogged());
+
+		ctx = get(new bhB());
+		assertTrue(ctx.isInboundByte());
+		assertFalse(ctx.isInboundByteArray());
+		assertTrue(ctx.isInboundHolder());
+		assertFalse(ctx.isValid(null));
+
+		ctx = get(new bhhB());
+		assertFalse(ctx.isInboundByte());
+		assertFalse(ctx.isInboundByteArray());
+		assertFalse(ctx.isInboundHolder());
+		assertFalse(ctx.isValid(null));
 		
 		ctx = get(new BV());
 		assertFalse(ctx.isInboundByte());
 		assertFalse(ctx.isInboundByteArray());
+		assertFalse(ctx.isInboundHolder());
 		assertFalse(ctx.isValid(null));
 		assertTrue(ctx.isClogged());
 
@@ -319,6 +339,18 @@ public class DecoderContextTest {
 		@Override public Class<Buffer> getInboundType() {return Buffer.class;}
 		@Override public Class<B> getOutboundType() {return B.class;}
 		@Override public void decode(ISession session, Buffer data, List<B> out) {}
+	}
+	
+	static class bhB implements IDecoder<IByteBufferHolder,B> {
+		@Override public Class<IByteBufferHolder> getInboundType() {return IByteBufferHolder.class;}
+		@Override public Class<B> getOutboundType() {return B.class;}
+		@Override public void decode(ISession session, IByteBufferHolder data, List<B> out) {}
+	}
+
+	static class bhhB implements IDecoder<ByteBufferHolder,B> {
+		@Override public Class<ByteBufferHolder> getInboundType() {return ByteBufferHolder.class;}
+		@Override public Class<B> getOutboundType() {return B.class;}
+		@Override public void decode(ISession session, ByteBufferHolder data, List<B> out) {}
 	}
 	
 	static class ABE implements IEncoder<B,A> {

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -818,12 +818,32 @@ public class SessionTest {
 		c.waitForDataSent(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(0)|", c.getRecordedData(true));
 		
+		data = new Packet(PacketType.ECHO, "01234567").toBytes();
+		ByteBufferHolder holder = new ByteBufferHolder();
+		holder.add(ByteBuffer.wrap(data, 0, 4));
+		holder.add(ByteBuffer.wrap(data, 4, data.length-4));
+		session.write((Object)holder).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(01234567)|", c.getRecordedData(true));
+		holder = new ByteBufferHolder();
+		holder.add(ByteBuffer.wrap(data, 0, 4));
+		holder.add(ByteBuffer.wrap(data, 4, data.length-4));
+		session.writenf((Object)holder);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(01234567)|", c.getRecordedData(true));
+
 		
 		session.closing = ClosingState.SENDING;
 		assertFalse(session.write(new byte[3], 0, 1).isSuccessful());
 		assertFalse(session.write(new byte[3]).isSuccessful());
 		assertFalse(session.write(getBuffer(10,0)).isSuccessful());
 		assertFalse(session.write(getBuffer(10,0), 5).isSuccessful());
+		holder = new ByteBufferHolder();
+		holder.add(ByteBuffer.wrap(data, 0, 4));
+		holder.add(ByteBuffer.wrap(data, 4, data.length-4));
+		assertFalse(session.write(holder).isSuccessful());
 		session.closing = ClosingState.NONE;
 
 		c.stop(TIMEOUT);
@@ -846,6 +866,11 @@ public class SessionTest {
 		catch (NullPointerException e) {}
 		try {
 			session.write((ByteBuffer)null, 0);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
+			session.write((IByteBufferHolder)null);
 			fail("Exception not thrown");
 		}
 		catch (NullPointerException e) {}
@@ -875,6 +900,11 @@ public class SessionTest {
 		}
 		catch (NullPointerException e) {}
 		try {
+			session.writenf((IByteBufferHolder)null);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
 			session.writenf((Object)null);
 			fail("Exception not thrown");
 		}
@@ -885,11 +915,13 @@ public class SessionTest {
 		assertTrue(session.write(getBuffer(0,0)).isSuccessful());
 		assertTrue(session.write(getBuffer(10,0), 0).isSuccessful());
 		assertTrue(session.write(new byte[3], 1, 0).isSuccessful());
+		assertTrue(session.write(new ByteBufferHolder()).isSuccessful());
 		session.writenf(new byte[0]);
 		session.writenf(new byte[3], 0, 0);
 		session.writenf(getBuffer(0,0));
 		session.writenf(getBuffer(10,0), 0);
 		session.writenf(new byte[3], 1, 0);
+		session.writenf(new ByteBufferHolder());
 		
 		assertOutOfBoundException(session, new byte[10], -1, 4);
 		assertOutOfBoundException(session, new byte[10], 10, 1);
@@ -3280,6 +3312,148 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals(1, c.allocator.getSize());
 		
+	}
+
+	public static ByteBufferHolder createHolder(ISession session, byte[] data, int... sizes) {
+		ByteBufferHolder holder = new ByteBufferHolder();
+		int off=0, i=0, totalSize=0;
+		int[] sizeArray = new int[sizes.length+1];
+		
+		for (; i<sizes.length; ++i) {
+			sizeArray[i] = sizes[i];
+			totalSize += sizes[i];
+		}
+		sizeArray[i] = data.length - totalSize;
+		
+		for (int size: sizeArray) {
+			ByteBuffer buf;
+			
+			if (session != null) {
+				buf = session.allocate(size);
+			}
+			else {
+				buf = ByteBuffer.allocate(size);
+			}
+			buf.put(data, off, size).flip();
+			off += size;
+			holder.add(buf);
+		}
+		return holder;
+	}
+	
+	@Test
+	public void testWriteByteBufferHolder() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.allocator = new TestAllocator(false, true);
+		c.optimizeDataCopying = true;
+		c.ignoreAvailableException = true;
+		s.allocator = new TestAllocator(false, true);
+		
+		s.start();
+		c.start();
+		s.waitForSessionReady(TIMEOUT);
+		c.waitForSessionReady(TIMEOUT);
+
+		StreamSession session = c.getSession();
+		byte[] bytes = new Packet(PacketType.NOP , "1234567890").toBytes();
+		assertEquals(0, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getReleasedCount());
+		assertEquals(0, c.allocator.getSize());
+		
+		ByteBufferHolder holder = createHolder(session, bytes, 5);
+		assertEquals(2, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getReleasedCount());
+		assertEquals(2, c.allocator.getSize());
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		session.write(holder).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));	
+		assertEquals(2, c.allocator.getAllocatedCount());
+		assertEquals(2, c.allocator.getReleasedCount());
+		assertEquals(0, c.allocator.getSize());
+		holder = createHolder(session, bytes);
+		assertEquals(3, c.allocator.getAllocatedCount());
+		assertEquals(2, c.allocator.getReleasedCount());
+		assertEquals(1, c.allocator.getSize());
+		session.writenf(holder);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));	
+		assertEquals(3, c.allocator.getAllocatedCount());
+		assertEquals(3, c.allocator.getReleasedCount());
+		assertEquals(0, c.allocator.getSize());
+		
+		Field f = StreamSession.class.getDeclaredField("outBuffers");
+		f.setAccessible(true);
+		ByteBuffer[] buffers = new ByteBuffer[1];
+		buffers[0] = session.allocate(10);
+		f.set(session, buffers);
+		holder = createHolder(session, bytes, 2, 3);
+		assertEquals(7, c.allocator.getAllocatedCount());
+		assertEquals(3, c.allocator.getReleasedCount());
+		assertEquals(4, c.allocator.getSize());
+		session.writenf(holder);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));	
+		assertEquals(7, c.allocator.getAllocatedCount());
+		assertEquals(7, c.allocator.getReleasedCount());
+		assertEquals(0, c.allocator.getSize());
+		holder = createHolder(session, bytes, 2, 3);
+		assertEquals(10, c.allocator.getAllocatedCount());
+		assertEquals(7, c.allocator.getReleasedCount());
+		assertEquals(3, c.allocator.getSize());
+		ByteBuffer buffer = holder.remove(0);
+		buffer.position(buffer.limit());
+		buffer.limit(buffer.capacity());
+		buffers[0] = buffer;
+		f.set(session, buffers);
+		session.writenf(holder);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));	
+
+		holder = createHolder(session, bytes, 2, 0, 3);
+		assertEquals(4, c.allocator.getSize());
+		session.writenf(holder);
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", c.getRecordedData(true));
+		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));	
+		assertEquals(0, c.allocator.getSize());
+		
+		session = s.getSession();
+		assertEquals(2, s.allocator.getSize());
+		holder = createHolder(session, bytes);
+		session.writenf(holder);
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", s.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(1234567890)|", c.getRecordedData(true));	
+		assertEquals(3, s.allocator.getSize());
+		holder = createHolder(session, bytes,3,0,3);
+		session.writenf(holder);
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", s.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(1234567890)|", c.getRecordedData(true));	
+		assertEquals(7, s.allocator.getSize());
+
+		f.set(session, new ByteBuffer[0]);
+		holder = createHolder(session, bytes,3);
+		session.writenf(holder);
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|", s.getRecordedData(true));
+		assertEquals("DR|BUF|NOP(1234567890)|", c.getRecordedData(true));	
+		assertEquals(10, s.allocator.getSize());
 	}
 	
 	@Test

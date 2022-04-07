@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,8 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import org.junit.Test;
+import org.snf4j.core.ByteBufferHolder;
+import org.snf4j.core.IByteBufferHolder;
 import org.snf4j.core.session.ISession;
 
 public class EncoderContextTest {
@@ -57,6 +59,7 @@ public class EncoderContextTest {
 		EncoderContext ctx = new EncoderContext("Name1", ab);
 		assertEquals("Name1", ctx.getKey());
 		assertFalse(ctx.isOutboundByte());
+		assertFalse(ctx.isOutboundHolder());
 		assertFalse(ctx.isOutboundByteArray());
 		assertFalse(ctx.isValid(null));
 		assertTrue(ctx.isValid(get(new BA())));
@@ -68,29 +71,46 @@ public class EncoderContextTest {
 		ctx = get(new B_ba());
 		assertTrue(ctx.isOutboundByte());
 		assertTrue(ctx.isOutboundByteArray());
+		assertFalse(ctx.isOutboundHolder());
 		assertTrue(ctx.isValid(null));
 
 		ctx = get(new B_bb());
 		assertTrue(ctx.isOutboundByte());
 		assertFalse(ctx.isOutboundByteArray());
+		assertFalse(ctx.isOutboundHolder());
 		assertTrue(ctx.isValid(null));
 
 		ctx = get(new B_bbb());
 		assertTrue(ctx.isOutboundByte());
 		assertFalse(ctx.isOutboundByteArray());
+		assertFalse(ctx.isOutboundHolder());
 		assertTrue(ctx.isValid(null));
 
 		ctx = get(new B_b0());
 		assertFalse(ctx.isOutboundByte());
 		assertFalse(ctx.isOutboundByteArray());
+		assertFalse(ctx.isOutboundHolder());
 		assertFalse(ctx.isValid(null));
 		assertFalse(ctx.isClogged());
 		
 		ctx = get(new BV());
 		assertFalse(ctx.isInboundByte());
 		assertFalse(ctx.isInboundByteArray());
+		assertFalse(ctx.isOutboundHolder());
 		assertFalse(ctx.isValid(null));
 		assertTrue(ctx.isClogged());
+
+		ctx = get(new B_bh());
+		assertTrue(ctx.isOutboundByte());
+		assertFalse(ctx.isOutboundByteArray());
+		assertTrue(ctx.isOutboundHolder());
+		assertTrue(ctx.isValid(null));
+
+		ctx = get(new B_bhh());
+		assertTrue(ctx.isOutboundByte());
+		assertFalse(ctx.isOutboundByteArray());
+		assertTrue(ctx.isOutboundHolder());
+		assertTrue(ctx.isValid(null));
 		
 		ctx = get(new AB());
 		assertFalse(ctx.isValid(new DecoderContext("",new ABD())));
@@ -102,43 +122,65 @@ public class EncoderContextTest {
 		assertTrue(ctx.isValid(null));
 		assertTrue(ctx.isValid(get(new bbV())));
 		assertTrue(ctx.isValid(get(new baV())));
+		assertTrue(ctx.isValid(get(new bhV())));
 		assertTrue(ctx.isValid(get(new baV(), new bbV())));
+		assertTrue(ctx.isValid(get(new baV(), new bbV(), new bhV())));
 		
 		ctx = get(new bbV());
 		assertTrue(ctx.isValid(null));
 		assertTrue(ctx.isValid(get(new bbV())));
 		assertTrue(ctx.isValid(get(new baV())));
+		assertTrue(ctx.isValid(get(new bhV())));
 		assertTrue(ctx.isValid(get(new baV(), new bbV())));
+		assertTrue(ctx.isValid(get(new baV(), new bbV(), new bhV())));
 
+		ctx = get(new bhV());
+		assertTrue(ctx.isValid(null));
+		assertTrue(ctx.isValid(get(new bbV())));
+		assertTrue(ctx.isValid(get(new baV())));
+		assertTrue(ctx.isValid(get(new bhV())));
+		assertTrue(ctx.isValid(get(new baV(), new bbV())));
+		assertTrue(ctx.isValid(get(new baV(), new bbV(), new bhV())));
+		
 		ctx = get(new BV());
 		assertFalse(ctx.isValid(null));
 		assertFalse(ctx.isValid(get(new bbV())));
 		assertFalse(ctx.isValid(get(new baV())));
+		assertFalse(ctx.isValid(get(new bhV())));
 		assertFalse(ctx.isValid(get(new baV(), new bbV())));
+		assertFalse(ctx.isValid(get(new baV(), new bbV(), new bhV())));
 		
 		ctx = get(new B_ba());
 		assertTrue(ctx.isValid(null));
 		assertTrue(ctx.isValid(get(new bbV())));
 		assertTrue(ctx.isValid(get(new baV())));
+		assertTrue(ctx.isValid(get(new bhV())));
 		assertTrue(ctx.isValid(get(new baV(), new bbV())));
+		assertTrue(ctx.isValid(get(new baV(), new bbV(), new bhV())));
 
 		ctx = get(new B_bb());
 		assertTrue(ctx.isValid(null));
 		assertTrue(ctx.isValid(get(new bbV())));
 		assertTrue(ctx.isValid(get(new baV())));
+		assertTrue(ctx.isValid(get(new bhV())));
 		assertTrue(ctx.isValid(get(new baV(), new bbV())));
+		assertTrue(ctx.isValid(get(new baV(), new bbV(), new bhV())));
 		
 		ctx = get(new B_bbb());
 		assertTrue(ctx.isValid(null));
 		assertTrue(ctx.isValid(get(new bbV())));
 		assertTrue(ctx.isValid(get(new baV())));
+		assertTrue(ctx.isValid(get(new bhV())));
 		assertTrue(ctx.isValid(get(new baV(), new bbV())));
+		assertTrue(ctx.isValid(get(new baV(), new bbV(), new bhV())));
 		
 		ctx = get(new B_b0());
 		assertFalse(ctx.isValid(null));
 		assertFalse(ctx.isValid(get(new bbV())));
 		assertFalse(ctx.isValid(get(new baV())));
+		assertFalse(ctx.isValid(get(new bhV())));
 		assertFalse(ctx.isValid(get(new baV(), new bbV())));
+		assertFalse(ctx.isValid(get(new baV(), new bbV(), new bhV())));
 	
 	}
 	
@@ -147,82 +189,114 @@ public class EncoderContextTest {
 		EncoderContext ctx = get(new BV());
 		assertTrue(ctx.isValid(get(new B_bb())));
 		assertTrue(ctx.isValid(get(new B_ba())));
+		assertTrue(ctx.isValid(get(new B_bh())));
 		assertTrue(ctx.isValid(get(new baV(), new B_bb())));
 		assertTrue(ctx.isValid(get(new bbV(), new B_bb())));
+		assertTrue(ctx.isValid(get(new bhV(), new B_bh())));
 		assertTrue(ctx.isValid(get(new B_bb(), new BV())));
 		assertTrue(ctx.isValid(get(new B_ba(), new BV())));
+		assertTrue(ctx.isValid(get(new B_bh(), new BV())));
 		assertTrue(ctx.isValid(get(new baV(), new B_bb(), new BV())));
 		assertTrue(ctx.isValid(get(new bbV(), new B_bb(), new BV())));
+		assertTrue(ctx.isValid(get(new bhV(), new B_bh(), new BV())));
 		
 		ctx = get(new AV());
 		assertFalse(ctx.isValid(get(new B_bb())));
 		assertFalse(ctx.isValid(get(new B_ba())));
+		assertFalse(ctx.isValid(get(new B_bh())));
 		assertFalse(ctx.isValid(get(new baV(), new B_bb())));
 		assertFalse(ctx.isValid(get(new bbV(), new B_bb())));
+		assertFalse(ctx.isValid(get(new bhV(), new B_bh())));
 		assertFalse(ctx.isValid(get(new B_bb(), new BV())));
 		assertFalse(ctx.isValid(get(new B_ba(), new BV())));
+		assertFalse(ctx.isValid(get(new B_bh(), new BV())));
 		assertFalse(ctx.isValid(get(new baV(), new B_bb(), new BV())));
 		assertFalse(ctx.isValid(get(new bbV(), new B_bb(), new BV())));
+		assertFalse(ctx.isValid(get(new bhV(), new B_bh(), new BV())));
 
 		ctx = get(new B0V());
 		assertTrue(ctx.isValid(get(new B_bb())));
 		assertTrue(ctx.isValid(get(new B_ba())));
+		assertTrue(ctx.isValid(get(new B_bh())));
 		assertTrue(ctx.isValid(get(new baV(), new B_bb())));
 		assertTrue(ctx.isValid(get(new bbV(), new B_bb())));
+		assertTrue(ctx.isValid(get(new bhV(), new B_bh())));
 		assertTrue(ctx.isValid(get(new B_bb(), new BV())));
 		assertTrue(ctx.isValid(get(new B_ba(), new BV())));
+		assertTrue(ctx.isValid(get(new B_bh(), new BV())));
 		assertTrue(ctx.isValid(get(new baV(), new B_bb(), new BV())));
 		assertTrue(ctx.isValid(get(new bbV(), new B_bb(), new BV())));
+		assertTrue(ctx.isValid(get(new bhV(), new B_bh(), new BV())));
 
 		ctx = get(new BB_V());
 		assertFalse(ctx.isValid(get(new B_bb())));
 		assertFalse(ctx.isValid(get(new B_ba())));
+		assertFalse(ctx.isValid(get(new B_bh())));
 		assertFalse(ctx.isValid(get(new baV(), new B_bb())));
 		assertFalse(ctx.isValid(get(new bbV(), new B_bb())));
+		assertFalse(ctx.isValid(get(new bhV(), new B_bh())));
 		assertFalse(ctx.isValid(get(new B_bb(), new BV())));
 		assertFalse(ctx.isValid(get(new B_ba(), new BV())));
+		assertFalse(ctx.isValid(get(new B_bh(), new BV())));
 		assertFalse(ctx.isValid(get(new baV(), new B_bb(), new BV())));
 		assertFalse(ctx.isValid(get(new bbV(), new B_bb(), new BV())));
+		assertFalse(ctx.isValid(get(new bhV(), new B_bh(), new BV())));
 		
 		ctx = get(new AB());
 		assertTrue(ctx.isValid(get(new B_bb())));
 		assertTrue(ctx.isValid(get(new B_ba())));
+		assertTrue(ctx.isValid(get(new B_bh())));
 		assertTrue(ctx.isValid(get(new baV(), new B_bb())));
 		assertTrue(ctx.isValid(get(new bbV(), new B_bb())));
+		assertTrue(ctx.isValid(get(new bhV(), new B_bh())));
 		assertTrue(ctx.isValid(get(new B_bb(), new BV())));
 		assertTrue(ctx.isValid(get(new B_ba(), new BV())));
+		assertTrue(ctx.isValid(get(new B_bh(), new BV())));
 		assertTrue(ctx.isValid(get(new baV(), new B_bb(), new BV())));
 		assertTrue(ctx.isValid(get(new bbV(), new B_bb(), new BV())));
+		assertTrue(ctx.isValid(get(new bhV(), new B_bh(), new BV())));
 		
 		ctx = get(new BA());
 		assertFalse(ctx.isValid(get(new B_bb())));
 		assertFalse(ctx.isValid(get(new B_ba())));
+		assertFalse(ctx.isValid(get(new B_bh())));
 		assertFalse(ctx.isValid(get(new baV(), new B_bb())));
 		assertFalse(ctx.isValid(get(new bbV(), new B_bb())));
+		assertFalse(ctx.isValid(get(new bhV(), new B_bh())));
 		assertFalse(ctx.isValid(get(new B_bb(), new BV())));
 		assertFalse(ctx.isValid(get(new B_ba(), new BV())));
+		assertFalse(ctx.isValid(get(new B_bh(), new BV())));
 		assertFalse(ctx.isValid(get(new baV(), new B_bb(), new BV())));
 		assertFalse(ctx.isValid(get(new bbV(), new B_bb(), new BV())));
+		assertFalse(ctx.isValid(get(new bhV(), new B_bh(), new BV())));
 		
 		ctx = get(new ABB());
 		assertTrue(ctx.isValid(get(new B_bb())));
 		assertTrue(ctx.isValid(get(new B_ba())));
+		assertTrue(ctx.isValid(get(new B_bh())));
 		assertTrue(ctx.isValid(get(new baV(), new B_bb())));
 		assertTrue(ctx.isValid(get(new bbV(), new B_bb())));
+		assertTrue(ctx.isValid(get(new bhV(), new B_bh())));
 		assertTrue(ctx.isValid(get(new B_bb(), new BV())));
 		assertTrue(ctx.isValid(get(new B_ba(), new BV())));
+		assertTrue(ctx.isValid(get(new B_bh(), new BV())));
 		assertTrue(ctx.isValid(get(new baV(), new B_bb(), new BV())));
 		assertTrue(ctx.isValid(get(new bbV(), new B_bb(), new BV())));
+		assertTrue(ctx.isValid(get(new bhV(), new B_bh(), new BV())));
 
 		ctx = get(new AB0());
 		assertFalse(ctx.isValid(get(new B_bb())));
 		assertFalse(ctx.isValid(get(new B_ba())));
+		assertFalse(ctx.isValid(get(new B_bh())));
 		assertFalse(ctx.isValid(get(new baV(), new B_bb())));
 		assertFalse(ctx.isValid(get(new bbV(), new B_bb())));
+		assertFalse(ctx.isValid(get(new bhV(), new B_bb())));
 		assertFalse(ctx.isValid(get(new B_bb(), new BV())));
 		assertFalse(ctx.isValid(get(new B_ba(), new BV())));
+		assertFalse(ctx.isValid(get(new B_bh(), new BV())));
 		assertFalse(ctx.isValid(get(new baV(), new B_bb(), new BV())));
 		assertFalse(ctx.isValid(get(new bbV(), new B_bb(), new BV())));
+		assertFalse(ctx.isValid(get(new bhV(), new B_bh(), new BV())));
 		
 	}
 	
@@ -273,6 +347,12 @@ public class EncoderContextTest {
 		@Override public Class<Void> getOutboundType() {return Void.class;}
 		@Override public void encode(ISession session, ByteBuffer data, List<Void> out) {}
 	}
+
+	static class bhV implements IEncoder<IByteBufferHolder,Void> {
+		@Override public Class<IByteBufferHolder> getInboundType() {return IByteBufferHolder.class;}
+		@Override public Class<Void> getOutboundType() {return Void.class;}
+		@Override public void encode(ISession session, IByteBufferHolder data, List<Void> out) {}
+	}
 	
 	static class BV implements IEncoder<B,Void> {
 		@Override public Class<B> getInboundType() {return B.class;}
@@ -320,6 +400,18 @@ public class EncoderContextTest {
 		@Override public Class<B> getInboundType() {return B.class;}
 		@Override public Class<Buffer> getOutboundType() {return Buffer.class;}
 		@Override public void encode(ISession session, B data, List<Buffer> out) {}
+	}
+
+	static class B_bh implements IEncoder<B,IByteBufferHolder> {
+		@Override public Class<B> getInboundType() {return B.class;}
+		@Override public Class<IByteBufferHolder> getOutboundType() {return IByteBufferHolder.class;}
+		@Override public void encode(ISession session, B data, List<IByteBufferHolder> out) {}
+	}
+
+	static class B_bhh implements IEncoder<B,ByteBufferHolder> {
+		@Override public Class<B> getInboundType() {return B.class;}
+		@Override public Class<ByteBufferHolder> getOutboundType() {return ByteBufferHolder.class;}
+		@Override public void encode(ISession session, B data, List<ByteBufferHolder> out) {}
 	}
 
 	static class ABD implements IDecoder<A,B> {

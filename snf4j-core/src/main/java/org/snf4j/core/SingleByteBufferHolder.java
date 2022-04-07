@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2022 SNF4J contributors
+ * Copyright (c) 2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,39 +23,53 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.core.codec;
+package org.snf4j.core;
 
-class DecoderContext extends CodecContext {
+import java.nio.ByteBuffer;
+
+/**
+ * A byte buffer holder that stores only one byte buffer.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class SingleByteBufferHolder implements IByteBufferHolder {
 	
-	final private IDecoder<?,?> decoder;
-	
-	DecoderContext(Object key, IDecoder<?,?> decoder) {
-		super(key, decoder);
-		this.decoder = decoder;
+	private final ByteBuffer buffer;
+
+	/**
+	 * Construct a byte buffer holder storing one specified byte buffer.
+	 * 
+	 * @param buffer the byte buffer to be stored by this holder
+	 * @throws IllegalArgumentException if the {@code buffer} is null
+	 */
+	public SingleByteBufferHolder(ByteBuffer buffer) {
+		if (buffer == null) throw new IllegalArgumentException("buffer is null");
+		this.buffer = buffer;
 	}
 	
-	@SuppressWarnings("rawtypes")
-	final IDecoder getDecoder() {
-		return decoder;
+	@Override
+	public boolean hasRemaining() {
+		return buffer.hasRemaining();
 	}
 
 	@Override
-	final boolean isValid(CodecContext previous) {
-		if (previous == null) {
-			return inboundByte && !inboundHolder;
-		}
-		if (previous instanceof DecoderContext) {
-			if (previous.clogged) {
-				return isValid(previous.prev);
-			}
-			return decoder.getInboundType().isAssignableFrom(((DecoderContext)previous).decoder.getOutboundType());
-		}
+	public int remaining() {
+		return buffer.remaining();
+	}
+
+	@Override
+	public ByteBuffer[] toArray() {
+		return new ByteBuffer[] {buffer};
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @return {@code false}
+	 */
+	@Override
+	public boolean isMessage() {
 		return false;
-	}
-	
-	@Override
-	final boolean isDecoder() {
-		return true;
 	}
 
 }

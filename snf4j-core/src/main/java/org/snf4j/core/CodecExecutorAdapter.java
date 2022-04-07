@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,6 +57,11 @@ class CodecExecutorAdapter implements IStreamReader, IDatagramReader {
 	}
 	
 	final List<Object> encode(ByteBuffer data) throws Exception {
+		executor.syncEncoders(session);
+		return executor.encode(session, data);
+	}
+
+	final List<Object> encode(IByteBufferHolder data) throws Exception {
 		executor.syncEncoders(session);
 		return executor.encode(session, data);
 	}

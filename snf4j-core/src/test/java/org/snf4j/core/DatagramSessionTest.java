@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1095,10 +1095,12 @@ public class DatagramSessionTest {
 		assertFalse(session.write(new byte[3]).isSuccessful());
 		assertFalse(session.write(getBuffer(10,0)).isSuccessful());
 		assertFalse(session.write(getBuffer(10,0), 5).isSuccessful());
+		assertFalse(session.write(SessionTest.createHolder(session, new byte[10], 1,2)).isSuccessful());
 		assertFalse(session.send(null, new byte[3], 0, 1).isSuccessful());
 		assertFalse(session.send(null, new byte[3]).isSuccessful());
 		assertFalse(session.send(null, getBuffer(10,0)).isSuccessful());
 		assertFalse(session.send(null, getBuffer(10,0), 5).isSuccessful());
+		assertFalse(session.send(null, SessionTest.createHolder(session, new byte[10], 1,2)).isSuccessful());
 		session.closing = ClosingState.NONE;
 
 		s.stop(TIMEOUT);
@@ -1140,6 +1142,12 @@ public class DatagramSessionTest {
 			session.writenf((ByteBuffer) null, 0); fail("Exception not thrown");
 		} catch (NullPointerException e) {}
 		try {
+			session.write((IByteBufferHolder) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.writenf((IByteBufferHolder) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
 			session.write((Object) null); fail("Exception not thrown");
 		} catch (NullPointerException e) {}
 		try {
@@ -1159,6 +1167,12 @@ public class DatagramSessionTest {
 			session.sendnf(null, (ByteBuffer) null, 0); fail("Exception not thrown");
 		} catch (NullPointerException e) {}
 		try {
+			session.send(null, (IByteBufferHolder) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
+			session.sendnf(null, (IByteBufferHolder) null); fail("Exception not thrown");
+		} catch (NullPointerException e) {}
+		try {
 			session.send(null, (Object) null); fail("Exception not thrown");
 		} catch (NullPointerException e) {}
 		try {
@@ -1170,21 +1184,25 @@ public class DatagramSessionTest {
 		assertTrue(session.write(new byte[3], 1, 0).isSuccessful());
 		assertTrue(session.write(getBuffer(0,0)).isSuccessful());
 		assertTrue(session.write(getBuffer(10,0), 0).isSuccessful());
+		assertTrue(session.write(new ByteBufferHolder()).isSuccessful());
 		assertTrue(session.send(null, new byte[0]).isSuccessful());
 		assertTrue(session.send(null, new byte[3], 0, 0).isSuccessful());
 		assertTrue(session.send(null, new byte[3], 1, 0).isSuccessful());
 		assertTrue(session.send(null, getBuffer(0,0)).isSuccessful());
 		assertTrue(session.send(null, getBuffer(10,0), 0).isSuccessful());
+		assertTrue(session.send(null, new ByteBufferHolder()).isSuccessful());
 		session.writenf(new byte[0]);
 		session.writenf(new byte[3], 0, 0);
 		session.writenf(new byte[3], 1, 0);
 		session.writenf(getBuffer(0,0));
 		session.writenf(getBuffer(10,0), 0);
+		session.writenf(new ByteBufferHolder());
 		session.sendnf(null, new byte[0]);
 		session.sendnf(null, new byte[3], 0, 0);
 		session.sendnf(null, new byte[3], 1, 0);
 		session.sendnf(null, getBuffer(0,0));
 		session.sendnf(null, getBuffer(10,0), 0);
+		session.sendnf(null, new ByteBufferHolder());
 		
 		assertOutOfBoundException(session, new byte[10], -1, 4);
 		assertOutOfBoundException(session, new byte[10], 10, 1);
@@ -1306,6 +1324,33 @@ public class DatagramSessionTest {
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DR|$ECHO(3369)|DS|", s.getRecordedData(true));
+
+		data = new Packet(PacketType.ECHO, "1234567890").toBytes();
+		IByteBufferHolder holder = SessionTest.createHolder(session, data, 3,4);
+		session.write(holder).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals(0, holder.remaining());
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		holder = SessionTest.createHolder(session, data, 3,4);
+		session.writenf(holder);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		assertEquals(0, holder.remaining());
+
+		holder = SessionTest.createHolder(session, data, 3,4);
+		session.write((Object)holder).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals(0, holder.remaining());
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		holder = SessionTest.createHolder(session, data, 3,4);
+		session.writenf((Object)holder);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		assertEquals(0, holder.remaining());
 		
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -1376,6 +1421,33 @@ public class DatagramSessionTest {
 		c.waitForDataSent(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DR|$ECHO(3369)|DS|", s.getRecordedData(true));
+
+		data = new Packet(PacketType.ECHO, "1234567890").toBytes();
+		IByteBufferHolder holder = SessionTest.createHolder(session, data, 3,4);
+		session.send(addr, holder).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals(0, holder.remaining());
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		holder = SessionTest.createHolder(session, data, 3,4);
+		session.sendnf(addr, holder);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		assertEquals(0, holder.remaining());
+
+		holder = SessionTest.createHolder(session, data, 3,4);
+		session.send(addr, (Object)holder).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals(0, holder.remaining());
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		holder = SessionTest.createHolder(session, data, 3,4);
+		session.sendnf(addr, (Object)holder);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		assertEquals(0, holder.remaining());
 		
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
@@ -2128,6 +2200,22 @@ public class DatagramSessionTest {
 		assertEquals(1, c.allocator.getAllocatedCount());
 		assertTrue(b == c.allocator.getReleased().get(0));
 		assertEquals(0, c.allocator.getSize());
+		
+		byte[] data = new Packet(PacketType.NOP, "1234567890").toBytes();
+		ByteBufferHolder holder = SessionTest.createHolder(session, data, 2,3);
+		assertEquals(1, c.allocator.getReleasedCount());
+		assertEquals(4, c.allocator.getAllocatedCount());
+		assertEquals(3, c.allocator.getSize());
+		session.write(holder);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(1234567890)|", s.getRecordedData(true));
+		assertEquals(4, c.allocator.getReleasedCount());
+		assertEquals(4, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getSize());
+		assertTrue(holder.toArray()[0] == c.allocator.getReleased().get(1));
+		assertTrue(holder.toArray()[1] == c.allocator.getReleased().get(2));
+		assertTrue(holder.toArray()[2] == c.allocator.getReleased().get(3));
 		c.stop(TIMEOUT);
 		
 		c = new DatagramHandler(PORT);
@@ -2146,6 +2234,16 @@ public class DatagramSessionTest {
 		assertEquals("DR|$NOP()|", s.getRecordedData(true));
 		assertEquals(0, c.allocator.getReleasedCount());
 		assertEquals(2, c.allocator.getAllocatedCount());
+
+		holder = SessionTest.createHolder(session, data, 2,3);
+		assertEquals(0, c.allocator.getReleasedCount());
+		assertEquals(5, c.allocator.getAllocatedCount());
+		session.write(holder);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(1234567890)|", s.getRecordedData(true));
+		assertEquals(0, c.allocator.getReleasedCount());
+		assertEquals(5, c.allocator.getAllocatedCount());
 		c.stop(TIMEOUT);
 		
 		c = new DatagramHandler(PORT);
@@ -2165,6 +2263,92 @@ public class DatagramSessionTest {
 		assertEquals(1, c.allocator.getReleasedCount());
 		assertFalse(b == c.allocator.getReleased().get(0));
 		assertEquals(3, c.allocator.getAllocatedCount());
+		
+		holder = SessionTest.createHolder(session, data, 2,3);
+		assertEquals(1, c.allocator.getReleasedCount());
+		assertEquals(6, c.allocator.getAllocatedCount());
+		session.write(holder);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(1234567890)|", s.getRecordedData(true));
+		assertEquals(2, c.allocator.getReleasedCount());
+		assertEquals(7, c.allocator.getAllocatedCount());
+	}
+
+	@Test
+	public void testOptimizedDataCopyingSend() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.startServer();
+		c = new DatagramHandler(PORT+1);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, true);
+		c.startServer();
+		SocketAddress addr = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT);
+	
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		DatagramSession session = c.getSession();
+		
+		assertEquals(0, c.allocator.getSize());
+		assertEquals(0, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getReleasedCount());
+		byte[] data = new Packet(PacketType.ECHO, "1234567890").toBytes();
+		ByteBufferHolder holder = SessionTest.createHolder(session, data);
+		assertEquals(1, c.allocator.getSize());
+		assertEquals(1, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getReleasedCount());
+		session.send(addr, holder).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|BUF|$ECHO_RESPONSE(1234567890)|", c.getRecordedData(true));
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		assertEquals(1, c.allocator.getSize());
+		session.release(c.bufferRead);
+		assertEquals(0, c.allocator.getSize());
+		assertEquals(2, c.allocator.getAllocatedCount());
+		assertEquals(2, c.allocator.getReleasedCount());
+		
+		holder = SessionTest.createHolder(session, data, 1, 2, 3);
+		assertEquals(4, c.allocator.getSize());
+		assertEquals(6, c.allocator.getAllocatedCount());
+		assertEquals(2, c.allocator.getReleasedCount());
+		session.sendnf(addr, holder);
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|BUF|$ECHO_RESPONSE(1234567890)|", c.getRecordedData(true));
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		assertEquals(1, c.allocator.getSize());
+		session.release(c.bufferRead);
+		assertEquals(0, c.allocator.getSize());
+		assertEquals(8, c.allocator.getAllocatedCount());
+		assertEquals(8, c.allocator.getReleasedCount());
+		c.stop(TIMEOUT);
+
+		c = new DatagramHandler(PORT+1);
+		c.optimizeDataCopying = true;
+		c.allocator = new TestAllocator(false, false);
+		c.startServer();
+		addr = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT);
+		c.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		session = c.getSession();
+		assertEquals(1, c.allocator.getSize());
+		assertEquals(1, c.allocator.getAllocatedCount());
+
+		holder = SessionTest.createHolder(session, data, 1, 2, 3);
+		assertEquals(5, c.allocator.getSize());
+		assertEquals(5, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getReleasedCount());
+		session.send(addr, holder).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|$ECHO_RESPONSE(1234567890)|", c.getRecordedData(true));
+		assertEquals("DR|$ECHO(1234567890)|DS|", s.getRecordedData(true));
+		assertEquals(6, c.allocator.getSize());
+		assertEquals(6, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getReleasedCount());
 		
 	}
 	

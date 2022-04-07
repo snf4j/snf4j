@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -70,6 +70,11 @@ class SctpNopCodecExecutor implements ICodecExecutor {
 
 	@Override
 	public List<Object> encode(ISession session, ByteBuffer data) throws Exception {
+		return null;
+	}
+
+	@Override
+	public List<Object> encode(ISession session, IByteBufferHolder data) throws Exception {
 		return null;
 	}
 

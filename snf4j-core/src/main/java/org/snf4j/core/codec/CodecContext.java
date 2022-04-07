@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,8 @@ package org.snf4j.core.codec;
 
 import java.nio.ByteBuffer;
 
+import org.snf4j.core.IByteBufferHolder;
+
 abstract class CodecContext {
 
 	CodecContext prev, next;
@@ -36,19 +38,25 @@ abstract class CodecContext {
 	final boolean inboundByte;
 	
 	final boolean inboundByteArray;
+	
+	final boolean inboundHolder;
 
 	final boolean outboundByte;
 	
 	final boolean outboundByteArray;
+	
+	final boolean outboundHolder;
 	
 	final boolean clogged;
 	
 	CodecContext(Object key, ICodec<?,?> codec) {
 		this.key = key;
 		inboundByteArray = codec.getInboundType() == byte[].class;
-		inboundByte = inboundByteArray ? true : codec.getInboundType().isAssignableFrom(ByteBuffer.class);
+		inboundHolder = codec.getInboundType() == IByteBufferHolder.class;
+		inboundByte = inboundByteArray || inboundHolder ? true : codec.getInboundType().isAssignableFrom(ByteBuffer.class);
 		outboundByteArray = codec.getOutboundType() == byte[].class;
-		outboundByte = outboundByteArray ? true : ByteBuffer.class.isAssignableFrom(codec.getOutboundType());
+		outboundHolder = IByteBufferHolder.class.isAssignableFrom(codec.getOutboundType());
+		outboundByte = outboundByteArray || outboundHolder ? true : ByteBuffer.class.isAssignableFrom(codec.getOutboundType());
 		clogged = codec.getOutboundType() == Void.class;
 	}
 	
@@ -60,12 +68,20 @@ abstract class CodecContext {
 		return outboundByte;
 	}
 	
+	final boolean isOutboundHolder() {
+		return outboundHolder;
+	}
+	
 	final boolean isOutboundByteArray() {
 		return outboundByteArray;
 	}	
 
 	final boolean isInboundByte() {
 		return inboundByte;
+	}
+	
+	final boolean isInboundHolder() {
+		return inboundHolder;
 	}
 	
 	final boolean isInboundByteArray() {

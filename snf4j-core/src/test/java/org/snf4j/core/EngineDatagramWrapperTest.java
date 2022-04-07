@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -138,6 +138,8 @@ public class EngineDatagramWrapperTest extends DTLSTest {
 			try {session.writenf((ByteBuffer)null, 0);fail();} catch (NullPointerException e) {}
 			try {session.write((Object)null);fail();} catch (NullPointerException e) {}
 			try {session.writenf((Object)null);fail();} catch (NullPointerException e) {}
+			try {session.write((IByteBufferHolder)null);fail();} catch (NullPointerException e) {}
+			try {session.writenf((IByteBufferHolder)null);fail();} catch (NullPointerException e) {}
 
 			byte[] b = new byte[0];
 			ByteBuffer bb = ByteBuffer.wrap(b);
@@ -151,6 +153,8 @@ public class EngineDatagramWrapperTest extends DTLSTest {
 			session.writenf(bb);
 			assertTrue(session.write(bb10,0).isSuccessful());
 			session.writenf(bb10,0);
+			assertTrue(session.write(new ByteBufferHolder()).isSuccessful());
+			session.writenf(new ByteBufferHolder());
 
 			try {session.write(b10, -1, 1);fail();} catch (IndexOutOfBoundsException e) {}
 			try {session.writenf(b10, 9, 2);fail();} catch (IndexOutOfBoundsException e) {}

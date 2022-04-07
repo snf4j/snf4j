@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.snf4j.core.IByteBufferHolder;
+import org.snf4j.core.SingleByteBufferHolder;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
@@ -227,6 +229,14 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 							return encode(session, dataArray, ctx, i);
 						}
 					}
+					else if (ctx.isInboundHolder()) {
+						if (ctx.isClogged()) {
+							ctx.getEncoder().encode(session, new SingleByteBufferHolder(data), null);
+						}
+						else {
+							return encode(session, new SingleByteBufferHolder(data), ctx, i);
+						}
+					}
 					else {
 						if (ctx.isClogged()) {
 							ctx.getEncoder().encode(session, data, null);
@@ -241,6 +251,98 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 		return null;
 	}
 
+	private static byte[] byteArray(ISession session, IByteBufferHolder data, boolean duplicate) {
+		byte[] byteArray = new byte[data.remaining()];
+		int off = 0, remaining;
+		
+		for (ByteBuffer buffer: data.toArray()) {
+			if (duplicate) {
+				buffer = buffer.duplicate();
+			}
+			remaining = buffer.remaining();
+			buffer.get(byteArray, off, remaining);
+			off += remaining;
+			if (!duplicate) {
+				session.release(buffer);
+			}
+		}
+		return byteArray;
+	}
+
+	private static ByteBuffer byteBuffer(ISession session, IByteBufferHolder data, boolean duplicate) {
+		ByteBuffer[] buffers = data.toArray();
+		
+		if (buffers.length == 1) {
+			return buffers[0];
+		}
+		else {
+			ByteBuffer byteBuffer = session.allocate(data.remaining());
+
+			for (ByteBuffer buffer: buffers) {
+				if (duplicate) {
+					buffer = buffer.duplicate();
+				}
+				byteBuffer.put(buffer);
+				if (!duplicate) {
+					session.release(buffer);
+				}
+			}
+			byteBuffer.flip();
+			return byteBuffer;
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<Object> encode(ISession session, IByteBufferHolder data) throws Exception {
+		Iterator<EncoderContext> i = encoders.descendingIterator();
+		
+		if (i.hasNext()) {
+			EncoderContext ctx;
+			
+			do {
+				ctx = i.next();
+				if (ctx.isInboundByte()) {
+					if (ctx.isInboundByteArray()) {
+						if (ctx.isClogged()) {
+							ctx.getEncoder().encode(session, byteArray(session, data, true), null);
+						}
+						else {
+							return encode(session, byteArray(session, data, false), ctx, i);
+						}
+					}
+					else if (ctx.isInboundHolder()) {
+						if (ctx.isClogged()) {
+							ctx.getEncoder().encode(session, data, null);
+						}
+						else {
+							return encode(session, data, ctx, i);
+						}
+					}
+					else {
+						if (ctx.isClogged()) {
+							ByteBuffer[] bufs = data.toArray();
+
+							if (bufs.length == 1) {
+								ctx.getEncoder().encode(session, bufs[0], null);
+							}
+							else {
+								ByteBuffer buf = byteBuffer(session, data, true);
+								
+								ctx.getEncoder().encode(session, buf, null);
+								session.release(buf);
+							}
+						}
+						else {
+							return encode(session, byteBuffer(session, data, false), ctx, i);
+						}
+					}
+				}
+			} while (i.hasNext());
+		}
+		return null;
+	}
+	
 	@SuppressWarnings("unchecked")
 	@Override
 	public List<Object> encode(ISession session, byte[] data) throws Exception {
@@ -258,6 +360,16 @@ public class DefaultCodecExecutor implements ICodecExecutor {
 						}
 						else {
 							return encode(session, data, ctx, i);
+						}
+					}
+					else if (ctx.isInboundHolder()) {
+						IByteBufferHolder holder = new SingleByteBufferHolder(ByteBuffer.wrap(data));
+
+						if (ctx.isClogged()) {
+							ctx.getEncoder().encode(session, holder, null);
+						}
+						else {
+							return encode(session, holder, ctx, i);
 						}
 					}
 					else {

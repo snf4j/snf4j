@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -136,6 +136,16 @@ class EngineDatagramServerSession extends DatagramServerSession implements IEngi
 	public void writenf(ByteBuffer datagram, int length) {
 		wrapper.writenf(datagram, length);
 	}
+
+	@Override
+	public IFuture<Void> write(IByteBufferHolder datagram) {
+		return wrapper.write(datagram);
+	}
+	
+	@Override
+	public void writenf(IByteBufferHolder datagram) {
+		wrapper.writenf(datagram);
+	}
 	
 	@Override
 	public IFuture<Void> write(Object msg) {
@@ -213,6 +223,23 @@ class EngineDatagramServerSession extends DatagramServerSession implements IEngi
 			return;
 		}
 		super.send(remoteAddress, datagram, length);
+	}
+
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, IByteBufferHolder datagram) {
+		if (wrapper.connectedTo(remoteAddress)) {
+			return wrapper.write(datagram);
+		}
+		return super.send(remoteAddress, datagram);
+	}
+	
+	@Override
+	public void sendnf(SocketAddress remoteAddress, IByteBufferHolder datagram) {
+		if (wrapper.connectedTo(remoteAddress)) {
+			wrapper.writenf(datagram);
+			return;
+		}
+		super.send(remoteAddress, datagram);
 	}
 	
 	@Override

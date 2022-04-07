@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -145,6 +145,13 @@ public class SSLSessionTest {
 		field.set(handler,buf);
 	}
 
+	static void setBuffers(EngineStreamHandler handler, String name, ByteBuffer[] buf) throws Exception {
+		Field field = handler.getClass().getDeclaredField(name);
+		
+		field.setAccessible(true);
+		field.set(handler,buf);
+	}
+
 	static ByteBuffer getBuffer(SSLSession session, String name) throws Exception {
 		Field field = EngineStreamSession.class.getDeclaredField("internal");
 		
@@ -189,6 +196,13 @@ public class SSLSessionTest {
 		
 		field.setAccessible(true);
 		setBuffer((EngineStreamHandler) field.get(session), name, buf);
+	}
+
+	static void setBuffers(EngineStreamSession session, String name, ByteBuffer[] bufs) throws Exception {
+		Field field = EngineStreamSession.class.getDeclaredField("internal");
+		
+		field.setAccessible(true);
+		setBuffers((EngineStreamHandler) field.get(session), name, bufs);
 	}
 	
 	EngineStreamHandler getInternal(EngineStreamSession session) throws Exception {
@@ -758,6 +772,33 @@ public class SSLSessionTest {
 	}
 	
 	@Test
+	public void testWriteByteBufferHolder() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.allocator = new TestAllocator(true, true);
+		c.ignoreAvailableException = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		c.getRecordedData(true);
+		
+		SSLSession session = (SSLSession) c.getSession();
+		assertEquals(6, c.allocator.getSize());
+		
+		setBuffers(session, "outAppBuffers", new ByteBuffer[0]);
+		
+		byte[] data = new Packet(PacketType.ECHO, "01234567").toBytes();
+		session.write(SessionTest.createHolder(session, data, 1,2,3));
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(01234567)|", c.getRecordedData(true));
+		assertEquals(11, c.allocator.getSize());
+		
+	}
+	
+	@Test
 	public void testWriteArguments() throws Exception {
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
@@ -821,15 +862,39 @@ public class SSLSessionTest {
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DS|DR|ECHO_RESPONSE(5746)|", c.getRecordedData(true));
 
+		data = new Packet(PacketType.ECHO, "01234567").toBytes();
+		ByteBufferHolder holder = new ByteBufferHolder();
+		holder.add(ByteBuffer.wrap(data, 0, 4));
+		holder.add(ByteBuffer.wrap(data, 4, data.length-4));
+		session.write(holder).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(01234567)|", c.getRecordedData(true));
+		holder = new ByteBufferHolder();
+		holder.add(ByteBuffer.wrap(data, 0, 4));
+		holder.add(ByteBuffer.wrap(data, 4, data.length-4));
+		session.writenf(holder);
+		c.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(01234567)|", c.getRecordedData(true));
+		
 		session.closing = ClosingState.SENDING;
 		assertFalse(session.write(new byte[3], 0, 1).isSuccessful());
 		assertFalse(session.write(new byte[3]).isSuccessful());
 		assertFalse(session.write(getBuffer(10,0)).isSuccessful());
 		assertFalse(session.write(getBuffer(10,0), 5).isSuccessful());
+		holder = new ByteBufferHolder();
+		holder.add(ByteBuffer.wrap(data, 0, 4));
+		holder.add(ByteBuffer.wrap(data, 4, data.length-4));
+		assertFalse(session.write(holder).isSuccessful());
 		session.writenf(new byte[3], 0, 1);
 		session.writenf(new byte[3]);
 		session.writenf(getBuffer(10,0));
 		session.writenf(getBuffer(10,0), 5);
+		holder = new ByteBufferHolder();
+		holder.add(ByteBuffer.wrap(data, 0, 4));
+		holder.add(ByteBuffer.wrap(data, 4, data.length-4));
+		session.writenf(holder);
 		session.closing = ClosingState.NONE;
 
 		EngineStreamHandler internal = getInternal(session);
@@ -870,6 +935,11 @@ public class SSLSessionTest {
 		}
 		catch (NullPointerException e) {}
 		try {
+			session.write((IByteBufferHolder)null);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
+		try {
 			session.writenf((byte[])null);
 			fail("Exception not thrown");
 		}
@@ -889,17 +959,24 @@ public class SSLSessionTest {
 			fail("Exception not thrown");
 		}
 		catch (NullPointerException e) {}
+		try {
+			session.writenf((IByteBufferHolder)null);
+			fail("Exception not thrown");
+		}
+		catch (NullPointerException e) {}
 		
 		assertTrue(session.write(new byte[0]).isSuccessful());
 		assertTrue(session.write(new byte[3], 0, 0).isSuccessful());
 		assertTrue(session.write(getBuffer(0,0)).isSuccessful());
 		assertTrue(session.write(getBuffer(10,0), 0).isSuccessful());
 		assertTrue(session.write(new byte[3], 1, 0).isSuccessful());
+		assertTrue(session.write(new ByteBufferHolder()).isSuccessful());
 		session.writenf(new byte[0]);
 		session.writenf(new byte[3], 0, 0);
 		session.writenf(getBuffer(0,0));
 		session.writenf(getBuffer(10,0), 0);
 		session.writenf(new byte[3], 1, 0);
+		session.writenf(new ByteBufferHolder());
 		
 		assertOutOfBoundException(session, new byte[10], -1, 4);
 		assertOutOfBoundException(session, new byte[10], 10, 1);

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -246,6 +246,23 @@ class DatagramServerSession extends DatagramSession {
 	}
 
 	@Override
+	public IFuture<Void> write(IByteBufferHolder datagram) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram);
+		}
+		return delegate.send(remoteAddress, datagram);
+	}
+
+	@Override
+	public void writenf(IByteBufferHolder datagram) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram);
+			return;
+		}
+		delegate.sendnf(remoteAddress, datagram);
+	}
+	
+	@Override
 	public IFuture<Void> write(Object msg) {
 		if (codec != null) {
 			return super.send(remoteAddress, msg);
@@ -335,6 +352,23 @@ class DatagramServerSession extends DatagramSession {
 	}
 
 	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, IByteBufferHolder datagram) {
+		if (codec != null) {
+			return super.send(remoteAddress, datagram);
+		}
+		return delegate.send(remoteAddress, datagram);
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, IByteBufferHolder datagram) {
+		if (codec != null) {
+			super.sendnf(remoteAddress, datagram);
+			return;
+		}
+		delegate.sendnf(remoteAddress, datagram);	
+	}
+	
+	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, Object msg) {
 		if (codec != null) {
 			return super.send(remoteAddress, msg);
@@ -370,6 +404,11 @@ class DatagramServerSession extends DatagramSession {
 		@Override
 		public IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture) {
 			return delegate.simpleSend(remoteAddress, bytes, withFuture);
+		}
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, IByteBufferHolder holder, boolean withFuture) {
+			return delegate.simpleSend(remoteAddress, holder, withFuture);
 		}
 	}
 	
