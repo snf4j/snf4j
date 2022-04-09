@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +26,12 @@
 package org.snf4j.longevity;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.snf4j.core.ByteBufferHolder;
+import org.snf4j.core.IByteBufferHolder;
 import org.snf4j.core.SessionTest;
 import org.snf4j.core.StreamSession;
 import org.snf4j.core.factory.ISessionStructureFactory;
@@ -41,7 +44,7 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 
 	static final Timer timer = new Timer();
 	
-	ByteBuffer allocateBufferIfNeeded(Packet p, boolean optimize) {
+	Object allocateBufferIfNeeded(Packet p, boolean optimize) {
 		if (optimize) {
 			optimize = SessionTest.isOptimized((StreamSession) getSession());
 		}
@@ -51,18 +54,47 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 		
 		if (optimize) {
 			byte[] bytes = p.getBytes();
-			buffer = getSession().allocate(bytes.length);
-			buffer.put(bytes);
-			buffer.flip();
+
+			if (Utils.randomBoolean(Utils.BUFFER_HOLDER_VS_BUFFER_RATIO)) {
+				boolean single = Utils.randomBoolean(Utils.SINGLE_BUFFER_HOLDER_RATIO);
+				ByteBufferHolder holder = new ByteBufferHolder();
+				byte[][] data;
+				
+				if (single) {
+					data = new byte[][] {bytes};
+				}
+				else {
+					data = new byte[2][];
+					int firstSize = data.length/2;
+					
+					data[0] = Arrays.copyOfRange(bytes, 0, firstSize);
+					data[1] = Arrays.copyOfRange(bytes, firstSize, bytes.length);
+				}
+				for (byte[] d: data) {
+					buffer = getSession().allocate(d.length);
+					buffer.put(d);
+					buffer.flip();
+					holder.add(buffer);
+				}
+				return holder;
+			}
+			else {
+				buffer = getSession().allocate(bytes.length);
+				buffer.put(bytes);
+				buffer.flip();
+			}
 		}
 		return buffer;
 	}
 	
 	void write0(Packet p, boolean optimize) {
-		ByteBuffer buffer = allocateBufferIfNeeded(p, optimize);
+		Object buffer = allocateBufferIfNeeded(p, optimize);
 		
-		if (buffer != null) {
-			getSession().writenf(buffer);
+		if (buffer instanceof ByteBuffer) {
+			getSession().writenf((ByteBuffer)buffer);
+		}
+		else if (buffer instanceof IByteBufferHolder) {
+			getSession().writenf((IByteBufferHolder)buffer);
 		}
 		else {
 			getSession().writenf(p.getBytes());
@@ -221,10 +253,13 @@ abstract public class AbstractHandler extends AbstractStreamHandler {
 					}
 				}
 				else {
-					ByteBuffer buffer = allocateBufferIfNeeded(p, true);
+					Object buffer = allocateBufferIfNeeded(p, true);
 					
-					if (buffer != null) {
-						sync(getSession().write(buffer));
+					if (buffer instanceof ByteBuffer) {
+						sync(getSession().write((ByteBuffer)buffer));
+					}
+					else if (buffer instanceof IByteBufferHolder) {
+						sync(getSession().write((IByteBufferHolder)buffer));
 					}
 					else {
 						sync(getSession().write(p.getBytes()));

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,10 @@ public interface Config {
 	static final int CACHING_ALLOCATOR_RATIO = 100;
 	
 	static final int WRITE_ALLOCATED_BUFFER_RATIO = 100;
+
+	static final int BUFFER_HOLDER_VS_BUFFER_RATIO = 50;
+
+	static final int SINGLE_BUFFER_HOLDER_RATIO = 50;
 	
 	static final boolean DATAGRAM_CACHING_ALLOCATOR = true;
 	

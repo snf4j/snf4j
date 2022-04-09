@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,9 +27,12 @@ package org.snf4j.longevity.datagram;
 
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.snf4j.core.ByteBufferHolder;
+import org.snf4j.core.IByteBufferHolder;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.AbstractDatagramHandler;
@@ -71,28 +74,58 @@ class AbstractHandler extends AbstractDatagramHandler {
 		if (optimize) {
 			optimize = Config.DATAGRAM_CACHING_ALLOCATOR && Config.DATAGRAM_OPTIMIZE_DATA_COPING;
 		}
-		ByteBuffer buffer = null;
+		Object buffer = null;
 		
 		optimize = optimize && Utils.randomBoolean(Utils.WRITE_ALLOCATED_BUFFER_RATIO);
 		
 		if (optimize) {
 			byte[] bytes = p.getBytes();
-			buffer = getSession().allocate(bytes.length);
-			buffer.put(bytes);
-			buffer.flip();
+			
+			if (Utils.randomBoolean(Utils.BUFFER_HOLDER_VS_BUFFER_RATIO)) {
+				boolean single = Utils.randomBoolean(Utils.SINGLE_BUFFER_HOLDER_RATIO);
+				ByteBufferHolder holder = new ByteBufferHolder();
+				byte[][] data;
+				
+				if (single) {
+					data = new byte[][] {bytes};
+				}
+				else {
+					data = new byte[2][];
+					int firstSize = data.length/2;
+					
+					data[0] = Arrays.copyOfRange(bytes, 0, firstSize);
+					data[1] = Arrays.copyOfRange(bytes, firstSize, bytes.length);
+				}
+				for (byte[] d: data) {
+					buffer = getSession().allocate(d.length);
+					((ByteBuffer)buffer).put(d).flip();
+					holder.add((ByteBuffer) buffer);
+				}
+				buffer = holder;
+			}
+			else {
+				buffer = getSession().allocate(bytes.length);
+				((ByteBuffer)buffer).put(bytes).flip();
+			}
 		}
 		
 		if (remoteAddress == null) {
-			if (buffer != null) {
-				getSession().writenf(buffer);
+			if (buffer instanceof ByteBuffer) {
+				getSession().writenf((ByteBuffer)buffer);
+			}
+			else if (buffer instanceof IByteBufferHolder) {
+				getSession().writenf((IByteBufferHolder)buffer);
 			}
 			else {
 				getSession().writenf(p.getBytes());
 			}
 		}
 		else {
-			if (buffer != null) {
-				getSession().sendnf(remoteAddress, buffer);
+			if (buffer instanceof ByteBuffer) {
+				getSession().sendnf(remoteAddress, (ByteBuffer)buffer);
+			}
+			else if (buffer instanceof IByteBufferHolder) {
+				getSession().sendnf(remoteAddress, (IByteBufferHolder)buffer);
 			}
 			else {
 				getSession().sendnf(remoteAddress, p.getBytes());

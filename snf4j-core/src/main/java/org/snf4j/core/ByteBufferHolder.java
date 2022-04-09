@@ -44,7 +44,7 @@ public class ByteBufferHolder implements IByteBufferHolder, List<ByteBuffer> {
 	/**
 	 * Constructs an empty byte buffer holder with an initial capacity of ten.
 	 */
-	ByteBufferHolder() {
+	public ByteBufferHolder() {
 		buffers = new ArrayList<>();
 	}
 
@@ -53,7 +53,7 @@ public class ByteBufferHolder implements IByteBufferHolder, List<ByteBuffer> {
 	 * 
 	 * @param initialCapacity the initial capacity
 	 */
-	ByteBufferHolder(int initialCapacity) {
+	public ByteBufferHolder(int initialCapacity) {
 		buffers = new ArrayList<>(initialCapacity);
 	}
 
@@ -64,7 +64,7 @@ public class ByteBufferHolder implements IByteBufferHolder, List<ByteBuffer> {
 	 * @param c the collection whose byte buffers are to be placed into this byte
 	 *          buffer holder
 	 */
-	ByteBufferHolder(Collection<ByteBuffer> c) {
+	public ByteBufferHolder(Collection<ByteBuffer> c) {
 		buffers = new ArrayList<>(c);
 	}
 	

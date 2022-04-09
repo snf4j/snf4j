@@ -76,7 +76,7 @@ public interface IByteBufferHolder {
 	ByteBuffer[] toArray();
 	
 	/**
-	 * Tells if this byte buffer holder should be treated as an message or raw bytes
+	 * Tells if this byte buffer holder should be treated as a message or raw bytes
 	 * when it is processed thru a encoding pipeline.
 	 * <p>
 	 * When {@code true} is returned the processing will start from the last encoder
@@ -87,7 +87,7 @@ public interface IByteBufferHolder {
 	 * the last encoder with inbound type that is either {@code byte[]},
 	 * {@link ByteBuffer} or this interface itself.
 	 * 
-	 * @return {@code true} if this holder should treated as a message
+	 * @return {@code true} if this holder should be treated as a message
 	 */
 	boolean isMessage();
 }
