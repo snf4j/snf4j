@@ -70,7 +70,7 @@ public class ByteBufferHolderTest {
 		h.add(b1);
 		assertEquals(1, h.toArray().length);
 		
-		List<ByteBuffer> l = new ArrayList<>();
+		List<ByteBuffer> l = new ArrayList<ByteBuffer>();
 		l.add(b2);
 		h = new ByteBufferHolder(l);
 		assertEquals(1, h.toArray().length);
