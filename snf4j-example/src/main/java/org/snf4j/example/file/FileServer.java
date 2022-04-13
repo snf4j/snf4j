@@ -42,7 +42,8 @@ public class FileServer {
 	static final String PREFIX = "org.snf4j.";
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 	static final int POOL_SIZE = Integer.getInteger(PREFIX+"PoolSize", 8);
-	static final boolean SECURE = System.getProperty(PREFIX+"Secure") != null || true;
+	static final boolean SECURE = System.getProperty(PREFIX+"Secure") != null;
+	static final int BUFFER_COUNT = Integer.getInteger(PREFIX+"BufferCount", 16);
 
 	public static void main(String[] args) throws Exception {
 		SelectorLoop loop = new SelectorLoop();

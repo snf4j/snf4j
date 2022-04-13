@@ -48,11 +48,11 @@ public class FileClientHandler extends AbstractFileHandler {
 	@Override
 	public void read(Object msg) {
 		try {
-			if (fileChannel != null) {
-				fileChannel.write((ByteBuffer)msg);
+			if (!FileClient.DISCARD && fileChannel != null) {
+				fileLength += fileChannel.write((ByteBuffer)msg);
 			}
 		} catch (IOException e) {
-			Logger.err(e.toString());
+			Logger.error(e.toString());
 			getSession().close();
 		}
 		finally {
@@ -63,8 +63,6 @@ public class FileClientHandler extends AbstractFileHandler {
 	@Override
 	public void event(SessionEvent event) {
 		switch (event) {
-		case OPENED:
-			break;
 			
 		case READY:
 			try {
@@ -75,16 +73,19 @@ public class FileClientHandler extends AbstractFileHandler {
 						filePath.delete();
 					}
 					else {
-						Logger.err("File " + filePath.getAbsolutePath() + " already exists");
+						Logger.error("File " + filePath.getAbsolutePath() + " already exists");
 						getSession().close();
 						return;
 					}
 				}
-				file = new RandomAccessFile(filePath, "rw");
-				fileChannel = file.getChannel();
-				Logger.inf("Downloading " + filePath.getAbsolutePath());
+				if (!FileClient.DISCARD) {
+					file = new RandomAccessFile(filePath, "rw");
+					fileChannel = file.getChannel();
+				}
+				Logger.info("Downloading " + filePath.getAbsolutePath());
+				startTime = System.currentTimeMillis();
 			} catch (Exception e) {
-				Logger.err(e.toString());
+				Logger.error(e.toString());
 				getSession().close();
 				return;
 			}
@@ -98,10 +99,12 @@ public class FileClientHandler extends AbstractFileHandler {
 			break;
 			
 		case CLOSED:
-			if (file != null) {
-				Logger.inf(String.format("Downloading of %,d bytes completed (%,d bytes/sec)", 
-						getSession().getReadBytes(), 
-						(long)getSession().getReadBytesThroughput()));
+			if (file != null || FileClient.DISCARD) {
+				long time = System.currentTimeMillis()-startTime;
+				Logger.info(String.format("Downloading of %,d bytes completed in %,d msec (%,d bytes/sec)", 
+						fileLength, 
+						time, 
+						(long)(fileLength*1000/time)));
 			}
 			break;
 			

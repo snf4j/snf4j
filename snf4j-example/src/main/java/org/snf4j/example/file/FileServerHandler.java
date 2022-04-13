@@ -31,21 +31,16 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import org.snf4j.core.ByteBufferHolder;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ssl.SSLEngineBuilder;
 
 class FileServerHandler extends AbstractFileHandler {
 
-	private static final int BUFFER_COUNT = 16;
-
-	private static final int BUFFER_TOTAL_SIZE = BUFFER_COUNT * BUFFER_SIZE;
-	
 	private final StringBuilder path = new StringBuilder(256);
 	
-	private int pendingSize;
-	
-	private boolean closing;
+	private IFuture<Void> writeFuture;
 	
 	FileServerHandler(SSLEngineBuilder builder) {
 		super(builder);
@@ -71,6 +66,7 @@ class FileServerHandler extends AbstractFileHandler {
 					file = new RandomAccessFile(path.toString(), "r");
 					fileChannel = file.getChannel();
 					inf("Uploading " + path);
+					startTime = System.currentTimeMillis();
 					continueWriting();
 				} catch (FileNotFoundException e) {
 					err(e);
@@ -86,9 +82,11 @@ class FileServerHandler extends AbstractFileHandler {
 	public void event(SessionEvent event) {
 		if (event == SessionEvent.CLOSED) {
 			if (file != null) {
-				inf(String.format("Uploading of %,d bytes completed (%,d bytes/sec)", 
-						getSession().getWrittenBytes(), 
-						(long)getSession().getWrittenBytesThroughput()));
+				long time = System.currentTimeMillis()-startTime;
+				inf(String.format("Uploading of %,d bytes completed in %,d msec (%,d bytes/sec)", 
+						fileLength, 
+						time, 
+						(long)(fileLength*1000/time)));
 				inf(String.format("Allocator statistics: phisical allocations: %d (total %,d bytes), total allocations (from cache): %,d", 
 						METRIC.getAllocatedCount(),
 						METRIC.getAllocatedSize(),
@@ -101,17 +99,17 @@ class FileServerHandler extends AbstractFileHandler {
 	@Override
 	public void event(DataEvent event, long length) {
 		if (event == DataEvent.SENT) {
-			pendingSize -= length;
-			if (!closing && fileChannel != null) {
+			if (writeFuture != null && writeFuture.isSuccessful()) {
+				writeFuture = null;
 				continueWriting();
 			}
 		}
 	}
 	
 	private void continueWriting() {
-		int size = BUFFER_TOTAL_SIZE - pendingSize;
-		int count = size / BUFFER_SIZE;
-		ByteBufferHolder holder = new ByteBufferHolder(BUFFER_COUNT);
+		int count = FileServer.BUFFER_COUNT;
+		ByteBufferHolder holder = new ByteBufferHolder(count);
+		boolean eof = false;
 		
 		try {
 			for (int i=0; i<count; ++i) {
@@ -119,21 +117,24 @@ class FileServerHandler extends AbstractFileHandler {
 				int bytes = fileChannel.read(buf);
 				
 				if (bytes > 0) {
+					fileLength += bytes;
 					buf.flip();
 					holder.add(buf);
 				}
 				else {
 					getSession().release(buf);
 					if (bytes == -1) {
-						closing = true;
+						eof = true;
 						break;
 					}
 				}
 			}
-			pendingSize = holder.remaining();
-			getSession().writenf(holder);
-			if (closing) {
+			if (eof) {
+				getSession().writenf(holder);
 				getSession().close();
+			}
+			else {
+				writeFuture = getSession().write(holder);
 			}
 		}
 		catch (IOException e) {
@@ -151,14 +152,14 @@ class FileServerHandler extends AbstractFileHandler {
 	}
 	
 	void err(String msg) {
-		Logger.err("["+remoteAddress+"] " + msg);
+		Logger.error("["+remoteAddress+"] " + msg);
 	}
 
 	void err(Throwable t) {
-		Logger.err("["+remoteAddress+"] " + t);
+		Logger.error("["+remoteAddress+"] " + t);
 	}
 	
 	void inf(String msg) {
-		Logger.inf("["+remoteAddress+"] " + msg);
+		Logger.info("["+remoteAddress+"] " + msg);
 	}
 }

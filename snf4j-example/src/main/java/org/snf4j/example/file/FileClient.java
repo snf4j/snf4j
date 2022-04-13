@@ -38,13 +38,14 @@ public class FileClient {
 	static final String PREFIX = "org.snf4j.";
 	static final String HOST = System.getProperty(PREFIX+"Host", "127.0.0.1");
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
-	static final boolean SECURE = System.getProperty(PREFIX+"Secure") != null || true;
+	static final boolean SECURE = System.getProperty(PREFIX+"Secure") != null;
 	static final String DOWNLOAD_DIR = System.getProperty(PREFIX+"DownloadDir", ".");
 	static final boolean DELETE_IF_EXISTS = System.getProperty(PREFIX+"DeleteIfExists") != null;
+	static final boolean DISCARD = System.getProperty(PREFIX+"Discard") != null;
 	
 	public static void main(String[] args) throws Exception {
 		if (args.length == 0) {
-			Logger.err("No path specified");
+			Logger.error("No path specified");
 			return;
 		}
 		

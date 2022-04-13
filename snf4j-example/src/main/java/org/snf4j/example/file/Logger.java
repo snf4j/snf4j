@@ -27,11 +27,11 @@ package org.snf4j.example.file;
 
 public class Logger {
 	
-	public static void inf(String msg) {
+	public static void info(String msg) {
 		System.out.println("[INF] " + msg);		
 	}
 	
-	public static void err(String msg) {
+	public static void error(String msg) {
 		System.out.println("[ERR] " + msg);		
 	}
 }

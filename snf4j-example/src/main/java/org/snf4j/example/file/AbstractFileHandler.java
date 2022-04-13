@@ -54,8 +54,12 @@ public abstract class AbstractFileHandler extends AbstractStreamHandler {
 	
 	protected FileChannel fileChannel;
 	
+	protected long fileLength;
+
 	protected SocketAddress remoteAddress;
-	
+
+	protected long startTime;
+		
 	AbstractFileHandler(SSLEngineBuilder builder) {
 		config = new DefaultSessionConfig()
 				.setOptimizeDataCopying(true)
