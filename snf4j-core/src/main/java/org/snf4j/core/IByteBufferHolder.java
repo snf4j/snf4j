@@ -77,7 +77,7 @@ public interface IByteBufferHolder {
 	
 	/**
 	 * Tells if this byte buffer holder should be treated as a message or raw bytes
-	 * when it is processed thru a encoding pipeline.
+	 * when it is processed thru an encoding pipeline.
 	 * <p>
 	 * When {@code true} is returned the processing will start from the last encoder
 	 * in the pipeline with inbound type matching a class implementing this

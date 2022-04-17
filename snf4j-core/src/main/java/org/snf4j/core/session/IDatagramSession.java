@@ -216,12 +216,16 @@ public interface IDatagramSession extends ISession {
 	 * in which case it writes the datagram directly to the socket's peer.
 	 * <p>
 	 * The operation is asynchronous.
+	 * <p>
+	 * NOTE: The behavior of this method may change if the specified byte buffer
+	 * holder is marked as a message.
 	 * 
 	 * @param datagram
 	 *            the datagram to be written
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
 	 * @return the future associated with this write operation
+	 * @see IByteBufferHolder#isMessage()
 	 */
 	IFuture<Void> write(IByteBufferHolder datagram);
 
@@ -236,11 +240,15 @@ public interface IDatagramSession extends ISession {
 	 * <p>
 	 * This method should be used whenever there will be no need to synchronize on
 	 * a future object. This will save some resources and may improve performance.
+	 * <p>
+	 * NOTE: The behavior of this method may change if the specified byte buffer
+	 * holder is marked as a message.
 	 * 
 	 * @param datagram
 	 *            the datagram to be written
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
+	 * @see IByteBufferHolder#isMessage()
 	 */
 	void writenf(IByteBufferHolder datagram);
 
@@ -501,6 +509,9 @@ public interface IDatagramSession extends ISession {
 	 * as the adequate write method. 
 	 * <p>
 	 * The operation is asynchronous.
+	 * <p>
+	 * NOTE: The behavior of this method may change if the specified byte buffer
+	 * holder is marked as a message.
 	 * 
 	 * @param remoteAddress
 	 *            the address of the remote end where the datagram should be sent
@@ -509,6 +520,7 @@ public interface IDatagramSession extends ISession {
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
 	 * @return the future associated with this send operation
+	 * @see IByteBufferHolder#isMessage()
 	 */	
 	IFuture<Void> send(SocketAddress remoteAddress, IByteBufferHolder datagram);
 
@@ -526,6 +538,9 @@ public interface IDatagramSession extends ISession {
 	 * <p>
 	 * This method should be used whenever there will be no need to synchronize on
 	 * a future object. This will save some resources and may improve performance.
+	 * <p>
+	 * NOTE: The behavior of this method may change if the specified byte buffer
+	 * holder is marked as a message.
 	 * 
 	 * @param remoteAddress
 	 *            the address of the remote end where the datagram should be sent
@@ -533,6 +548,7 @@ public interface IDatagramSession extends ISession {
 	 *            the datagram to be sent
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
+	 * @see IByteBufferHolder#isMessage()
 	 */	
 	void sendnf(SocketAddress remoteAddress, IByteBufferHolder datagram);
 	

@@ -206,17 +206,18 @@ public interface IStreamSession extends ISession {
 	void writenf(ByteBuffer data, int length);	
 
 	/**
-	 * Writes <code>holder.remaining()</code> bytes from the specified 
-	 * byte buffer holder to the stream-oriented channel associated with 
-	 * this session. 
+	 * Writes <code>holder.remaining()</code> bytes from the specified byte buffer
+	 * holder to the stream-oriented channel associated with this session.
 	 * <p>
 	 * The operation is asynchronous.
+	 * <p>
+	 * NOTE: The behavior of this method may change if the specified byte buffer
+	 * holder is marked as a message.
 	 * 
-	 * @param holder
-	 *            bytes to be written
-	 * @throws IllegalSessionStateException
-	 *             if this session is not open
+	 * @param holder bytes to be written
+	 * @throws IllegalSessionStateException if this session is not open
 	 * @return the future associated with this write operation
+	 * @see IByteBufferHolder#isMessage()
 	 */
 	IFuture<Void> write(IByteBufferHolder holder);
 
@@ -230,11 +231,15 @@ public interface IStreamSession extends ISession {
 	 * This method should be used whenever there will be no need to 
 	 * synchronize on a future object. This will save some resources and 
 	 * may improve performance.
+	 * <p>
+	 * NOTE: The behavior of this method may change if the specified byte buffer
+	 * holder is marked as a message.
 	 * 
 	 * @param holder
 	 *            bytes to be written
 	 * @throws IllegalSessionStateException
 	 *             if this session is not open
+	 * @see IByteBufferHolder#isMessage()
 	 */
 	void writenf(IByteBufferHolder holder);
 	
