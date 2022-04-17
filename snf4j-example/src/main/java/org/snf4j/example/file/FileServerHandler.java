@@ -38,12 +38,24 @@ import org.snf4j.core.session.ssl.SSLEngineBuilder;
 
 class FileServerHandler extends AbstractFileHandler {
 
+	private final static int DEFAULT_HALF2_SIZE = FileServer.BUFFER_COUNT / 2;
+
+	private final static int DEFAULT_HALF1_SIZE = FileServer.BUFFER_COUNT - DEFAULT_HALF2_SIZE;
+	
 	private final StringBuilder path = new StringBuilder(256);
 	
-	private IFuture<Void> writeFuture;
+	private int half1Size = DEFAULT_HALF1_SIZE;
+	
+	private int half2Size = DEFAULT_HALF2_SIZE;
+	
+	private IFuture<Void> fullProgress;
+	
+	private IFuture<Void> halfProgress;
 	
 	FileServerHandler(SSLEngineBuilder builder) {
 		super(builder);
+		config.setMinInBufferCapacity(FileServer.BUFFER_SIZE)
+			.setMinOutBufferCapacity(FileServer.BUFFER_SIZE);
 	}
 	
 	@Override
@@ -65,9 +77,9 @@ class FileServerHandler extends AbstractFileHandler {
 				try {
 					file = new RandomAccessFile(path.toString(), "r");
 					fileChannel = file.getChannel();
-					inf("Uploading " + path);
+					info("Uploading " + path);
 					startTime = System.currentTimeMillis();
-					continueWriting();
+					progress(true);
 				} catch (FileNotFoundException e) {
 					err(e);
 					getSession().close();
@@ -83,11 +95,11 @@ class FileServerHandler extends AbstractFileHandler {
 		if (event == SessionEvent.CLOSED) {
 			if (file != null) {
 				long time = System.currentTimeMillis()-startTime;
-				inf(String.format("Uploading of %,d bytes completed in %,d msec (%,d bytes/sec)", 
+				info(String.format("Uploading of %,d bytes completed in %,d msec (%,d bytes/sec)", 
 						fileLength, 
 						time, 
 						(long)(fileLength*1000/time)));
-				inf(String.format("Allocator statistics: phisical allocations: %d (total %,d bytes), total allocations (from cache): %,d", 
+				info(String.format("Allocator statistics: phisical allocations: %d (total %,d bytes), total allocations (from cache): %,d", 
 						METRIC.getAllocatedCount(),
 						METRIC.getAllocatedSize(),
 						METRIC.getAllocatingCount()));
@@ -99,15 +111,27 @@ class FileServerHandler extends AbstractFileHandler {
 	@Override
 	public void event(DataEvent event, long length) {
 		if (event == DataEvent.SENT) {
-			if (writeFuture != null && writeFuture.isSuccessful()) {
-				writeFuture = null;
-				continueWriting();
+			if (halfProgress != null && halfProgress.isSuccessful()) {
+				if (fullProgress.isSuccessful()) {
+					half1Size = DEFAULT_HALF1_SIZE;
+					half2Size = DEFAULT_HALF2_SIZE;
+					halfProgress = fullProgress = null;
+					progress(true);
+				}
+				else {
+					int tmpCount = half1Size;
+
+					half1Size = half2Size;
+					half2Size = tmpCount;
+					halfProgress = fullProgress;
+					progress(false);
+				}
 			}
 		}
 	}
 	
-	private void continueWriting() {
-		int count = FileServer.BUFFER_COUNT;
+	private void progress(boolean full) {
+		int count = full ? FileServer.BUFFER_COUNT : half2Size;
 		ByteBufferHolder holder = new ByteBufferHolder(count);
 		boolean eof = false;
 		
@@ -132,9 +156,28 @@ class FileServerHandler extends AbstractFileHandler {
 			if (eof) {
 				getSession().writenf(holder);
 				getSession().close();
+				fullProgress = halfProgress = null;
 			}
 			else {
-				writeFuture = getSession().write(holder);
+				if (full) {
+					int size = holder.size();
+					
+					if (size <= half1Size) {
+						fullProgress = halfProgress = getSession().write(holder);	
+					}
+					else {
+						ByteBufferHolder holder2 = new ByteBufferHolder();
+						
+						for (int i=half1Size; i<size; ++i) {
+							holder2.add(holder.remove(half1Size));
+						}
+						halfProgress = getSession().write(holder);
+						fullProgress = getSession().write(holder2);
+					}
+				}
+				else {
+					fullProgress = getSession().write(holder);
+				}
 			}
 		}
 		catch (IOException e) {
@@ -159,7 +202,7 @@ class FileServerHandler extends AbstractFileHandler {
 		Logger.error("["+remoteAddress+"] " + t);
 	}
 	
-	void inf(String msg) {
+	void info(String msg) {
 		Logger.info("["+remoteAddress+"] " + msg);
 	}
 }

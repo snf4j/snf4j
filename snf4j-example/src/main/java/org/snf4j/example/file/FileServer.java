@@ -43,6 +43,7 @@ public class FileServer {
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 	static final int POOL_SIZE = Integer.getInteger(PREFIX+"PoolSize", 8);
 	static final boolean SECURE = System.getProperty(PREFIX+"Secure") != null;
+	static final int BUFFER_SIZE = Integer.getInteger(PREFIX+"BufferSize", 4096);
 	static final int BUFFER_COUNT = Integer.getInteger(PREFIX+"BufferCount", 16);
 
 	public static void main(String[] args) throws Exception {

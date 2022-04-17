@@ -6,6 +6,7 @@ Export-Package: org.snf4j.example.discarding;version=${parsedVersion.osgiVersion
   org.snf4j.example.chat;version=${parsedVersion.osgiVersion},
   org.snf4j.example.dtls;version=${parsedVersion.osgiVersion},
   org.snf4j.example.echo;version=${parsedVersion.osgiVersion},
+  org.snf4j.example.file;version=${parsedVersion.osgiVersion},
   org.snf4j.example.heartbeat;version=${parsedVersion.osgiVersion},
   org.snf4j.example.sctp;version=${parsedVersion.osgiVersion},
   org.snf4j.example.sctp.multi;version=${parsedVersion.osgiVersion},

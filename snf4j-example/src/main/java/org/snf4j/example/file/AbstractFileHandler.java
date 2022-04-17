@@ -39,6 +39,8 @@ import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.session.ssl.SSLEngineBuilder;
+import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.ITimer;
 
 public abstract class AbstractFileHandler extends AbstractStreamHandler {
 
@@ -47,6 +49,8 @@ public abstract class AbstractFileHandler extends AbstractStreamHandler {
 	protected static final AllocatorMetric METRIC = new AllocatorMetric();
 	
 	private static final IByteBufferAllocator ALLOCATOR = new CachingAllocator(true, METRIC);
+
+	private static final ITimer TIMER = new DefaultTimer(true);
 
 	protected final DefaultSessionConfig config;
 
@@ -62,9 +66,7 @@ public abstract class AbstractFileHandler extends AbstractStreamHandler {
 		
 	AbstractFileHandler(SSLEngineBuilder builder) {
 		config = new DefaultSessionConfig()
-				.setOptimizeDataCopying(true)
-				.setMinInBufferCapacity(BUFFER_SIZE)
-				.setMinOutBufferCapacity(BUFFER_SIZE);
+				.setOptimizeDataCopying(true);
 		if (builder != null) {
 			config.addSSLEngineBuilder(builder);
 		}
@@ -100,7 +102,12 @@ public abstract class AbstractFileHandler extends AbstractStreamHandler {
 	@Override
 	public ISessionStructureFactory getFactory() {
 		return new DefaultSessionStructureFactory() {
-			
+
+			@Override
+			public ITimer getTimer() {
+				return TIMER;
+			}
+	
 			@Override
 			public IByteBufferAllocator getAllocator() {
 				return ALLOCATOR;

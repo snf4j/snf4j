@@ -34,14 +34,21 @@ import java.nio.charset.StandardCharsets;
 import org.snf4j.core.EndingAction;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ssl.SSLEngineBuilder;
+import org.snf4j.core.timer.ITimerTask;
 
 public class FileClientHandler extends AbstractFileHandler {
 
+	private final Object PROGRESS_UPDATE_EVENT = new Object();
+	
 	private final String path;
+
+	ITimerTask progressTimer;
 	
 	FileClientHandler(SSLEngineBuilder builder, String path) {
 		super(builder);
-		config.setEndingAction(EndingAction.STOP);
+		config.setEndingAction(EndingAction.STOP)
+			.setMinInBufferCapacity(FileClient.BUFFER_SIZE)
+			.setMinOutBufferCapacity(FileClient.BUFFER_SIZE);
 		this.path = path;
 	}
 	
@@ -58,6 +65,14 @@ public class FileClientHandler extends AbstractFileHandler {
 		finally {
 			getSession().release((ByteBuffer)msg);
 		}
+	}
+	
+	@Override
+	public void timer(Object event) {
+		long time = System.currentTimeMillis()-startTime;
+		Logger.info(String.format("Download progress: %,d bytes (%,d bytes/sec)", 
+				fileLength, 
+				(long)(fileLength*1000/time)));
 	}
 	
 	@Override
@@ -81,6 +96,7 @@ public class FileClientHandler extends AbstractFileHandler {
 				if (!FileClient.DISCARD) {
 					file = new RandomAccessFile(filePath, "rw");
 					fileChannel = file.getChannel();
+					progressTimer = getSession().getTimer().scheduleEvent(PROGRESS_UPDATE_EVENT, 15000, 15000);
 				}
 				Logger.info("Downloading " + filePath.getAbsolutePath());
 				startTime = System.currentTimeMillis();
@@ -101,6 +117,9 @@ public class FileClientHandler extends AbstractFileHandler {
 		case CLOSED:
 			if (file != null || FileClient.DISCARD) {
 				long time = System.currentTimeMillis()-startTime;
+				if (progressTimer != null) {
+					progressTimer.cancelTask();
+				}
 				Logger.info(String.format("Downloading of %,d bytes completed in %,d msec (%,d bytes/sec)", 
 						fileLength, 
 						time, 

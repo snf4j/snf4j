@@ -42,6 +42,7 @@ public class FileClient {
 	static final String DOWNLOAD_DIR = System.getProperty(PREFIX+"DownloadDir", ".");
 	static final boolean DELETE_IF_EXISTS = System.getProperty(PREFIX+"DeleteIfExists") != null;
 	static final boolean DISCARD = System.getProperty(PREFIX+"Discard") != null;
+	static final int BUFFER_SIZE = Integer.getInteger(PREFIX+"BufferSize", 4096);
 	
 	public static void main(String[] args) throws Exception {
 		if (args.length == 0) {
