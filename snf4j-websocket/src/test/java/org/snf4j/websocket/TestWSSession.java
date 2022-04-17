@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.snf4j.core.IByteBufferHolder;
 import org.snf4j.core.TestHandler;
 import org.snf4j.core.TestSession;
 import org.snf4j.core.allocator.IByteBufferAllocator;
@@ -170,6 +171,17 @@ public class TestWSSession extends TestSession implements IWebSocketSession {
 	}
 
 	@Override
+	public IFuture<Void> write(IByteBufferHolder holder) {
+		msgs.add(holder);
+		return null;
+	}
+
+	@Override
+	public void writenf(IByteBufferHolder holder) {
+		msgs.add(holder);
+	}
+
+	@Override
 	public IFuture<Void> write(Object msg) {
 		msgs.add(msg);
 		return null;
@@ -214,4 +226,5 @@ public class TestWSSession extends TestSession implements IWebSocketSession {
 	public ISessionPipeline<IStreamSession> getPipeline() {
 		return null;
 	}
+
 }

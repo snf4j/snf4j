@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.core.TestCodec.BBDEv;
+import org.snf4j.core.allocator.TestAllocator;
 import org.snf4j.core.codec.DefaultCodecExecutor;
 import org.snf4j.core.codec.ICodecPipeline;
 import org.snf4j.core.codec.IDecoder;
@@ -53,6 +54,8 @@ public class SSLSessionCodecTest {
 	static final String CLIENT_RDY_TAIL = SSLSessionTest.CLIENT_RDY_TAIL;
 	
 	boolean directAllocator;
+	TestAllocator allocator;
+	boolean optimizeDataCopying;
 	
 	TestCodec codec;
 
@@ -77,7 +80,8 @@ public class SSLSessionCodecTest {
 		c = new Client(PORT, true);
 		
 		c.directAllocator = directAllocator;
-
+		c.allocator = allocator;
+		c.optimizeDataCopying = optimizeDataCopying;
 		c.codecPipeline = pipeline;
 		
 		s.start();
@@ -106,6 +110,69 @@ public class SSLSessionCodecTest {
 		s.stop(TIMEOUT);
 	}
 
+	@Test
+	public void testWriteByteBufferHolder() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		p.getPipeline().add("1", codec.BHBHE());
+		optimizeDataCopying = true;
+		directAllocator = true;
+		allocator = new TestAllocator(true, true); 
+		startWithCodec(p);
+		Packet packet = new Packet(PacketType.ECHO, "ABCDEFGHIJKL");
+		StreamSession session = c.getSession();
+		waitFor(50);
+		c.getRecordedData(true);
+		
+		assertEquals(0, allocator.getSize());
+		codec.changeInLastBuffer = 0;
+		session.write(SessionTest.createHolder(session, packet.toBytes(), 2,3)).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		waitFor(50);
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(0, allocator.getSize());
+		
+		codec.changeInLastBuffer = 3;
+		session.writenf(SessionTest.createHolder(session, packet.toBytes()));
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(BBCDEFGHIJKL)|", c.getRecordedData(true));
+		waitFor(50);
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(0, allocator.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		
+		p = new DefaultCodecExecutor();
+		p.getPipeline().add("1", codec.BHBHE());
+		optimizeDataCopying = true;
+		directAllocator = false;
+		allocator = new TestAllocator(false, false); 
+		startWithCodec(p);
+		session = c.getSession();
+		waitFor(50);
+		c.getRecordedData(true);
+		
+		codec.changeInLastBuffer = 0;
+		session.write(SessionTest.createHolder(session, packet.toBytes(), 2,3)).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		codec.changeInLastBuffer = 3;
+		session.writenf(SessionTest.createHolder(session, packet.toBytes()));
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|ECHO_RESPONSE(BBCDEFGHIJKL)|", c.getRecordedData(true));
+		
+	}
+	
 	@Test
 	public void testWrite() throws Exception {
 		startWithCodec(true);

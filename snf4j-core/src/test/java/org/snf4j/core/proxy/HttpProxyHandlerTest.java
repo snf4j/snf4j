@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
+import org.snf4j.core.IByteBufferHolder;
 import org.snf4j.core.TestSession;
 import org.snf4j.core.TraceBuilder;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
@@ -568,6 +569,17 @@ public class HttpProxyHandlerTest {
 
 		@Override
 		public void writenf(Object msg) {
+			trace.append("WR");
+		}
+
+		@Override
+		public IFuture<Void> write(IByteBufferHolder holder) {
+			trace.append("WR");
+			return null;
+		}
+
+		@Override
+		public void writenf(IByteBufferHolder holder) {
 			trace.append("WR");
 		}
 		

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -167,6 +167,14 @@ public class DatagramServerSessionTest {
 		session.writenf(new Packet(PacketType.NOP, "3"));
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(3eE)|", c.getRecordedData(true));
+		
+		byte[] data = new Packet(PacketType.NOP, "1234567890").toBytes();
+		session.write(SessionTest.createHolder(session, data, 1,3)).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234567890eE)|", c.getRecordedData(true));
+		session.writenf(SessionTest.createHolder(session, data, 1,3));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234567890eE)|", c.getRecordedData(true));
 		s.stop(TIMEOUT);
 		
 		s = new DatagramHandler(PORT);
@@ -215,6 +223,7 @@ public class DatagramServerSessionTest {
 		session.closing = ClosingState.FINISHING;
 		assertTrue(session.simpleSend(null, new byte[1], true).isCancelled());
 		assertTrue(session.simpleSend(null, ByteBuffer.wrap(new byte[1]), true).isCancelled());
+		assertTrue(session.simpleSend(null, SessionTest.createHolder(session, data, 3), true).isCancelled());
 		session.closing = ClosingState.NONE;
 		s.stop(TIMEOUT);
 		
@@ -235,6 +244,43 @@ public class DatagramServerSessionTest {
 		s.getSession().writenf(new Packet(PacketType.NOP, "1").toBytes());
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(1e2e2)|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
+		
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline = codec();
+		s.codecPipeline.getPipeline().replace("3", "3", codec.PBHE());
+		s.startServer();
+		c.getSession().write(new Packet(PacketType.NOP, "12345678").toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		c.getRecordedData(true);
+		s.getSession().write(ByteBuffer.wrap(new Packet(PacketType.NOP, "12345678").toBytes())).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(12345678e3)|", c.getRecordedData(true));
+		s.getSession().writenf(new Packet(PacketType.NOP, "123456").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(123456e3)|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
+
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.codecPipeline = codec();
+		s.codecPipeline.getPipeline().replace("3", "3", codec.PBHE());
+		s.codecPipeline2 = codec();
+		s.codecPipeline2.getPipeline().replace("3", "3", codec.PBHE());
+		s.startServer();
+		c.getSession().write(new Packet(PacketType.NOP,"123").toBytes());
+		s.waitForDataRead(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		c.getRecordedData(true);
+		s.getSession().write(ByteBuffer.wrap(new Packet(PacketType.NOP, "1234567").toBytes())).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234567e3e3)|", c.getRecordedData(true));
+		s.getSession().writenf(new Packet(PacketType.NOP, "1234").toBytes());
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234e3e3)|", c.getRecordedData(true));
+		s.stop(TIMEOUT);
 		
 	}
 
@@ -292,6 +338,15 @@ public class DatagramServerSessionTest {
 		session.writenf(new Packet(PacketType.NOP, "3"));
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(3E)|", c.getRecordedData(true));
+		
+		byte[] data = new Packet(PacketType.NOP, "1234567890").toBytes();
+		session.write(SessionTest.createHolder(session, data, 1,2)).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234567890E)|", c.getRecordedData(true));
+		session.writenf(SessionTest.createHolder(session, data, 1,2));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234567890E)|", c.getRecordedData(true));
+		
 		s.stop(TIMEOUT);
 		
 		
@@ -360,6 +415,15 @@ public class DatagramServerSessionTest {
 		session.sendnf(addr, new Packet(PacketType.NOP, "3"));
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(3e)|", c.getRecordedData(true));
+		
+		byte[] data = new Packet(PacketType.NOP, "12345678").toBytes();
+		session.send(addr, SessionTest.createHolder(session, data, 3)).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(12345678e)|", c.getRecordedData(true));
+		session.sendnf(addr, SessionTest.createHolder(session, data, 3));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(12345678e)|", c.getRecordedData(true));
+		
 	}	
 	
 	@Test
@@ -425,6 +489,14 @@ public class DatagramServerSessionTest {
 		session.sendnf(addr, new Packet(PacketType.NOP, "3"));
 		c.waitForDataRead(TIMEOUT);
 		assertEquals("DR|NOP(3E)|", c.getRecordedData(true));
+
+		byte[] data = new Packet(PacketType.NOP, "1234567890").toBytes();
+		session.send(addr, SessionTest.createHolder(session, data, 1,2)).sync(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234567890E)|", c.getRecordedData(true));
+		session.sendnf(addr, SessionTest.createHolder(session, data, 1,2));
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DR|NOP(1234567890E)|", c.getRecordedData(true));
 		
 	}	
 	

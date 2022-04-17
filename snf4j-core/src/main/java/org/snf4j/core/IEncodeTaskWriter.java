@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,8 @@ import org.snf4j.core.future.IFuture;
 
 interface IEncodeTaskWriter {
 	
+	IFuture<Void> write(SocketAddress remoteAddress, IByteBufferHolder holder, boolean withFuture);
+
 	IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture);
 
 	IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture);

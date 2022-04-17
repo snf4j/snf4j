@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -59,6 +59,8 @@ public class TestCodec {
 	volatile boolean sessionId;
 	
 	volatile boolean nopToNop2;
+	
+	volatile int changeInLastBuffer = -1;
 
 	IDecoder<?,?> PPD() { return new PPD(); }
 	IDecoder<?,?> PBD() { return new PBD(); }
@@ -76,6 +78,8 @@ public class TestCodec {
 	IDecoder<?,?> BBDEv() { return new BBDEv(); }
 	IDecoder<?,?> BBBBD() { return new BBBBD(); }
 	IEncoder<?,?> BBBBE() { return new BBBBE(); }
+	IEncoder<?,?> BHBHE() { return new BHBHE(); }
+	IEncoder<?,?> PBHE() { return new PBHE(); }
 	
 	class BBBBD implements IDecoder<ByteBuffer,ByteBuffer> {
 		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
@@ -113,6 +117,20 @@ public class TestCodec {
 		}
 	}
 
+	class BHBHE implements IEncoder<IByteBufferHolder,IByteBufferHolder> {
+		@Override public Class<IByteBufferHolder> getInboundType() {return IByteBufferHolder.class;}
+		@Override public Class<IByteBufferHolder> getOutboundType() {return IByteBufferHolder.class;}
+		@Override
+		public void encode(ISession session, IByteBufferHolder data, List<IByteBufferHolder> out) throws Exception {
+			if (changeInLastBuffer > -1) {
+				ByteBuffer[] buffers = data.toArray();
+				byte b = buffers[buffers.length-1].get(changeInLastBuffer);
+				buffers[buffers.length-1].put(changeInLastBuffer, (byte) (b+1));
+			}
+			out.add(data);
+		}
+	}
+	
 	class PPD implements IDecoder<Packet, Packet> {
 		@Override public Class<Packet> getInboundType() {return Packet.class;}
 		@Override public Class<Packet> getOutboundType() {return Packet.class;}
@@ -225,6 +243,22 @@ public class TestCodec {
 		@Override public void encode(ISession session, Packet data, List<ByteBuffer> out)throws Exception {
 			data.payload = data.payload + "e2";
 			out.add(ByteBuffer.wrap(data.toBytes()));
+			if (encodeException != null) {
+				throw encodeException;
+			}
+		}
+	}
+
+	class PBHE implements IEncoder<Packet, IByteBufferHolder> {
+		@Override public Class<Packet> getInboundType() {return Packet.class;}
+		@Override public Class<IByteBufferHolder> getOutboundType() {return IByteBufferHolder.class;}
+		@Override public void encode(ISession session, Packet data, List<IByteBufferHolder> out)throws Exception {
+			data.payload = data.payload + "e3";
+			byte[] bytes = data.toBytes();
+			ByteBufferHolder holder = new ByteBufferHolder();
+			holder.add(ByteBuffer.wrap(bytes, 0, 1));
+			holder.add(ByteBuffer.wrap(bytes, 1, bytes.length-1));
+			out.add(holder);
 			if (encodeException != null) {
 				throw encodeException;
 			}

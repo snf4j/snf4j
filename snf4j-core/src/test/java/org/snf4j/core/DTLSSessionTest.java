@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -828,6 +828,15 @@ public class DTLSSessionTest extends DTLSTest {
 		ss.writenf(ByteBuffer.wrap(nopp("03").toBytes(0, 10)), 5);
 		assertWrite(c,s,"DR|NOP(03"+ed+")|", "DS|");
 
+		cs.write(holder(nop())).sync(TIMEOUT);
+		assertWrite(s,c,"DR|NOP("+ed+")|", "DS|");
+		cs.writenf(new SingleByteBufferHolder(ByteBuffer.wrap(nop("1"))));
+		assertWrite(s,c,"DR|NOP(1"+ed+")|", "DS|");
+		ss.write(holder(nop("2"))).sync(TIMEOUT);
+		assertWrite(c,s,"DR|NOP(2"+ed+")|", "DS|");
+		ss.writenf(new SingleByteBufferHolder(ByteBuffer.wrap(nop("3"))));
+		assertWrite(c,s,"DR|NOP(3"+ed+")|", "DS|");
+		
 		cs.write((Object)nop()).sync(TIMEOUT);
 		assertWrite(s,c,"DR|NOP("+ed+")|", "DS|");
 		cs.writenf((Object)nop("1"));
@@ -844,6 +853,15 @@ public class DTLSSessionTest extends DTLSTest {
 		ss.write((Object)ByteBuffer.wrap(nop("2"))).sync(TIMEOUT);
 		assertWrite(c,s,"DR|NOP(2"+ed+")|", "DS|");
 		ss.writenf((Object)ByteBuffer.wrap(nop("3")));
+		assertWrite(c,s,"DR|NOP(3"+ed+")|", "DS|");
+
+		cs.write((Object)holder(nop())).sync(TIMEOUT);
+		assertWrite(s,c,"DR|NOP("+ed+")|", "DS|");
+		cs.writenf((Object)new SingleByteBufferHolder(ByteBuffer.wrap(nop("1"))));
+		assertWrite(s,c,"DR|NOP(1"+ed+")|", "DS|");
+		ss.write((Object)new SingleByteBufferHolder(ByteBuffer.wrap(nop("2")))).sync(TIMEOUT);
+		assertWrite(c,s,"DR|NOP(2"+ed+")|", "DS|");
+		ss.writenf((Object)new SingleByteBufferHolder(ByteBuffer.wrap(nop("3"))));
 		assertWrite(c,s,"DR|NOP(3"+ed+")|", "DS|");
 		
 		SocketAddress a1 = null;
@@ -885,6 +903,15 @@ public class DTLSSessionTest extends DTLSTest {
 			ss.sendnf(a2,ByteBuffer.wrap(nopp("03").toBytes(0, 10)), 5);
 			assertWrite(c,s,"DR|NOP(03"+ed+")|", "DS|");
 
+			cs.send(a1,holder(nop())).sync(TIMEOUT);
+			assertWrite(s,c,"DR|NOP("+ed+")|", "DS|");
+			cs.sendnf(a1,new SingleByteBufferHolder(ByteBuffer.wrap(nop("1"))));
+			assertWrite(s,c,"DR|NOP(1"+ed+")|", "DS|");
+			ss.send(a2,holder(nop("2"))).sync(TIMEOUT);
+			assertWrite(c,s,"DR|NOP(2"+ed+")|", "DS|");
+			ss.sendnf(a2,new SingleByteBufferHolder(ByteBuffer.wrap(nop("3"))));
+			assertWrite(c,s,"DR|NOP(3"+ed+")|", "DS|");
+			
 			cs.send(a1,(Object)nop()).sync(TIMEOUT);
 			assertWrite(s,c,"DR|NOP("+ed+")|", "DS|");
 			cs.sendnf(a1,(Object)nop("1"));
@@ -901,6 +928,15 @@ public class DTLSSessionTest extends DTLSTest {
 			ss.send(a2,(Object)ByteBuffer.wrap(nop("2"))).sync(TIMEOUT);
 			assertWrite(c,s,"DR|NOP(2"+ed+")|", "DS|");
 			ss.sendnf(a2,(Object)ByteBuffer.wrap(nop("3")));
+			assertWrite(c,s,"DR|NOP(3"+ed+")|", "DS|");
+			
+			cs.send(a1,(Object)holder(nop())).sync(TIMEOUT);
+			assertWrite(s,c,"DR|NOP("+ed+")|", "DS|");
+			cs.sendnf(a1,(Object)new SingleByteBufferHolder(ByteBuffer.wrap(nop("1"))));
+			assertWrite(s,c,"DR|NOP(1"+ed+")|", "DS|");
+			ss.send(a2,(Object)new SingleByteBufferHolder(ByteBuffer.wrap(nop("2")))).sync(TIMEOUT);
+			assertWrite(c,s,"DR|NOP(2"+ed+")|", "DS|");
+			ss.sendnf(a2,(Object)new SingleByteBufferHolder(ByteBuffer.wrap(nop("3"))));
 			assertWrite(c,s,"DR|NOP(3"+ed+")|", "DS|");
 			
 			a1 = address(PORT);
@@ -952,6 +988,15 @@ public class DTLSSessionTest extends DTLSTest {
 		ss.sendnf(a1,ByteBuffer.wrap(nopp("03").toBytes(0, 10)), 5);
 		assertWrite(s2,"DR|$NOP(03"+ed+")|");
 
+		cs.send(a1,holder(nop())).sync(TIMEOUT);
+		assertWrite(s2,c,"DR|$NOP("+ed+")|", "DS|");
+		cs.sendnf(a1,new SingleByteBufferHolder(ByteBuffer.wrap(nop("1"))));
+		assertWrite(s2,c,"DR|$NOP(1"+ed+")|", "DS|");
+		ss.send(a1,holder(nop("2"))).sync(TIMEOUT);
+		assertWrite(s2,"DR|$NOP(2"+ed+")|");
+		ss.sendnf(a1,new SingleByteBufferHolder(ByteBuffer.wrap(nop("3"))));
+		assertWrite(s2,"DR|$NOP(3"+ed+")|");
+		
 		cs.send(a1,(Object)nop()).sync(TIMEOUT);
 		assertWrite(s2,c,"DR|$NOP("+ed+")|", "DS|");
 		cs.sendnf(a1,(Object)nop("1"));
@@ -968,6 +1013,15 @@ public class DTLSSessionTest extends DTLSTest {
 		ss.send(a1,(Object)ByteBuffer.wrap(nop("2"))).sync(TIMEOUT);
 		assertWrite(s2,"DR|$NOP(2"+ed+")|");
 		ss.sendnf(a1,(Object)ByteBuffer.wrap(nop("3")));
+		assertWrite(s2,"DR|$NOP(3"+ed+")|");
+
+		cs.send(a1,(Object)holder(nop())).sync(TIMEOUT);
+		assertWrite(s2,c,"DR|$NOP("+ed+")|", "DS|");
+		cs.sendnf(a1,(Object)new SingleByteBufferHolder(ByteBuffer.wrap(nop("1"))));
+		assertWrite(s2,c,"DR|$NOP(1"+ed+")|", "DS|");
+		ss.send(a1,(Object)holder(nop("2"))).sync(TIMEOUT);
+		assertWrite(s2,"DR|$NOP(2"+ed+")|");
+		ss.sendnf(a1,(Object)new SingleByteBufferHolder(ByteBuffer.wrap(nop("3"))));
 		assertWrite(s2,"DR|$NOP(3"+ed+")|");
 		s2.stop(TIMEOUT);
 		c.stop(TIMEOUT);
@@ -2406,6 +2460,103 @@ public class DTLSSessionTest extends DTLSTest {
 		p.getPipeline().add("1", codec.BBBBE());
 		testOptimizedDataCopyingWrite(p);
 		testOptimizedDataCopyingWrite(null);
+	}
+	
+	@Test
+	public void testOptimizedDataCopyingWriteByteBufferHolder() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		codec = new TestCodec();
+		codec.changeInLastBuffer = 0;
+		p.getPipeline().add("1", codec.BHBHE());
+
+		//client side
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		TestAllocator a = c.allocator = new TestAllocator(false, true);
+		c.optimizeDataCopying = true;
+		c.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		DatagramSession session = c.getSession();
+		int acount = a.getAllocatedCount();
+		int rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		assertEquals(0, a.getSize());
+		assertEquals(acount, a.getAllocatedCount());
+		assertEquals(rcount, a.getReleasedCount());
+		byte[] data = nop("1234567890");
+		ByteBufferHolder holder = SessionTest.createHolder(session, data, 1,4);
+		assertEquals(3, a.getSize());
+		assertEquals(acount+3, a.getAllocatedCount());
+		assertEquals(rcount, a.getReleasedCount());
+		session.write(holder).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|NOP(1244567890)|", s.getRecordedData(true));
+		assertEquals(0, a.getSize());
+		
+		session.getCodecPipeline().remove("1");
+		holder = SessionTest.createHolder(session, data, 1,4);
+		assertEquals(3, a.getSize());
+		session.writenf(holder);
+		s.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|NOP(1234567890)|", s.getRecordedData(true));
+		assertEquals(0, a.getSize());
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		
+		//server side
+		p = new DefaultCodecExecutor();
+		codec = new TestCodec();
+		codec.changeInLastBuffer = 0;
+		p.getPipeline().add("1", codec.BHBHE());
+
+		s2 = new DatagramHandler(PORT+1);
+		s2.useDatagramServerHandler = true;
+		s2.startServer();
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new DefaultTimer();
+		s.ssl = true;
+		c.ssl = true;
+		s.waitForCloseMessage = true;
+		a = s.allocator = new TestAllocator(false, true);
+		s.optimizeDataCopying = true;
+		s.codecPipeline = p;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		session = s.getSession();
+		acount = a.getAllocatedCount();
+		rcount = a.getReleasedCount();
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		holder = SessionTest.createHolder(session, data, 1,4);
+		session.send(address(PORT+1), holder).sync(TIMEOUT);
+		s2.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("SCR|SOP|RDY|DR|NOP(1244567890)|", s2.getRecordedData(true));
+		assertEquals(0, a.getSize());
+		holder = SessionTest.createHolder(session, data, 1,4);
+		session.sendnf(address(PORT+1), holder);
+		s2.waitForDataRead(TIMEOUT);
+		waitFor(50);
+		assertEquals("DR|NOP(1244567890)|", s2.getRecordedData(true));
+		assertEquals(0, a.getSize());
 	}
 	
 	@Test

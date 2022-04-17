@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -176,7 +176,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 				if (closing != ClosingState.NONE) {
 					return -1;
 				}
-				outQueueSize += record.buffer.remaining();
+				outQueueSize += record.holder.remaining();
 				futureExpectedLen = outQueueSize + getWrittenBytes();  
 				outQueue.add(record);
 				setWriteInterestOps(key);
@@ -191,13 +191,13 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 
 	final DatagramRecord initRecord(DatagramRecord record, byte[] datagram, int offset, int length) {
 		if (optimizeCopying && allocator.usesArray()) {
-			record.buffer = ByteBuffer.wrap(datagram, offset, length);
+			record.holder = new SingleByteBufferHolder(ByteBuffer.wrap(datagram, offset, length));
 		}
 		else {
 			ByteBuffer buffer = allocator.allocate(length);
 			
 			buffer.put(datagram, offset, length).flip();
-			record.buffer = buffer;
+			record.holder = new SingleByteBufferHolder(buffer);
 			record.release = true;
 		}
 		return record;
@@ -207,7 +207,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		boolean allRemaining = length == datagram.remaining();
 		
 		if (optimizeCopying && allRemaining) {
-			record.buffer = datagram;
+			record.holder = new SingleByteBufferHolder(datagram);
 			record.release = optimizeBuffers;
 		}
 		else {
@@ -223,7 +223,25 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 				buffer.put(dup).flip();
 				datagram.position(dup.position());
 			}
-			record.buffer = buffer;
+			record.holder = new SingleByteBufferHolder(buffer);
+			record.release = true;
+		}
+		return record;
+	}
+
+	final DatagramRecord initRecord(DatagramRecord record, IByteBufferHolder datagram) {
+		if (optimizeCopying) {
+			record.holder = datagram;
+			record.release = optimizeBuffers;
+		}
+		else {
+			ByteBuffer buffer = allocator.allocate(datagram.remaining());
+
+			for (ByteBuffer buf: datagram.toArray()) {
+				buffer.put(buf);
+			}
+			buffer.flip();
+			record.holder = new SingleByteBufferHolder(buffer);
 			record.release = true;
 		}
 		return record;
@@ -235,6 +253,10 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 
 	private final long write0(DatagramRecord record, ByteBuffer datagram, int length) {
 		return write0(initRecord(record, datagram, length));
+	}
+
+	private final long write0(DatagramRecord record, IByteBufferHolder datagram) {
+		return write0(initRecord(record, datagram));
 	}
 
 	private IFuture<Void> write1(DatagramRecord record) {
@@ -265,7 +287,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		DatagramRecord record = new DatagramRecord(remoteAddress);
 		long futureExpectedLen;
 		
-		record.buffer = ByteBuffer.wrap(datagram);
+		record.holder = new SingleByteBufferHolder(ByteBuffer.wrap(datagram));
 		futureExpectedLen = write0(record);
 		if (withFuture) {
 			if (futureExpectedLen == -1) {
@@ -331,6 +353,16 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		sendnf(null, datagram, length);
 	}
 
+	@Override
+	public IFuture<Void> write(IByteBufferHolder datagram) {
+		return send(null, datagram);
+	}
+
+	@Override
+	public void writenf(IByteBufferHolder datagram) {
+		sendnf(null, datagram);
+	}
+	
 	@Override
 	public IFuture<Void> write(Object msg) {
 		return send(null, msg);
@@ -407,7 +439,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		DatagramRecord record = new DatagramRecord(remoteAddress);
 		long futureExpectedLen;
 		
-		record.buffer = datagram;
+		record.holder = new SingleByteBufferHolder(datagram);
 		record.release = optimizeBuffers;
 		futureExpectedLen = write0(record);
 		if (withFuture) {
@@ -489,6 +521,64 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		}
 	}
 
+	IFuture<Void> simpleSend(SocketAddress remoteAddress, IByteBufferHolder datagram, boolean withFuture) {
+		if (codec != null) {
+			EncodeTask task = EncodeTask.simple(this, datagram);
+			
+			if (withFuture) {
+				return task.register(remoteAddress);
+			}
+			task.registernf(remoteAddress);
+			return null;
+		}
+		DatagramRecord record = new DatagramRecord(remoteAddress);
+		long futureExpectedLen;
+		
+		record.holder = datagram;
+		record.release = optimizeBuffers;
+		futureExpectedLen = write0(record);
+		if (withFuture) {
+			if (futureExpectedLen == -1) {
+				return futuresController.getCancelledFuture();
+			}
+			return futuresController.getWriteFuture(futureExpectedLen);
+		}
+		return null;
+	}
+	
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, IByteBufferHolder datagram) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		} else if (datagram.remaining() == 0) {
+			return futuresController.getSuccessfulFuture();
+		}		
+		if (codec != null) {
+			return new EncodeTask(this, datagram).register(remoteAddress);
+		}
+		
+		long futureExpectedLen = write0(new DatagramRecord(remoteAddress), datagram);
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, IByteBufferHolder datagram) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		} else if (datagram.remaining() > 0) {
+			if (codec != null) {
+				new EncodeTask(this, datagram).registernf(remoteAddress);
+			}
+			else {
+				write0(new DatagramRecord(remoteAddress), datagram);
+			}
+		}
+	}
+	
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, Object msg) {
 		if (msg == null) {
@@ -502,6 +592,9 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		}
 		if (msg instanceof ByteBuffer) {
 			return send(remoteAddress, (ByteBuffer)msg);
+		}
+		else if (msg instanceof IByteBufferHolder) {
+			return send(remoteAddress, (IByteBufferHolder)msg);
 		}
 		throw new IllegalArgumentException("msg is an unexpected object");
 	}
@@ -519,6 +612,9 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		}
 		else if (msg instanceof ByteBuffer) {
 			sendnf(remoteAddress,(ByteBuffer)msg);
+		}
+		else if (msg instanceof IByteBufferHolder) {
+			sendnf(remoteAddress, (IByteBufferHolder)msg);
 		}
 		else {
 			throw new IllegalArgumentException("msg is an unexpected object");
@@ -672,7 +768,9 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			DatagramRecord record;
 			while ((record = outQueue.poll()) != null) {
 				if (record.release) {
-					allocator.release(record.buffer);
+					for (ByteBuffer buffer: record.holder.toArray()) {
+						allocator.release(buffer);
+					}
 				}
 			}
 		}
@@ -736,7 +834,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 	
 	static class DatagramRecord {
 		SocketAddress address;
-		ByteBuffer buffer;
+		IByteBufferHolder holder;
 		boolean release;
 
 		DatagramRecord(SocketAddress address) {
@@ -750,7 +848,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		@Override
 		public final IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture) {
 			DatagramRecord record = new DatagramRecord(remoteAddress);
-			record.buffer = buffer;
+			record.holder = new SingleByteBufferHolder(buffer);
 			record.release = optimizeBuffers;
 			if (withFuture) {
 				return write1(record);
@@ -762,7 +860,19 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 		@Override
 		public final IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture) {
 			DatagramRecord record = new DatagramRecord(remoteAddress);
-			record.buffer = ByteBuffer.wrap(bytes);
+			record.holder = new SingleByteBufferHolder(ByteBuffer.wrap(bytes));
+			if (withFuture) {
+				return write1(record);
+			}
+			write0(record);
+			return null;
+		}
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, IByteBufferHolder holder, boolean withFuture) {
+			DatagramRecord record = new DatagramRecord(remoteAddress);
+			record.holder = holder;
+			record.release = optimizeBuffers;
 			if (withFuture) {
 				return write1(record);
 			}

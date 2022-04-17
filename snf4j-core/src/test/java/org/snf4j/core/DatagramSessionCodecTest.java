@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -756,6 +756,46 @@ public class DatagramSessionCodecTest {
 		session.closing = ClosingState.NONE;
 		
 		stop();
+	}
+
+	@Test
+	public void testWriteByteBufferHolder() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		p.getPipeline().add("1", codec.BHBHE());
+		optimizeDataCopying = true;
+		allocator = new TestAllocator(false, true);
+		startWithCodec(true, p);
+		byte[] data = new Packet(PacketType.NOP, "1234567890").toBytes();
+		DatagramSession session = c.getSession();
+		
+		codec.changeInLastBuffer=0;
+		assertEquals(0, c.allocator.getSize());
+		assertEquals(0, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getReleasedCount());
+		ByteBufferHolder holder = SessionTest.createHolder(session, data, 1,2);
+		assertEquals(3, c.allocator.getSize());
+		assertEquals(3, c.allocator.getAllocatedCount());
+		assertEquals(0, c.allocator.getReleasedCount());
+		session.write(holder).sync(TIMEOUT);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(2234567890)|", s.getRecordedData(true));
+		assertEquals(0, c.allocator.getSize());
+		assertEquals(3, c.allocator.getAllocatedCount());
+		assertEquals(3, c.allocator.getReleasedCount());
+		
+		holder = SessionTest.createHolder(session, data, 1,2);
+		assertEquals(3, c.allocator.getSize());
+		assertEquals(6, c.allocator.getAllocatedCount());
+		assertEquals(3, c.allocator.getReleasedCount());
+		session.writenf(holder);
+		c.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DR|$NOP(2234567890)|", s.getRecordedData(true));
+		assertEquals(0, c.allocator.getSize());
+		assertEquals(6, c.allocator.getAllocatedCount());
+		assertEquals(6, c.allocator.getReleasedCount());
+		
 	}
 	
 	@Test

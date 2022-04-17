@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -104,6 +104,13 @@ class EngineDatagramWrapper {
 		return write0(record, needFuture);
 	}
 
+	private final IFuture<Void> write0(IByteBufferHolder datagram, boolean needFuture) {
+		EngineDatagramRecord record = new EngineDatagramRecord(remoteAddress);
+		
+		session.initRecord(record, datagram);
+		return write0(record, needFuture);
+	}
+	
 	private final IFuture<Void> write0(EngineDatagramRecord record, boolean needFuture) {
 		InternalSession.checkKey(session.key);
 		if (session.closing == ClosingState.NONE) {
@@ -221,6 +228,31 @@ class EngineDatagramWrapper {
 			}
 		}		
 	}
+
+	IFuture<Void> write(IByteBufferHolder datagram) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		} else if (datagram.remaining() == 0) {
+			return session.futuresController.getSuccessfulFuture();
+		}		
+		if (session.codec != null) {
+			return new EncodeTask(session, datagram).register(null);
+		}
+		return write0(datagram, true);
+	}
+	
+	void writenf(IByteBufferHolder datagram) {
+		if (datagram == null) {
+			throw new NullPointerException();
+		} else if (datagram.remaining() > 0) {
+			if (session.codec != null) {
+				new EncodeTask(session, datagram).registernf(null);
+			}
+			else {
+				write0(datagram, false);
+			}
+		}		
+	}
 	
 	IFuture<Void> write(Object msg) {
 		if (msg == null) {
@@ -234,6 +266,9 @@ class EngineDatagramWrapper {
 		}
 		if (msg instanceof ByteBuffer) {
 			return write((ByteBuffer)msg);
+		}
+		if (msg instanceof IByteBufferHolder) {
+			return write((IByteBufferHolder)msg);
 		}
 		throw new IllegalArgumentException("msg is an unexpected object");
 	}
@@ -250,6 +285,9 @@ class EngineDatagramWrapper {
 		}
 		else if (msg instanceof ByteBuffer) {
 			writenf((ByteBuffer)msg);
+		}
+		else if (msg instanceof IByteBufferHolder) {
+			writenf((IByteBufferHolder)msg);
 		}
 		else {
 			throw new IllegalArgumentException("msg is an unexpected object");
@@ -308,7 +346,7 @@ class EngineDatagramWrapper {
 		@Override
 		public final IFuture<Void> write(SocketAddress remoteAddress, ByteBuffer buffer, boolean withFuture) {
 			EngineDatagramRecord record = new EngineDatagramRecord(remoteAddress);
-			record.buffer = buffer;
+			record.holder = new SingleByteBufferHolder(buffer);
 			record.release = session.optimizeBuffers;
 			if (remoteAddress != null) {
 				return session.superWrite(record, withFuture);
@@ -319,7 +357,18 @@ class EngineDatagramWrapper {
 		@Override
 		public final IFuture<Void> write(SocketAddress remoteAddress, byte[] bytes, boolean withFuture) {
 			EngineDatagramRecord record = new EngineDatagramRecord(remoteAddress);
-			record.buffer = ByteBuffer.wrap(bytes);
+			record.holder = new SingleByteBufferHolder(ByteBuffer.wrap(bytes));
+			if (remoteAddress != null) {
+				return session.superWrite(record, withFuture);
+			}
+			return write0(record, withFuture);
+		}
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, IByteBufferHolder holder, boolean withFuture) {
+			EngineDatagramRecord record = new EngineDatagramRecord(remoteAddress);
+			record.holder = holder;
+			record.release = session.optimizeBuffers;
 			if (remoteAddress != null) {
 				return session.superWrite(record, withFuture);
 			}

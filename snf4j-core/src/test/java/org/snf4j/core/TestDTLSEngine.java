@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -355,6 +355,19 @@ public class TestDTLSEngine extends SSLEngine {
 
 	@Override
 	public SSLEngineResult wrap(ByteBuffer[] srcs, int offset, int length, ByteBuffer dst) throws SSLException {
+		if (srcs.length > 1) {
+			int remaining = 0;
+			
+			for (ByteBuffer src: srcs) {
+				remaining += src.remaining();
+			}
+			ByteBuffer buf = ByteBuffer.allocate(remaining);
+			for (ByteBuffer src: srcs) {
+				buf.put(src);
+			}
+			buf.flip();
+			return wrap(buf, dst);
+		}
 		return wrap(srcs[0], dst);
 	}
 

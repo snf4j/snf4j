@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -696,6 +696,211 @@ public class SessionCodecTest {
 	}
 	
 	@Test
+	public void testWriteByteBufferHolder() throws Exception {
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		p.getPipeline().add("0", new BHVE());
+		p.getPipeline().add("1", codec.BHBHE());
+		p.getPipeline().add("2", new BHVE());
+		optimizeDataCopying = true;
+		directAllocator = true;
+		allocator = new TestAllocator(true, true); 
+		startWithCodec(p);
+		Packet packet = new Packet(PacketType.ECHO, "ABCDEFGHIJKL");
+		StreamSession session = c.getSession();
+
+		assertEquals(0, allocator.getSize());
+		codec.changeInLastBuffer = 0;
+		session.write(SessionTest.createHolder(session, packet.toBytes(), 2,3)).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("BHVE|BHVE|", getTrace());
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(4, allocator.getAllocatedCount());
+		assertEquals(4, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
+
+		codec.changeInLastBuffer = 3;
+		ByteBuffer bb = session.allocate(100);
+		bb.put(packet.toBytes()).flip();
+		session.writenf(bb);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(BBCDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("BHVE|BHVE|", getTrace());
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(6, allocator.getAllocatedCount());
+		assertEquals(6, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
+
+		codec.changeInLastBuffer = 4;
+		session.write(packet.toBytes()).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ACCDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("BHVE|BHVE|", getTrace());
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(7, allocator.getAllocatedCount());
+		assertEquals(8, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
+		
+		session.getCodecPipeline().remove("0");
+		session.getCodecPipeline().remove("2");
+		session.getCodecPipeline().remove("1");
+		session.getCodecPipeline().add("0", new BVE());
+		session.getCodecPipeline().add("1", codec.PBBE());
+		session.getCodecPipeline().add("2", codec.BPE());
+		session.getCodecPipeline().add("3", new BVE());
+		session.getCodecPipeline().add("4", new BVE());
+		session.write(SessionTest.createHolder(session, packet.toBytes(), 2,3)).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABCDEFGHIJKLe2)|", c.getRecordedData(true));
+		assertEquals("BVE|BVE|BVE|", getTrace());
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(11, allocator.getAllocatedCount());
+		assertEquals(13, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
+
+		session.getCodecPipeline().remove("0");
+		session.getCodecPipeline().remove("3");
+		session.getCodecPipeline().remove("4");
+		session.getCodecPipeline().remove("2");
+		session.getCodecPipeline().remove("1");
+		session.getCodecPipeline().add("0", new BBVE());
+		session.getCodecPipeline().add("1", codec.BBBBE());
+		session.getCodecPipeline().add("3", new BBVE());
+		session.getCodecPipeline().add("4", new BBVE());
+		session.writenf(SessionTest.createHolder(session, packet.toBytes(), 2,3));
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABCDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("BBVE|BBVE|BBVE|", getTrace());
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(18, allocator.getAllocatedCount());
+		assertEquals(20, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
+
+		session.write(SessionTest.createHolder(session, packet.toBytes())).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABCDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("BBVE|BBVE|BBVE|", getTrace());
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(20, allocator.getAllocatedCount());
+		assertEquals(22, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
+		
+		session.getCodecPipeline().remove("0");
+		session.getCodecPipeline().remove("3");
+		session.getCodecPipeline().remove("4");
+		session.getCodecPipeline().remove("1");
+		assertTrue(session.getCodecPipeline().encoderKeys().isEmpty());
+		session.write(SessionTest.createHolder(session, packet.toBytes(), 2,3)).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABCDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("", getTrace());
+		assertEquals(1, allocator.getSize());
+		assertTrue(c.bufferRead == allocator.get().get(0));
+		session.release(c.bufferRead);
+		assertEquals(24, allocator.getAllocatedCount());
+		assertEquals(26, allocator.getReleasedCount());
+		assertEquals(0, allocator.getSize());
+	}
+
+	@Test
+	public void testWriteByteBufferHolderAsMessage() throws Exception {
+		codec.changeInLastBuffer = 0;
+		DefaultCodecExecutor p = new DefaultCodecExecutor();
+		p.getPipeline().add("1", codec.BHBHE());
+		p.getPipeline().add("2", new BBHBHE());
+		optimizeDataCopying = true;
+		directAllocator = true;
+		allocator = new TestAllocator(true, true); 
+		startWithCodec(p);
+		Packet packet = new Packet(PacketType.ECHO, "ABCDEFGHIJKL");
+		StreamSession session = c.getSession();
+		
+		session.write((Object)SessionTest.createHolder(session, packet.toBytes(), 2,3)).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("", getTrace());
+
+		session.write(SessionTest.createHolder(session, packet.toBytes(), 2,3)).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("", getTrace());
+
+		ByteBufferHolder holder = new ByteBufferHolder() {
+			@Override
+			public boolean isMessage() {
+				return true;
+			}
+		};
+		ByteBuffer[] bufs = SessionTest.createHolder(session, packet.toBytes(), 2,3).toArray();
+		for (ByteBuffer buf: bufs) {
+			holder.add(buf);
+		}
+		session.write(holder).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("BBHBHE|", getTrace());
+		
+		holder.clear();
+		bufs = SessionTest.createHolder(session, packet.toBytes(), 2,3).toArray();
+		for (ByteBuffer buf: bufs) {
+			holder.add(buf);
+		}
+		session.write((Object)holder).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("BBHBHE|", getTrace());
+		
+		codec.changeInLastBuffer = 3;
+		session.write((Object)new SingleByteBufferHolder(ByteBuffer.wrap(packet.toBytes()))).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(BBCDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("", getTrace());
+		
+		codec.changeInLastBuffer = 0;
+		session.getCodecPipeline().remove("2");
+		session.write((Object)SessionTest.createHolder(session, packet.toBytes(), 2,3)).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("", getTrace());
+		
+		holder.clear();
+		bufs = SessionTest.createHolder(session, packet.toBytes(), 2,3).toArray();
+		for (ByteBuffer buf: bufs) {
+			holder.add(buf);
+		}
+		session.write(holder).sync(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		c.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DR|BUF|ECHO_RESPONSE(ABDDEFGHIJKL)|", c.getRecordedData(true));
+		assertEquals("", getTrace());
+	}	
+	
+	@Test
 	public void testCloseInsideDecoder() throws Exception {
 		codec.decodeClose = true;
 		startWithCodec(true);
@@ -1232,6 +1437,27 @@ public class SessionCodecTest {
 		@Override public Class<byte[]> getInboundType() {return byte[].class;}
 		@Override public Class<Void> getOutboundType() {return Void.class;}
 		@Override public void encode(ISession session, byte[] data, List<Void> out)	throws Exception {trace("BVE");}
+	}
+
+	class BBVE implements IEncoder<ByteBuffer,Void> {
+		@Override public Class<ByteBuffer> getInboundType() {return ByteBuffer.class;}
+		@Override public Class<Void> getOutboundType() {return Void.class;}
+		@Override public void encode(ISession session, ByteBuffer data, List<Void> out)	throws Exception {trace("BBVE");}
+	}
+
+	class BHVE implements IEncoder<IByteBufferHolder,Void> {
+		@Override public Class<IByteBufferHolder> getInboundType() {return IByteBufferHolder.class;}
+		@Override public Class<Void> getOutboundType() {return Void.class;}
+		@Override public void encode(ISession session, IByteBufferHolder data, List<Void> out)	throws Exception {trace("BHVE");}
+	}
+
+	class BBHBHE implements IEncoder<ByteBufferHolder,IByteBufferHolder> {
+		@Override public Class<ByteBufferHolder> getInboundType() {return ByteBufferHolder.class;}
+		@Override public Class<IByteBufferHolder> getOutboundType() {return IByteBufferHolder.class;}
+		@Override public void encode(ISession session, ByteBufferHolder data, List<IByteBufferHolder> out)	throws Exception {
+			trace("BBHBHE");
+			out.add(data);
+		}
 	}
 
 	class PVE implements IEncoder<Packet,Void> {

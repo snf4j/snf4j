@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -107,6 +108,13 @@ public class DTLSTest {
 	
 	byte[] nop() {
 		return nop("");
+	}
+	
+	ByteBufferHolder holder(byte[] data) {
+		ByteBufferHolder holder = new ByteBufferHolder();
+		holder.add(ByteBuffer.wrap(data, 0, 1));
+		holder.add(ByteBuffer.wrap(data, 1, data.length-1));
+		return holder;
 	}
 	
 	DefaultCodecExecutor codec() {

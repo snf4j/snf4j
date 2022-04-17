@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package org.snf4j.core.session;
 
 import java.nio.ByteBuffer;
 
+import org.snf4j.core.IByteBufferHolder;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IStreamHandler;
 
@@ -203,6 +204,44 @@ public interface IStreamSession extends ISession {
 	 *             if this session is not open
 	 */
 	void writenf(ByteBuffer data, int length);	
+
+	/**
+	 * Writes <code>holder.remaining()</code> bytes from the specified byte buffer
+	 * holder to the stream-oriented channel associated with this session.
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * NOTE: The behavior of this method may change if the specified byte buffer
+	 * holder is marked as a message.
+	 * 
+	 * @param holder bytes to be written
+	 * @throws IllegalSessionStateException if this session is not open
+	 * @return the future associated with this write operation
+	 * @see IByteBufferHolder#isMessage()
+	 */
+	IFuture<Void> write(IByteBufferHolder holder);
+
+	/**
+	 * Writes <code>holder.remaining()</code> bytes from the specified 
+	 * byte buffer holder to the stream-oriented channel associated with 
+	 * this session. 
+	 * <p>
+	 * The operation is asynchronous.
+	 * <p>
+	 * This method should be used whenever there will be no need to 
+	 * synchronize on a future object. This will save some resources and 
+	 * may improve performance.
+	 * <p>
+	 * NOTE: The behavior of this method may change if the specified byte buffer
+	 * holder is marked as a message.
+	 * 
+	 * @param holder
+	 *            bytes to be written
+	 * @throws IllegalSessionStateException
+	 *             if this session is not open
+	 * @see IByteBufferHolder#isMessage()
+	 */
+	void writenf(IByteBufferHolder holder);
 	
 	/**
 	 * Writes a message to the stream-oriented channel associated with this

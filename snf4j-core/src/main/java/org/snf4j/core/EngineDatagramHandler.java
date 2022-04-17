@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -392,11 +392,20 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 				record = outAppBuffers.peek();
 				if (record != null) {
 					try {
-						wrapResult = engine.wrap(record.buffer, outNetBuffer);
-						if (record.buffer.remaining() == 0) {
+						ByteBuffer[] buffers = record.holder.toArray();
+						
+						if (buffers.length == 1) {
+							wrapResult = engine.wrap(buffers[0], outNetBuffer);
+						}
+						else {
+							wrapResult = engine.wrap(buffers, outNetBuffer);
+						}
+						if (record.holder.remaining() == 0) {
 							outAppBuffers.poll();
 							if (releasable && record.release) {
-								allocator.release(record.buffer);
+								for (ByteBuffer buffer: buffers) {
+									allocator.release(buffer);
+								}
 							}
 							++netCounter;
 						}
@@ -530,8 +539,10 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		
 		while ((record = records.poll()) != null) {
 			if (record.release) {
-				allocator.release(record.buffer);
-				record.buffer = null;
+				for (ByteBuffer buffer: record.holder.toArray()) {
+					allocator.release(buffer);
+				}
+				record.holder = null;
 			}
 		}
 	}
@@ -575,7 +586,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 			record = new EngineDatagramRecord(null);
 		}
 		buffer.flip();
-		record.buffer = buffer;
+		record.holder = new SingleByteBufferHolder(buffer);
 		record.release = true;
 		long futureThreshold = session.superWrite(record);
 		

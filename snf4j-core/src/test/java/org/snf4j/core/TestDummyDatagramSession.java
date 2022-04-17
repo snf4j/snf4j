@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -247,6 +247,15 @@ public class TestDummyDatagramSession implements IDatagramSession {
 	}
 
 	@Override
+	public IFuture<Void> write(IByteBufferHolder datagram) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void writenf(IByteBufferHolder datagram) {
+	}
+	
+	@Override
 	public IFuture<Void> write(Object msg) {
 		return futures.getCancelledFuture();
 	}
@@ -286,6 +295,15 @@ public class TestDummyDatagramSession implements IDatagramSession {
 	public void sendnf(SocketAddress remoteAddress, ByteBuffer datagram, int length) {
 	}
 
+	@Override
+	public IFuture<Void> send(SocketAddress remoteAddress, IByteBufferHolder datagram) {
+		return futures.getCancelledFuture();
+	}
+
+	@Override
+	public void sendnf(SocketAddress remoteAddress, IByteBufferHolder datagram) {
+	}
+	
 	@Override
 	public IFuture<Void> send(SocketAddress remoteAddress, Object msg) {
 		return futures.getCancelledFuture();

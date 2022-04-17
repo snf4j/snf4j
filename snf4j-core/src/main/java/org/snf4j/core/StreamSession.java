@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.future.IFuture;
@@ -264,7 +265,43 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		newBuffers[lastIndex+1] = data;
 		return newBuffers;
 	}
-	
+
+	static ByteBuffer[] putToBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, IByteBufferHolder holder) {
+		ByteBuffer[] bufs = holder.toArray();
+		
+		if (bufs.length == 1) {
+			return putToBuffers(outBuffers, allocator, bufs[0]);
+		}
+		
+		int lastIndex = outBuffers.length - 1;
+		ByteBuffer lastBuffer = outBuffers[lastIndex];
+		int off,inc;
+
+		if (lastBuffer == null) {
+			off = lastIndex;
+			inc = bufs.length-1;
+		}
+		else if (lastBuffer.position() == 0) {
+			allocator.release(lastBuffer);
+			off = lastIndex;
+			inc = bufs.length-1;
+		}
+		else {
+			lastBuffer.flip();
+			off = lastIndex+1;
+			inc = bufs.length;
+		}
+		
+		ByteBuffer[] newBuffers = Arrays.copyOf(outBuffers, outBuffers.length+inc);
+		for (int i=0; i<bufs.length; ++i) {
+			newBuffers[off++] = bufs[i];
+		}
+		lastBuffer = newBuffers[off-1];
+		lastBuffer.position(lastBuffer.limit());
+		lastBuffer.limit(lastBuffer.capacity());
+		return newBuffers;
+	}
+
 	static ByteBuffer[] putToBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, int minOutBufferCapacity, Object data, int offset, int length, boolean buffer) {
 		int lastIndex = outBuffers.length - 1;
 		ByteBuffer lastBuffer = outBuffers[lastIndex];
@@ -310,6 +347,15 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			return newBuffers;
 		}
 	}
+
+	static ByteBuffer[] putToBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, int minOutBufferCapacity, IByteBufferHolder holder) {
+		for (ByteBuffer buf: holder.toArray()) {
+			if (buf.hasRemaining()) {
+				outBuffers = putToBuffers(outBuffers, allocator, minOutBufferCapacity, buf, 0, buf.remaining(), true);
+			}
+		}
+		return outBuffers;
+	}
 	
 	/** 
 	 * Returns -1 if session is in closing state 
@@ -325,7 +371,22 @@ public class StreamSession extends InternalSession implements IStreamSession {
 			
 			boolean optimize = buffer && optimizeBuffers;
 			
-			if (optimize && ((ByteBuffer)data).remaining() == length) {
+			if (length == -1) {
+				IByteBufferHolder holder = (IByteBufferHolder)data;
+				
+				if (outBuffers.length == 0) {
+					outBuffers = DEFAULT_ARRAY;
+					outBuffers[0] = optimize ? null : allocator.allocate(minOutBufferCapacity);
+				}
+				length = holder.remaining();
+				if (optimize) {
+					outBuffers = putToBuffers(outBuffers, allocator, holder);
+				}
+				else {
+					outBuffers = putToBuffers(outBuffers, allocator, minOutBufferCapacity, holder);
+				}
+			}
+			else if (optimize && ((ByteBuffer)data).remaining() == length) {
 				if (outBuffers.length == 0) {
 					outBuffers = DEFAULT_ARRAY;
 					outBuffers[0] = null;
@@ -356,6 +417,10 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	final long write0(ByteBuffer data) {
 		return write0(data, 0, data.remaining(), true);
 	}
+
+	final long write0(IByteBufferHolder holder) {
+		return write0(holder, 0, -1, true);
+	}
 	
 	final IFuture<Void> write1(byte[] data) {
 		long futureExpectedLen = write0(data, 0, data.length, false);
@@ -368,6 +433,15 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	
 	final IFuture<Void> write1(ByteBuffer data) {
 		long futureExpectedLen = write0(data, 0, data.remaining(), true);
+		
+		if (futureExpectedLen == -1) {
+			return futuresController.getCancelledFuture();
+		}
+		return futuresController.getWriteFuture(futureExpectedLen);
+	}
+
+	final IFuture<Void> write1(IByteBufferHolder holder) {
+		long futureExpectedLen = write0(holder, 0, -1, true);
 		
 		if (futureExpectedLen == -1) {
 			return futuresController.getCancelledFuture();
@@ -467,6 +541,33 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	}
 
 	@Override
+	public IFuture<Void> write(IByteBufferHolder holder) {
+		if (holder == null) {
+			throw new NullPointerException();
+		} else if (!holder.hasRemaining()) {
+			return futuresController.getSuccessfulFuture();
+		}
+		if (codec != null) {
+			return new EncodeTask(this, holder).register();
+		}
+		return write1(holder);
+	}
+
+	@Override
+	public void writenf(IByteBufferHolder holder) {
+		if (holder == null) {
+			throw new NullPointerException();
+		} else if (holder.hasRemaining()) {
+			if (codec != null) {
+				new EncodeTask(this, holder).registernf();
+			}
+			else {
+				write0(holder, 0, -1, true);
+			}
+		}
+	}
+
+	@Override
 	public IFuture<Void> write(ByteBuffer data, int length) {
 		if (data == null) {
 			throw new NullPointerException();
@@ -517,6 +618,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		if (msg instanceof ByteBuffer) {
 			return write((ByteBuffer)msg);
 		}
+		if (msg instanceof IByteBufferHolder) {
+			return write((IByteBufferHolder)msg);
+		}
 		throw new IllegalArgumentException("msg is an unexpected object");
 	}
 	
@@ -533,6 +637,9 @@ public class StreamSession extends InternalSession implements IStreamSession {
 		}
 		else if (msg instanceof ByteBuffer) {
 			writenf((ByteBuffer)msg);
+		}
+		else if (msg instanceof IByteBufferHolder) {
+			writenf((IByteBufferHolder)msg);
 		}
 		else {
 			throw new IllegalArgumentException("msg is an unexpected object");
@@ -791,6 +898,15 @@ public class StreamSession extends InternalSession implements IStreamSession {
 				return write1(bytes);
 			}
 			write0(bytes, 0, bytes.length, false);
+			return null;
+		}
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, IByteBufferHolder holder, boolean withFuture) {
+			if (withFuture) {
+				return write1(holder);
+			}
+			write0(holder);
 			return null;
 		}
 		

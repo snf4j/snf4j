@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,12 @@ class EncodeTask implements Runnable {
 	
 	private final static ILogger LOGGER = LoggerFactory.getLogger(EncodeTask.class);	
 	
+	private final static int BYTES = 0;
+	
+	private final static int BUFFER = 1;
+	
+	private final static int HOLDER = 2;
+	
 	final IExceptionLogger elogger = ExceptionLogger.getInstance();
 
 	final InternalSession session;
@@ -52,6 +58,8 @@ class EncodeTask implements Runnable {
 	byte[] bytes;
 	
 	ByteBuffer buffer;
+	
+	IByteBufferHolder holder;
 	
 	Object msg;
 	
@@ -79,6 +87,28 @@ class EncodeTask implements Runnable {
 			buffer.get(bytes);
 		}
 	}
+
+	private final void init(final IByteBufferHolder holder) {
+		if (session.optimizeCopying) {
+			this.holder = holder;
+		}
+		else {
+			ByteBuffer[] buffers = holder.toArray();
+			int len, off = 0;
+			
+			bytes = new byte[holder.remaining()];
+			if (buffers.length == 1) {
+				buffers[0].get(bytes);
+			}
+			else {
+				for (ByteBuffer buffer: buffers) {
+					len = buffer.remaining();
+					buffer.get(bytes, off, len);
+					off += len;
+				}
+			}
+		}
+	}
 	
 	static EncodeTask simple(InternalSession session, byte[] bytes) {
 		EncodeTask task = new EncodeTask(session);
@@ -93,6 +123,14 @@ class EncodeTask implements Runnable {
 		
 		task.buffer = buffer;
 		task.length = buffer.remaining();
+		return task;
+	}
+
+	static EncodeTask simple(InternalSession session, IByteBufferHolder holder) {
+		EncodeTask task = new EncodeTask(session);
+		
+		task.holder = holder;
+		task.length = holder.remaining();
 		return task;
 	}
 	
@@ -136,6 +174,18 @@ class EncodeTask implements Runnable {
 		}
 	}
 
+	EncodeTask(InternalSession session, IByteBufferHolder holder) {
+		this.session = session;
+		if (holder.isMessage()) {
+			length = -1;
+			msg = holder;
+		}
+		else {
+			length = holder.remaining();
+			init(holder);
+		}
+	}
+	
 	EncodeTask(InternalSession session, Object msg) {
 		this.session = session;
 		this.length = -1;
@@ -144,6 +194,14 @@ class EncodeTask implements Runnable {
 		}
 		else if (msg instanceof ByteBuffer) {
 			init((ByteBuffer)msg);
+		}
+		else if (msg instanceof IByteBufferHolder) {
+			if (((IByteBufferHolder)msg).isMessage()) {
+				this.msg = msg;
+			}
+			else {
+				init((IByteBufferHolder)msg);
+			}
 		}
 		else {
 			this.msg = msg;
@@ -199,6 +257,10 @@ class EncodeTask implements Runnable {
 	protected IFuture<Void> write(ByteBuffer data, boolean withFuture) {
 		return writer.write(remoteAddress, data, withFuture);
 	}
+
+	protected IFuture<Void> write(IByteBufferHolder data, boolean withFuture) {
+		return writer.write(remoteAddress, data, withFuture);
+	}
 	
 	private final IFuture<Void> write(final List<Object> out, boolean withFuture) {
 		Iterator<Object> i = out.iterator();
@@ -215,7 +277,7 @@ class EncodeTask implements Runnable {
 				}
 			}
 		}
-		else {
+		else if (data instanceof ByteBuffer) {
 			for (;;) {
 				if (i.hasNext()) {
 					write((ByteBuffer)data, false);
@@ -223,6 +285,17 @@ class EncodeTask implements Runnable {
 				}
 				else {
 					return write((ByteBuffer)data, withFuture);
+				}
+			}
+		}
+		else {
+			for (;;) {
+				if (i.hasNext()) {
+					write((IByteBufferHolder)data, false);
+					data = i.next();
+				}
+				else {
+					return write((IByteBufferHolder)data, withFuture);
 				}
 			}
 		}
@@ -248,13 +321,20 @@ class EncodeTask implements Runnable {
 	protected List<Object> encode(ByteBuffer buffer) throws Exception {
 		return session.codec.encode(buffer);
 	}
+
+	/**
+	 * Returns {@code null} if there is no encoder
+	 */
+	protected List<Object> encode(IByteBufferHolder holder) throws Exception {
+		return session.codec.encode(holder);
+	}
 	
 	@Override
 	public void run() {
 		SessionFuturesController futures = session.futuresController;
 		boolean withFuture = future != null;
 		List<Object> out;
-		boolean isBuffer = false;
+		int isBuffer = BYTES;
 		
 		try  {
 			if (msg != null) {
@@ -268,11 +348,15 @@ class EncodeTask implements Runnable {
 			}
 			else if (bytes != null) {
 				out = encode(bytes);
-				isBuffer = false;
+				isBuffer = BYTES;
+			}
+			else if (buffer != null) {
+				out = encode(buffer);
+				isBuffer = BUFFER;
 			}
 			else {
-				out = encode(buffer);
-				isBuffer = true;
+				out = encode(holder);
+				isBuffer = HOLDER;
 			}
 		}
 		catch (Exception e) {
@@ -299,11 +383,17 @@ class EncodeTask implements Runnable {
 					tmpFuture = write(out, withFuture);
 				}
 			}
-			else if (isBuffer) {
-				tmpFuture = write(buffer, withFuture);
-			}
 			else {
-				tmpFuture = write(bytes, withFuture);
+				switch (isBuffer) {
+				case BUFFER:
+					tmpFuture = write(buffer, withFuture);
+					break;
+				case BYTES:
+					tmpFuture = write(bytes, withFuture);
+					break;
+				default:
+					tmpFuture = write(holder, withFuture);
+				}
 			}
 		}
 		catch (Exception e) {

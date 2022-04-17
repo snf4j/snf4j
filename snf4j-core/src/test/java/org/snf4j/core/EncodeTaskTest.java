@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -136,6 +136,7 @@ public class EncodeTaskTest {
 		byte[] bytes = "ABC".getBytes();
 		EncodeTask task = new EncodeTask(session, bytes);
 		assertNotNull(task.bytes);
+		assertNull(task.holder);
 		assertNull(task.buffer);
 		assertNull(task.msg);
 		assertTrue(task.bytes != bytes);
@@ -145,6 +146,7 @@ public class EncodeTaskTest {
 		setOptimizeCopying(session, true);
 		task = new EncodeTask(session, bytes);
 		assertNotNull(task.bytes);
+		assertNull(task.holder);
 		assertNull(task.buffer);
 		assertNull(task.msg);
 		assertTrue(task.bytes == bytes);
@@ -159,6 +161,7 @@ public class EncodeTaskTest {
 		bytes = "1ABC2".getBytes();
 		task = new EncodeTask(session, bytes, 1, 3);
 		assertNotNull(task.bytes);
+		assertNull(task.holder);
 		assertNull(task.buffer);
 		assertNull(task.msg);
 		assertTrue(task.bytes != bytes);
@@ -167,6 +170,7 @@ public class EncodeTaskTest {
 		assertEquals("ABC", new String(task.bytes));
 		task = new EncodeTask(session, bytes, 0, 5);
 		assertNotNull(task.bytes);
+		assertNull(task.holder);
 		assertNull(task.buffer);
 		assertTrue(task.bytes != bytes);
 		setOptimizeCopying(session, true);
@@ -197,6 +201,7 @@ public class EncodeTaskTest {
 		ByteBuffer buffer = ByteBuffer.wrap(bytes);
 		task = new EncodeTask(session, buffer);
 		assertNotNull(task.bytes);
+		assertNull(task.holder);
 		assertNull(task.buffer);
 		assertNull(task.msg);
 		assertTrue(task.bytes != bytes);
@@ -207,6 +212,7 @@ public class EncodeTaskTest {
 		buffer = ByteBuffer.wrap(bytes);
 		task = new EncodeTask(session, buffer);
 		assertNull(task.bytes);
+		assertNull(task.holder);
 		assertNotNull(task.buffer);
 		assertNull(task.msg);
 		assertTrue(task.buffer == buffer);
@@ -222,6 +228,7 @@ public class EncodeTaskTest {
 		buffer = ByteBuffer.wrap(bytes);
 		task = new EncodeTask(session, buffer, 3);
 		assertNotNull(task.bytes);
+		assertNull(task.holder);
 		assertNull(task.buffer);
 		assertNull(task.msg);
 		assertTrue(task.bytes != bytes);
@@ -231,6 +238,7 @@ public class EncodeTaskTest {
 		setOptimizeCopying(session, true);
 		buffer = ByteBuffer.wrap(bytes);
 		task = new EncodeTask(session, buffer, 3);
+		assertNull(task.holder);
 		assertNotNull(task.bytes);
 		assertNull(task.buffer);
 		assertNull(task.msg);
@@ -249,10 +257,35 @@ public class EncodeTaskTest {
 		buffer.get();
 		assertEquals("BCD", getString(task.buffer));
 		assertEquals(prefix + " length=4]", task.toString());
-		
+
 		//constructor 5
+		setOptimizeCopying(session, false);
+		bytes = "ABCDEFGHIJKL".getBytes();
+		ByteBufferHolder holder = SessionTest.createHolder(session, bytes);
+		task = new EncodeTask(session, holder);
+		assertNull(task.holder);
+		assertArrayEquals(bytes, task.bytes);
+		assertNull(task.buffer);
+		assertNull(task.msg);
+		assertTrue(task.session == session);
+		holder = SessionTest.createHolder(session, bytes, 1, 0, 3);
+		task = new EncodeTask(session, holder);
+		assertArrayEquals(bytes, task.bytes);
+		task = new EncodeTask(session, new ByteBufferHolder());
+		assertEquals(0, task.bytes.length);
+		setOptimizeCopying(session, true);
+		holder = SessionTest.createHolder(session, bytes, 1);
+		task = new EncodeTask(session, holder);
+		assertSame(holder, task.holder);
+		assertNull(task.bytes);
+		assertNull(task.buffer);
+		assertNull(task.msg);
+		assertTrue(task.session == session);
+		
+		//constructor 6
 		String text = "ABCD";
 		task = new EncodeTask(session, text);
+		assertNull(task.holder);
 		assertNull(task.bytes);
 		assertNull(task.buffer);
 		assertNotNull(task.msg);
@@ -260,6 +293,7 @@ public class EncodeTaskTest {
 		assertTrue(task.session == session);
 		task = new EncodeTask(session, (Object)text.getBytes());
 		assertNotNull(task.bytes);
+		assertNull(task.holder);
 		assertNull(task.buffer);
 		assertNull(task.msg);
 		assertEquals("ABCD", new String(task.bytes));
@@ -271,6 +305,8 @@ public class EncodeTaskTest {
 		assertEquals("ABCD", getString(task.buffer));
 		assertTrue(task.session == session);
 		assertEquals(prefix + " message]", task.toString());
+
+		
 		
 		task.future = new Future();
 		assertEquals(prefix + " message future]", task.toString());
@@ -290,6 +326,7 @@ public class EncodeTaskTest {
 		assertEquals(11, task.length);
 		assertNull(task.msg);
 		assertNull(task.buffer);
+		assertNull(task.holder);
 
 		ByteBuffer bb = ByteBuffer.wrap(b);
 		task = EncodeTask.simple(session, bb);
@@ -298,7 +335,17 @@ public class EncodeTaskTest {
 		assertEquals(11, task.length);
 		assertNull(task.msg);
 		assertNull(task.bytes);
-		
+		assertNull(task.holder);
+
+		holder = SessionTest.createHolder(session, bytes, 1, 0, 3);
+		task = EncodeTask.simple(session, holder);
+		assertTrue(session == task.session);
+		assertNull(task.buffer);
+		assertTrue(holder == task.holder);
+		assertEquals(12, task.length);
+		assertNull(task.msg);
+		assertNull(task.bytes);
+
 		c.stop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -405,6 +452,12 @@ public class EncodeTaskTest {
 			else if (s.equals("SBB")) {
 				enc = new SBB();
 			}
+			else if (s.equals("BHS")) {
+				enc = new BHS();
+			}
+			else if (s.equals("SBH")) {
+				enc = new SBH();
+			}
 			else {
 				throw new IllegalArgumentException("Unknown " + s);
 			}
@@ -492,6 +545,30 @@ public class EncodeTaskTest {
 		task.run();
 		assertEquals("nBB(ABC)n", getTrace());
 		
+		//inbound byte buffer holder
+		setCodec(session, createPipeline("SBH;BHS"));
+		ByteBufferHolder holder = SessionTest.createHolder(session, "ABCDEF".getBytes(), 3);
+		task = new EncodeTask(session, holder);
+		task.future = session.futuresController.getDelegatingFuture();
+		task.run();
+		assertEquals("nBH(ABC+DEF+)f", getTrace());
+		assertTrue(task.future.isSuccessful());
+		holder = SessionTest.createHolder(session, "ABCDEF".getBytes(), 3);
+		task = new EncodeTask(session, holder);
+		task.run();
+		assertEquals("nBH(ABC+DEF+)n", getTrace());
+		setCodec(session, createPipeline("SBH"));
+		holder = SessionTest.createHolder(session, "ABCDEF".getBytes(), 3);
+		task = new EncodeTask(session, holder);
+		task.future = session.futuresController.getDelegatingFuture();
+		task.run();
+		assertEquals("nBH(ABC+DEF+)f", getTrace());
+		assertTrue(task.future.isSuccessful());
+		holder = SessionTest.createHolder(session, "ABCDEF".getBytes(), 3);
+		task = new EncodeTask(session, holder);
+		task.run();
+		assertEquals("nBH(ABC+DEF+)n", getTrace());
+		
 		//discarding pipeline
 		discarding = true;
 		setCodec(session, createPipeline("SB"));
@@ -540,6 +617,16 @@ public class EncodeTaskTest {
 		task = new EncodeTask(session, "ABC");
 		task.run();
 		assertEquals("nBB(ABC)nnBB(ABC)nnBB(ABC)n", getTrace());
+
+		setCodec(session, createPipeline("SBH"));
+		task = new EncodeTask(session, "ABCDEF");
+		task.future = session.futuresController.getDelegatingFuture();
+		task.run();
+		assertEquals("nBH(ABC+DEF+)nnBH(ABC+DEF+)nnBH(ABC+DEF+)f", getTrace());
+		assertTrue(task.future.isSuccessful());
+		task = new EncodeTask(session, "ABCDEF");
+		task.run();
+		assertEquals("nBH(ABC+DEF+)nnBH(ABC+DEF+)nnBH(ABC+DEF+)n", getTrace());
 		duplicating = 0;
 		
 		//encoder throwing exception
@@ -605,6 +692,26 @@ public class EncodeTaskTest {
 		}
 	}
 
+	class SBH implements IEncoder<String,IByteBufferHolder> {
+		@Override public Class<String> getInboundType() {return String.class;}
+		@Override public Class<IByteBufferHolder> getOutboundType() {return IByteBufferHolder.class;}
+		@Override public void encode(ISession session, String data, List<IByteBufferHolder> out) {
+			byte[] bytes = data.getBytes();
+			if (!discarding) {
+				ByteBufferHolder holder = new ByteBufferHolder();
+				holder.add(ByteBuffer.wrap(bytes, 0, 3));
+				holder.add(ByteBuffer.wrap(bytes, 3, bytes.length-3));
+				out.add(holder);
+			}
+			for (int i=0; i<duplicating; ++i) {
+				ByteBufferHolder holder = new ByteBufferHolder();
+				holder.add(ByteBuffer.wrap(bytes, 0, 3));
+				holder.add(ByteBuffer.wrap(bytes, 3, bytes.length-3));
+				out.add(holder);
+			}
+		}
+	}
+	
 	class BS implements IEncoder<byte[],String> {
 		@Override public Class<byte[]> getInboundType() {return byte[].class;}
 		@Override public Class<String> getOutboundType() {return String.class;}
@@ -635,6 +742,25 @@ public class EncodeTaskTest {
 		}
 	}
 	
+	class BHS implements IEncoder<IByteBufferHolder,String> {
+		@Override public Class<IByteBufferHolder> getInboundType() {return IByteBufferHolder.class;}
+		@Override public Class<String> getOutboundType() {return String.class;}
+		@Override public void encode(ISession session, IByteBufferHolder data, List<String> out) {
+			byte[] b = new byte[data.remaining()];
+			int off=0,len;
+			for (ByteBuffer buffer: data.toArray()) {
+				len = buffer.remaining();
+				buffer.get(b, off, len);
+				off += len;
+			}
+			if (!discarding) {
+				out.add(new String(b));
+			}
+			for (int i=0; i<duplicating; ++i) {
+				out.add(new String(b));
+			}
+		}
+	}
 	
 	class Writer implements IEncodeTaskWriter {
 
@@ -668,6 +794,28 @@ public class EncodeTaskTest {
 			sb.append(remoteAddress == null ? "n" : "a");
 			sb.append("B(");
 			sb.append(new String(bytes));
+			sb.append(")");
+			sb.append(withFuture ? "f" : "n");
+			trace(sb.toString());
+			return withFuture ? new SuccessfulFuture<Void>(null) : null;
+		}
+
+		@Override
+		public IFuture<Void> write(SocketAddress remoteAddress, IByteBufferHolder holder, boolean withFuture) {
+			if (writerException != null) {
+				throw writerException;
+			}
+			
+			StringBuilder sb = new StringBuilder();
+			
+			sb.append(remoteAddress == null ? "n" : "a");
+			sb.append("BH(");
+			for (ByteBuffer buffer: holder.toArray()) {
+				byte[] bytes = new byte[buffer.remaining()];
+				buffer.get(bytes);
+				sb.append(new String(bytes));
+				sb.append('+');
+			}
 			sb.append(")");
 			sb.append(withFuture ? "f" : "n");
 			trace(sb.toString());
