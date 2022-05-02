@@ -939,12 +939,12 @@ public class DatagramServerSessionTest {
 		session1.getTimer().scheduleEvent("t1", 10);
 		waitFor(8);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(4);
+		waitFor(8);
 		assertEquals("TIM;t1;"+session1.getName()+"|", s.getRecordedData(true));
 		session2.getTimer().scheduleEvent("t2", 10);
 		waitFor(8);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(4);
+		waitFor(8);
 		assertEquals("TIM;t2;"+session2.getName()+"|", s.getRecordedData(true));
 	}
 	
