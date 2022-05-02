@@ -40,6 +40,7 @@ import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.IDatagramSession;
@@ -126,8 +127,8 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 			try {
 				getHandler().event(remoteAddress, event, length);
 			}
-			catch (Exception e) {
-				elogger.error(logger, "Failed event {} for {}: {}", event, this, e);
+			catch (Throwable e) {
+				exception(SessionIncident.DATA_EVENT_FAILURE, event, e);
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,8 @@ public enum SessionIncident {
 	/**
 	 * A failure occurred while encoding data passed to write/send methods.
 	 * <p>
-	 * <b>Default action</b>: the default message is logged at the ERROR level. 
+	 * <b>Default action</b>: the default message is logged at the ERROR level and
+	 * an exception is reported.
 	 */
 	ENCODING_PIPELINE_FAILURE("Encoding pipeline failed for {}: {}"),
 	
@@ -73,7 +74,39 @@ public enum SessionIncident {
 	 * <p>
 	 * <b>Default action</b>: the default message is logged at the ERROR level. 
 	 */
-	SCTP_SENDING_FAILURE("Sending via SCTP channel failed for {}: {}");
+	SCTP_SENDING_FAILURE("Sending via SCTP channel failed for {}: {}"),
+	
+	/**
+	 * A failure occurred while processing a {@link SessionEvent} in a session's handler.
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the ERROR level and
+	 * an exception is reported.
+	 */
+	SESSION_EVENT_FAILURE("Failed event {} for {}: {}"),
+	
+	/**
+	 * A failure occurred while processing a {@link DataEvent} in a session's handler.
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the ERROR level and
+	 * an exception is reported.
+	 */
+	DATA_EVENT_FAILURE("Failed event {} for {}: {}"),
+	
+	/**
+	 * A failure occurred while processing a timer event in a session's handler.
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the ERROR level and
+	 * an exception is reported.
+	 */
+	TIMER_EVENT_FAILURE("Failed timer event {} for {}: {}"),
+	
+	/**
+	 * A failure occurred while processing a timer task in a session's handler.
+	 * <p>
+	 * <b>Default action</b>: the default message is logged at the ERROR level and
+	 * an exception is reported.
+	 */
+	TIMER_TASK_FAILURE("Failed timer task {} for {}: {}");
 	
 	private String defaultMessage;
 	

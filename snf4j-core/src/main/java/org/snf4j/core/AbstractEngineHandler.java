@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -433,7 +433,14 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 		if (event == SessionEvent.CLOSED) {
 			handleClosed();
 		}
-		handler.event(event);
+		try {
+			handler.event(event);
+		}
+		catch (Throwable t) {
+			if (session.exception(SessionIncident.SESSION_EVENT_FAILURE, event, t)) {
+				return;
+			}
+		}
 		if (event == SessionEvent.OPENED) {
 			handleOpened();
 		}

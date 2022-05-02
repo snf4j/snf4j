@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -755,8 +755,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			try {
 				handler.event(event, length);
 			}
-			catch (Exception e) {
-				elogger.error(logger, "Failed event {} for {}: {}", event, this, e);
+			catch (Throwable e) {
+				exception(SessionIncident.DATA_EVENT_FAILURE, event, e);
 			}
 		}
 	}
@@ -765,8 +765,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		try {
 			handler.timer(event);
 		}
-		catch (Exception e) {
-			elogger.error(logger, "Failed timer event for {}: {}", this, e);
+		catch (Throwable e) {
+			exception(SessionIncident.TIMER_EVENT_FAILURE, event, e);
 		}
 	}
 	
@@ -774,8 +774,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		try {
 			handler.timer(task);
 		}
-		catch (Exception e) {
-			elogger.error(logger, "Failed timer task for {}: {}", this, e);
+		catch (Throwable e) {
+			exception(SessionIncident.TIMER_TASK_FAILURE, task, e);
 		}
 	}
 	
@@ -791,8 +791,8 @@ abstract class InternalSession extends AbstractSession implements ISession {
 				}
 				handler.event(event);
 			}
-			catch (Exception e) {
-				elogger.error(logger, "Failed event {} for {}: {}", event, this, e);
+			catch (Throwable e) {
+				exception(SessionIncident.SESSION_EVENT_FAILURE, event, e);
 			}
 		}
 	}
@@ -838,20 +838,31 @@ abstract class InternalSession extends AbstractSession implements ISession {
 					quickClose();
 				}
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);
 				futuresController.exception(t);
 				quickClose();
 			}
 		}
 	}
+
+	/** Returns true the exception was triggered */
+	boolean exception(SessionIncident incident, Object event, Throwable t) {
+		if (!incident(incident, t)) {
+			elogger.error(logger, incident.defaultMessage(), event, this, t);
+			exception(t);
+			return true;
+		}
+		return false;
+	}
 	
 	boolean incident(SessionIncident incident, Throwable t) {
 		try {
 			return handler.incident(incident, t);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			elogger.error(logger, "Failed incident {} for {}: {}", incident, this, e);
+			exception(e);
 		}
 		return false;
 	}

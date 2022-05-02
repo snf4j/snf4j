@@ -162,7 +162,7 @@ abstract class InternalSctpSession extends InternalSession implements ISctpSessi
 				futuresController.exception(t);
 				super.quickClose();
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);
 				futuresController.exception(t);
 				super.quickClose();

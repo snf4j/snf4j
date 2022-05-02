@@ -309,6 +309,7 @@ public class SSLSessionCodecTest {
 		startWithCodec(true);
 		waitFor(100);
 		c.incidentRecordException = true;
+		c.incident = true;
 		Packet packet = new Packet(PacketType.ECHO, "ABC");
 		StreamSession session = c.getSession();
 		codec.encodeException = new Exception("E1");

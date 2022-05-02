@@ -196,7 +196,7 @@ public class EngineDatagramSession extends DatagramSession implements IEngineDat
 					super.quickClose();
 				}
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				elogger.error(logger, "Failed event {} for {}: {}", EventType.EXCEPTION_CAUGHT, this, e);
 				futuresController.exception(t);
 				super.quickClose();

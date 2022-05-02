@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +45,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -452,6 +453,7 @@ public class StreamSelectorLoopTest {
 		s.waitForDataSent(TIMEOUT);
 		assertEquals("DR|GET_THREAD()|DS|", s.getRecordedData(true));
 		
+		s.throwInFactoryClosed = true;
 		s.stop(TIMEOUT);
 		pool.stop();
 		c.waitForSessionEnding(TIMEOUT);
@@ -516,6 +518,13 @@ public class StreamSelectorLoopTest {
 		assertTrue(loop2.isStopped());
 		assertTrue(!loop1.isOpen());
 		assertTrue(!loop2.isOpen());
+		
+    	TestSelectorFactory factory = new TestSelectorFactory();
+    	factory.testSelectorCounter = 1;
+    	loop1 = new SelectorLoop("loop", null, factory);
+    	((TestSelector)loop1.selector).closeException = true;
+		loop1.stop();
+		loop1.join(TIMEOUT);
 	}
 	
 	@Test
@@ -1049,7 +1058,26 @@ public class StreamSelectorLoopTest {
 		
 		c.waitForSessionEnding(TIMEOUT*2);
 		assertEquals("SCR|EXC|SEN|", c.getRecordedData(true));
-		c.stop(TIMEOUT);
+		c.stop(TIMEOUT);		
+	}
+	
+	@Test
+	public void testLoopException() throws Exception {
+		final AtomicInteger i = new AtomicInteger(1);
+		SelectorLoop loop = new SelectorLoop() {
+			@Override
+			boolean notifyAboutLoopChanges() {
+				if (i.getAndDecrement() > 0) {
+					throw new NullPointerException();
+				}
+				return super.notifyAboutLoopChanges();
+			}
+		};
+
+		loop.start();
+		waitFor(100);
+		loop.stop();
+		loop.join(TIMEOUT);
 	}
 	
 	@Test
@@ -1096,6 +1124,7 @@ public class StreamSelectorLoopTest {
 		c2.stop(TIMEOUT);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testExceptionHandling() throws Exception {
 		s = new Server(PORT);
@@ -1136,7 +1165,20 @@ public class StreamSelectorLoopTest {
 		s.stop(TIMEOUT);
 		
 		c.getSession().exception(new Exception());
-		
+
+		s = new Server(PORT);
+		s.start();
+		c = new Client(PORT);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.loop.thread.suspend();
+		c.getSession().exception(new Exception());
+		c.getSession().key.attach(null);
+		c.loop.thread.resume();
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		c.getSession().key.cancel();
 	}
 
 	AbstractSessionFactory factory = new AbstractSessionFactory() {
@@ -1521,6 +1563,7 @@ public class StreamSelectorLoopTest {
 		assertTrue(s.loop.selector instanceof TestSelector);
 		TestSelector selector = (TestSelector) s.loop.selector;
 		
+		s.throwInFactoryClosed = true;
     	factory.delegateException = true;
 		selector.nonBlocking = true;
 		s.loop.wakeup();
@@ -1536,6 +1579,7 @@ public class StreamSelectorLoopTest {
 		assertEquals(0, s.loop.getSize());
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+		s.throwInFactoryClosed = false;
 		
 		//with closing actions
 		EndingAction[] actions = new EndingAction[] {EndingAction.STOP, EndingAction.QUICK_STOP, EndingAction.STOP_WHEN_EMPTY};
