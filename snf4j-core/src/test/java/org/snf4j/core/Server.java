@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -125,9 +125,12 @@ public class Server {
 	public volatile boolean throwInException;
 	public volatile boolean throwInIncident;
 	public volatile boolean throwInEvent;
+	public volatile EventType throwInEventType;
+	public volatile int throwInEventDelay;
 	public volatile boolean throwInCreateSession;
 	public volatile boolean throwInTimer;
 	public volatile RuntimeException throwIn;
+	public volatile boolean throwInFactoryClosed;
 	
 	public final AtomicInteger throwInEventCount = new AtomicInteger();
 	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
@@ -522,6 +525,9 @@ public class Server {
 		public void closed(ServerSocketChannel channel) {
 			closedSsc = channel; 
 			serverSocketLogs.append("C|");
+			if (throwInFactoryClosed) {
+				throw new NullPointerException();
+			}
 		}
 
 		@Override
@@ -884,8 +890,15 @@ public class Server {
 			}
 			
 			if (Server.this.throwInEvent) {
-				throwInEventCount.incrementAndGet();
-				throw new NullPointerException();
+				if (Server.this.throwInEventType == null || Server.this.throwInEventType == type) {
+					if (throwInEventDelay <= 0) {
+						throwInEventCount.incrementAndGet();
+						throw new NullPointerException();
+					}
+					else {
+						throwInEventDelay--;
+					}
+				}
 			}
 			return false;
 		}

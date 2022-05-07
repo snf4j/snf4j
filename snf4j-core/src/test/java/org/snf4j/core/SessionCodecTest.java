@@ -322,6 +322,7 @@ public class SessionCodecTest {
 		assertEquals("DS|DR|ECHO_RESPONSE(ABCde)|", s.getRecordedData(true));
 		
 		codec.encodeException = new Exception("E1");
+		c.incident = true;
 		session.write(packet.toBytes());
 		waitFor(100);
 		assertEquals("DR|ECHO(ABCd)|ENCODING_PIPELINE_FAILURE|", c.getRecordedData(true));
@@ -347,15 +348,36 @@ public class SessionCodecTest {
 		c.throwInIncident = true;
 		session = s.getSession();		
 		session.write(packet.toBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|ECHO_NF(ABCd)|ENCODING_PIPELINE_FAILURE|EXC|EXC|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		startWithCodec(true);
+		codec.encodeException = new Exception("E1");
+		c.throwInIncident = false;
+		c.incident = true;
+		session = s.getSession();		
+		session.write(packet.toBytes());
 		waitFor(100);
 		assertEquals("DR|ECHO_NF(ABCd)|ENCODING_PIPELINE_FAILURE|", c.getRecordedData(true));
 		assertEquals("DS|", s.getRecordedData(true));
+		c.incident = false;
+		session.write(packet.toBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|ECHO_NF(ABCd)|ENCODING_PIPELINE_FAILURE|EXC|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|SCL|SEN|", s.getRecordedData(true));
+
 	}
 	
 	@Test
 	public void testEncodeException() throws Exception {
 		startWithCodec(true);
 		c.incidentRecordException = true;
+		c.incident = true;
 		Packet packet = new Packet(PacketType.ECHO, "ABC");
 		StreamSession session = c.getSession();
 		codec.encodeException = new Exception("E1");

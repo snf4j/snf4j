@@ -74,6 +74,7 @@ import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.proxy.HttpProxyHandler;
 import org.snf4j.core.session.DefaultSessionConfig;
@@ -1963,25 +1964,159 @@ public class SessionTest {
 		catch (IllegalSessionStateException e) {
 		}
 	}
+
+	@Test
+	public void testEventException() throws Exception {
+		s = new Server(PORT);
+		c = new Client(PORT);
+		c.throwInEvent = true;
+		c.throwInEventType = EventType.SESSION_CREATED;
+		c.incident = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SESSION_EVENT_FAILURE|SOP|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.throwInEventType = EventType.DATA_SENT;
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DATA_EVENT_FAILURE|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
+		c.throwInEventType = EventType.DATA_RECEIVED;
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DS|DR|DATA_EVENT_FAILURE|ECHO_RESPONSE()|", c.getRecordedData(true));
+		assertEquals("DR|ECHO()|DS|", s.getRecordedData(true));
+		c.throwInEventType = EventType.SESSION_CLOSED;
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SESSION_EVENT_FAILURE|SEN|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c.throwInEventType = EventType.SESSION_OPENED;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|SESSION_EVENT_FAILURE|RDY|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.throwInEventType = EventType.SESSION_ENDING;
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals("SCL|SEN|SESSION_EVENT_FAILURE|", c.getRecordedData(true));
+		assertEquals("SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_READY;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		assertEquals("SCR|SOP|RDY|SESSION_EVENT_FAILURE|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|RDY|", s.getRecordedData(true));
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_CREATED;
+		c.incident = false;
+		c.getRecordedData(true);
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SESSION_EVENT_FAILURE|EXC|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_OPENED;
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|SESSION_EVENT_FAILURE|EXC|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_READY;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SESSION_EVENT_FAILURE|EXC|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.DATA_SENT;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|DATA_EVENT_FAILURE|EXC|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c.throwInEventType = EventType.DATA_RECEIVED;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.session.write(new Packet(PacketType.NOP).toBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|DATA_EVENT_FAILURE|EXC|NOP()|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c.throwInEventType = EventType.SESSION_CLOSED;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SESSION_EVENT_FAILURE|EXC|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_ENDING;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		s.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals("SCL|SEN|SESSION_EVENT_FAILURE|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+	}
 	
 	@Test
 	public void testEventHandlerWithException() throws Exception {
 		s = new Server(PORT);
 		c = new Client(PORT);
 		c.throwInEvent = true;
+		c.incident = true;
 		s.start();
 		c.start();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
-		assertEquals("SCR|SOP|RDY|", c.getRecordedData(true));
+		waitFor(50);
+		assertEquals("SCR|SESSION_EVENT_FAILURE|SOP|SESSION_EVENT_FAILURE|RDY|SESSION_EVENT_FAILURE|", c.getRecordedData(true));
 		c.write(new Packet(PacketType.ECHO));
 		c.waitForDataRead(TIMEOUT);
 		s.waitForDataSent(TIMEOUT);
-		assertEquals("DS|DR|ECHO_RESPONSE()|", c.getRecordedData(true));
+		assertEquals("DS|DATA_EVENT_FAILURE|DR|DATA_EVENT_FAILURE|ECHO_RESPONSE()|", c.getRecordedData(true));
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		waitFor(50);
+		assertEquals("SCL|SESSION_EVENT_FAILURE|SEN|SESSION_EVENT_FAILURE|", c.getRecordedData(true));
 		waitFor(100);
 		assertEquals(7, c.throwInEventCount.get());
 		c.stop(TIMEOUT);
@@ -2592,6 +2727,63 @@ public class SessionTest {
 	}
 	
 	@Test
+	public void testTimerException() throws Exception {
+		DefaultTimer timer = new DefaultTimer();
+		s = new Server(PORT);
+		s.timer = timer;
+		c = new Client(PORT);
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+		
+		s.incident = true;
+		s.throwInTimer = true;
+		s.session.getTimer().scheduleEvent("T1", 1);
+		waitFor(50);
+		assertEquals("TIM;T1|TIMER_EVENT_FAILURE|", s.getRecordedData(true));
+		s.incident = false;
+		s.session.getTimer().scheduleEvent("T2", 1);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("TIM;T2|TIMER_EVENT_FAILURE|EXC|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData(true);
+
+		s.incident = true;
+		s.throwInTimer = true;
+		s.session.getTimer().scheduleTask(new Runnable() {
+			@Override
+			public void run() {}
+			
+			@Override
+			public String toString() {return "R1";}
+		}, 1, true);
+		waitFor(50);
+		assertEquals("TIM;R1|TIMER_TASK_FAILURE|", s.getRecordedData(true));
+		s.incident = false;
+		s.session.getTimer().scheduleTask(new Runnable() {
+			@Override
+			public void run() {}
+			
+			@Override
+			public String toString() {return "R2";}
+		}, 1, true);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("TIM;R2|TIMER_TASK_FAILURE|EXC|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("SCL|SEN|", c.getRecordedData(true));		
+	}
+	
+	@Test
 	public void testTimer() throws Exception {
 		DefaultTimer timer = new DefaultTimer();
 		s = new Server(PORT);
@@ -2705,14 +2897,15 @@ public class SessionTest {
 		assertFalse(expired.get());
 		
 		s.throwInTimer = true;
+		s.incident = true;
 		stimer.scheduleEvent("e1", 10);
 		waitFor(50);
 		assertEquals(1, s.throwInTimerCount.get());
-		assertEquals("TIM;e1|", s.getRecordedData(true));
+		assertEquals("TIM;e1|TIMER_EVENT_FAILURE|", s.getRecordedData(true));
 		stimer.scheduleTask(new Task("t1"), 10, true);
 		waitFor(50);
 		assertEquals(2, s.throwInTimerCount.get());
-		assertEquals("TIM;t1|", s.getRecordedData(true));
+		assertEquals("TIM;t1|TIMER_TASK_FAILURE|", s.getRecordedData(true));
 		
 		c.getSession().write(new Packet(PacketType.NOP, "123").toBytes());
 		s.waitForDataRead(TIMEOUT);
@@ -3758,6 +3951,11 @@ public class SessionTest {
 			@Override
 			public void event(DataEvent event, long length) {
 				throw new RuntimeException();
+			}
+			
+			@Override
+			public boolean incident(SessionIncident incident, Throwable t) {
+				return true;
 			}
 			
 			@Override

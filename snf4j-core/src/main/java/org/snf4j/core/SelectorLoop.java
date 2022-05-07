@@ -391,7 +391,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				logger.debug("Accepted channel {}", ctx.toString(channel));
 			}
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			elogWarnOrError(logger, "Accepting from channel {} failed: {}", ctx.toString(key.channel()), e);
 			if (channel != null) {
 				try {
@@ -420,7 +420,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				}
 				acceptedKey = channel.register(getUnderlyingSelector(selector), SelectionKey.OP_READ, ctx.wrap(session));
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				if (session == null) {
 					elogger.error(logger, "Unable to create session for accepted channel {}: {}", ctx.toString(channel), e);
 					try {
@@ -493,7 +493,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 					key.channel().close();
 				}
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				elogWarnOrError(logger, "Finishing connection of channel {} failed: {}", ctx.toString(key.channel()), e);
 				fireException(session, e);
 			}
@@ -567,7 +567,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				} while (spinCount > 0);
 			}
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			if (totalBytes > 0) {
 				fireEvent(session, DataEvent.SENT, totalBytes);
 			}
@@ -593,7 +593,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		try {
 			bytes = ((SocketChannel)key.channel()).read(session.getInBuffer());
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			elogWarnOrError(logger, "Reading from channel in {} failed: {}", session, e);
 			fireException(session, e);
 			bytes = 0;
@@ -659,7 +659,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				}
 			}
 		} 
-		catch (Exception e) {
+		catch (Throwable e) {
 			elogWarnOrError(logger, "Reading from channel in {} failed: {}", session, e);
 			fireException(session, e);
 			bytes = 0;
@@ -692,7 +692,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 		long totalBytes = 0;
 		long leftBytes = 0;
 		long bytes;
-		Exception exception = null;
+		Throwable exception = null;
 		
 		if (traceEnabled) {
 			logger.trace("Writting to channel in {}", session);
@@ -778,7 +778,7 @@ public class SelectorLoop extends InternalSelectorLoop {
 				}
 			}
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			exception = e;
 		}
 

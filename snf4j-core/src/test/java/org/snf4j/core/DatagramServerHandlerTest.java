@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -992,6 +992,7 @@ public class DatagramServerHandlerTest {
 		
 		codec2.decodeException = null;
 		codec2.encodeException = new Exception("E2");
+		s.incident = true;
 		session1.write(nop());
 		waitFor(100);
 		assertEquals("ENCODING_PIPELINE_FAILURE|ENCODING_PIPELINE_FAILURE|", s.getRecordedData(true));

@@ -772,6 +772,161 @@ public class SSLSessionTest {
 	}
 	
 	@Test
+	public void testEventException() throws Exception {
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.throwInEvent = true;
+		c.throwInEventType = EventType.SESSION_CREATED;
+		c.incident = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertTrue(c.getRecordedData(true).startsWith("SCR|SESSION_EVENT_FAILURE|SOP"));
+		c.throwInEventType = EventType.DATA_SENT;
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertTrue(c.getRecordedData(true).endsWith("DS|DATA_EVENT_FAILURE|DR|ECHO_RESPONSE()|"));
+		c.throwInEventType = EventType.DATA_RECEIVED;
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertTrue(c.getRecordedData(true).endsWith("DR|DATA_EVENT_FAILURE|ECHO_RESPONSE()|"));
+		c.throwInEventType = EventType.SESSION_CLOSED;
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(c.getRecordedData(true).endsWith("SCL|SESSION_EVENT_FAILURE|SEN|"));
+		c.stop(TIMEOUT);
+		
+		c.throwInEventType = EventType.SESSION_OPENED;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		assertTrue(c.getRecordedData(true).startsWith("SCR|SOP|SESSION_EVENT_FAILURE|"));
+		c.throwInEventType = EventType.SESSION_ENDING;
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertTrue(c.getRecordedData(true).endsWith("SCL|SEN|SESSION_EVENT_FAILURE|"));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_READY;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
+		assertTrue(c.getRecordedData(true).contains("|RDY|SESSION_EVENT_FAILURE|"));
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_CREATED;
+		c.incident = false;
+		c.getRecordedData(true);
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SESSION_EVENT_FAILURE|EXC|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_OPENED;
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|SESSION_EVENT_FAILURE|EXC|SCL|SEN|", c.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_READY;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(c.getRecordedData(true).endsWith("RDY|SESSION_EVENT_FAILURE|EXC|SCL|SEN|"));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.DATA_SENT;
+		c.throwInEvent = false;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.throwInEvent = true;
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(c.getRecordedData(true).endsWith("DS|DATA_EVENT_FAILURE|EXC|SCL|SEN|"));
+		c.stop(TIMEOUT);
+		
+		c.throwInEventType = EventType.DATA_RECEIVED;
+		c.throwInEvent = false;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.throwInEvent = true;
+		s.session.write(new Packet(PacketType.NOP).toBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(c.getRecordedData(true).contains("DR|DATA_EVENT_FAILURE|EXC|"));
+		c.stop(TIMEOUT);
+		
+		c.throwInEventType = EventType.SESSION_CLOSED;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		s.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(c.getRecordedData(true).endsWith("SCL|SESSION_EVENT_FAILURE|EXC|SEN|"));
+		c.stop(TIMEOUT);
+
+		c.throwInEventType = EventType.SESSION_ENDING;
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		s.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertTrue(c.getRecordedData(true).endsWith("SCL|SEN|SESSION_EVENT_FAILURE|"));
+		c.stop(TIMEOUT);
+		
+		boolean ready = false;
+		for (int i=0 ;i<10; ++i) {
+			c.throwInEventType = EventType.DATA_SENT;
+			c.throwInEventDelay = i;
+			c.start();
+			waitFor(100);
+			String s = c.getRecordedData(true);
+			if (s.contains("|RDY|")) {
+				ready = true;
+				break;
+			}
+			assertTrue(s.indexOf("DS|DATA_EVENT_FAILURE|EXC|") != -1);
+			c.stop(TIMEOUT);
+		}
+		assertTrue(ready);
+		
+		ready = false;
+		for (int i=0 ;i<10; ++i) {
+			c.throwInEventType = EventType.DATA_RECEIVED;
+			c.throwInEventDelay = i;
+			c.start();
+			waitFor(100);
+			String s = c.getRecordedData(true);
+			if (s.contains("|RDY|")) {
+				ready = true;
+				break;
+			}
+			assertTrue(s.indexOf("DR|DATA_EVENT_FAILURE|EXC|") != -1);
+			c.stop(TIMEOUT);
+		}
+		assertTrue(ready);
+	}
+	
+	@Test
 	public void testWriteByteBufferHolder() throws Exception {
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
@@ -1560,7 +1715,7 @@ public class SSLSessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|DR|EXC|SCL|SEN|", s.getRecordedData(true));
-		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|EXC|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 	}
 	
 	void resumeWithDelay(final SSLSession session, final long delay) {
@@ -1883,7 +2038,7 @@ public class SSLSessionTest {
 		c.waitForSessionOpen(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		c.getRecordedData("SOP|", true);
-		assertEquals("SCL|SEN|", filterDSDR(c.getRecordedData(true)));
+		assertEquals("SCL|SEN|", filterDSDR(c.getRecordedData(true)).replace("SESSION_EVENT_FAILURE|EXC|SCL", "SCL"));
 		assertEquals(ClosingState.FINISHED, c.getSession().closing);
 		s.stop(TIMEOUT);
 		
@@ -1897,7 +2052,7 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.getRecordedData("SOP|", true);
-		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)));
+		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)).replace("SESSION_EVENT_FAILURE|EXC|SCL", "SCL"));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
 		s.stop(TIMEOUT);
 
@@ -1912,7 +2067,7 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		s.getRecordedData("SOP|", true);
-		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)));
+		assertEquals("SCL|SEN|", filterDSDR(s.getRecordedData(true)).replace("SESSION_EVENT_FAILURE|EXC|SCL", "SCL"));
 		assertEquals(ClosingState.FINISHED, s.getSession().closing);
 		s.stop(TIMEOUT);
 		

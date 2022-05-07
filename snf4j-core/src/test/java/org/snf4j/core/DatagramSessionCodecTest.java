@@ -386,6 +386,7 @@ public class DatagramSessionCodecTest {
 	public void testEncodeException() throws Exception {
 		startWithCodec(true);
 		c.incidentRecordException = true;
+		c.incident = true;
 		Packet packet = new Packet(PacketType.ECHO, "ABC");
 		DatagramSession session = c.getSession();
 		codec.encodeException = new Exception("E1");

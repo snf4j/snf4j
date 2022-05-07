@@ -638,9 +638,11 @@ public class EncodeTaskTest {
 		LoggerRecorder.enableRecording();
 		task.run();
 		List<String> recording = LoggerRecorder.disableRecording();
-		assertEquals(1, recording.size());
+		assertTrue(recording.size() > 0);
 		assertTrue(recording.get(0).startsWith("[ERROR] " + SessionIncident.ENCODING_PIPELINE_FAILURE.defaultMessage()));
-		assertEquals("ENCODING_PIPELINE_FAILURE(E1)|", c.getRecordedData(true));
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("ENCODING_PIPELINE_FAILURE(E1)|EXC|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("", getTrace());
 		assertTrue(task.future.isFailed());
 		assertTrue(task.future.cause() == encoderException);
@@ -657,10 +659,6 @@ public class EncodeTaskTest {
 		assertEquals(0, recording.size());
 		assertEquals("ENCODING_PIPELINE_FAILURE(E1)|", c.getRecordedData(true));
 		assertEquals("", getTrace());
-		
-		c.stop(TIMEOUT);
-		c.waitForSessionEnding(TIMEOUT);
-		s.waitForSessionEnding(TIMEOUT);
 	}
 	
 	class SB implements IEncoder<String,byte[]> {

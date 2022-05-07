@@ -107,6 +107,142 @@ public class DatagramServerSessionTest {
 	}
 	
 	@Test
+	public void testEventException() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.throwInEvent = true;
+		s.throwInEventType = EventType.SESSION_CREATED;
+		s.incident = true;
+		s.startServer();
+		c = new DatagramHandler(PORT);
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SESSION_EVENT_FAILURE|SOP|RDY|DR|NOP()|", s.getRecordedData(true));
+		s.throwInEventType = EventType.DATA_SENT;
+		s.write(new Packet(PacketType.ECHO));
+		s.waitForDataSent(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("DS|DATA_EVENT_FAILURE|DR|ECHO_RESPONSE()|", s.getRecordedData(true));
+		s.throwInEventType = EventType.DATA_RECEIVED;
+		c.write(new Packet(PacketType.ECHO));
+		c.waitForDataRead(TIMEOUT);
+		s.waitForDataSent(TIMEOUT);
+		assertEquals("DR|DATA_EVENT_FAILURE|ECHO()|DS|", s.getRecordedData(true));
+		s.throwInEventType = EventType.SESSION_CLOSED;
+		s.session.close();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCL|SESSION_EVENT_FAILURE|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.clearDataLocks();
+		s.throwInEventType = EventType.SESSION_OPENED;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|SESSION_EVENT_FAILURE|RDY|DR|NOP()|", s.getRecordedData(true));
+		s.throwInEventType = EventType.SESSION_ENDING;
+		s.session.close();
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals("SCL|SEN|SESSION_EVENT_FAILURE|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		s.clearDataLocks();
+		s.throwInEventType = EventType.SESSION_READY;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SESSION_EVENT_FAILURE|DR|NOP()|", s.getRecordedData(true));
+		s.session.close();
+		s.waitForSessionEnding(TIMEOUT);
+		s.getRecordedData(true);
+		c.stop(TIMEOUT);
+		
+		s.clearDataLocks();
+		s.throwInEventType = EventType.SESSION_CREATED;
+		s.incident = false;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SESSION_EVENT_FAILURE|EXC|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.clearDataLocks();
+		s.throwInEventType = EventType.SESSION_OPENED;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|SESSION_EVENT_FAILURE|EXC|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.clearDataLocks();
+		s.throwInEventType = EventType.SESSION_READY;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|SESSION_EVENT_FAILURE|EXC|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.clearDataLocks();
+		s.throwInEventType = EventType.DATA_SENT;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		s.throwInEvent = true;
+		s.write(new Packet(PacketType.NOP));
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|DS|DATA_EVENT_FAILURE|EXC|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.clearDataLocks();
+		s.throwInEventType = EventType.DATA_RECEIVED;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|DATA_EVENT_FAILURE|EXC|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.clearDataLocks();
+		s.throwInEventType = EventType.SESSION_CLOSED;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		s.session.close();
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|SCL|SESSION_EVENT_FAILURE|EXC|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.clearDataLocks();
+		s.throwInEventType = EventType.SESSION_ENDING;
+		c.startClient();
+		c.waitForSessionReady(TIMEOUT);
+		c.session.write(new Packet(PacketType.NOP).toBytes());
+		s.waitForSessionReady(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		s.session.close();
+		s.waitForSessionEnding(TIMEOUT);
+		waitFor(50);
+		assertEquals("SCR|SOP|RDY|DR|NOP()|SCL|SEN|SESSION_EVENT_FAILURE|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+	}
+	
+	@Test
 	public void testWrite() throws Exception {
 		s = new DatagramHandler(PORT);
 		c = new DatagramHandler(PORT);
@@ -803,12 +939,12 @@ public class DatagramServerSessionTest {
 		session1.getTimer().scheduleEvent("t1", 10);
 		waitFor(8);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(4);
+		waitFor(8);
 		assertEquals("TIM;t1;"+session1.getName()+"|", s.getRecordedData(true));
 		session2.getTimer().scheduleEvent("t2", 10);
 		waitFor(8);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(4);
+		waitFor(8);
 		assertEquals("TIM;t2;"+session2.getName()+"|", s.getRecordedData(true));
 	}
 	

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -190,7 +190,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		try {
 			newSelector = factory.openSelector();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			elogger.error(logger, "Failed to create new selector during rebuilding process: {}", e);
 			return;
 		}
@@ -221,7 +221,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 					}
 					
 				}
-				catch (Exception e) {
+				catch (Throwable e) {
 					elogger.error(logger, "Failed to re-register channel {} to new selector during rebuilding process: {}" , ctx.toString(channel), e);
 					try {
 						if (ctx.isServer()) {
@@ -233,7 +233,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 							handleInvalidKey(key, stoppingKeys, true);
 						}
 					}
-					catch (Exception e2) {
+					catch (Throwable e2) {
 						elogger.error(logger, "Failed to close channel {} during rebuilding process: {}", ctx.toString(channel), e2);
 					}
 				}
@@ -245,7 +245,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 		try {
 			selector.close();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			elogger.error(logger, "Failed to close old selector during rebuilding process: {}" , e);
 		}
 		
@@ -547,7 +547,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 								key.channel().close();
 								ctx.postClose(key.channel());
 							}
-							catch (Exception e) {
+							catch (Throwable e) {
 								elogWarnOrError(logger, "Closing of channel {} failed: {}", ctx.toString(key.channel()), e);
 							}
 						}
@@ -565,7 +565,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 						try {
 							handleInvalidKey(key, stoppingKeys);
 						}
-						catch (Exception e){
+						catch (Throwable e) {
 							elogger.error(logger, "Processing of invalidated key for {} failed: {}", key.attachment(), e);
 						}
 					}
@@ -599,7 +599,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 								elogger.error(logger, incident.defaultMessage(), session, e.getCause());
 							}
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							if (key.isValid()) {
 								fireException(key, e);
 							}
@@ -628,7 +628,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 								handleInvalidKey(key, stoppingKeys);
 							}
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							elogger.error(logger, "Processing of invalidated key for {} failed: {}", key.attachment(), e);
 						}
 						
@@ -650,7 +650,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 								it.remove();
 								handleInvalidKey(key, null);
 							}
-							catch (Exception e) {
+							catch (Throwable e) {
 								elogger.error(logger, "Processing of not handled invalidated key for {} failed: {}", key.attachment(), e);
 							}
 						}
@@ -689,7 +689,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 							abortRegistration(reg, true, null);
 							throw e;
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							//JDK1.6 does not throw ClosedSelectorException if registering with closed selector
 							if (!selector.isOpen()) {
 								abortRegistration(reg, true, null);
@@ -715,7 +715,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			catch (ClosedSelectorException e) {
 				break;
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				elogger.error(logger, "Unexpected exception thrown in main loop: {}", e);
 			}
 		}
@@ -775,7 +775,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 				handleSwitchings();
 			}
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			elogger.error(logger, "Unexpected exception thrown during execution of task {}: {}", task.task, e);
 			if (future != null) {
 				future.abort(e);
@@ -800,7 +800,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 			try {
 				ctx.close(reg.channel);
 			}
-			catch (IOException e) {
+			catch (Throwable e) {
 				elogger.warn(logger, "Closing of channel {} during aborting registration failed: {}", ctx.toString(reg.channel), e);
 			}
 		}
@@ -837,7 +837,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 				if (isStopped()) {
 					try {
 						selector.close();
-					} catch (IOException e) {
+					} catch (Throwable e) {
 						//Ignore
 					}
 				}
@@ -1268,7 +1268,7 @@ abstract class InternalSelectorLoop extends IdentifiableObject implements IFutur
 				fireEvent(newSession, DataEvent.RECEIVED, bytes);
 				newSession.consumeInBuffer();
 			}
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			elogger.error(logger, "Switching from {} to {} failed: {}", session, newSession, e);
 			fireException(newSession, e);
 		}

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -107,6 +107,8 @@ public class DatagramHandler {
 	public volatile boolean throwInException;
 	public final AtomicInteger throwInExceptionCount = new AtomicInteger();
 	public volatile boolean throwInEvent;
+	public volatile EventType throwInEventType;
+	public volatile int throwInEventDelay;
 	public final AtomicInteger throwInEventCount = new AtomicInteger();
 	public volatile boolean throwInRead;
 	public final AtomicInteger throwInReadCount = new AtomicInteger();
@@ -812,8 +814,15 @@ public class DatagramHandler {
 			}
 		
 			if (throwInEvent) {
-				throwInEventCount.incrementAndGet();
-				throw new NullPointerException();
+				if (throwInEventType == null || throwInEventType == type) {
+					if (throwInEventDelay <= 0) {
+						throwInEventCount.incrementAndGet();
+						throw new NullPointerException();
+					}
+					else {
+						throwInEventDelay--;
+					}
+				}				
 			}
 			
 			return false;
