@@ -367,7 +367,7 @@ class EncodeTask implements Runnable {
 			}
 			if (!session.incident(incident, e)) {
 				elogger.error(LOGGER, incident.defaultMessage(), session, e);
-				session.exception(e);
+				session.fireException(e);
 			}
 			return;
 		}

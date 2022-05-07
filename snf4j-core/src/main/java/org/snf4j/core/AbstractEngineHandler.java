@@ -437,7 +437,7 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			handler.event(event);
 		}
 		catch (Throwable t) {
-			if (session.exception(SessionIncident.SESSION_EVENT_FAILURE, event, t)) {
+			if (session.fireException(SessionIncident.SESSION_EVENT_FAILURE, event, t)) {
 				return;
 			}
 		}

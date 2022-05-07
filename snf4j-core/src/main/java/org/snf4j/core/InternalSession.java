@@ -756,7 +756,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 				handler.event(event, length);
 			}
 			catch (Throwable e) {
-				exception(SessionIncident.DATA_EVENT_FAILURE, event, e);
+				fireException(SessionIncident.DATA_EVENT_FAILURE, event, e);
 			}
 		}
 	}
@@ -766,7 +766,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			handler.timer(event);
 		}
 		catch (Throwable e) {
-			exception(SessionIncident.TIMER_EVENT_FAILURE, event, e);
+			fireException(SessionIncident.TIMER_EVENT_FAILURE, event, e);
 		}
 	}
 	
@@ -775,7 +775,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 			handler.timer(task);
 		}
 		catch (Throwable e) {
-			exception(SessionIncident.TIMER_TASK_FAILURE, task, e);
+			fireException(SessionIncident.TIMER_TASK_FAILURE, task, e);
 		}
 	}
 	
@@ -792,7 +792,7 @@ abstract class InternalSession extends AbstractSession implements ISession {
 				handler.event(event);
 			}
 			catch (Throwable e) {
-				exception(SessionIncident.SESSION_EVENT_FAILURE, event, e);
+				fireException(SessionIncident.SESSION_EVENT_FAILURE, event, e);
 			}
 		}
 	}
@@ -846,11 +846,21 @@ abstract class InternalSession extends AbstractSession implements ISession {
 		}
 	}
 
+	void fireException(Throwable t) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Firing event {} for {}", EventType.EXCEPTION_CAUGHT, this);
+		}
+		exception(t);
+		if (logger.isTraceEnabled()) {
+			logger.trace("Ending event {} for {}", EventType.EXCEPTION_CAUGHT, this);
+		}
+	}
+	
 	/** Returns true the exception was triggered */
-	boolean exception(SessionIncident incident, Object event, Throwable t) {
+	boolean fireException(SessionIncident incident, Object event, Throwable t) {
 		if (!incident(incident, t)) {
 			elogger.error(logger, incident.defaultMessage(), event, this, t);
-			exception(t);
+			fireException(t);
 			return true;
 		}
 		return false;

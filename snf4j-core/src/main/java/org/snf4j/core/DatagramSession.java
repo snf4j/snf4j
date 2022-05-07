@@ -128,7 +128,7 @@ public class DatagramSession extends InternalSession implements IDatagramSession
 				getHandler().event(remoteAddress, event, length);
 			}
 			catch (Throwable e) {
-				exception(SessionIncident.DATA_EVENT_FAILURE, event, e);
+				fireException(SessionIncident.DATA_EVENT_FAILURE, event, e);
 			}
 		}
 	}
