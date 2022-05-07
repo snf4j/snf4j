@@ -2851,6 +2851,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
 		c.loop.execute(new Runnable() {
 			@Override
 			public void run() {
@@ -2859,10 +2860,18 @@ public class DTLSSessionTest extends DTLSTest {
 			}
 		});
 		c.waitForSessionEnding(TIMEOUT);
-		s.waitForSessionEnding(TIMEOUT);
 		String r = c.getRecordedData(true);
 		r = r.replace("DR|", "").replace("DS|", "");
 		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE_RESPONSE(12345)|SCL|SEN|", r);
+		try {
+			s.waitForSessionEnding(TIMEOUT);
+		}
+		catch (InterruptedException e) {
+			waitFor(1000);
+			System.out.println("[INFO] getRecordedData="+s.getRecordedData(true));
+			throw e;
+			
+		}
 		r = s.getRecordedData(true);
 		r = r.replace("DR|", "").replace("DS|", "");
 		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE(12345)|SCL|SEN|", r);
@@ -2880,6 +2889,7 @@ public class DTLSSessionTest extends DTLSTest {
 		c.startClient();
 		c.waitForSessionReady(TIMEOUT);
 		s.waitForSessionReady(TIMEOUT);
+		waitFor(50);
 		s.loop.execute(new Runnable() {
 			@Override
 			public void run() {
