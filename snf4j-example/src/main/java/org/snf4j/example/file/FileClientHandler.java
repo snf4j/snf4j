@@ -55,7 +55,10 @@ public class FileClientHandler extends AbstractFileHandler {
 	@Override
 	public void read(Object msg) {
 		try {
-			if (!FileClient.DISCARD && fileChannel != null) {
+			if (FileClient.DISCARD) {
+				fileLength += ((ByteBuffer)msg).remaining();
+			}
+			else if (fileChannel != null) {
 				fileLength += fileChannel.write((ByteBuffer)msg);
 			}
 		} catch (IOException e) {
@@ -96,8 +99,8 @@ public class FileClientHandler extends AbstractFileHandler {
 				if (!FileClient.DISCARD) {
 					file = new RandomAccessFile(filePath, "rw");
 					fileChannel = file.getChannel();
-					progressTimer = getSession().getTimer().scheduleEvent(PROGRESS_UPDATE_EVENT, 15000, 15000);
 				}
+				progressTimer = getSession().getTimer().scheduleEvent(PROGRESS_UPDATE_EVENT, 15000, 15000);
 				Logger.info("Downloading " + filePath.getAbsolutePath());
 				startTime = System.currentTimeMillis();
 			} catch (Exception e) {
@@ -132,4 +135,9 @@ public class FileClientHandler extends AbstractFileHandler {
 		super.event(event);
 	}
 	
+	@Override
+	public void exception(Throwable t) {
+		Logger.error(t.toString());
+	}
+
 }

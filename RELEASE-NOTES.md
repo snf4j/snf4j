@@ -1,3 +1,8 @@
+#### 1.10.0
+ - 2022-05-18 - [changes](https://github.com/snf4j/snf4j/compare/v1.9.0...v1.10.0)
+ - Added support for byte buffer holder [(#85)](https://github.com/snf4j/snf4j/pull/85)
+ - Enhanced handling of exceptions thrown in session handlers [(#86)](https://github.com/snf4j/snf4j/pull/86)
+
 #### 1.9.0
  - 2022-03-09 - [changes](https://github.com/snf4j/snf4j/compare/v1.8.0...v1.9.0)
  - Support for connection through SOCKS proxy [(#81)](https://github.com/snf4j/snf4j/pull/81)
