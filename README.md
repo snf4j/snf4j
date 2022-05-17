@@ -26,6 +26,14 @@ The framework is designed to be simple in use and moderately easy to understand.
 * Customizable selector loop pooling
 * Customizable byte buffer allocators
 
+## Thread model
+
+* All handler's events (i.e. read, event, timer, exception, incident) are fired from the thread that performs I/O for the channel (I/O thread) 
+* All session's methods are thread-safe and can be called from any thread including the I/O thread and non-I/O threads 
+* Any handler's event triggered as a side effect of calling a session's method are fired from the I/O thread 
+* Codec's code is always processed in the I/O thread 
+* Engine's code is always processed in the I/O thread 
+
 ## Supported Protocols
 
 * HTTP Web Proxy Connect Protocol

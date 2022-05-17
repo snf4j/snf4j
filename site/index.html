@@ -108,6 +108,16 @@
      <li> Customizable byte buffer allocators
     </ul>
 
+    <h4>Thread model</h4>
+   
+    <ul>
+     <li> All handler's events (i.e. read, event, timer, exception, incident) are fired from the thread that performs I/O for the channel (I/O thread)
+     <li> All session's methods are thread-safe and can be called from any thread including the I/O thread and non-I/O threads
+     <li> Any handler's event triggered as a side effect of calling a session's method are fired from the I/O thread
+     <li> Codec's code is always processed in the I/O thread
+     <li> Engine's code is always processed in the I/O thread
+    </ul>
+
     <h4>Supported Protocols</h4>
 
     <ul>
