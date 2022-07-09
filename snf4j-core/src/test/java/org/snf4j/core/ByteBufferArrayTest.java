@@ -36,6 +36,7 @@ import static org.junit.Assert.fail;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.InvalidMarkException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,8 +45,166 @@ import org.junit.Test;
 public class ByteBufferArrayTest {
 	
 	@Test
+	public void testMark() {
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
+		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
+		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6,7}));
+
+		ByteBufferArray array = new ByteBufferArray(bufs);
+		try {
+			array.reset();
+			fail();
+		} catch (InvalidMarkException e) {}
+		assertSame(array, array.mark());
+		assertEquals(1, array.get());
+		assertEquals(2, array.get());
+		assertEquals(5, array.remaining());
+		assertSame(array, array.reset());
+		assertEquals(7, array.remaining());
+		assertEquals(1, array.get());
+		
+		ByteBuffer buf = ByteBuffer.wrap(new byte[] {8,9,10});
+		bufs.add(buf);
+		array = new ByteBufferArray(bufs);
+		array.position(9);
+		assertEquals(1, array.remaining());
+		array.mark();
+		buf.limit(2);
+		array.reset();
+		assertEquals(0, array.remaining());
+		buf.limit(1);
+		try {
+			array.reset();
+			fail();
+		} catch (InvalidMarkException e) {}
+		assertEquals(0, array.remaining());
+	}
+	
+	@Test
+	public void testRewind() {
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
+		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
+		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6,7}));
+
+		ByteBufferArray array = new ByteBufferArray(bufs);
+		assertEquals(1, array.get());
+		array.mark();
+		assertEquals(2, array.get());
+		array.reset();
+		assertEquals(2, array.get());
+		array.rewind();
+		assertEquals(7, array.remaining());
+		assertEquals(1, array.get());
+		try {
+			array.reset();
+			fail();
+		} catch (InvalidMarkException e) {}
+		assertEquals(0x02030405, array.getInt());
+		array.mark();
+		assertEquals(2, array.remaining());
+		array.rewind();
+		assertEquals(7, array.remaining());
+		try {
+			array.reset();
+			fail();
+		} catch (InvalidMarkException e) {}
+		
+		
+		array = new ByteBufferArray(new ByteBuffer[0]);
+		array.mark();
+		array.reset();
+		array.rewind();
+		try {
+			array.reset();
+			fail();
+		} catch (InvalidMarkException e) {}
+	}
+	
+	@Test
+	public void testLimit() {
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
+		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
+		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6,7}));
+
+		ByteBufferArray array = new ByteBufferArray(bufs);
+		assertEquals(7, array.limit());
+		
+		ByteBuffer buf = ByteBuffer.wrap(new byte[] {8,9,10});
+		bufs.add(buf);
+		array = new ByteBufferArray(bufs);
+		assertEquals(10, array.limit());
+		buf.limit(2);
+		assertEquals(9, array.limit());
+		
+		assertEquals(0, new ByteBufferArray(new ByteBuffer[0]).limit());
+	}
+	
+	@Test
+	public void testPosition() {
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
+		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
+		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6}));
+
+		ByteBufferArray array = new ByteBufferArray(bufs);
+		for (int i=0; i<6; ++i) {
+			assertEquals(i, array.position());
+			array.get();
+		}
+		assertEquals(6, array.position());
+		assertEquals(0, new ByteBufferArray(new ByteBuffer[0]).position());
+		
+		try {
+			array.position(-1);
+			fail();
+		} catch (IllegalArgumentException e) {}
+		try {
+			array.position(7);
+			fail();
+		} catch (IllegalArgumentException e) {}
+
+		assertEquals(6, array.position());
+		for (int i=0; i<6; ++i) {
+			assertSame(array, array.position(i));
+			assertEquals(i, array.position());
+			if (array.hasRemaining()) {
+				assertEquals(i+1, array.get());
+			}
+		}
+		array.position(6);
+		
+		//test mark
+		assertEquals(6, array.position());
+		assertFalse(array.hasRemaining());
+		array.position(3);
+		array.mark();
+		assertEquals(3, array.remaining());
+		array.position(3);
+		assertEquals(3, array.remaining());
+		array.reset();
+		assertEquals(3, array.remaining());
+		array.position(4);
+		assertEquals(2, array.remaining());
+		array.position(2);
+		try {
+			array.reset();
+			fail();
+		} catch (InvalidMarkException e) {}
+		
+		array = new ByteBufferArray(new ByteBuffer[0]);
+		array.position(0);
+		try {
+			array.position(-1);
+			fail();
+		} catch (IllegalArgumentException e) {}
+		try {
+			array.position(1);
+			fail();
+		} catch (IllegalArgumentException e) {}
+	}
+	
+	@Test
 	public void testRemaining() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
 		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6}));
 
@@ -68,8 +227,9 @@ public class ByteBufferArrayTest {
 		bufs.get(0).put((byte) 1).flip();
 		assertEquals(1, array.remaining());
 		assertTrue(array.hasRemaining());
+		assertFalse(new ByteBufferArray(new ByteBuffer[0]).hasRemaining());
 		
-		bufs = new ArrayList<>();
+		bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
 		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6}));
 		
@@ -90,6 +250,7 @@ public class ByteBufferArrayTest {
 		array.get();
 		assertEquals(0, array.remaining());
 		assertFalse(array.hasRemaining());
+		assertEquals(0, new ByteBufferArray(new ByteBuffer[0]).remaining());
 	}
 	
 	@Test
@@ -111,7 +272,7 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testGet() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
 		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6}));
 		
@@ -131,7 +292,7 @@ public class ByteBufferArrayTest {
 	
 	@Test
 	public void testAbsoluteGet() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
 		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6}));
 		
@@ -177,7 +338,7 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testGetBytes() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6}));
 		bufs.add(ByteBuffer.wrap(new byte[] {7,8,9,10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {13,14}));
@@ -234,7 +395,7 @@ public class ByteBufferArrayTest {
 	
 	@Test
 	public void testAbsoluteGetChar() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6}));
 		bufs.add(ByteBuffer.wrap(new byte[] {7,8,9,10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {13,14}));
@@ -251,7 +412,7 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testGetChar() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6}));
 		bufs.add(ByteBuffer.wrap(new byte[] {7,8,9,10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {13,14}));
@@ -276,7 +437,7 @@ public class ByteBufferArrayTest {
 	
 	@Test
 	public void testAbsoluteGetShort() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6}));
 		bufs.add(ByteBuffer.wrap(new byte[] {7,8,9,10,11,12}));
 
@@ -295,7 +456,7 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testGetShort() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6}));
 		bufs.add(ByteBuffer.wrap(new byte[] {7}));
 		bufs.add(ByteBuffer.wrap(new byte[] {8,9,10,11}));
@@ -327,7 +488,7 @@ public class ByteBufferArrayTest {
 	
 	@Test
 	public void testAbsoluteGetInt() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6}));
 		bufs.add(ByteBuffer.wrap(new byte[] {7,8,9,10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {13,14}));
@@ -374,7 +535,7 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testGetInt() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6}));
 		bufs.add(ByteBuffer.wrap(new byte[] {7,8,9,10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {13,14,15}));
@@ -424,7 +585,7 @@ public class ByteBufferArrayTest {
 	
 	@Test
 	public void testAbsoluteGetLong() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6,7,8}));
 		bufs.add(ByteBuffer.wrap(new byte[] {9,10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {8,7,6,5,4,3,2,1}));
@@ -443,7 +604,7 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testGetLong() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6,7,8}));
 		bufs.add(ByteBuffer.wrap(new byte[] {9,10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {8,7,6,5,4,3,2,1,2,3,4}));
@@ -473,7 +634,7 @@ public class ByteBufferArrayTest {
 	
 	@Test
 	public void testAbsoluteGetFloat() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6,7,8}));
 		bufs.add(ByteBuffer.wrap(new byte[] {9,10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {8,7,6,5,4,3,2,1}));
@@ -494,7 +655,7 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testGetFloat() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6,7,8}));
 		bufs.add(ByteBuffer.wrap(new byte[] {9,10,11,12}));
 		bufs.get(0).putFloat(0, 43323.432F);
@@ -514,7 +675,7 @@ public class ByteBufferArrayTest {
 	
 	@Test
 	public void testAbsoluteGetDouble() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6,7,8,9}));
 		bufs.add(ByteBuffer.wrap(new byte[] {10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {8,7,6,5,4,3,2,1}));
@@ -535,7 +696,7 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testGetDouble() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6,7,8,9}));
 		bufs.add(ByteBuffer.wrap(new byte[] {10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {8,7,6,5,4,3,2,1}));
@@ -566,16 +727,20 @@ public class ByteBufferArrayTest {
 
 	@Test
 	public void testDuplicate() {
-		List<ByteBuffer> bufs = new ArrayList<>();
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6,7,8,9}));
 		bufs.add(ByteBuffer.wrap(new byte[] {10,11,12}));
 		bufs.add(ByteBuffer.wrap(new byte[] {8,7,6,5,4,3,2,1}));
 		
 		ByteBufferArray array1 = new ByteBufferArray(bufs);
 		assertEquals(20, array1.remaining());
+		array1.mark();
 		ByteBufferArray array2 = array1.duplicate();
 		assertEquals(20, array2.remaining());
 		assertEquals(0x01020304, array1.getInt());
+		assertEquals(0x0102, array2.getShort());
+		array2.reset();
+		assertEquals(20, array2.remaining());
 		assertEquals(0x0102, array2.getShort());
 		array2 = array1.duplicate();
 		assertEquals(0x05060708, array2.getInt());
@@ -583,5 +748,20 @@ public class ByteBufferArrayTest {
 		assertEquals(5, array1.get());
 		array1 = array2.duplicate();
 		assertEquals(0x00b0c, array1.getShort());
+		array2 = new ByteBufferArray(new ByteBuffer[0]).duplicate();
+		assertEquals(0, array2.position());
+		assertEquals(0, array2.limit());
+
+		bufs = new ArrayList<ByteBuffer>();
+		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3,4,5,6,7,8,9}));
+		bufs.add(ByteBuffer.wrap(new byte[] {10,11,12}));
+		array1 = new ByteBufferArray(bufs);
+		array2 = array1.duplicate();
+		array1.mark();
+		try {
+			array2.reset();
+			fail();
+		} catch (InvalidMarkException e) {}
+
 	}	
 }
