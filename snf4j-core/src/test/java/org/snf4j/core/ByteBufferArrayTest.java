@@ -45,6 +45,39 @@ import org.junit.Test;
 public class ByteBufferArrayTest {
 	
 	@Test
+	public void testSize() {
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
+		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
+		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6,7}));
+
+		assertEquals(2, new ByteBufferArray(bufs).size());
+		bufs.remove(0);
+		assertEquals(1, new ByteBufferArray(bufs).size());
+		assertEquals(0, new ByteBufferArray(new ByteBuffer[0]).size());
+	}
+	
+	@Test
+	public void testIndex() {
+		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
+		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));
+		bufs.add(ByteBuffer.wrap(new byte[] {4,5,6,7}));
+
+		ByteBufferArray array = new ByteBufferArray(bufs);
+		assertEquals(0, array.index());
+		array.get();
+		assertEquals(0, array.index());
+		array.getShort();
+		assertEquals(1, array.index());
+		array.get();
+		assertEquals(1, array.index());
+		array.getShort();
+		assertEquals(1, array.index());
+		array.get();
+		assertEquals(2, array.index());
+		assertFalse(array.hasRemaining());
+	}
+	
+	@Test
 	public void testMark() {
 		List<ByteBuffer> bufs = new ArrayList<ByteBuffer>();
 		bufs.add(ByteBuffer.wrap(new byte[] {1,2,3}));

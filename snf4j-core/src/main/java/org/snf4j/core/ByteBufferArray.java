@@ -48,7 +48,8 @@ public class ByteBufferArray {
 
 	/**
 	 * Constructs a byte buffer array wrapper that will be backed by an array
-	 * containing {@link ByteBuffer} objects from the given collection.
+	 * containing {@link ByteBuffer} objects from the given collection, in the order
+	 * they are returned by the collection's iterator.
 	 * 
 	 * @param collection the collection with {@link ByteBuffer} objects
 	 */
@@ -69,6 +70,34 @@ public class ByteBufferArray {
 		}
 	}
 
+	/**
+	 * Returns the index of the buffer in the backing array that is pointed by this
+	 * buffer array wrapper's current position. If this buffer array wrapper has no
+	 * remaining bytes the return value will equals the size.
+	 * 
+	 * @return The index of the current buffer, or the size if this buffer array
+	 *         wrapper has no remaining bytes
+	 */
+	public int index() {
+		int i = index;
+		
+		for (; i<array.length; ++i) {
+			if (array[i].hasRemaining()) {
+				return i;
+			}
+		}
+		return i;
+	}
+	
+	/**
+	 * Returns the number of buffers in the the backing array.
+	 * 
+	 * @return The number of buffers
+	 */
+	public int size() {
+		return array.length;
+	}
+	
 	/**
 	 * Tells whether there are any bytes between the current position and the limit.
 	 * 
