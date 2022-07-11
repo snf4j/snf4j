@@ -40,6 +40,12 @@ public class ByteBufferArray {
 
 	private final ByteBuffer[] array;
 
+	private final int off;
+	
+	private final int size;
+	
+	private final int end;
+	
 	private int index;
 
 	private long mark = -1;
@@ -65,23 +71,77 @@ public class ByteBufferArray {
 	 */
 	public ByteBufferArray(ByteBuffer[] array) {
 		this.array = array;
-		if (this.array.length > 0) {
-			buffer = this.array[0];
+		size = end = array.length; 
+		off = 0;
+		if (size > 0) {
+			buffer = this.array[off];
 		}
 	}
 
 	/**
+	 * Constructs a byte buffer array wrapper that will be backed by the given
+	 * {@link ByteBuffer} array.
+	 * 
+	 * @param array The array that will back this buffer array wrapper
+	 * @param off   The offset of the subarray to be used
+	 * @param len   The length of the subarray to be used
+	 * @throws IndexOutOfBoundsException If the preconditions on the offset and
+	 *                                   length parameters do not hold
+	 */
+	public ByteBufferArray(ByteBuffer[] array, int off, int len) {
+		InternalSession.checkBounds(off, len, array.length);
+		this.array = array;
+		if (len > 0) {
+			buffer = this.array[off];
+		}
+		this.off = off;
+		this.size = len;
+		end = off + len;
+		index = off;
+	}
+	
+	/**
+	 * Returns the {@link ByteBuffer} array that backs this buffer array wrapper.
+	 * 
+	 * @return The array that backs this buffer
+	 */
+	public ByteBuffer[] array() {
+		return array;
+	}
+	
+	/**
+	 * Returns the offset within this buffer array wrapper's backing array of the
+	 * first buffer.
+	 * 
+	 * @return The offset within this buffer array wrapper's array of the first
+	 *         buffer
+	 */
+	public int arrayOffset() {
+		return off;
+	}
+	
+	/**
+	 * Returns the index after the last buffer in the array backing this buffer
+	 * array wrapper
+	 * 
+	 * @return the index after the last buffer
+	 */
+	public int arrayEnd() {
+		return end;
+	}
+	
+	/**
 	 * Returns the index of the buffer in the backing array that is pointed by this
 	 * buffer array wrapper's current position. If this buffer array wrapper has no
-	 * remaining bytes the return value will equals the size.
+	 * remaining bytes the return value will equals the {@code arrayEnd()}.
 	 * 
 	 * @return The index of the current buffer, or the size if this buffer array
 	 *         wrapper has no remaining bytes
 	 */
-	public int index() {
+	public int arrayIndex() {
 		int i = index;
 		
-		for (; i<array.length; ++i) {
+		for (; i<end; ++i) {
 			if (array[i].hasRemaining()) {
 				return i;
 			}
@@ -95,7 +155,7 @@ public class ByteBufferArray {
 	 * @return The number of buffers
 	 */
 	public int size() {
-		return array.length;
+		return size;
 	}
 	
 	/**
@@ -105,7 +165,7 @@ public class ByteBufferArray {
 	 *         this buffer array wrapper
 	 */
 	public boolean hasRemaining() {
-		for (int i = index; i < array.length; ++i) {
+		for (int i = index; i < end; ++i) {
 			if (array[i].hasRemaining()) {
 				return true;
 			}
@@ -121,7 +181,7 @@ public class ByteBufferArray {
 	public long remaining() {
 		long remaining = 0;
 
-		for (int i = index; i < array.length; ++i) {
+		for (int i = index; i < end; ++i) {
 			remaining += array[i].remaining();
 		}
 		return remaining;
@@ -135,7 +195,7 @@ public class ByteBufferArray {
 	public long limit() {
 		long limit = 0;
 
-		for (int i = 0; i < array.length; ++i) {
+		for (int i = off; i < end; ++i) {
 			limit += array[i].limit();
 		}
 		return limit;
@@ -150,7 +210,7 @@ public class ByteBufferArray {
 		if (buffer != null) {
 			long position = 0;
 
-			for (int i=0; i < index; ++i) {
+			for (int i=off; i < index; ++i) {
 				position += array[i].limit();
 			}
 			return buffer.position() + position;
@@ -174,7 +234,7 @@ public class ByteBufferArray {
 
 	private ByteBufferArray position(long newPosition, boolean reset) {
 		if (newPosition >= 0) {
-			int limit = -1, i = 0, len = array.length;
+			int limit = -1, i = off, len = end;
 			long position = newPosition;
 			ByteBuffer buffer = null;
 			boolean positioned = false;
@@ -204,7 +264,7 @@ public class ByteBufferArray {
 				positioned = true;
 			}
 			if (positioned) {
-				int j = 0;
+				int j = off;
 				for (; j<i; ++j) {
 					array[j].position(array[j].limit());
 				}
@@ -251,13 +311,13 @@ public class ByteBufferArray {
 	 * @return This buffer array wrapper
 	 */
 	public ByteBufferArray rewind() {
-		for (int i = 0; i < array.length; ++i) {
+		for (int i = off; i < end; ++i) {
 			array[i].rewind();
 		}
-		if (array.length > 0) {
-			buffer = this.array[0];
+		if (size > 0) {
+			buffer = this.array[off];
 		}
-		index = 0;
+		index = off;
 		mark = -1;
 		return this;
 	}
@@ -276,10 +336,10 @@ public class ByteBufferArray {
 	public ByteBufferArray duplicate() {
 		ByteBuffer[] dup = new ByteBuffer[array.length];
 
-		for (int i = 0; i < dup.length; ++i) {
+		for (int i = off; i < end; ++i) {
 			dup[i] = array[i].duplicate();
 		}
-		ByteBufferArray dupArray = new ByteBufferArray(dup);
+		ByteBufferArray dupArray = new ByteBufferArray(dup, off, size);
 		dupArray.index = index;
 		dupArray.mark = mark;
 		if (buffer != null) {
@@ -294,7 +354,7 @@ public class ByteBufferArray {
 		}
 		while (!buffer.hasRemaining()) {
 			++index;
-			if (index >= array.length) {
+			if (index >= end) {
 				throw new BufferUnderflowException();
 			}
 			buffer = array[index];
@@ -319,7 +379,7 @@ public class ByteBufferArray {
 		if (i < 0) {
 			throw new IndexOutOfBoundsException();
 		}
-		for (int b = 0; b < array.length; ++b) {
+		for (int b = off; b < end; ++b) {
 			ByteBuffer buf = array[b];
 			int l = buf.limit();
 
@@ -334,7 +394,7 @@ public class ByteBufferArray {
 				for (int j = 0; j < size; ++j) {
 					if (i < l) {
 						data[j] = buf.get(i++);
-					} else if (++b < array.length) {
+					} else if (++b < end) {
 						buf = array[b];
 						l = buf.limit();
 						i = 0;
@@ -401,7 +461,7 @@ public class ByteBufferArray {
 			return this;
 		}
 
-		for (int i = index + 1; i < array.length; ++i) {
+		for (int i = index + 1; i < end; ++i) {
 			remaining += array[i].remaining();
 			if (remaining >= len) {
 				while (true) {
