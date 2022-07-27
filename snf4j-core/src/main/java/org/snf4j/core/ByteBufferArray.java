@@ -28,7 +28,6 @@ package org.snf4j.core;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.InvalidMarkException;
-import java.util.Collection;
 
 /**
  * A byte buffer array wrapper providing absolute and relative get methods that
@@ -38,30 +37,19 @@ import java.util.Collection;
  */
 public class ByteBufferArray {
 
-	private final ByteBuffer[] array;
+	final ByteBuffer[] array;
 
-	private final int off;
+	final int offset;
 	
-	private final int size;
+	final int size;
 	
-	private final int end;
+	final int end;
 	
 	private int index;
 
 	private long mark = -1;
 
-	private ByteBuffer buffer;
-
-	/**
-	 * Constructs a byte buffer array wrapper that will be backed by an array
-	 * containing {@link ByteBuffer} objects from the given collection, in the order
-	 * they are returned by the collection's iterator.
-	 * 
-	 * @param collection the collection with {@link ByteBuffer} objects
-	 */
-	public ByteBufferArray(Collection<ByteBuffer> collection) {
-		this(collection.toArray(new ByteBuffer[collection.size()]));
-	}
+	ByteBuffer buffer;
 
 	/**
 	 * Constructs a byte buffer array wrapper that will be backed by the given
@@ -69,12 +57,12 @@ public class ByteBufferArray {
 	 * 
 	 * @param array The array that will back this buffer array wrapper
 	 */
-	public ByteBufferArray(ByteBuffer[] array) {
+	ByteBufferArray(ByteBuffer[] array) {
 		this.array = array;
 		size = end = array.length; 
-		off = 0;
+		offset = 0;
 		if (size > 0) {
-			buffer = this.array[off];
+			buffer = this.array[offset];
 		}
 	}
 
@@ -82,22 +70,52 @@ public class ByteBufferArray {
 	 * Constructs a byte buffer array wrapper that will be backed by the given
 	 * {@link ByteBuffer} array.
 	 * 
-	 * @param array The array that will back this buffer array wrapper
-	 * @param off   The offset of the subarray to be used
-	 * @param len   The length of the subarray to be used
+	 * @param array  The array that will back this buffer array wrapper
+	 * @param offset The offset of the subarray to be used
+	 * @param length The length of the subarray to be used
 	 * @throws IndexOutOfBoundsException If the preconditions on the offset and
 	 *                                   length parameters do not hold
 	 */
-	public ByteBufferArray(ByteBuffer[] array, int off, int len) {
-		InternalSession.checkBounds(off, len, array.length);
+	ByteBufferArray(ByteBuffer[] array, int offset, int length) {
+		InternalSession.checkBounds(offset, length, array.length);
 		this.array = array;
-		if (len > 0) {
-			buffer = this.array[off];
+		if (length > 0) {
+			buffer = this.array[offset];
 		}
-		this.off = off;
-		this.size = len;
-		end = off + len;
-		index = off;
+		this.offset = offset;
+		this.size = length;
+		end = offset + length;
+		index = offset;
+	}
+	
+	/**
+	 * Wraps an array of byte buffers into a byte buffer array wrapper that will be
+	 * backed by the given array.
+	 * 
+	 * @param array The array that will back the returned buffer array wrapper
+	 * @return The new byte buffer array wrapper
+	 */
+	public static ByteBufferArray wrap(ByteBuffer[] array) {
+		return array.length == 1 
+				? new OneByteBufferArray(array) 
+				: new ByteBufferArray(array);
+	}
+
+	/**
+	 * Wraps an array of byte buffers into a byte buffer array wrapper that will be
+	 * backed by the given array.
+	 * 
+	 * @param array  The array that will back the returned buffer array wrapper
+	 * @param offset The offset of the subarray to be used
+	 * @param length The length of the subarray to be used
+	 * @return The new byte buffer array wrapper
+	 * @throws IndexOutOfBoundsException If the preconditions on the offset and
+	 *                                   length parameters do not hold
+	 */
+	public static ByteBufferArray wrap(ByteBuffer[] array, int offset, int length) {
+		return length == 1 
+				? new OneByteBufferArray(array, offset, length) 
+				: new ByteBufferArray(array, offset, length);
 	}
 	
 	/**
@@ -117,7 +135,7 @@ public class ByteBufferArray {
 	 *         buffer
 	 */
 	public int arrayOffset() {
-		return off;
+		return offset;
 	}
 	
 	/**
@@ -195,7 +213,7 @@ public class ByteBufferArray {
 	public long limit() {
 		long limit = 0;
 
-		for (int i = off; i < end; ++i) {
+		for (int i = offset; i < end; ++i) {
 			limit += array[i].limit();
 		}
 		return limit;
@@ -210,7 +228,7 @@ public class ByteBufferArray {
 		if (buffer != null) {
 			long position = 0;
 
-			for (int i=off; i < index; ++i) {
+			for (int i=offset; i < index; ++i) {
 				position += array[i].limit();
 			}
 			return buffer.position() + position;
@@ -234,7 +252,7 @@ public class ByteBufferArray {
 
 	private ByteBufferArray position(long newPosition, boolean reset) {
 		if (newPosition >= 0) {
-			int limit = -1, i = off, len = end;
+			int limit = -1, i = offset, len = end;
 			long position = newPosition;
 			ByteBuffer buffer = null;
 			boolean positioned = false;
@@ -264,7 +282,7 @@ public class ByteBufferArray {
 				positioned = true;
 			}
 			if (positioned) {
-				int j = off;
+				int j = offset;
 				for (; j<i; ++j) {
 					array[j].position(array[j].limit());
 				}
@@ -311,13 +329,13 @@ public class ByteBufferArray {
 	 * @return This buffer array wrapper
 	 */
 	public ByteBufferArray rewind() {
-		for (int i = off; i < end; ++i) {
+		for (int i = offset; i < end; ++i) {
 			array[i].rewind();
 		}
 		if (size > 0) {
-			buffer = this.array[off];
+			buffer = this.array[offset];
 		}
-		index = off;
+		index = offset;
 		mark = -1;
 		return this;
 	}
@@ -336,10 +354,10 @@ public class ByteBufferArray {
 	public ByteBufferArray duplicate() {
 		ByteBuffer[] dup = new ByteBuffer[array.length];
 
-		for (int i = off; i < end; ++i) {
+		for (int i = offset; i < end; ++i) {
 			dup[i] = array[i].duplicate();
 		}
-		ByteBufferArray dupArray = new ByteBufferArray(dup, off, size);
+		ByteBufferArray dupArray = new ByteBufferArray(dup, offset, size);
 		dupArray.index = index;
 		dupArray.mark = mark;
 		if (buffer != null) {
@@ -379,7 +397,7 @@ public class ByteBufferArray {
 		if (i < 0) {
 			throw new IndexOutOfBoundsException();
 		}
-		for (int b = off; b < end; ++b) {
+		for (int b = offset; b < end; ++b) {
 			ByteBuffer buf = array[b];
 			int l = buf.limit();
 
@@ -438,39 +456,39 @@ public class ByteBufferArray {
 	 * into the given array and the position of this buffer array wrapper is
 	 * incremented by number of copied bytes.
 	 * 
-	 * @param dst the destination byte array
-	 * @param off the offset within the array of the first byte to be copied
-	 * @param len the number of bytes to be copied into the given array
+	 * @param dst    the destination byte array
+	 * @param offset the offset within the array of the first byte to be copied
+	 * @param length the number of bytes to be copied into the given array
 	 * @return This buffer array wrapper
 	 * @throws BufferUnderflowException  If there are fewer than length bytes
 	 *                                   remaining in this buffer buffer wrapper
 	 * @throws IndexOutOfBoundsException If the preconditions on the offset and
 	 *                                   length parameters do not hold
 	 */
-	public ByteBufferArray get(byte[] dst, int off, int len) {
-		InternalSession.checkBounds(off, len, dst.length);
-		if (len == 0) {
+	public ByteBufferArray get(byte[] dst, int offset, int length) {
+		InternalSession.checkBounds(offset, length, dst.length);
+		if (length == 0) {
 			return this;
 		}
 
 		ByteBuffer buffer = buffer();
 
 		int remaining = buffer.remaining();
-		if (len <= remaining) {
-			buffer.get(dst, off, len);
+		if (length <= remaining) {
+			buffer.get(dst, offset, length);
 			return this;
 		}
 
 		for (int i = index + 1; i < end; ++i) {
 			remaining += array[i].remaining();
-			if (remaining >= len) {
+			if (remaining >= length) {
 				while (true) {
-					int size = Math.min(len, buffer.remaining());
+					int size = Math.min(length, buffer.remaining());
 
-					buffer.get(dst, off, size);
-					off += size;
-					len -= size;
-					if (len > 0) {
+					buffer.get(dst, offset, size);
+					offset += size;
+					length -= size;
+					if (length > 0) {
 						buffer = buffer();
 					} else {
 						return this;
@@ -481,6 +499,59 @@ public class ByteBufferArray {
 		throw new BufferUnderflowException();
 	}
 
+	static void checkBounds(ByteBuffer dst, int length) {
+		if (length < 0 || dst.remaining() < length) {
+			throw new IndexOutOfBoundsException();
+		}
+	}
+	
+	/**
+	 * Relative get method that transfers bytes from this buffer array wrapper into
+	 * the given destination byte buffer.
+	 * <p>
+	 * If there are fewer bytes remaining in the buffer than are required to satisfy
+	 * the request then no bytes are transferred and a
+	 * {@link BufferUnderflowException} is thrown. Otherwise, the bytes are copied
+	 * into the given buffer and the position of this buffer array wrapper is
+	 * incremented by number of copied bytes.
+	 * 
+	 * @param dst    the destination byte buffer
+	 * @param length the number of bytes to be copied into the given buffer
+	 * @return This buffer array wrapper
+	 * @throws BufferUnderflowException  If there are fewer than length bytes
+	 *                                   remaining in this buffer buffer wrapper
+	 * @throws IndexOutOfBoundsException If the preconditions on the length
+	 *                                   parameter do not hold
+	 */
+	public ByteBufferArray get(ByteBuffer dst, int length) {
+		checkBounds(dst, length);
+		int i = index;
+		
+		for (; i < end; ++i) {
+			length -= array[i].remaining();
+			if (length == 0) {
+				break;
+			}
+			else if (length < 0) {
+				--i;
+				break;
+			}
+		}
+		if (length > 0) {
+			throw new BufferUnderflowException();
+		}
+		for (int j = index; j<=i; ++j) {
+			dst.put(array[j]);
+		}
+		if (length < 0) {
+			ByteBuffer dup = array[++i].duplicate();
+			dup.limit(dup.limit() + length);
+			dst.put(dup);
+			array[i].position(dup.limit());
+		}
+		return this;
+	}
+	
 	/**
 	 * Relative get method that reads the byte at this buffer array wrapper's
 	 * current position, and then increments the position.
@@ -732,4 +803,170 @@ public class ByteBufferArray {
 		return buffer(8, indexArray).getDouble(indexArray[0]);
 	}
 
+	static class OneByteBufferArray extends ByteBufferArray {
+
+		public OneByteBufferArray(ByteBuffer[] array) {
+			super(array);
+		}
+
+		public OneByteBufferArray(ByteBuffer[] array, int off, int len) {
+			super(array, off, len);
+		}
+
+		@Override
+		public int arrayIndex() {
+			return offset;
+		}
+		
+		public ByteBufferArray duplicate() {
+			ByteBuffer[] dup = new ByteBuffer[array.length];
+			dup[offset] = array[offset].duplicate();
+			return new OneByteBufferArray(dup, offset, size);
+		}
+		
+		@Override
+		public boolean hasRemaining() {
+			return buffer.hasRemaining();
+		}
+
+		@Override
+		public long remaining() {
+			return buffer.remaining();
+		}
+
+		@Override
+		public long limit() {
+			return buffer.limit();
+		}
+
+		@Override
+		public long position() {
+			return buffer.position();
+		}
+
+		@Override
+		public ByteBufferArray position(long newPosition) {
+			buffer.position((int) newPosition);
+			return this;
+		}
+		
+		@Override
+		public ByteBufferArray mark() {
+			buffer.mark();
+			return this;
+		}
+
+		@Override
+		public ByteBufferArray reset() {
+			buffer.reset();
+			return this;
+		}
+
+		@Override
+		public ByteBufferArray rewind() {
+			buffer.rewind();
+			return this;
+		}
+
+		@Override
+		public ByteBufferArray get(byte[] dst) {
+			buffer.get(dst);
+			return this;
+		}
+
+		@Override
+		public ByteBufferArray get(byte[] dst, int off, int len) {
+			buffer.get(dst, off, len);
+			return this;
+		}
+
+		public ByteBufferArray get(ByteBuffer dst, int length) {
+			checkBounds(dst, length);
+			length -= buffer.remaining();
+			if (length > 0) {
+				throw new BufferUnderflowException();
+			}
+			if (length == 0) {
+				dst.put(buffer);
+			}
+			else {
+				ByteBuffer dup = buffer.duplicate();
+				dup.limit(dup.limit() + length);
+				dst.put(dup);
+				buffer.position(dup.limit());
+			}
+			return this;
+		}
+		
+		@Override
+		public byte get() {
+			return buffer.get();
+		}
+
+		@Override
+		public byte get(int position) {
+			return buffer.get(position);
+		}
+
+		@Override
+		public char getChar() {
+			return buffer.getChar();
+		}
+
+		@Override
+		public char getChar(int position) {
+			return buffer.getChar(position);
+		}
+
+		@Override
+		public short getShort() {
+			return buffer.getShort();
+		}
+
+		@Override
+		public short getShort(int position) {
+			return buffer.getShort(position);
+		}
+
+		@Override
+		public int getInt() {
+			return buffer.getInt();
+		}
+
+		@Override
+		public int getInt(int position) {
+			return buffer.getInt(position);
+		}
+
+		@Override
+		public long getLong() {
+			return buffer.getLong();
+		}
+
+		@Override
+		public long getLong(int position) {
+			return buffer.getLong(position);
+		}
+
+		@Override
+		public float getFloat() {
+			return buffer.getFloat();
+		}
+
+		@Override
+		public float getFloat(int position) {
+			return buffer.getFloat(position);
+		}
+
+		@Override
+		public double getDouble() {
+			return buffer.getDouble();
+		}
+
+		@Override
+		public double getDouble(int position) {
+			return buffer.getDouble(position);
+		}
+		
+	}
 }

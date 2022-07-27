@@ -64,7 +64,7 @@ public class ByteBufferArrayAbsoluteBenchmark {
 			}
 			array[i].flip();
 		}
-		ARRAY = new ByteBufferArray(array);
+		ARRAY = ByteBufferArray.wrap(array);
 	}
 	
 	@Bench(name="buffer")

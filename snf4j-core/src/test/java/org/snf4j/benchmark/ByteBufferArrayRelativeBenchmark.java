@@ -67,7 +67,7 @@ public class ByteBufferArrayRelativeBenchmark {
 			}
 			array[i].flip();
 		}
-		ARRAY = new ByteBufferArray(array);
+		ARRAY = ByteBufferArray.wrap(array);
 	}
 	
 	@PreBench(name="buffer")

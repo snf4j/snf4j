@@ -29,6 +29,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -518,6 +520,100 @@ public class ByteBufferArrayTest {
 		array.array()[off+1].put(0, b);
 		assertEquals('a', array.getChar(1));
 	}
+
+	void testGetBytesIntoBuffer(int off, int pad) {
+		ByteBuffer buf = ByteBuffer.allocate(20);
+
+		ByteBufferArray array = array(off, pad, 4, 4, 2, 2, 2, 2);
+		assertSame(array, array.get(buf, 3));
+		buf.flip();
+		assertEquals(3, buf.remaining());
+		assertEquals(1,buf.get());
+		assertEquals(2,buf.get());
+		assertEquals(3,buf.get());
+		assertEquals(13, array.remaining());
+		assertEquals(4, array.get());
+		
+		array.rewind();
+		assertEquals(16, array.remaining());
+		buf.clear();
+		array.get(buf,4);
+		buf.flip();
+		assertEquals(4, buf.remaining());
+		assertEquals(12, array.remaining());
+		assertEquals(0x01020304, buf.getInt());
+		assertEquals(5, array.get());
+		
+		array.rewind();
+		buf.clear();
+		array.get(buf,7);
+		buf.flip();
+		assertEquals(7, buf.remaining());
+		assertEquals(9, array.remaining());
+		assertEquals(0x01020304, buf.getInt());
+		assertEquals(0x0506, buf.getShort());
+		assertEquals(7, buf.get());
+		assertEquals(8, array.get());
+
+		array.rewind();
+		buf.clear();
+		array.get(buf,8);
+		buf.flip();
+		assertEquals(8, buf.remaining());
+		assertEquals(8, array.remaining());
+		assertEquals(0x01020304, buf.getInt());
+		assertEquals(0x05060708, buf.getInt());
+		assertEquals(9, array.get());
+		
+		array.rewind();
+		buf.clear();
+		array.get(buf,16);
+		buf.flip();
+		assertEquals(16, buf.remaining());
+		assertEquals(0, array.remaining());
+		assertEquals(0x01020304, buf.getInt());
+		assertEquals(0x05060708, buf.getInt());
+		assertEquals(0x090a0b0c, buf.getInt());
+		assertEquals(0x0d0e0f10, buf.getInt());
+		
+		array.rewind();
+		buf.clear();
+		try {
+			array.get(buf,17);
+			fail();
+		} catch (BufferUnderflowException e) {}
+		assertEquals(0, buf.position());
+		assertEquals(16, array.remaining());
+	
+		array.get(buf, 0);
+		assertEquals(0, buf.position());
+		assertEquals(16, array.remaining());
+		try {
+			array.get(buf, -1);
+			fail();
+		} catch (IndexOutOfBoundsException e) {}
+		buf.limit(8);
+		try {
+			array.get(buf, 9);
+			fail();
+		} catch (IndexOutOfBoundsException e) {}
+		array.get(buf, 8);
+		assertEquals(0, buf.remaining());
+		assertEquals(8, array.remaining());
+		buf.flip();
+		assertEquals(0x01020304, buf.getInt());
+		assertEquals(0x05060708, buf.getInt());
+		
+	}
+	
+	@Test
+	public void testGetBytesIntoBuffer() {
+		testGetBytesIntoBuffer(3,7);
+		testGetBytesIntoBuffer(0,7);
+		testGetBytesIntoBuffer(3,0);
+		testGetBytesIntoBuffer(0,0);
+		testGetBytesIntoBuffer(0,-1);
+	}
 	
 	@Test
 	public void testAbsoluteGetChar() {
@@ -908,4 +1004,207 @@ public class ByteBufferArrayTest {
 		testDuplicate(0,0);
 		testDuplicate(0,-1);
 	}	
+	
+	@Test
+	public void testWrap() {
+		ByteBufferArray array = ByteBufferArray.wrap(bufs(0,0,10));
+		assertSame(ByteBufferArray.OneByteBufferArray.class, array.getClass());
+		assertEquals(0, array.arrayOffset());
+		assertEquals(1, array.arrayEnd());
+		assertEquals(1, array.size());
+		
+		array = ByteBufferArray.wrap(bufs(0,0));
+		assertSame(ByteBufferArray.class, array.getClass());
+		assertEquals(0, array.arrayOffset());
+		assertEquals(0, array.arrayEnd());
+		assertEquals(0, array.size());
+		
+		array = ByteBufferArray.wrap(bufs(0,0,10,10));
+		assertSame(ByteBufferArray.class, array.getClass());
+		assertEquals(0, array.arrayOffset());
+		assertEquals(2, array.arrayEnd());
+		assertEquals(2, array.size());
+
+		array = ByteBufferArray.wrap(bufs(3,5,10),3,1);
+		assertSame(ByteBufferArray.OneByteBufferArray.class, array.getClass());
+		assertEquals(3, array.arrayOffset());
+		assertEquals(4, array.arrayEnd());
+		assertEquals(1, array.size());
+		
+		array = ByteBufferArray.wrap(bufs(3,5),3,0);
+		assertSame(ByteBufferArray.class, array.getClass());
+		assertEquals(3, array.arrayOffset());
+		assertEquals(3, array.arrayEnd());
+		assertEquals(0, array.size());
+		
+		array = ByteBufferArray.wrap(bufs(3,5,10,10),3,2);
+		assertSame(ByteBufferArray.class, array.getClass());
+		assertEquals(3, array.arrayOffset());
+		assertEquals(5, array.arrayEnd());
+		assertEquals(2, array.size());
+	
+	}
+	
+	@Test 
+	public void testOneByteBufferArray() {
+		ByteBuffer b1 = ByteBuffer.allocate(20);
+		ByteBuffer b2 = ByteBuffer.allocate(20);
+		ByteBuffer b3 = ByteBuffer.allocate(20);
+		ByteBuffer[] a = new ByteBuffer[] {b1};
+		
+		ByteBufferArray dup, ba = ByteBufferArray.wrap(a);
+		assertSame(ByteBufferArray.OneByteBufferArray.class, ba.getClass());
+		assertSame(a, ba.array());
+		assertEquals(1, ba.arrayEnd());
+		assertEquals(0, ba.arrayOffset());
+		assertEquals(0, ba.arrayIndex());
+		assertEquals(1, ba.size());
+		b1.putInt(0x01020304).flip();
+		
+		//duplicate
+		dup = ba.duplicate();
+		assertSame(ByteBufferArray.OneByteBufferArray.class, dup.getClass());
+		assertNotSame(dup, ba);
+		assertNotSame(dup.array(), ba.array());
+		assertNotSame(dup.array()[0], ba.array()[0]);
+		assertEquals(1, dup.array().length);
+		assertEquals(1, dup.arrayEnd());
+		assertEquals(0, dup.arrayIndex());
+		assertEquals(0, dup.arrayOffset());
+		assertEquals(4, dup.remaining());
+		assertEquals(0x01020304, dup.getInt());
+		
+		assertEquals(1, ba.get());
+		byte[] b = new byte[2];
+		assertSame(ba, ba.get(b));
+		assertArrayEquals(new byte[] {2,3}, b);
+		assertSame(ba, ba.get(b, 1, 1));
+		assertArrayEquals(new byte[] {2,4}, b);
+		assertEquals(2, ba.get(1));
+		b1.clear();
+		b1.putChar('a').putChar('b').flip();
+		assertEquals('a', ba.getChar());
+		assertEquals('b', ba.getChar(2));
+		b1.clear();
+		b1.putDouble(3443.9837).putDouble(1111.454).flip();
+		assertTrue(3443.9837 == ba.getDouble());
+		assertTrue(1111.454 == ba.getDouble(8));
+		b1.clear();
+		b1.putFloat(3443.9837F).putFloat(1111.454F).flip();
+		assertTrue(3443.9837F == ba.getFloat());
+		assertTrue(1111.454F == ba.getFloat(4));
+		b1.clear();
+		b1.putInt(0x01020304).putInt(0x05060708).flip();
+		assertEquals(0x01020304, ba.getInt());
+		assertEquals(0x05060708, ba.getInt(4));
+		b1.clear();
+		b1.putLong(0x0102030405060708L).putLong(0x090a0b0c0d0e0f10L).flip();
+		assertEquals(0x0102030405060708L, ba.getLong());
+		assertEquals(0x090a0b0c0d0e0f10L, ba.getLong(8));
+		b1.clear();
+		b1.putShort((short) 0x0102).putShort((short) 0x0304).flip();
+		assertEquals((short) 0x0102, ba.getShort());
+		assertEquals((short) 0x0304, ba.getShort(2));
+		
+		b1.clear().flip();
+		assertEquals(0, ba.remaining());
+		assertFalse(ba.hasRemaining());
+		b1.clear();
+		b1.putInt(0x01020304).flip();
+		assertEquals(4, ba.remaining());
+		assertTrue(ba.hasRemaining());
+		ba.getShort();
+		assertEquals(2, ba.remaining());
+		assertTrue(ba.hasRemaining());
+		b1.getShort();
+		assertEquals(0, ba.remaining());
+		assertFalse(ba.hasRemaining());
+		
+		assertEquals(4, ba.limit());
+		b1.clear();
+		assertEquals(20, ba.limit());
+		assertEquals(0, ba.position());
+		b1.putLong(1).flip();
+		assertEquals(0, ba.position());
+		b1.get();
+		assertEquals(1, ba.position());
+		ba.get();
+		assertEquals(2, ba.position());
+		ba.position(5);
+		assertEquals(5, ba.position());
+		assertEquals(5, b1.position());
+		
+		ba.mark();
+		b1.get();
+		assertEquals(6, b1.position());
+		ba.reset();
+		assertEquals(5, b1.position());
+		ba.get();
+		assertEquals(6, ba.position());
+		b1.reset();
+		assertEquals(5, ba.position());
+		
+		assertEquals(8, ba.limit());
+		ba.rewind();
+		assertEquals(0, ba.position());
+		assertEquals(0, b1.position());
+		assertEquals(8, ba.limit());
+
+		a = new ByteBuffer[] {b1,b2,b3};
+		ba = ByteBufferArray.wrap(a, 1, 1);
+		assertSame(ByteBufferArray.OneByteBufferArray.class, ba.getClass());
+		assertSame(a, ba.array());
+		assertEquals(2, ba.arrayEnd());
+		assertEquals(1, ba.arrayIndex());
+		assertEquals(1, ba.arrayOffset());
+		assertEquals(1, ba.size());
+		b2.putInt(0x01020304).flip();
+		assertEquals(4, ba.remaining());
+		b2.get();
+		assertEquals(3, ba.remaining());
+		assertEquals(2, ba.get());
+
+		dup = ba.duplicate();
+		assertSame(ByteBufferArray.OneByteBufferArray.class, dup.getClass());
+		assertNotSame(dup, ba);
+		assertNotSame(dup.array(), ba.array());
+		assertNotNull(dup.array()[1]);
+		assertNotSame(dup.array()[1], ba.array()[1]);
+		assertEquals(3, dup.array().length);
+		assertEquals(2, dup.arrayEnd());
+		assertEquals(1, dup.arrayIndex());
+		assertEquals(1, dup.arrayOffset());
+		assertEquals(2, dup.remaining());
+		assertEquals(0x0304, dup.getShort());
+		assertEquals(0x0304, ba.getShort());
+		
+		ba.rewind();
+		assertEquals(4, ba.remaining());
+		b3.clear();
+		assertSame(ba, ba.get(b3, 4));
+		b3.flip();
+		assertEquals(4, b3.remaining());
+		assertEquals(0x01020304, b3.getInt());
+		assertEquals(0, ba.remaining());
+		b3.clear();
+		ba.rewind();
+		ba.get(b3, 3);
+		b3.flip();
+		assertEquals(3, b3.remaining());
+		assertEquals(0x0102, b3.getShort());
+		assertEquals(3, b3.get());
+		assertEquals(4, ba.get());
+		b3.clear();
+		ba.rewind();
+		ba.get(b3, 0);
+		assertEquals(4, ba.remaining());
+		assertEquals(0, b3.position());
+		try {
+			ba.get(b3, 5);
+			fail();
+		} catch (BufferUnderflowException e) {}
+		
+		
+
+	}
 }
