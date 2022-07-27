@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019 SNF4J contributors
+ * Copyright (c) 2019-2022 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,8 @@ package org.snf4j.example.engine;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.zip.CRC32;
+
+import org.snf4j.core.ByteBufferArray;
 
 public class Packet {
 	
@@ -60,24 +62,9 @@ public class Packet {
 	}
 	
 	public static byte[] getBytes(ByteBuffer[] srcs, int maxSize) {
-		ByteBuffer buffer = ByteBuffer.allocate(maxSize);
-		
-		for (ByteBuffer src: srcs) {
-			if (src.remaining() <= buffer.remaining()) {
-				buffer.put(src);
-			}
-			else {
-				ByteBuffer srcDup = src.duplicate();
-				
-				srcDup.limit(src.position() + buffer.remaining());
-				buffer.put(srcDup);
-				src.position(srcDup.position());
-			}
-		}
-
-		buffer.flip();
-		byte[] bytes = new byte[buffer.remaining()];
-		buffer.get(bytes);
+		ByteBufferArray array = ByteBufferArray.wrap(srcs);
+		byte[] bytes = new byte[Math.min((int)array.remaining(), maxSize)];
+		array.get(bytes);
 		return bytes;
 	}	
 
