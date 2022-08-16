@@ -307,6 +307,9 @@ public class ByteBufferArrayTest {
 	void testRemaining(int off, int pad) {
 		ByteBufferArray array = array(off, pad, 3, 3);
 		assertEquals(6, array.remaining());
+		assertTrue(array.hasRemaining(1));
+		assertTrue(array.hasRemaining(6));
+		assertFalse(array.hasRemaining(7));
 		assertTrue(array.hasRemaining());
 		array.array()[off].get();
 		assertEquals(5, array.remaining());
@@ -314,6 +317,9 @@ public class ByteBufferArrayTest {
 		array.array()[off].get();
 		array.array()[off].get();
 		assertEquals(3, array.remaining());
+		assertTrue(array.hasRemaining(1));
+		assertTrue(array.hasRemaining(3));
+		assertFalse(array.hasRemaining(4));
 		assertTrue(array.hasRemaining());
 		array.array()[off+1].get();
 		array.array()[off+1].get();
@@ -334,6 +340,9 @@ public class ByteBufferArrayTest {
 		array.get();
 		array.get();
 		assertEquals(2, array.remaining());
+		assertTrue(array.hasRemaining(0));
+		assertTrue(array.hasRemaining(2));
+		assertFalse(array.hasRemaining(3));
 		assertTrue(array.hasRemaining());
 		array.array()[off].clear();
 		array.array()[off].put((byte) 1).flip();
@@ -404,6 +413,17 @@ public class ByteBufferArrayTest {
 		testGet(0,-1);
 	}
 
+	@Test
+	public void testGetUnsigned() {
+		ByteBufferArray array = ByteBufferArray.wrap(new ByteBuffer[] {ByteBuffer.wrap(new byte[] {
+				(byte) 0xff, (byte)0x7f})});
+
+		assertEquals(0xff, array.getUnsigned(0));
+		assertEquals(0x7f, array.getUnsigned(1));
+		assertEquals(0xff, array.getUnsigned());
+		assertEquals(0x7f, array.getUnsigned());
+	}
+	
 	void testAbsoluteGet(int off, int pad) {
 		ByteBufferArray array = array(off, pad, 3, 3);
 		assertEquals(1, array.get(0));
@@ -708,6 +728,17 @@ public class ByteBufferArrayTest {
 		testGetShort(0,-1);
 	}
 
+	@Test
+	public void testGetUnsignedShort() {
+		ByteBufferArray array = ByteBufferArray.wrap(new ByteBuffer[] {ByteBuffer.wrap(new byte[] {
+				(byte) 0xff, (byte) 0xff, (byte)0x7f, (byte) 0xff})});
+
+		assertEquals(0xffff, array.getUnsignedShort(0));
+		assertEquals(0x7fff, array.getUnsignedShort(2));
+		assertEquals(0xffff, array.getUnsignedShort());
+		assertEquals(0x7fff, array.getUnsignedShort());
+	}
+	
 	void testAbsoluteGetInt(int off, int pad) {
 		ByteBufferArray array = array(off, pad, 6, 6, 2);
 		assertEquals(0x01020304, array.getInt(0));
@@ -804,6 +835,18 @@ public class ByteBufferArrayTest {
 		testGetInt(0,-1);
 	}
 
+	@Test
+	public void testGetUnsignedInt() {
+		ByteBufferArray array = ByteBufferArray.wrap(new ByteBuffer[] {ByteBuffer.wrap(new byte[] {
+				(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, 
+				(byte) 0x7f, (byte) 0xff, (byte) 0xff, (byte) 0xff})});
+
+		assertEquals(0xffffffffL, array.getUnsignedInt(0));
+		assertEquals(0x7fffffffL, array.getUnsignedInt(4));
+		assertEquals(0xffffffffL, array.getUnsignedInt());
+		assertEquals(0x7fffffffL, array.getUnsignedInt());
+	}
+	
 	void testAbsoluteGetLong(int off, int pad) {
 		ByteBufferArray array = array(off, pad, 8, 4, 8);
 		assertEquals(0x0102030405060708L, array.getLong(0));
@@ -1112,6 +1155,9 @@ public class ByteBufferArrayTest {
 		b1.clear();
 		b1.putInt(0x01020304).flip();
 		assertEquals(4, ba.remaining());
+		assertTrue(ba.hasRemaining(0));
+		assertTrue(ba.hasRemaining(4));
+		assertFalse(ba.hasRemaining(5));
 		assertTrue(ba.hasRemaining());
 		ba.getShort();
 		assertEquals(2, ba.remaining());
