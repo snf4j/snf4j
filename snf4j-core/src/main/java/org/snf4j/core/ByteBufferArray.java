@@ -192,6 +192,25 @@ public class ByteBufferArray {
 	}
 
 	/**
+	 * Tells whether there are at least the {@code length} of bytes between the
+	 * current position and the limit.
+	 * 
+	 * @return {@code true} if, and only if, there is at least the {@code length} of
+	 *         bytes remaining in this buffer array wrapper
+	 */
+	public boolean hasRemaining(long length) {
+		long remaining = 0;
+
+		for (int i = index; i < end; ++i) {
+			remaining += array[i].remaining();
+			if (remaining >= length) {
+				return true;			
+			}
+		}
+		return false;
+	}
+	
+	/**
 	 * Returns the number of bytes between the current position and the limit.
 	 * 
 	 * @return The number of bytes remaining in this buffer array wrapper
@@ -391,8 +410,8 @@ public class ByteBufferArray {
 		return ByteBuffer.wrap(data).order(b.order());
 	}
 
-	private ByteBuffer buffer(int size, int[] index) {
-		int i = index[0];
+	private ByteBuffer buffer(int size, long[] index) {
+		long i = index[0];
 
 		if (i < 0) {
 			throw new IndexOutOfBoundsException();
@@ -411,7 +430,7 @@ public class ByteBufferArray {
 
 				for (int j = 0; j < size; ++j) {
 					if (i < l) {
-						data[j] = buf.get(i++);
+						data[j] = buf.get((int) i++);
 					} else if (++b < end) {
 						buf = array[b];
 						l = buf.limit();
@@ -563,6 +582,19 @@ public class ByteBufferArray {
 	public byte get() {
 		return buffer().get();
 	}
+	
+	/**
+	 * Relative get method that reads an unsigned value of the byte at this buffer
+	 * array wrapper's current position, and then increments the position.
+	 * 
+	 * @return An unsigned value of the byte at the buffer array wrapper's current
+	 *         position
+	 * @throws BufferUnderflowException If the buffer array wrapper's current
+	 *                                  position is not smaller than its limit
+	 */
+	public int getUnsigned() {
+		return get() & 0xff;
+	}
 
 	/**
 	 * Absolute get method that reads the byte at the given position.
@@ -572,11 +604,25 @@ public class ByteBufferArray {
 	 * @throws IndexOutOfBoundsException If position is negative or not smaller than
 	 *                                   the buffer array wrapper's limit
 	 */
-	public byte get(int position) {
-		int[] indexArray = new int[] { position };
-		return buffer(1, indexArray).get(indexArray[0]);
+	public byte get(long position) {
+		long[] indexArray = new long[] { position };
+		return buffer(1, indexArray).get((int) indexArray[0]);
 	}
 
+	/**
+	 * Absolute get method that reads an unsigned value of the byte at the given
+	 * position.
+	 * 
+	 * @param position The position from which an unsigned value of the byte will be
+	 *                 read
+	 * @return An unsigned value of the byte at the given position
+	 * @throws IndexOutOfBoundsException If position is negative or not smaller than
+	 *                                   the buffer array wrapper's limit
+	 */
+	public int getUnsigned(long position) {
+		return get(position) & 0xff;
+	}
+	
 	/**
 	 * Relative get method for reading a char value.
 	 * <p>
@@ -609,9 +655,9 @@ public class ByteBufferArray {
 	 * @throws IndexOutOfBoundsException If position is negative or not smaller than
 	 *                                   the buffer array wrapper's limit, minus one
 	 */
-	public char getChar(int position) {
-		int[] indexArray = new int[] { position };
-		return buffer(2, indexArray).getChar(indexArray[0]);
+	public char getChar(long position) {
+		long[] indexArray = new long[] { position };
+		return buffer(2, indexArray).getChar((int) indexArray[0]);
 	}
 
 	/**
@@ -633,6 +679,25 @@ public class ByteBufferArray {
 	}
 
 	/**
+	 * Relative get method for reading an unsigned short value.
+	 * <p>
+	 * It reads the next two bytes at this buffer array wrapper's current position,
+	 * composing them into an unsigned short value according to the current byte
+	 * order, and then increments the position by two.
+	 * <p>
+	 * NOTE: The current byte order is determined by the current byte order of the
+	 * buffer pointed by the current position of this buffer array wrapper.
+	 * 
+	 * @return The unsigned short value at the buffer array wrapper's current
+	 *         position
+	 * @throws BufferUnderflowException If there are fewer than two bytes remaining
+	 *                                  in this buffer array wrapper
+	 */
+	public int getUnsignedShort() {
+		return getShort() & 0xffff;
+	}
+	
+	/**
 	 * Absolute get method for reading a short value.
 	 * <p>
 	 * It reads two bytes at the given position, composing them into a short value
@@ -646,11 +711,29 @@ public class ByteBufferArray {
 	 * @throws IndexOutOfBoundsException If position is negative or not smaller than
 	 *                                   the buffer array wrapper's limit, minus one
 	 */
-	public short getShort(int position) {
-		int[] indexArray = new int[] { position };
-		return buffer(2, indexArray).getShort(indexArray[0]);
+	public short getShort(long position) {
+		long[] indexArray = new long[] { position };
+		return buffer(2, indexArray).getShort((int) indexArray[0]);
 	}
 
+	/**
+	 * Absolute get method for reading an unsigned short value.
+	 * <p>
+	 * It reads two bytes at the given position, composing them into an unsigned
+	 * short value according to the current byte order.
+	 * <p>
+	 * NOTE: The current byte order is determined by the current byte order of the
+	 * buffer pointed by the given position.
+	 * 
+	 * @param position The position from which the bytes will be read
+	 * @return The unsigned short value at the given position
+	 * @throws IndexOutOfBoundsException If position is negative or not smaller than
+	 *                                   the buffer array wrapper's limit, minus one
+	 */
+	public int getUnsignedShort(long position) {
+		return getShort(position) & 0xffff;
+	}
+	
 	/**
 	 * Relative get method for reading an int value.
 	 * <p>
@@ -670,6 +753,24 @@ public class ByteBufferArray {
 	}
 
 	/**
+	 * Relative get method for reading an unsigned int value.
+	 * <p>
+	 * It reads the next four bytes at this buffer array wrapper's current position,
+	 * composing them into an unsigned int value according to the current byte
+	 * order, and then increments the position by four.
+	 * <p>
+	 * NOTE: The current byte order is determined by the current byte order of the
+	 * buffer pointed by the current position of this buffer array wrapper.
+	 * 
+	 * @return The unsigned int value at the buffer array wrapper's current position
+	 * @throws BufferUnderflowException If there are fewer than four bytes remaining
+	 *                                  in this buffer array wrapper
+	 */
+	public long getUnsignedInt() {
+		return getInt() & 0xffffffffL;
+	}
+	
+	/**
 	 * Absolute get method for reading an int value.
 	 * <p>
 	 * It reads four bytes at the given position, composing them into an int value
@@ -684,11 +785,30 @@ public class ByteBufferArray {
 	 *                                   the buffer array wrapper's limit, minus
 	 *                                   three
 	 */
-	public int getInt(int position) {
-		int[] indexArray = new int[] { position };
-		return buffer(4, indexArray).getInt(indexArray[0]);
+	public int getInt(long position) {
+		long[] indexArray = new long[] { position };
+		return buffer(4, indexArray).getInt((int) indexArray[0]);
 	}
 
+	/**
+	 * Absolute get method for reading an unsigned int value.
+	 * <p>
+	 * It reads four bytes at the given position, composing them into an unsigned
+	 * int value according to the current byte order.
+	 * <p>
+	 * NOTE: The current byte order is determined by the current byte order of the
+	 * buffer pointed by the given position.
+	 * 
+	 * @param position The position from which the bytes will be read
+	 * @return The unsigned int value at the given position
+	 * @throws IndexOutOfBoundsException If position is negative or not smaller than
+	 *                                   the buffer array wrapper's limit, minus
+	 *                                   three
+	 */
+	public long getUnsignedInt(long position) {
+		return getInt(position) & 0xffffffffL;
+	}
+	
 	/**
 	 * Relative get method for reading a long value.
 	 * <p>
@@ -722,9 +842,9 @@ public class ByteBufferArray {
 	 *                                   the buffer array wrapper's limit, minus
 	 *                                   seven
 	 */
-	public long getLong(int position) {
-		int[] indexArray = new int[] { position };
-		return buffer(8, indexArray).getLong(indexArray[0]);
+	public long getLong(long position) {
+		long[] indexArray = new long[] { position };
+		return buffer(8, indexArray).getLong((int) indexArray[0]);
 	}
 
 	/**
@@ -760,9 +880,9 @@ public class ByteBufferArray {
 	 *                                   the buffer array wrapper's limit, minus
 	 *                                   three
 	 */
-	public float getFloat(int position) {
-		int[] indexArray = new int[] { position };
-		return buffer(4, indexArray).getFloat(indexArray[0]);
+	public float getFloat(long position) {
+		long[] indexArray = new long[] { position };
+		return buffer(4, indexArray).getFloat((int) indexArray[0]);
 	}
 
 	/**
@@ -798,9 +918,9 @@ public class ByteBufferArray {
 	 *                                   the buffer array wrapper's limit, minus
 	 *                                   seven
 	 */
-	public double getDouble(int position) {
-		int[] indexArray = new int[] { position };
-		return buffer(8, indexArray).getDouble(indexArray[0]);
+	public double getDouble(long position) {
+		long[] indexArray = new long[] { position };
+		return buffer(8, indexArray).getDouble((int) indexArray[0]);
 	}
 
 	static class OneByteBufferArray extends ByteBufferArray {
@@ -829,6 +949,11 @@ public class ByteBufferArray {
 			return buffer.hasRemaining();
 		}
 
+		@Override
+		public boolean hasRemaining(long length) {
+			return buffer.remaining() >= length;
+		}
+		
 		@Override
 		public long remaining() {
 			return buffer.remaining();
@@ -904,8 +1029,8 @@ public class ByteBufferArray {
 		}
 
 		@Override
-		public byte get(int position) {
-			return buffer.get(position);
+		public byte get(long position) {
+			return buffer.get((int) position);
 		}
 
 		@Override
@@ -914,8 +1039,8 @@ public class ByteBufferArray {
 		}
 
 		@Override
-		public char getChar(int position) {
-			return buffer.getChar(position);
+		public char getChar(long position) {
+			return buffer.getChar((int) position);
 		}
 
 		@Override
@@ -924,8 +1049,8 @@ public class ByteBufferArray {
 		}
 
 		@Override
-		public short getShort(int position) {
-			return buffer.getShort(position);
+		public short getShort(long position) {
+			return buffer.getShort((int) position);
 		}
 
 		@Override
@@ -934,8 +1059,8 @@ public class ByteBufferArray {
 		}
 
 		@Override
-		public int getInt(int position) {
-			return buffer.getInt(position);
+		public int getInt(long position) {
+			return buffer.getInt((int) position);
 		}
 
 		@Override
@@ -944,8 +1069,8 @@ public class ByteBufferArray {
 		}
 
 		@Override
-		public long getLong(int position) {
-			return buffer.getLong(position);
+		public long getLong(long position) {
+			return buffer.getLong((int) position);
 		}
 
 		@Override
@@ -954,8 +1079,8 @@ public class ByteBufferArray {
 		}
 
 		@Override
-		public float getFloat(int position) {
-			return buffer.getFloat(position);
+		public float getFloat(long position) {
+			return buffer.getFloat((int) position);
 		}
 
 		@Override
@@ -964,8 +1089,8 @@ public class ByteBufferArray {
 		}
 
 		@Override
-		public double getDouble(int position) {
-			return buffer.getDouble(position);
+		public double getDouble(long position) {
+			return buffer.getDouble((int) position);
 		}
 		
 	}
