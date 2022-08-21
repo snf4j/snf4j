@@ -25,21 +25,7 @@
  */
 package org.snf4j.tls.extension;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
-
-public class ExtensionsParser extends AbstractExtensionsParser {
-
-	private final IExtensionDecoder decoder;
+public interface IServerNameExtension extends IExtension {
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
-	}
-
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
-	}
-
+	public String getHostName();
 }

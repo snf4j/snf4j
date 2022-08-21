@@ -69,7 +69,7 @@ public class ExtensionsParserTest extends ExtensionTest {
 		int[] sizes = new int[0];
 		
 		for (int i=0; i<2; ++i) {
-			parser.parse(array(data, 0, sizes));
+			parser.parse(array(data, 0, sizes), data.length);
 			assertTrue(parser.isComplete());
 			assertEquals(10, parser.getExtensions().size());
 			assertSame(ExtensionType.SERVER_NAME, parser.getExtensions().get(0).getType());

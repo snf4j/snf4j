@@ -43,7 +43,7 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(0, p.getConsumedBytes());
-		p.parse(array(bytes(0,4,0,0,0,0), 0));
+		p.parse(array(bytes(0,4,0,0,0,0), 0),6);
 		assertTrue(p.isComplete());
 		assertEquals(1, p.getExtensions().size());
 		assertEquals(6, p.getConsumedBytes());
@@ -61,57 +61,57 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(0, p.getConsumedBytes());
-		p.parse(array(bytes(), 0));
+		p.parse(array(bytes(), 0),0);
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(0, p.getConsumedBytes());
-		p.parse(array(bytes(0), 0));
+		p.parse(array(bytes(0), 0),1);
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(0, p.getConsumedBytes());
-		p.parse(array(bytes(0,8), 0));
+		p.parse(array(bytes(0,8), 0),2);
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(2, p.getConsumedBytes());
 
-		p.parse(array(bytes(), 0));
+		p.parse(array(bytes(), 0),0);
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(2, p.getConsumedBytes());
-		p.parse(array(bytes(0), 0));
+		p.parse(array(bytes(0), 0),1);
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(2, p.getConsumedBytes());
-		p.parse(array(bytes(0,0), 0));
+		p.parse(array(bytes(0,0), 0),2);
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(2, p.getConsumedBytes());
-		p.parse(array(bytes(0,0,0), 0));
+		p.parse(array(bytes(0,0,0), 0),3);
 		assertFalse(p.isComplete());
 		assertEquals(0, p.getExtensions().size());
 		assertEquals(2, p.getConsumedBytes());
-		p.parse(array(bytes(0,0,0,0), 0));
+		p.parse(array(bytes(0,0,0,0), 0),4);
 		assertFalse(p.isComplete());
 		assertEquals(1, p.getExtensions().size());
 		assertEquals(6, p.getConsumedBytes());
 
-		p.parse(array(bytes(), 0));
+		p.parse(array(bytes(), 0),0);
 		assertFalse(p.isComplete());
 		assertEquals(1, p.getExtensions().size());
 		assertEquals(6, p.getConsumedBytes());
-		p.parse(array(bytes(0), 0));
+		p.parse(array(bytes(0), 0),1);
 		assertFalse(p.isComplete());
 		assertEquals(1, p.getExtensions().size());
 		assertEquals(6, p.getConsumedBytes());
-		p.parse(array(bytes(0,1), 0));
+		p.parse(array(bytes(0,1), 0),2);
 		assertFalse(p.isComplete());
 		assertEquals(1, p.getExtensions().size());
 		assertEquals(6, p.getConsumedBytes());
-		p.parse(array(bytes(0,1,0), 0));
+		p.parse(array(bytes(0,1,0), 0),3);
 		assertFalse(p.isComplete());
 		assertEquals(1, p.getExtensions().size());
 		assertEquals(6, p.getConsumedBytes());
-		p.parse(array(bytes(0,1,0,0), 0));
+		p.parse(array(bytes(0,1,0,0), 0),4);
 		assertTrue(p.isComplete());
 		assertEquals(2, p.getExtensions().size());
 		assertEquals(10, p.getConsumedBytes());
@@ -122,46 +122,37 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 		Parser p = new Parser(0, 0xffff, new TestExtensionParser(ExtensionType.SERVER_NAME));
 		
 		ByteBufferArray array = ByteBufferArray.wrap(array(bytes(0,4,0,0,0,0),0));
-		array.array()[0].limit(0);
-		p.parse(array);
-		assertEquals(0, array.remaining());
+		p.parse(array,0);
+		assertEquals(6, array.remaining());
 		assertEquals(0, p.getConsumedBytes());
-		array.array()[0].limit(1);
-		p.parse(array);
-		assertEquals(1, array.remaining());
+		p.parse(array,1);
+		assertEquals(6, array.remaining());
 		assertEquals(0, p.getConsumedBytes());
-		array.array()[0].limit(2);
-		p.parse(array);
-		assertEquals(0, array.remaining());
+		p.parse(array,2);
+		assertEquals(4, array.remaining());
 		assertEquals(2, p.getConsumedBytes());
-		array.array()[0].limit(3);
-		p.parse(array);
-		assertEquals(1, array.remaining());
+		p.parse(array,1);
+		assertEquals(4, array.remaining());
 		assertEquals(2, p.getConsumedBytes());
-		array.array()[0].limit(4);
-		p.parse(array);
-		assertEquals(2, array.remaining());
+		p.parse(array,2);
+		assertEquals(4, array.remaining());
 		assertEquals(2, p.getConsumedBytes());
-		array.array()[0].limit(5);
-		p.parse(array);
-		assertEquals(3, array.remaining());
+		p.parse(array,3);
+		assertEquals(4, array.remaining());
 		assertEquals(2, p.getConsumedBytes());
-		array.array()[0].limit(6);
-		p.parse(array);
+		p.parse(array,4);
 		assertEquals(0, array.remaining());
 		assertEquals(6, p.getConsumedBytes());
 
 		p.reset();
 		array = ByteBufferArray.wrap(array(bytes(0,9,0,0,0,5,0,0,2,97,98),0));
-		array.array()[0].limit(10);
-		p.parse(array);
-		assertEquals(8, array.remaining());
+		p.parse(array,10);
+		assertEquals(9, array.remaining());
 		assertEquals(2, p.getConsumedBytes());
-		p.parse(array);
-		assertEquals(8, array.remaining());
+		p.parse(array,8);
+		assertEquals(9, array.remaining());
 		assertEquals(2, p.getConsumedBytes());
-		array.array()[0].limit(11);
-		p.parse(array);
+		p.parse(array,9);
 		assertEquals(0, array.remaining());
 		assertEquals(11, p.getConsumedBytes());
 		
@@ -171,7 +162,7 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 		Parser p = new Parser(min, max, new TestExtensionParser(ExtensionType.SERVER_NAME));
 		
 		try {
-			p.parse(array(bytes, 0));
+			p.parse(array(bytes, 0), bytes.length);
 			if (message != null) {
 				fail();
 			}
@@ -216,7 +207,7 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 		}
 
 		@Override
-		protected IExtension parse(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
+		protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
 			return decoder.decode(srcs, remaining);
 		}
 		

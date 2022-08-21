@@ -25,21 +25,25 @@
  */
 package org.snf4j.tls.extension;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import static org.junit.Assert.assertEquals;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
+import java.util.ArrayList;
 
-	private final IExtensionDecoder decoder;
-	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
+import org.junit.Test;
+
+public class ExtensionsUtilTest {
+
+	@Test
+	public void testCalculateLength() {
+		ArrayList<IExtension> extensions = new ArrayList<IExtension>();
+		IExtension extension;
+		
+		assertEquals(0, ExtensionsUtil.calculateLength(extensions));
+		extension = new UnknownExtension(ExtensionType.KEY_SHARE, new byte[10]);
+		extensions.add(extension);
+		assertEquals(10, extension.getDataLength());
+		assertEquals(14, ExtensionsUtil.calculateLength(extensions));
+		extensions.add(new UnknownExtension(ExtensionType.COOKIE, new byte[11]));
+		assertEquals(29, ExtensionsUtil.calculateLength(extensions));
 	}
-
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
-	}
-
 }

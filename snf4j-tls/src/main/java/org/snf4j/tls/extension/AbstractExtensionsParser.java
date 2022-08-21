@@ -72,19 +72,20 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 	}
 
 	@Override
-	public void parse(ByteBuffer[] srcs) throws DecodeErrorAlertException {
-		parse(ByteBufferArray.wrap(srcs));
+	public void parse(ByteBuffer[] srcs, int remainig) throws DecodeErrorAlertException {
+		parse(ByteBufferArray.wrap(srcs), remainig);
 	}
 	
 	@Override
-	public void parse(ByteBufferArray srcs) throws DecodeErrorAlertException {
-		if (remaining == -1) {
-			if (!srcs.hasRemaining(2)) {
+	public void parse(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
+		if (this.remaining == -1) {
+			if (remaining < 2) {
 				return;
 			}
 			
 			int len = srcs.getUnsignedShort();
 			
+			remaining -= 2;
 			consumed += 2;
 			if (len < minLength) {
 				throw new DecodeErrorAlertException("Extensions data too small");
@@ -92,17 +93,15 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 			if (len > maxLength) {
 				throw new DecodeErrorAlertException("Extensions data too big");
 			}
-			remaining = len;
+			this.remaining = len;
 		}
 		
 		if (remaining > 0) {
-			long remaining = srcs.remaining();
-			
 			while (remaining >= 4) {
 				int len = srcs.getUnsignedShort(srcs.position()+2)+4;
 				
 				if (len <= remaining) {
-					extensions.add(parse(srcs, len));
+					extensions.add(parseExtension(srcs, len));
 				}
 				else {
 					break;
@@ -114,5 +113,5 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 		}
 	}
 
-	protected abstract IExtension parse(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException;
+	protected abstract IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException;
 }

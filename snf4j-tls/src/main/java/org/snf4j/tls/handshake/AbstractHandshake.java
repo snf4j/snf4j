@@ -23,23 +23,37 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
+public abstract class AbstractHandshake implements IHandshake {
 
-	private final IExtensionDecoder decoder;
+	private final HandshakeType type;
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
+	protected AbstractHandshake(HandshakeType type) {
+		this.type = type;
+	}
+	
+	@Override
+	public HandshakeType getType() {
+		return type;
 	}
 
 	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
+	public void getBytes(ByteBuffer buffer) {
+		int len = getDataLength();
+		
+		if (buffer.remaining() >= len + 4) {
+			buffer.put((byte) getType().value());
+			buffer.put((byte) (len >> 16));
+			buffer.putShort((short) (len & 0xffff));
+			getData(buffer);
+			return;
+		}
+		throw new BufferOverflowException();
 	}
 
+	protected abstract void getData(ByteBuffer buffer);
 }

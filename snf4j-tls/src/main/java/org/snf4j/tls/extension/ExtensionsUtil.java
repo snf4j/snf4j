@@ -25,21 +25,18 @@
  */
 package org.snf4j.tls.extension;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import java.util.List;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
-
-	private final IExtensionDecoder decoder;
+public final class ExtensionsUtil {
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
+	private ExtensionsUtil() {}
+	
+	public static int calculateLength(List<IExtension> extensions) {
+		int len = extensions.size() * (2 + 2);
+		
+		for (IExtension e: extensions) {
+			len += e.getDataLength();
+		}
+		return len;
 	}
-
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
-	}
-
 }

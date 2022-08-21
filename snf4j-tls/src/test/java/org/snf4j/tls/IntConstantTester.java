@@ -46,9 +46,13 @@ public class IntConstantTester<C extends IntConstant> {
 		this.clazz = clazz;
 		this.arrayClazz = arrayClazz;
 	}
+
+	public void assertValues() throws Exception {
+		assertValues("%d");
+	}
 	
 	@SuppressWarnings("unchecked")
-	public void assertValues() throws Exception {
+	public void assertValues(String numberPatter) throws Exception {
 		Field[] fields = clazz.getDeclaredFields();
 		C[] known = null;
 		String entries = this.entries;
@@ -74,7 +78,8 @@ public class IntConstantTester<C extends IntConstant> {
 			assertEquals(field.getName().toLowerCase(), type.name());
 			assertEquals(field.getName().toUpperCase(), field.getName());
 			
-			String entry = "|"+type.name()+"("+type.value()+")";
+			String number = String.format(numberPatter, type.value());
+			String entry = "|"+type.name()+"("+number+")";
 			assertTrue(entries.indexOf(entry) != -1);
 			entries = entries.replace(entry, "");
 			count++;
@@ -86,7 +91,6 @@ public class IntConstantTester<C extends IntConstant> {
 			C type = known[i];
 			
 			if (type != null) {
-				assertEquals(i, type.value());
 				--count;
 			}
 		}
@@ -102,7 +106,6 @@ public class IntConstantTester<C extends IntConstant> {
 		
 		for (int i=0; i<known.length; ++i) {
 			C type = known[i];
-			of.invoke(null, i);
 			if (type != null) {
 				assertSame(type, of.invoke(null, i));
 				assertTrue(((C)of.invoke(null, i)).isKnown());
@@ -122,4 +125,40 @@ public class IntConstantTester<C extends IntConstant> {
 		assertFalse(((C)of.invoke(null, -1)).isKnown());
 		assertNotSame(of.invoke(null, -1), of.invoke(null, -1));
 	}
+	
+	@SuppressWarnings("unchecked")
+	public void assertOf(int min, int max) throws Exception {
+		Field f = clazz.getDeclaredField("KNOWN");
+		f.setAccessible(true);
+		C[] known = (C[]) f.get(null);
+		Method of = clazz.getDeclaredMethod("of", int.class);
+		
+		for (int i=min; i<=max; ++i) {
+			C type = null;
+			
+			for (int j=0; j<known.length; ++j) {
+				C t = known[j];
+				
+				if (t != null && t.value() == i) {
+					type = t;
+					break;
+				}
+			}
+			
+			if(i == 529) {
+				min++;
+			}
+			if (type != null) {
+				assertSame(type, of.invoke(null, i));
+				assertTrue(((C)of.invoke(null, i)).isKnown());
+				assertSame(of.invoke(null, i), of.invoke(null, i));
+			}
+			else {
+				assertEquals(i, ((C)of.invoke(null, i)).value());
+				assertFalse(((C)of.invoke(null, i)).isKnown());
+				assertNotSame(of.invoke(null, i), of.invoke(null, i));
+			}
+		}
+	}
+	
 }

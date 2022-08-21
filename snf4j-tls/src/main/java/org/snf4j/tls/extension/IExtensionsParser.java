@@ -41,8 +41,8 @@ public interface IExtensionsParser {
 	
 	List<IExtension> getExtensions();
 	
-	void parse(ByteBuffer[] srcs) throws DecodeErrorAlertException;
+	void parse(ByteBuffer[] srcs, int remaining) throws DecodeErrorAlertException;
 
-	void parse(ByteBufferArray srcs) throws DecodeErrorAlertException;
+	void parse(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException;
 
 }

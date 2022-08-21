@@ -23,23 +23,39 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.junit.Test;
+import org.snf4j.tls.IntConstantTester;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
+public class SignatureSchemeTest {
 
-	private final IExtensionDecoder decoder;
+	final static String ENTRIES = 
+			"|" + "rsa_pkcs1_sha256(0x0401),"+
+			"|" + "rsa_pkcs1_sha384(0x0501),"+
+			"|" + "rsa_pkcs1_sha512(0x0601),"+
+			"|" + "ecdsa_secp256r1_sha256(0x0403),"+
+			"|" + "ecdsa_secp384r1_sha384(0x0503),"+
+			"|" + "ecdsa_secp521r1_sha512(0x0603),"+
+			"|" + "rsa_pss_rsae_sha256(0x0804),"+
+			"|" + "rsa_pss_rsae_sha384(0x0805),"+
+			"|" + "rsa_pss_rsae_sha512(0x0806),"+
+			"|" + "ed25519(0x0807),"+
+			"|" + "ed448(0x0808),"+
+			"|" + "rsa_pss_pss_sha256(0x0809),"+
+			"|" + "rsa_pss_pss_sha384(0x080a),"+
+			"|" + "rsa_pss_pss_sha512(0x080b),"+
+			"|" + "rsa_pkcs1_sha1(0x0201),"+
+			"|" + "ecdsa_sha1(0x0203),";
+
+	@Test
+	public void testValues() throws Exception {
+		new IntConstantTester<SignatureScheme>(ENTRIES, SignatureScheme.class, SignatureScheme[].class).assertValues("0x%04x");
+	}
+
+	@Test
+	public void testOf() throws Exception {
+		new IntConstantTester<SignatureScheme>(ENTRIES, SignatureScheme.class, SignatureScheme[].class).assertOf(0, 0x900);
+	}
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
-	}
-
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
-	}
-
 }

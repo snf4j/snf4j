@@ -23,23 +23,37 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.IntConstant;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
-
-	private final IExtensionDecoder decoder;
+public class KeyUpdateRequest extends IntConstant {
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
+	public static final KeyUpdateRequest UPDATE_NOT_REQUESTED = new KeyUpdateRequest("update_not_requested", 0);
+
+	public static final KeyUpdateRequest UPDATE_REQUESTED = new KeyUpdateRequest("update_requested", 1);
+	
+	@SuppressWarnings("unused")
+	private final static KeyUpdateRequest[] KNOWN = new KeyUpdateRequest[] {UPDATE_NOT_REQUESTED, UPDATE_REQUESTED};
+
+	protected KeyUpdateRequest(String name, int value) {
+		super(name, value);
 	}
 
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
+	protected KeyUpdateRequest(int value) {
+		super(value);
 	}
 
+	public static KeyUpdateRequest of(int value) {
+		switch (value) {
+		case 0: 
+			return UPDATE_NOT_REQUESTED;
+		
+		case 1: 
+			return UPDATE_REQUESTED;
+		
+		default: 
+			return new KeyUpdateRequest(value);
+		}
+	}
 }

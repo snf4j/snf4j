@@ -32,7 +32,7 @@ import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
 
-public class ServerNameExtension extends KnownExtension {
+public class ServerNameExtension extends KnownExtension implements IServerNameExtension {
 
 	private final static ExtensionType TYPE = ExtensionType.SERVER_NAME;
 	
@@ -115,6 +115,7 @@ public class ServerNameExtension extends KnownExtension {
 		this.hostName = null;
 	}
 	
+	@Override
 	public String getHostName() { return hostName == null ? "" : new String(hostName, StandardCharsets.US_ASCII); }
 	
 	public static IExtensionParser getParser() {

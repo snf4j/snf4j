@@ -61,4 +61,60 @@ public class ArgsTest {
 			assertEquals("name is greater than 1000", e.getMessage());		
 		}
 	}
+	
+	@Test
+	public void testFixedArray() {
+		Args.checkFixed(new byte[10], 10, "name");
+		try {
+			Args.checkFixed(new byte[10], 9, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name's length is not 9", e.getMessage());		
+		}
+		try {
+			Args.checkFixed(new byte[10], 11, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name's length is not 11", e.getMessage());		
+		}
+		try {
+			Args.checkFixed(null, 11, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name is null", e.getMessage());		
+		}
+	}
+	
+	@Test
+	public void testMax() {
+		Args.checkMax(100, 100, "name");
+		Args.checkMax(99, 100, "name");
+		Args.checkMax(0, 100, "name");
+		Args.checkMax(-1, 100, "name");
+		try {
+			Args.checkMax(100, 99, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name is greater than 99", e.getMessage());		
+		}
+	}
+
+	@Test
+	public void testMaxArray() {
+		Args.checkMax(new byte[100], 100, "name");
+		Args.checkMax(new byte[99], 100, "name");
+		Args.checkMax(new byte[0], 100, "name");
+		try {
+			Args.checkMax(new byte[100], 99, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name's length is greater than 99", e.getMessage());		
+		}
+		try {
+			Args.checkMax(null, 99, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name is null", e.getMessage());		
+		}
+	}
 }

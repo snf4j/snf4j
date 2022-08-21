@@ -23,23 +23,25 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.junit.Test;
+import org.snf4j.tls.IntConstantTester;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
-
-	private final IExtensionDecoder decoder;
+public class KeyUpdateRequestTest {
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
-	}
+	final static String ENTRIES = 
+			"|" + "update_not_requested(0)," + 
+			"|" + "update_requested(1),";
 
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
+	@Test
+	public void testValues() throws Exception {
+		new IntConstantTester<KeyUpdateRequest>(ENTRIES, KeyUpdateRequest.class, KeyUpdateRequest[].class).assertValues();
+	}
+			 
+	@Test
+	public void testOf() throws Exception {
+		new IntConstantTester<KeyUpdateRequest>(ENTRIES, KeyUpdateRequest.class, KeyUpdateRequest[].class).assertOf();
 	}
 
 }

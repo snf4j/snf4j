@@ -23,23 +23,44 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.cipher;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.IntConstant;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
-
-	private final IExtensionDecoder decoder;
+public class CipherSuite extends IntConstant {
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
+	public static final CipherSuite TLS_AES_128_GCM_SHA256 = new CipherSuite("TLS_AES_128_GCM_SHA256",0x1301);
+	public static final CipherSuite TLS_AES_256_GCM_SHA384 = new CipherSuite("TLS_AES_256_GCM_SHA384",0x1302);
+	public static final CipherSuite TLS_CHACHA20_POLY1305_SHA256 = new CipherSuite("TLS_CHACHA20_POLY1305_SHA256",0x1303);
+	public static final CipherSuite TLS_AES_128_CCM_SHA256 = new CipherSuite("TLS_AES_128_CCM_SHA256",0x1304);
+	public static final CipherSuite TLS_AES_128_CCM_8_SHA256 = new CipherSuite("TLS_AES_128_CCM_8_SHA256",0x1305);
+	
+	private final static CipherSuite[] KNOWN = new CipherSuite[] {
+			null, 
+			TLS_AES_128_GCM_SHA256, 
+			TLS_AES_256_GCM_SHA384, 
+			TLS_CHACHA20_POLY1305_SHA256, 
+			TLS_AES_128_CCM_SHA256, 
+			TLS_AES_128_CCM_8_SHA256,
+			null,null,null,null,null,null,null,null,null,null};
+	
+	protected CipherSuite(String name, int value) {
+		super(name, value);
 	}
 
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
+	protected CipherSuite(int value) {
+		super(value);
 	}
 
+	public static CipherSuite of(int value) {
+		if ((value & 0xfff0) == 0x1300) {
+			CipherSuite known = KNOWN[value & 0xf];
+			
+			if (known != null) {
+				return known;
+			}
+		}
+		return new CipherSuite(value);
+	}
+	
 }

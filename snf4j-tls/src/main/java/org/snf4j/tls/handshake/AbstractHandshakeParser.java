@@ -23,23 +23,27 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
+
+import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.extension.IExtensionDecoder;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
-
-	private final IExtensionDecoder decoder;
+public abstract class AbstractHandshakeParser implements IHandshakeParser {
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
+	
+	protected DecodeErrorAlertException decodeError(String message) {
+		return new DecodeErrorAlertException("Handshake message '" 
+				+ getType().name() 
+				+ "' parsing failure: " 
+				+ message);
 	}
-
+	
 	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
+	public IHandshake parse(ByteBuffer[] srcs, int remaining, IExtensionDecoder decoder) throws DecodeErrorAlertException  {
+		return parse(ByteBufferArray.wrap(srcs), remaining, decoder);
 	}
 
 }

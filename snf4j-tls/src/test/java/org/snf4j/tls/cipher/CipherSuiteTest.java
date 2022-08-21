@@ -23,60 +23,49 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.cipher;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertTrue;
 
-import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
+import java.lang.reflect.Field;
 
 import org.junit.Test;
 
-public class AbstractExtensionTest extends ExtensionTest {
+public class CipherSuiteTest {
+	
+	final static String ENTRIES = 
+			"| TLS_AES_128_GCM_SHA256 | {0x13,0x01} |"+
+			"| TLS_AES_256_GCM_SHA384 | {0x13,0x02} |"+
+			"| TLS_CHACHA20_POLY1305_SHA256 | {0x13,0x03} |"+
+			"| TLS_AES_128_CCM_SHA256 | {0x13,0x04} |"+
+			"| TLS_AES_128_CCM_8_SHA256 | {0x13,0x05} |";
+	 
+	@Test
+	public void testValues() throws Exception {
+		String[] entries = ENTRIES.split("\\|");
+		
+		for (int i=0; i<entries.length; i+=3) {
+			String name = entries[i+1].trim();
+			String value = entries[i+2].replace("{", "").replace("}", "").replace("0x", "").replace(",", "").trim();
+			
+			Field f = CipherSuite.class.getDeclaredField(name);
+			CipherSuite cs = (CipherSuite) f.get(null);
+			assertEquals(Integer.parseInt(value, 16), cs.value());
+			assertSame(cs, CipherSuite.of(cs.value()));
+			assertTrue(cs.isKnown());
+		}
+	}
 
 	@Test
-	public void testGetBytes() {
-		Extension e = new Extension(ExtensionType.SERVER_NAME, bytes(0,5,0,0,2,97,98));
-		assertSame(ExtensionType.SERVER_NAME, e.getType());
-		e.getBytes(buffer);
-		assertArrayEquals(bytes(0,0,0,7,0,5,0,0,2,97,98), buffer());
-		buffer.clear();
-		buffer.limit(11);
-		e.getBytes(buffer);
-		assertArrayEquals(bytes(0,0,0,7,0,5,0,0,2,97,98), buffer());
-		buffer.clear();
-		buffer.limit(10);
-		try {
-			e.getBytes(buffer);
-			fail();
-		} catch (BufferOverflowException ex) {}
-	}
-	
-	class Extension extends AbstractExtension {
-
-		final byte[] data;
+	public void testOf() throws Exception {
+		int[] values = new int[] {0x1300,0x1306,0x130f,0,0xffff};
 		
-		protected Extension(ExtensionType type, byte[] data) {
-			super(type);
-			this.data = data;
+		for (int i=0; i<values.length; ++i) {
+			assertEquals(values[i], CipherSuite.of(values[i]).value());
+			assertFalse(CipherSuite.of(values[i]).isKnown());
 		}
-
-		@Override
-		public int getDataLength() {
-			return data.length;
-		}
-
-		@Override
-		public boolean isKnown() {
-			return true;
-		}
-
-		@Override
-		protected void getData(ByteBuffer buffer) {
-			buffer.put(data);
-		}
-		
-	}
+	}	
 }

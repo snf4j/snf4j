@@ -23,23 +23,59 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import java.nio.ByteBuffer;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
+import org.snf4j.tls.Args;
 
-	private final IExtensionDecoder decoder;
+abstract class AbstractHello extends AbstractHandshake {
+
+	final static int RANDOM_LENGTH = 32;
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
+	final static int SESSION_ID_MAX_LENGTH = 32;
+
+	final static int COMMON_PART_MIN_LENGTH = 2 + RANDOM_LENGTH + 1;
+
+	private final int legacyVersion;
+	
+	private final byte[] random;
+	
+	private final byte[] legacySessionId;
+	
+	public AbstractHello(HandshakeType type, int legacyVersion, byte[] random, byte[] legacySessionId) {
+		super(type);
+		Args.checkFixed(random, RANDOM_LENGTH, "random");
+		Args.checkMax(legacySessionId, SESSION_ID_MAX_LENGTH, "legacySessionId");
+		this.legacyVersion = legacyVersion;
+		this.random = random;
+		this.legacySessionId = legacySessionId;
+	}
+
+	public int getLegacyVersion() {
+		return legacyVersion;
+	}
+	
+	public byte[] getRandom() {
+		return random;
+	}
+
+	public byte[] getLegacySessionId() {
+		return legacySessionId;
+	}
+	
+	@Override
+	public int getDataLength() {
+		return COMMON_PART_MIN_LENGTH + legacySessionId.length;
 	}
 
 	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
+	protected void getData(ByteBuffer buffer) {
+		buffer.putShort((short) legacyVersion);
+		buffer.put(random);
+		buffer.put((byte) legacySessionId.length);
+		if (legacySessionId.length > 0) {
+			buffer.put(legacySessionId);
+		}
 	}
-
 }

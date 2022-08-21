@@ -23,23 +23,60 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import java.nio.ByteBuffer;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
+import org.junit.Before;
 
-	private final IExtensionDecoder decoder;
+public class CommonTest {
+
+	protected final ByteBuffer buffer = ByteBuffer.allocate(0x20010);
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
+	protected byte[] buffer() {
+		ByteBuffer dup = buffer.duplicate();
+		dup.flip();
+		byte[] bytes = new byte[dup.remaining()];
+		dup.get(bytes);
+		return bytes;
+	}
+	
+	protected byte[] buffer(int off, int len) {
+		byte[] subbytes = new byte[len];
+		System.arraycopy(buffer(), off, subbytes, 0, len);
+		return subbytes;
 	}
 
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
+	protected byte[] bytes(int... values) {
+		byte[] bytes = new byte[values.length];
+		int i = 0;
+		
+		for (int value: values) {
+			bytes[i++] = (byte)value;
+		}
+		return bytes;
+	}
+		
+	protected ByteBuffer[] array(byte[] bytes, int off, int... sizes) {
+		ByteBuffer[] array = new ByteBuffer[sizes.length + 1];
+		int len = bytes.length;
+		int i=0;
+		
+		for (; i<sizes.length; ++i) {
+			byte[] a = new byte[sizes[i]];
+			System.arraycopy(bytes, off, a, 0, a.length);
+			array[i] = ByteBuffer.wrap(a);
+			off += sizes[i];
+		}
+		byte[] a = new byte[len-off];
+		System.arraycopy(bytes, off, a, 0, a.length);
+		array[i] = ByteBuffer.wrap(a);
+		return array;
+	}
+	
+	@Before
+	public void before() {
+		buffer.clear();
 	}
 
 }

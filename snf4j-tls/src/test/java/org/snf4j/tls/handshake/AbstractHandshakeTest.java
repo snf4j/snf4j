@@ -23,23 +23,59 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
 
-	private final IExtensionDecoder decoder;
+import org.junit.Test;
+
+public class AbstractHandshakeTest extends HandshakeTest {
+
+	@Test
+	public void testGetBytes() {
+		Handshake e = new Handshake(HandshakeType.CLIENT_HELLO, bytes(0,5,0,0,2,97,98));
+		assertSame(HandshakeType.CLIENT_HELLO, e.getType());
+		e.getBytes(buffer);
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,98), buffer());
+		buffer.clear();
+		buffer.limit(11);
+		e.getBytes(buffer);
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,98), buffer());
+		buffer.clear();
+		buffer.limit(10);
+		try {
+			e.getBytes(buffer);
+			fail();
+		} catch (BufferOverflowException ex) {}
+
+		buffer.clear();
+		e = new Handshake(HandshakeType.SERVER_HELLO, new byte[0x10102]);
+		e.getBytes(buffer);
+		assertArrayEquals(bytes(2,1,1,2,0,0), buffer(0,6));
+	}
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
-	}
+	class Handshake extends AbstractHandshake {
 
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
-	}
+		final byte[] data;
+		
+		Handshake(HandshakeType type, byte[] data) {
+			super(type);
+			this.data = data;
+		}
 
+		@Override
+		public int getDataLength() {
+			return data.length;
+		}
+
+		@Override
+		protected void getData(ByteBuffer buffer) {
+			buffer.put(data);
+		}
+	}
 }

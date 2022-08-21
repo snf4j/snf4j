@@ -25,52 +25,7 @@
  */
 package org.snf4j.tls.extension;
 
-import java.nio.ByteBuffer;
+import org.snf4j.tls.CommonTest;
 
-import org.junit.Before;
-
-public class ExtensionTest {
-	
-	final ByteBuffer buffer = ByteBuffer.allocate(0x10010);
-	
-	byte[] buffer() {
-		ByteBuffer dup = buffer.duplicate();
-		dup.flip();
-		byte[] bytes = new byte[dup.remaining()];
-		dup.get(bytes);
-		return bytes;
-	}
-	
-	byte[] bytes(int... values) {
-		byte[] bytes = new byte[values.length];
-		int i = 0;
-		
-		for (int value: values) {
-			bytes[i++] = (byte)value;
-		}
-		return bytes;
-	}
-	
-	ByteBuffer[] array(byte[] bytes, int off, int... sizes) {
-		ByteBuffer[] array = new ByteBuffer[sizes.length + 1];
-		int len = bytes.length;
-		int i=0;
-		
-		for (; i<sizes.length; ++i) {
-			byte[] a = new byte[sizes[i]];
-			System.arraycopy(bytes, off, a, 0, a.length);
-			array[i] = ByteBuffer.wrap(a);
-			off += sizes[i];
-		}
-		byte[] a = new byte[len-off];
-		System.arraycopy(bytes, off, a, 0, a.length);
-		array[i] = ByteBuffer.wrap(a);
-		return array;
-	}
-	
-	@Before
-	public void before() {
-		buffer.clear();
-	}
-
+public class ExtensionTest extends CommonTest {
 }

@@ -23,23 +23,24 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import java.util.List;
 
-public class ExtensionsParser extends AbstractExtensionsParser {
+import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.IExtension;
 
-	private final IExtensionDecoder decoder;
+public interface IClientHello extends IHandshake {
 	
-	public ExtensionsParser(int minLength, int maxLength, IExtensionDecoder decoder) {
-		super(minLength, maxLength);
-		this.decoder = decoder;
-	}
-
-	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
-	}
-
+	int getLegacyVersion();
+	
+	byte[] getRandom();
+	
+	byte[] getLegacySessionId();
+	
+	List<CipherSuite> getCipherSuites();
+	
+	byte[] getLegacyCompressionMethods();
+	
+	List<IExtension> getExtensioins();
 }
