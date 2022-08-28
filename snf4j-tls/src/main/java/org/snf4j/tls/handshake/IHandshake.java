@@ -34,4 +34,7 @@ public interface IHandshake {
 	void getBytes(ByteBuffer buffer);
 	
 	int getDataLength();
+	
+	boolean isKnown();
+	
 }

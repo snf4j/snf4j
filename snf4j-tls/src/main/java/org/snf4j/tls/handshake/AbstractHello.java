@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 
 import org.snf4j.tls.Args;
 
-abstract class AbstractHello extends AbstractHandshake {
+abstract class AbstractHello extends KnownHandshake {
 
 	final static int RANDOM_LENGTH = 32;
 	

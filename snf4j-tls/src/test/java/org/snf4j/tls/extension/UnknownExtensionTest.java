@@ -41,5 +41,6 @@ public class UnknownExtensionTest extends ExtensionTest {
 		e.getBytes(buffer);
 		assertArrayEquals(bytes(0,0,0,3,0,1,2), buffer());
 		assertFalse(e.isKnown());
+		assertArrayEquals(bytes(0,1,2), e.getData());
 	}
 }

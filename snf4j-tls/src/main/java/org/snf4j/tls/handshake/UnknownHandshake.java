@@ -23,19 +23,19 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
 import java.nio.ByteBuffer;
 
-public class UnknownExtension extends AbstractExtension {
+public class UnknownHandshake extends AbstractHandshake {
 
 	private final byte[] data;
 	
-	public UnknownExtension(ExtensionType type, byte[] data) {
+	protected UnknownHandshake(HandshakeType type, byte[] data) {
 		super(type);
 		this.data = data;
 	}
-	
+
 	@Override
 	public int getDataLength() {
 		return data.length;
@@ -52,5 +52,5 @@ public class UnknownExtension extends AbstractExtension {
 
 	@Override
 	public final boolean isKnown() { return false; }
-	
+
 }

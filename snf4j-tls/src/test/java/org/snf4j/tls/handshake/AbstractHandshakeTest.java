@@ -77,5 +77,10 @@ public class AbstractHandshakeTest extends HandshakeTest {
 		protected void getData(ByteBuffer buffer) {
 			buffer.put(data);
 		}
+
+		@Override
+		public boolean isKnown() {
+			return true;
+		}
 	}
 }

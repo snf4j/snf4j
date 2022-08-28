@@ -23,34 +23,17 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
 import java.nio.ByteBuffer;
 
-public class UnknownExtension extends AbstractExtension {
+import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.DecodeErrorAlertException;
 
-	private final byte[] data;
+public interface IHandshakeDecoder {
 	
-	public UnknownExtension(ExtensionType type, byte[] data) {
-		super(type);
-		this.data = data;
-	}
-	
-	@Override
-	public int getDataLength() {
-		return data.length;
-	}
+	IHandshake decode(ByteBuffer[] srcs, int remaining) throws DecodeErrorAlertException;
 
-	public byte[] getData() {
-		return data;
-	}
-	
-	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
-	}
+	IHandshake decode(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException;
 
-	@Override
-	public final boolean isKnown() { return false; }
-	
 }

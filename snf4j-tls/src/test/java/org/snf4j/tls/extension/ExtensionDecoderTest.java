@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.extension;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
@@ -64,6 +65,8 @@ public class ExtensionDecoderTest extends ExtensionTest {
 		assertSame(UnknownExtension.class, e.getClass());
 		assertEquals(0x0100, e.getType().value());
 		assertFalse(e.isKnown());
+		UnknownExtension ue = (UnknownExtension) e;
+		assertArrayEquals(bytes(1,2), ue.getData());
 		
 		a = ByteBufferArray.wrap(array(bytes(0,0,0,0),0));
 		e = decoder.decode(a, 4);

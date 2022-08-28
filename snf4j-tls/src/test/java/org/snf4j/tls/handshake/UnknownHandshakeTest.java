@@ -23,34 +23,25 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.handshake;
 
-import java.nio.ByteBuffer;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
-public class UnknownExtension extends AbstractExtension {
+import org.junit.Test;
 
-	private final byte[] data;
+public class UnknownHandshakeTest extends HandshakeTest {
 	
-	public UnknownExtension(ExtensionType type, byte[] data) {
-		super(type);
-		this.data = data;
-	}
-	
-	@Override
-	public int getDataLength() {
-		return data.length;
-	}
-
-	public byte[] getData() {
-		return data;
-	}
-	
-	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
+	@Test
+	public void testAll() {
+		UnknownHandshake h = new UnknownHandshake(HandshakeType.CERTIFICATE, bytes(0,1,2));
+		
+		assertEquals(3, h.getDataLength());
+		h.getBytes(buffer);
+		assertArrayEquals(bytes(11,0,0,3,0,1,2), buffer());
+		assertFalse(h.isKnown());
+		assertArrayEquals(bytes(0,1,2), h.getData());
 	}
 
-	@Override
-	public final boolean isKnown() { return false; }
-	
 }
