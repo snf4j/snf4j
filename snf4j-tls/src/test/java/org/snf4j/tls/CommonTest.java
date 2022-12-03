@@ -57,6 +57,15 @@ public class CommonTest {
 		return bytes;
 	}
 		
+	protected byte[] bytes(String hexString) {
+		byte[] bytes = new byte[hexString.length()/2];
+		
+		for (int i=0; i<bytes.length; ++i) {
+			bytes[i] = (byte)Integer.parseInt(hexString.substring(i*2, i*2+2), 16);
+		}
+		return bytes;
+	}
+	
 	protected ByteBuffer[] array(byte[] bytes, int off, int... sizes) {
 		ByteBuffer[] array = new ByteBuffer[sizes.length + 1];
 		int len = bytes.length;
