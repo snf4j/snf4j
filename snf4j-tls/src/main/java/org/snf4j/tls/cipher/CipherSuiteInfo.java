@@ -23,28 +23,57 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.cipher;
 
-import java.security.MessageDigest;
+public class CipherSuiteInfo implements ICipherSuiteInfo {
 
-import org.snf4j.tls.handshake.HandshakeType;
+	public final static CipherSuiteInfo TLS_AES_128_GCM_SHA256 = new CipherSuiteInfo(16, "AES", 16, 12, HashInfo.SHA256);
+	
+	public final static CipherSuiteInfo TLS_AES_256_GCM_SHA384 = new CipherSuiteInfo(16, "AES", 32, 12, HashInfo.SHA384);
+	
+	private final int authenticationTagLength;
+	
+	private final String KeyAlgorithm;
+	
+	private final int keyLength;
+	
+	private final int ivLength;
+	
+	private final IHashInfo hashInfo;
 
-public interface ITranscriptHash {
+	public CipherSuiteInfo(int authenticationTagLength, String keyAlgorithm, int keyLength, int ivLength,
+			IHashInfo hashInfo) {
+		super();
+		this.authenticationTagLength = authenticationTagLength;
+		KeyAlgorithm = keyAlgorithm;
+		this.keyLength = keyLength;
+		this.ivLength = ivLength;
+		this.hashInfo = hashInfo;
+	}
 	
-	void update(HandshakeType type, byte[] message);
-	
-	void updateHelloRetryRequest(byte[] message);
-	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
+	@Override
+	public int getAuthenticationTagLength() {
+		return authenticationTagLength;
+	}
 
-	byte[] getHash(HandshakeType type, byte[] replacement);
+	@Override
+	public String getKeyAlgorithm() {
+		return KeyAlgorithm;
+	}
 
-	String getAlgorithm();
-	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
+	@Override
+	public int getKeyLength() {
+		return keyLength;
+	}
+
+	@Override
+	public int getIvLength() {
+		return ivLength;
+	}
+
+	@Override
+	public IHashInfo getHashInfo() {
+		return hashInfo;
+	}
 
 }

@@ -27,6 +27,7 @@ package org.snf4j.tls.cipher;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -59,6 +60,15 @@ public class CipherSuiteTest {
 		}
 	}
 
+	@Test
+	public void testGetInfo() throws Exception {
+		assertSame(CipherSuiteInfo.TLS_AES_128_GCM_SHA256, CipherSuite.TLS_AES_128_GCM_SHA256.getInfo());
+		assertSame(CipherSuiteInfo.TLS_AES_256_GCM_SHA384, CipherSuite.TLS_AES_256_GCM_SHA384.getInfo());
+		assertNull(CipherSuite.TLS_CHACHA20_POLY1305_SHA256.getInfo());
+		assertNull(CipherSuite.TLS_AES_128_CCM_SHA256.getInfo());
+		assertNull(CipherSuite.TLS_AES_128_CCM_8_SHA256.getInfo());
+	}
+	
 	@Test
 	public void testOf() throws Exception {
 		int[] values = new int[] {0x1300,0x1306,0x130f,0,0xffff};

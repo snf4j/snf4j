@@ -23,28 +23,33 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.cipher;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 
 import java.security.MessageDigest;
 
-import org.snf4j.tls.handshake.HandshakeType;
+import org.junit.Test;
 
-public interface ITranscriptHash {
+public class HashInfoTest {
 	
-	void update(HandshakeType type, byte[] message);
-	
-	void updateHelloRetryRequest(byte[] message);
-	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
+	@Test
+	public void testSha256() throws Exception {
+		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashInfo.SHA256.getEmptyHash());
+		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashInfo.SHA256.getEmptyHash());
+		assertEquals("SHA-256", HashInfo.SHA256.getAlgorithm());
+		assertEquals(32, HashInfo.SHA256.getHashLength());
+		assertNotSame(HashInfo.SHA256.getEmptyHash(), HashInfo.SHA256.getEmptyHash());
+	}
 
-	byte[] getHash(HandshakeType type, byte[] replacement);
-
-	String getAlgorithm();
-	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
-
+	@Test
+	public void testSha348() throws Exception {
+		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashInfo.SHA384.getEmptyHash());
+		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashInfo.SHA384.getEmptyHash());
+		assertEquals("SHA-348", HashInfo.SHA384.getAlgorithm());
+		assertEquals(48, HashInfo.SHA384.getHashLength());
+		assertNotSame(HashInfo.SHA384.getEmptyHash(), HashInfo.SHA384.getEmptyHash());
+	}
 }

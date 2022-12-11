@@ -29,11 +29,11 @@ import org.snf4j.tls.IntConstant;
 
 public class CipherSuite extends IntConstant {
 	
-	public static final CipherSuite TLS_AES_128_GCM_SHA256 = new CipherSuite("TLS_AES_128_GCM_SHA256",0x1301);
-	public static final CipherSuite TLS_AES_256_GCM_SHA384 = new CipherSuite("TLS_AES_256_GCM_SHA384",0x1302);
-	public static final CipherSuite TLS_CHACHA20_POLY1305_SHA256 = new CipherSuite("TLS_CHACHA20_POLY1305_SHA256",0x1303);
-	public static final CipherSuite TLS_AES_128_CCM_SHA256 = new CipherSuite("TLS_AES_128_CCM_SHA256",0x1304);
-	public static final CipherSuite TLS_AES_128_CCM_8_SHA256 = new CipherSuite("TLS_AES_128_CCM_8_SHA256",0x1305);
+	public static final CipherSuite TLS_AES_128_GCM_SHA256 = new CipherSuite("TLS_AES_128_GCM_SHA256",0x1301,CipherSuiteInfo.TLS_AES_128_GCM_SHA256);
+	public static final CipherSuite TLS_AES_256_GCM_SHA384 = new CipherSuite("TLS_AES_256_GCM_SHA384",0x1302,CipherSuiteInfo.TLS_AES_256_GCM_SHA384);
+	public static final CipherSuite TLS_CHACHA20_POLY1305_SHA256 = new CipherSuite("TLS_CHACHA20_POLY1305_SHA256",0x1303,null);
+	public static final CipherSuite TLS_AES_128_CCM_SHA256 = new CipherSuite("TLS_AES_128_CCM_SHA256",0x1304,null);
+	public static final CipherSuite TLS_AES_128_CCM_8_SHA256 = new CipherSuite("TLS_AES_128_CCM_8_SHA256",0x1305,null);
 	
 	private final static CipherSuite[] KNOWN = new CipherSuite[] {
 			null, 
@@ -44,14 +44,22 @@ public class CipherSuite extends IntConstant {
 			TLS_AES_128_CCM_8_SHA256,
 			null,null,null,null,null,null,null,null,null,null};
 	
-	protected CipherSuite(String name, int value) {
+	private final ICipherSuiteInfo info;
+	
+	protected CipherSuite(String name, int value, ICipherSuiteInfo info) {
 		super(name, value);
+		this.info = info;
 	}
 
 	protected CipherSuite(int value) {
 		super(value);
+		info = null;
 	}
 
+	public ICipherSuiteInfo getInfo() {
+		return info;
+	}
+	
 	public static CipherSuite of(int value) {
 		if ((value & 0xfff0) == 0x1300) {
 			CipherSuite known = KNOWN[value & 0xf];

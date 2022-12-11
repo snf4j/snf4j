@@ -1,6 +1,32 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2022 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
 package org.snf4j.tls.crypto;
 
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import org.snf4j.tls.Args;
@@ -176,6 +202,32 @@ public class TranscriptHash implements ITranscriptHash {
 	}
 	
 	@Override
+	public String getAlgorithm() {
+		return md.getAlgorithm();
+	}
+	
+	@Override
+	public MessageDigest getHashFunction() {
+		try {
+			MessageDigest md = (MessageDigest) this.md.clone();
+
+			md.reset();
+			return md;
+		} catch (CloneNotSupportedException e) {
+			try {
+				return MessageDigest.getInstance(md.getAlgorithm(), md.getProvider());
+			} catch (NoSuchAlgorithmException e1) {
+				throw new UnsupportedOperationException();
+			}
+		}
+	}
+	
+	@Override
+	public int getHashLength() {
+		return md.getDigestLength();
+	}
+
+	@Override
 	public void update(HandshakeType type, byte[] message) {
 		int index = -1;
 		
@@ -213,7 +265,7 @@ public class TranscriptHash implements ITranscriptHash {
 		md.reset();
 		md.update((byte) HandshakeType.MESSAGE_HASH.value());
 		md.update(new byte[] {0,0,(byte) md.getDigestLength()});
-		md.update(item.hash);
+		md.update(item.hash());
 		items[i] = new Item(md);
 				
 		i = HELLO_RETRY_REQUEST_INDEX;
@@ -236,17 +288,26 @@ public class TranscriptHash implements ITranscriptHash {
 					}
 				}
 				if (item == null) {
-					return TranscriptHash.clone(md).digest();
+					return clone(md).digest();
 				}
 			}
 			return item.hash();
 		}
 		throw new IllegalArgumentException();
 	}
+
+	private int[] mapping(HandshakeType type) {
+		if (type.value() == HandshakeType.CLIENT_HELLO.value()) {
+			if ((mask & HELLO_RETRY_REQUEST_MASK) != 0) {
+				return MAPPING2;
+			}
+		}
+		return COMMON_MAPPING;
+	}
 	
 	@Override
 	public byte[] getHash(HandshakeType type) {
-		return getHash(type, COMMON_MAPPING);
+		return getHash(type, mapping(type));
 	}
 
 	@Override
@@ -254,11 +315,40 @@ public class TranscriptHash implements ITranscriptHash {
 		return getHash(type, client ? CLIENT_MAPPING : SERVER_MAPPING);
 	}
 	
+	private byte[] getHash(HandshakeType type, byte[] replacement, int[] mapping) {
+		int index = mapping[type.value()];
+		if (index != -1) {
+			Item item = null;
+			
+			for (int i=index-1; i>=0; --i) {
+				item = items[i];
+				if (item != null) {
+					break;
+				}
+			}
+			MessageDigest md;
+			
+			if (item != null) {
+				md =  clone(item.md);
+			}
+			else {
+				md = clone(this.md);
+				md.reset();
+			}
+			return md.digest(replacement);
+		}		
+		throw new IllegalArgumentException();
+	}
+	
+	public byte[] getHash(HandshakeType type, byte[] replacement) {
+		return getHash(type, replacement, mapping(type));
+	}
+	
 	private class Item {
 		
 		final MessageDigest md;
 
-		byte[] hash;
+		private byte[] hash;
 		
 		Item(MessageDigest md) {
 			this.md = md;

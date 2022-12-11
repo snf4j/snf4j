@@ -23,28 +23,18 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.cipher;
 
-import java.security.MessageDigest;
+public interface ICipherSuiteInfo {
+	
+	int getAuthenticationTagLength();
+	
+	String getKeyAlgorithm();
 
-import org.snf4j.tls.handshake.HandshakeType;
-
-public interface ITranscriptHash {
+	int getKeyLength();
 	
-	void update(HandshakeType type, byte[] message);
+	int getIvLength();
 	
-	void updateHelloRetryRequest(byte[] message);
+	IHashInfo getHashInfo();
 	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
-
-	byte[] getHash(HandshakeType type, byte[] replacement);
-
-	String getAlgorithm();
-	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
-
 }

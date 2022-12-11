@@ -23,28 +23,34 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.cipher;
 
-import java.security.MessageDigest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
-import org.snf4j.tls.handshake.HandshakeType;
+import org.junit.Test;
 
-public interface ITranscriptHash {
-	
-	void update(HandshakeType type, byte[] message);
-	
-	void updateHelloRetryRequest(byte[] message);
-	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
+public class CipherSuiteInfoTest {
 
-	byte[] getHash(HandshakeType type, byte[] replacement);
+	@Test
+	public void testTlsAes128GcmSha256() {
+		CipherSuiteInfo i = CipherSuiteInfo.TLS_AES_128_GCM_SHA256;
+		
+		assertEquals(16, i.getAuthenticationTagLength());
+		assertEquals("AES", i.getKeyAlgorithm());
+		assertEquals(16, i.getKeyLength());
+		assertEquals(12, i.getIvLength());
+		assertSame(HashInfo.SHA256, i.getHashInfo());
+	}
 
-	String getAlgorithm();
-	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
-
+	@Test
+	public void testTlsAes256GcmSha384() {
+		CipherSuiteInfo i = CipherSuiteInfo.TLS_AES_256_GCM_SHA384;
+		
+		assertEquals(16, i.getAuthenticationTagLength());
+		assertEquals("AES", i.getKeyAlgorithm());
+		assertEquals(32, i.getKeyLength());
+		assertEquals(12, i.getIvLength());
+		assertSame(HashInfo.SHA384, i.getHashInfo());
+	}
 }
