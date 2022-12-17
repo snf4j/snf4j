@@ -30,7 +30,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public abstract class AbstractExtensionsParser implements IExtensionsParser {
 
@@ -72,12 +74,12 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 	}
 
 	@Override
-	public void parse(ByteBuffer[] srcs, int remainig) throws DecodeErrorAlertException {
-		parse(ByteBufferArray.wrap(srcs), remainig);
+	public void parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remainig) throws AlertException {
+		parse(handshakeType, ByteBufferArray.wrap(srcs), remainig);
 	}
 	
 	@Override
-	public void parse(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
+	public void parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
 		if (this.remaining == -1) {
 			if (remaining < 2) {
 				return;
@@ -101,7 +103,7 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 				int len = srcs.getUnsignedShort(srcs.position()+2)+4;
 				
 				if (len <= remaining) {
-					extensions.add(parseExtension(srcs, len));
+					extensions.add(parseExtension(handshakeType, srcs, len));
 				}
 				else {
 					break;
@@ -113,5 +115,5 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 		}
 	}
 
-	protected abstract IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException;
+	protected abstract IExtension parseExtension(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException;
 }

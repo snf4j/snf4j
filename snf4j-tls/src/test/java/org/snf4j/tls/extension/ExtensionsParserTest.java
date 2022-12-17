@@ -32,7 +32,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.junit.Test;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionsParserTest extends ExtensionTest {
 	
@@ -49,7 +50,7 @@ public class ExtensionsParserTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testParseRealData() throws DecodeErrorAlertException {
+	public void testParseRealData() throws AlertException {
 		byte[] data = new byte[] {
 				0x00, (byte)0xa3, 0x00, 0x00, 0x00, 0x18, 0x00, 0x16, 0x00, 0x00, 0x13, 0x65, 0x78, 0x61, 
 				0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x75, 0x6c, 0x66, 0x68, 0x65, 0x69, 0x6d, 0x2e, 0x6e, 0x65, 
@@ -69,7 +70,7 @@ public class ExtensionsParserTest extends ExtensionTest {
 		int[] sizes = new int[0];
 		
 		for (int i=0; i<2; ++i) {
-			parser.parse(array(data, 0, sizes), data.length);
+			parser.parse(HandshakeType.CLIENT_HELLO, array(data, 0, sizes), data.length);
 			assertTrue(parser.isComplete());
 			assertEquals(10, parser.getExtensions().size());
 			assertSame(ExtensionType.SERVER_NAME, parser.getExtensions().get(0).getType());

@@ -25,55 +25,54 @@
  */
 package org.snf4j.tls.cipher;
 
-public class CipherSuiteInfo implements ICipherSuiteInfo {
+public class HashSpec implements IHashSpec {
+	
+	public final static IHashSpec SHA256;
+	
+	public final static IHashSpec SHA384;
+	
+	static {
+		SHA256 = new HashSpec("SHA-256", 32, 
+			new byte[] {(byte)0xe3,(byte)0xb0,(byte)0xc4,0x42,(byte)0x98,(byte)0xfc,0x1c,0x14,
+					(byte)0x9a,(byte)0xfb,(byte)0xf4,(byte)0xc8,(byte)0x99,0x6f,(byte)0xb9,0x24,
+					0x27,(byte)0xae,0x41,(byte)0xe4,0x64,(byte)0x9b,(byte)0x93,0x4c,(byte)0xa4,
+					(byte)0x95,(byte)0x99,0x1b,0x78,0x52,(byte)0xb8,0x55}
+			);
+		SHA384 = new HashSpec("SHA-348", 48,
+			new byte[] {0x38,(byte)0xb0,0x60,(byte)0xa7,0x51,(byte)0xac,(byte)0x96,0x38,0x4c,
+					(byte)0xd9,0x32,0x7e,(byte)0xb1,(byte)0xb1,(byte)0xe3,0x6a,0x21,(byte)0xfd,
+					(byte)0xb7,0x11,0x14,(byte)0xbe,0x07,0x43,0x4c,0x0c,(byte)0xc7,(byte)0xbf,
+					0x63,(byte)0xf6,(byte)0xe1,(byte)0xda,0x27,0x4e,(byte)0xde,(byte)0xbf,(byte)0xe7,
+					0x6f,0x65,(byte)0xfb,(byte)0xd5,0x1a,(byte)0xd2,(byte)0xf1,0x48,(byte)0x98,
+					(byte)0xb9,0x5b}
+		);
+	}
+	
+	private final String algorithm;
+	
+	private final int hashLength;
+	
+	private final byte[] emptyHash;
 
-	public final static CipherSuiteInfo TLS_AES_128_GCM_SHA256 = new CipherSuiteInfo(16, "AES", 16, 12, HashInfo.SHA256);
-	
-	public final static CipherSuiteInfo TLS_AES_256_GCM_SHA384 = new CipherSuiteInfo(16, "AES", 32, 12, HashInfo.SHA384);
-	
-	private final int authenticationTagLength;
-	
-	private final String KeyAlgorithm;
-	
-	private final int keyLength;
-	
-	private final int ivLength;
-	
-	private final IHashInfo hashInfo;
-
-	public CipherSuiteInfo(int authenticationTagLength, String keyAlgorithm, int keyLength, int ivLength,
-			IHashInfo hashInfo) {
+	public HashSpec(String algorithm, int hashLength, byte[] emptyHash) {
 		super();
-		this.authenticationTagLength = authenticationTagLength;
-		KeyAlgorithm = keyAlgorithm;
-		this.keyLength = keyLength;
-		this.ivLength = ivLength;
-		this.hashInfo = hashInfo;
+		this.algorithm = algorithm;
+		this.hashLength = hashLength;
+		this.emptyHash = emptyHash;
 	}
 	
 	@Override
-	public int getAuthenticationTagLength() {
-		return authenticationTagLength;
+	public String getAlgorithm() {
+		return algorithm;
 	}
-
+	
 	@Override
-	public String getKeyAlgorithm() {
-		return KeyAlgorithm;
+	public int getHashLength() {
+		return hashLength;
 	}
-
+	
 	@Override
-	public int getKeyLength() {
-		return keyLength;
+	public byte[] getEmptyHash() {
+		return emptyHash.clone();
 	}
-
-	@Override
-	public int getIvLength() {
-		return ivLength;
-	}
-
-	@Override
-	public IHashInfo getHashInfo() {
-		return hashInfo;
-	}
-
 }

@@ -38,7 +38,8 @@ import java.util.Arrays;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public class ServerNameExtenstionTest extends ExtensionTest {
 	
@@ -148,12 +149,12 @@ public class ServerNameExtenstionTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testParseRealData() throws DecodeErrorAlertException {
+	public void testParseRealData() throws AlertException {
 		byte[] data = new byte[] {
 				0x00, 0x00, 0x00, 0x18, 0x00, 0x16, 0x00, 0x00, 0x13, 0x65, 0x78, 0x61, 0x6d, 0x70, 
 				0x6c, 0x65, 0x2e, 0x75, 0x6c, 0x66, 0x68, 0x65, 0x69, 0x6d, 0x2e, 0x6e, 0x65, 0x74};
 		
-		IExtension e = ServerNameExtension.getParser().parse(array(data, 4), 0x18);
+		IExtension e = ServerNameExtension.getParser().parse(HandshakeType.CLIENT_HELLO, array(data, 4), 0x18);
 		
 		assertSame(ServerNameExtension.class, e.getClass());
 		assertSame(ExtensionType.SERVER_NAME, e.getType());
@@ -163,27 +164,27 @@ public class ServerNameExtenstionTest extends ExtensionTest {
 		buffer.clear();
 		
 		data = new byte[] {0x00, 0x00, 0x00, 0x00};
-		e = ServerNameExtension.getParser().parse(new ByteBuffer[] {ByteBuffer.wrap(data, 4, data.length-4)}, 0);
+		e = ServerNameExtension.getParser().parse(HandshakeType.CLIENT_HELLO, new ByteBuffer[] {ByteBuffer.wrap(data, 4, data.length-4)}, 0);
 		e.getBytes(buffer);
 		assertArrayEquals(data, buffer());
 	}
 	
 	@Test
-	public void testConsumeBytes() throws DecodeErrorAlertException {
+	public void testConsumeBytes() throws AlertException {
 		ByteBufferArray array = ByteBufferArray.wrap(array(bytes(0,4,0,0,1,97),0));
 		
 		assertEquals(6, array.remaining());
-		IExtension e = ServerNameExtension.getParser().parse(array, 6);
+		IExtension e = ServerNameExtension.getParser().parse(HandshakeType.CLIENT_HELLO, array, 6);
 		assertNotNull(e);
 		assertEquals(0, array.remaining());
 	}
 	
 	void assertFailure(ByteBuffer[] array, int remaining, String message) {
 		try {
-			ServerNameExtension.getParser().parse(array, remaining);
+			ServerNameExtension.getParser().parse(HandshakeType.CLIENT_HELLO, array, remaining);
 			fail();
 		}
-		catch (DecodeErrorAlertException e) {
+		catch (AlertException e) {
 			assertEquals(message, e.getMessage());
 		}
 	}

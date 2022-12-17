@@ -23,33 +23,43 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.crypto;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
-import java.security.MessageDigest;
+import java.security.KeyPair;
+
+import javax.crypto.interfaces.DHPublicKey;
 
 import org.junit.Test;
 
-public class HashInfoTest {
+public class DHKeyExchangeTest {
+
+	void assertKeyExchange(DHKeyExchange dh, String algo, int len) throws Exception {
+		KeyPair kp1 = dh.generateKeyPair();
+		KeyPair kp2 = dh.generateKeyPair();
+		
+		assertEquals(((DHPublicKey)kp1.getPublic()).getY(), dh.getY(kp1.getPublic()));
+		assertTrue(dh.isImplemented());
+		assertEquals(len, dh.getPLength());
+		assertEquals(algo.toLowerCase(), dh.getAlgorithm());
+		
+		assertEquals(kp1.getPublic(), dh.generatePublicKey(((DHPublicKey)kp1.getPublic()).getY()));
+		
+		byte[] s1 = dh.generateSecret(kp1.getPrivate(), kp2.getPublic());
+		byte[] s2 = dh.generateSecret(kp2.getPrivate(), kp1.getPublic());
+		assertArrayEquals(s1,s2);
+		assertEquals(len,s1.length);
+	}
 	
 	@Test
-	public void testSha256() throws Exception {
-		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashSpec.SHA256.getEmptyHash());
-		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashSpec.SHA256.getEmptyHash());
-		assertEquals("SHA-256", HashSpec.SHA256.getAlgorithm());
-		assertEquals(32, HashSpec.SHA256.getHashLength());
-		assertNotSame(HashSpec.SHA256.getEmptyHash(), HashSpec.SHA256.getEmptyHash());
-	}
-
-	@Test
-	public void testSha348() throws Exception {
-		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashSpec.SHA384.getEmptyHash());
-		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashSpec.SHA384.getEmptyHash());
-		assertEquals("SHA-348", HashSpec.SHA384.getAlgorithm());
-		assertEquals(48, HashSpec.SHA384.getHashLength());
-		assertNotSame(HashSpec.SHA384.getEmptyHash(), HashSpec.SHA384.getEmptyHash());
+	public void testAll() throws Exception {
+		assertKeyExchange(DHKeyExchange.FFDHE2048, "FFDHE2048", 256);
+		assertKeyExchange(DHKeyExchange.FFDHE3072, "FFDHE3072", 384);
+		assertKeyExchange(DHKeyExchange.FFDHE4096, "FFDHE4096", 512);
+		assertKeyExchange(DHKeyExchange.FFDHE6144, "FFDHE6144", 768);
+		assertKeyExchange(DHKeyExchange.FFDHE8192, "FFDHE8192", 1024);
 	}
 }

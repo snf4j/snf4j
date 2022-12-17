@@ -23,17 +23,18 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.alert;
 
-import java.nio.ByteBuffer;
-
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-
-public interface IHandshakeDecoder {
+public class InternalErrorAlertException extends AlertException {
 	
-	IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException;
+	private static final long serialVersionUID = 1L;
+	
+	public InternalErrorAlertException(String message) {
+		super(message, AlertDescription.INTERNAL_ERROR);
+	}
 
-	IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException;
-
+	public InternalErrorAlertException(String message, Throwable cause) {
+		super(message, AlertDescription.INTERNAL_ERROR, cause);
+	}
+	
 }

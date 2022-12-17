@@ -28,14 +28,15 @@ package org.snf4j.tls.extension;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public interface IExtensionParser {
 	
 	ExtensionType getType();
 	
-	IExtension parse(ByteBuffer[] srcs, int remaining) throws DecodeErrorAlertException;
+	IExtension parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws AlertException;
 
-	IExtension parse(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException;
+	IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException;
 	
 }

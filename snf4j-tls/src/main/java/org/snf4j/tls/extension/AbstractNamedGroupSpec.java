@@ -23,17 +23,45 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.InternalErrorAlertException;
 
-public interface IHandshakeDecoder {
+abstract public class AbstractNamedGroupSpec implements INamedGroupSpec {
+
+	protected DecodeErrorAlertException decodeError(String message) {
+		return new DecodeErrorAlertException("Extension 'key_share' parsing failure: " + message);
+	}
+
+	protected InternalErrorAlertException internalError(String message, Throwable cause) {
+		return new InternalErrorAlertException("Extension 'key_share' internal failure: " + message, cause);
+	}
 	
-	IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException;
-
-	IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException;
+	static protected void getDataWithLeftPadding(ByteBuffer buffer, byte[] data, int length) {
+		int dataLen = data.length;
+		
+		if (dataLen == length) {
+			buffer.put(data);
+		}
+		else {
+			int padding = dataLen - length;
+			
+			if (padding > 0) {
+				for (int i=0; i<padding; ++i) {
+					if (data[i] != 0) {
+						throw new IllegalArgumentException("Data too big for padding");
+					}
+				}
+				buffer.put(data, padding, length);
+			}
+			else {
+				buffer.put(new byte[-padding]);
+				buffer.put(data);
+			}
+		}
+	}
 
 }

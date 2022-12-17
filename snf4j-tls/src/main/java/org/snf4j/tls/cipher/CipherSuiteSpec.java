@@ -23,17 +23,62 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.cipher;
 
-import java.nio.ByteBuffer;
+public class CipherSuiteSpec implements ICipherSuiteSpec {
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-
-public interface IHandshakeDecoder {
+	public final static CipherSuiteSpec TLS_AES_128_GCM_SHA256 = new CipherSuiteSpec(16, "AES", 16, 12, HashSpec.SHA256);
 	
-	IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException;
+	public final static CipherSuiteSpec TLS_AES_256_GCM_SHA384 = new CipherSuiteSpec(16, "AES", 32, 12, HashSpec.SHA384);
+	
+	private final int authenticationTagLength;
+	
+	private final String KeyAlgorithm;
+	
+	private final int keyLength;
+	
+	private final int ivLength;
+	
+	private final IHashSpec hashSpec;
 
-	IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException;
+	public CipherSuiteSpec(int authenticationTagLength, String keyAlgorithm, int keyLength, int ivLength,
+			IHashSpec hashSpec) {
+		super();
+		this.authenticationTagLength = authenticationTagLength;
+		KeyAlgorithm = keyAlgorithm;
+		this.keyLength = keyLength;
+		this.ivLength = ivLength;
+		this.hashSpec = hashSpec;
+	}
+	
+	@Override
+	public boolean isImplemented() {
+		return true;
+	}
+	
+	@Override
+	public int getAuthenticationTagLength() {
+		return authenticationTagLength;
+	}
+
+	@Override
+	public String getKeyAlgorithm() {
+		return KeyAlgorithm;
+	}
+
+	@Override
+	public int getKeyLength() {
+		return keyLength;
+	}
+
+	@Override
+	public int getIvLength() {
+		return ivLength;
+	}
+
+	@Override
+	public IHashSpec getHashSpec() {
+		return hashSpec;
+	}
 
 }

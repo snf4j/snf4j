@@ -23,13 +23,8 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.extension;
 
-public interface IHashInfo {
-	
-	String getAlgorithm();
-	
-	int getHashLength();
-	
-	byte[] getEmptyHash();
+public interface ParsedKey {
+
 }

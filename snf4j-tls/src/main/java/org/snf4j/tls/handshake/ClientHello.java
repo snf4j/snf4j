@@ -31,7 +31,7 @@ import java.util.List;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionsParser;
 import org.snf4j.tls.extension.ExtensionsUtil;
@@ -56,7 +56,7 @@ public class ClientHello extends AbstractHello implements IClientHello {
 		}
 
 		@Override
-		public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder) throws DecodeErrorAlertException {
+		public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder) throws AlertException {
 			if (remaining > COMMON_PART_MIN_LENGTH) {
 				int legacyVersion = srcs.getUnsignedShort();
 				byte[] random = new byte[RANDOM_LENGTH]; 
@@ -97,7 +97,7 @@ public class ClientHello extends AbstractHello implements IClientHello {
 											if (remaining >= 2) {
 												ExtensionsParser parser = new ExtensionsParser(0, 0xffff, decoder);
 
-												parser.parse(srcs, remaining);
+												parser.parse(HandshakeType.CLIENT_HELLO, srcs, remaining);
 												if (parser.isComplete() && remaining == parser.getConsumedBytes()) {
 													return new ClientHello(
 															legacyVersion,

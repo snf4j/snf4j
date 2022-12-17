@@ -38,6 +38,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionDecoder;
@@ -60,7 +61,7 @@ public class HandshakeDecoderTest extends HandshakeTest {
 	}
 	
 	@Test
-	public void testDecode() throws DecodeErrorAlertException {
+	public void testDecode() throws AlertException {
 		List<CipherSuite> ciphers = Arrays.asList(new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256});
 		List<IExtension> extensions = Arrays.asList(new IExtension[0]);
 		new ClientHello(0x303, new byte[32], new byte[0], ciphers, new byte[1], extensions).getBytes(buffer);
@@ -97,7 +98,7 @@ public class HandshakeDecoderTest extends HandshakeTest {
 		try {
 			decoder.decode(array, remaining);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (AlertException e) {
 			assertEquals(message, e.getMessage());
 		}
 	}
@@ -114,7 +115,7 @@ public class HandshakeDecoderTest extends HandshakeTest {
 	}	
 	
 	@Test
-	public void testParserManagement() throws DecodeErrorAlertException {
+	public void testParserManagement() throws AlertException {
 		decoder.clearParsers();
 		assertEquals(0, decoder.getParsers().size());
 		

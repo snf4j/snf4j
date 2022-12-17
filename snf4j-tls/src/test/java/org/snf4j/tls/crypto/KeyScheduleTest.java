@@ -46,8 +46,8 @@ import javax.security.auth.DestroyFailedException;
 
 import org.junit.Test;
 import org.snf4j.tls.CommonTest;
-import org.snf4j.tls.cipher.CipherSuiteInfo;
-import org.snf4j.tls.cipher.ICipherSuiteInfo;
+import org.snf4j.tls.cipher.CipherSuiteSpec;
+import org.snf4j.tls.cipher.ICipherSuiteSpec;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class KeyScheduleTest extends CommonTest {
@@ -72,7 +72,7 @@ public class KeyScheduleTest extends CommonTest {
 		try {
 			h = new Hkdf(Mac.getInstance("HmacSHA256"));
 			th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
-			ks = new KeySchedule(h, th, CipherSuiteInfo.TLS_AES_128_GCM_SHA256);
+			ks = new KeySchedule(h, th, CipherSuiteSpec.TLS_AES_128_GCM_SHA256);
 			emptyHash = MessageDigest.getInstance("SHA-256").digest();
 			hashLen = 32;
 			md = MessageDigest.getInstance("SHA-256");
@@ -442,7 +442,7 @@ public class KeyScheduleTest extends CommonTest {
 	@Test
 	public void testEraseTrafficKeys() throws Exception {
 		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
-		ks = new TestKeySchedule(h, th, CipherSuiteInfo.TLS_AES_256_GCM_SHA384);
+		ks = new TestKeySchedule(h, th, CipherSuiteSpec.TLS_AES_256_GCM_SHA384);
 		ks.deriveEarlySecret();
 		ks.deriveHandshakeSecret(secret);
 		ks.deriveHandshakeTrafficSecrets();
@@ -564,13 +564,13 @@ public class KeyScheduleTest extends CommonTest {
 	
 	class TestKeySchedule extends KeySchedule {
 
-		public TestKeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, ICipherSuiteInfo cipherSuiteInfo) {
-			super(hkdf, transcriptHash, cipherSuiteInfo);
+		public TestKeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, ICipherSuiteSpec cipherSuiteSpec) {
+			super(hkdf, transcriptHash, cipherSuiteSpec);
 		}
 
 		@Test
-		protected SecretKey createKey(byte[] key, ICipherSuiteInfo cipherSuiteInfo) {
-			return new TestSecretKey(key, cipherSuiteInfo.getKeyAlgorithm());
+		protected SecretKey createKey(byte[] key, ICipherSuiteSpec cipherSuiteSpec) {
+			return new TestSecretKey(key, cipherSuiteSpec.getKeyAlgorithm());
 		}
 	}
 }

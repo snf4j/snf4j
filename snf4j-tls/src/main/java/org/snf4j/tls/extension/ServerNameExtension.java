@@ -30,7 +30,8 @@ import java.nio.charset.StandardCharsets;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public class ServerNameExtension extends KnownExtension implements IServerNameExtension {
 
@@ -48,7 +49,7 @@ public class ServerNameExtension extends KnownExtension implements IServerNameEx
 		}
 
 		@Override
-		public IExtension parse(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
+		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
 			
 			if (remaining > 0) {
 				if (remaining >= 2) {
@@ -82,7 +83,7 @@ public class ServerNameExtension extends KnownExtension implements IServerNameEx
 			throw decodeError("Inconsistent length");
 		}
 		
-		private byte[] parseName(ByteBufferArray array, int remaining) throws DecodeErrorAlertException {
+		private byte[] parseName(ByteBufferArray array, int remaining) throws AlertException {
 			int len = array.getUnsignedShort();
 			
 			if (len == 0) {

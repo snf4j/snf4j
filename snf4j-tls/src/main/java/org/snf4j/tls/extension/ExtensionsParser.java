@@ -26,7 +26,8 @@
 package org.snf4j.tls.extension;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionsParser extends AbstractExtensionsParser {
 
@@ -38,8 +39,8 @@ public class ExtensionsParser extends AbstractExtensionsParser {
 	}
 
 	@Override
-	protected IExtension parseExtension(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
-		return decoder.decode(srcs, remaining);
+	protected IExtension parseExtension(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+		return decoder.decode(handshakeType, srcs, remaining);
 	}
 
 }

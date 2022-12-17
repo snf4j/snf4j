@@ -26,12 +26,21 @@
 package org.snf4j.tls;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.junit.Before;
 
 public class CommonTest {
 
 	protected final ByteBuffer buffer = ByteBuffer.allocate(0x20010);
+	
+	public static final boolean TLS1_3;
+
+	static {
+		double version = Double.parseDouble(System.getProperty("java.specification.version"));
+		
+		TLS1_3 = version >= 11.0;
+	}
 	
 	protected byte[] buffer() {
 		ByteBuffer dup = buffer.duplicate();
@@ -62,6 +71,36 @@ public class CommonTest {
 		
 		for (int i=0; i<bytes.length; ++i) {
 			bytes[i] = (byte)Integer.parseInt(hexString.substring(i*2, i*2+2), 16);
+		}
+		return bytes;
+	}
+	
+	protected byte[] bytes(byte[] array, int off, int len) {
+		byte[] bytes = new byte[len];
+		
+		System.arraycopy(array, off, bytes, 0, len);
+		return bytes;
+	}
+	
+	protected byte[] bytes(int len, byte first, byte mid, byte last) {
+		byte[] bytes = new byte[len];
+		
+		Arrays.fill(bytes, mid);
+		bytes[0] = first;
+		bytes[len-1] = last;
+		return bytes;
+	}
+	
+	protected byte[] cat(byte[]... arrays) {
+		int len = 0;
+		for (byte[] array: arrays) {
+			len += array.length;
+		}
+		byte[] bytes = new byte[len];
+		len = 0;
+		for (byte[] array: arrays) {
+			System.arraycopy(array, 0, bytes, len, array.length);
+			len += array.length;
 		}
 		return bytes;
 	}

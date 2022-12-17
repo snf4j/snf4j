@@ -23,17 +23,13 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.cipher;
 
-import java.nio.ByteBuffer;
-
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-
-public interface IHandshakeDecoder {
+public interface IHashSpec {
 	
-	IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException;
-
-	IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException;
-
+	String getAlgorithm();
+	
+	int getHashLength();
+	
+	byte[] getEmptyHash();
 }

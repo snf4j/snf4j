@@ -29,7 +29,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public interface IExtensionsParser {
 	
@@ -41,8 +42,8 @@ public interface IExtensionsParser {
 	
 	List<IExtension> getExtensions();
 	
-	void parse(ByteBuffer[] srcs, int remaining) throws DecodeErrorAlertException;
+	void parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws AlertException;
 
-	void parse(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException;
+	void parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException;
 
 }

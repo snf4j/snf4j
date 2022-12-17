@@ -43,5 +43,43 @@ public class AlertExceptionTest {
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.FATAL, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
+
+		Exception cause = new Exception();
+		e = new AlertException("Message1", AlertLevel.WARNING, AlertDescription.ACCESS_DENIED, cause);
+		assertEquals("Message1", e.getMessage());
+		assertSame(AlertLevel.WARNING, e.getLevel());
+		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
+		assertSame(cause, e.getCause());
+		
+		e = new AlertException("Message1", AlertDescription.ACCESS_DENIED, cause);
+		assertEquals("Message1", e.getMessage());
+		assertSame(AlertLevel.FATAL, e.getLevel());
+		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
+		assertSame(cause, e.getCause());
+	}
+	
+	@Test
+	public void testImplementations() {
+		Exception cause = new Exception();
+		AlertException e = new InternalErrorAlertException("Text1");
+		assertEquals("Text1", e.getMessage());
+		assertSame(AlertLevel.FATAL, e.getLevel());
+		assertSame(AlertDescription.INTERNAL_ERROR, e.getDescription());
+		
+		e = new InternalErrorAlertException("Text1",cause);
+		assertEquals("Text1", e.getMessage());
+		assertSame(AlertLevel.FATAL, e.getLevel());
+		assertSame(AlertDescription.INTERNAL_ERROR, e.getDescription());
+		assertSame(cause, e.getCause());
+
+		e = new DecodeErrorAlertException("Text1");
+		assertEquals("Text1", e.getMessage());
+		assertSame(AlertLevel.FATAL, e.getLevel());
+		assertSame(AlertDescription.DECODE_ERROR, e.getDescription());
+
+		e = new UnsupportedExtensionAlertException("Text1");
+		assertEquals("Text1", e.getMessage());
+		assertSame(AlertLevel.FATAL, e.getLevel());
+		assertSame(AlertDescription.UNSUPPORTED_EXTENSION, e.getDescription());
 	}
 }

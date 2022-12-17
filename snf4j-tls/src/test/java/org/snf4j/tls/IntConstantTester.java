@@ -34,6 +34,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public class IntConstantTester<C extends IntConstant> {
 	
@@ -60,6 +61,10 @@ public class IntConstantTester<C extends IntConstant> {
 	
 		for (Field field: fields) {
 			field.setAccessible(true);
+			if ((field.getModifiers() & Modifier.STATIC) == 0) {
+				continue;
+			}
+			
 			Object value = field.get(null);
 			
 			if (arrayClazz == value.getClass()) {

@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
 import org.snf4j.tls.extension.IExtensionDecoder;
 
@@ -70,12 +71,12 @@ public class HandshakeDecoder implements IHandshakeDecoder {
 	}
 	
 	@Override
-	public IHandshake decode(ByteBuffer[] srcs, int remaining) throws DecodeErrorAlertException {
+	public IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException {
 		return decode(ByteBufferArray.wrap(srcs), remaining);
 	}
 
 	@Override
-	public IHandshake decode(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
+	public IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException {
 		if (remaining >= 4) {
 			HandshakeType type = getType(srcs.getUnsigned());
 			int len = srcs.getUnsigned() << 16;

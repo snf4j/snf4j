@@ -23,33 +23,41 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.crypto;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
-import java.security.MessageDigest;
+import java.security.KeyPair;
+import java.security.interfaces.ECPublicKey;
 
 import org.junit.Test;
 
-public class HashInfoTest {
-	
-	@Test
-	public void testSha256() throws Exception {
-		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashSpec.SHA256.getEmptyHash());
-		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashSpec.SHA256.getEmptyHash());
-		assertEquals("SHA-256", HashSpec.SHA256.getAlgorithm());
-		assertEquals(32, HashSpec.SHA256.getHashLength());
-		assertNotSame(HashSpec.SHA256.getEmptyHash(), HashSpec.SHA256.getEmptyHash());
+public class ECKeyExchangeTest {
+
+	void assertKeyExchange(ECKeyExchange dh, String algo, int len) throws Exception {
+		KeyPair kp1 = dh.generateKeyPair();
+		KeyPair kp2 = dh.generateKeyPair();
+		
+		assertEquals(((ECPublicKey)kp1.getPublic()).getW().getAffineX(), dh.getX(kp1.getPublic()));
+		assertEquals(((ECPublicKey)kp1.getPublic()).getW().getAffineY(), dh.getY(kp1.getPublic()));
+		assertTrue(dh.isImplemented());
+		assertEquals(algo.toLowerCase(), dh.getAlgorithm());
+		
+		assertEquals(kp1.getPublic(), dh.generatePublicKey(((ECPublicKey)kp1.getPublic()).getW().getAffineX(),((ECPublicKey)kp1.getPublic()).getW().getAffineY()));
+		
+		byte[] s1 = dh.generateSecret(kp1.getPrivate(), kp2.getPublic());
+		byte[] s2 = dh.generateSecret(kp2.getPrivate(), kp1.getPublic());
+		assertArrayEquals(s1,s2);
+		assertEquals(len,s1.length);
 	}
 
 	@Test
-	public void testSha348() throws Exception {
-		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashSpec.SHA384.getEmptyHash());
-		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashSpec.SHA384.getEmptyHash());
-		assertEquals("SHA-348", HashSpec.SHA384.getAlgorithm());
-		assertEquals(48, HashSpec.SHA384.getHashLength());
-		assertNotSame(HashSpec.SHA384.getEmptyHash(), HashSpec.SHA384.getEmptyHash());
+	public void testAll() throws Exception {
+		assertKeyExchange(ECKeyExchange.SECP256R1, "SECP256R1", 32);
+		assertKeyExchange(ECKeyExchange.SECP384R1, "SECP384R1", 48);
+		assertKeyExchange(ECKeyExchange.SECP521R1, "SECP521R1", 66);
 	}
+
 }

@@ -29,8 +29,8 @@ import org.snf4j.tls.IntConstant;
 
 public class CipherSuite extends IntConstant {
 	
-	public static final CipherSuite TLS_AES_128_GCM_SHA256 = new CipherSuite("TLS_AES_128_GCM_SHA256",0x1301,CipherSuiteInfo.TLS_AES_128_GCM_SHA256);
-	public static final CipherSuite TLS_AES_256_GCM_SHA384 = new CipherSuite("TLS_AES_256_GCM_SHA384",0x1302,CipherSuiteInfo.TLS_AES_256_GCM_SHA384);
+	public static final CipherSuite TLS_AES_128_GCM_SHA256 = new CipherSuite("TLS_AES_128_GCM_SHA256",0x1301,CipherSuiteSpec.TLS_AES_128_GCM_SHA256);
+	public static final CipherSuite TLS_AES_256_GCM_SHA384 = new CipherSuite("TLS_AES_256_GCM_SHA384",0x1302,CipherSuiteSpec.TLS_AES_256_GCM_SHA384);
 	public static final CipherSuite TLS_CHACHA20_POLY1305_SHA256 = new CipherSuite("TLS_CHACHA20_POLY1305_SHA256",0x1303,null);
 	public static final CipherSuite TLS_AES_128_CCM_SHA256 = new CipherSuite("TLS_AES_128_CCM_SHA256",0x1304,null);
 	public static final CipherSuite TLS_AES_128_CCM_8_SHA256 = new CipherSuite("TLS_AES_128_CCM_8_SHA256",0x1305,null);
@@ -44,20 +44,20 @@ public class CipherSuite extends IntConstant {
 			TLS_AES_128_CCM_8_SHA256,
 			null,null,null,null,null,null,null,null,null,null};
 	
-	private final ICipherSuiteInfo info;
+	private final ICipherSuiteSpec spec;
 	
-	protected CipherSuite(String name, int value, ICipherSuiteInfo info) {
+	protected CipherSuite(String name, int value, ICipherSuiteSpec spec) {
 		super(name, value);
-		this.info = info;
+		this.spec = spec;
 	}
 
 	protected CipherSuite(int value) {
 		super(value);
-		info = null;
+		spec = null;
 	}
 
-	public ICipherSuiteInfo getInfo() {
-		return info;
+	public ICipherSuiteSpec spec() {
+		return spec;
 	}
 	
 	public static CipherSuite of(int value) {

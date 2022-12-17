@@ -34,7 +34,7 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.DestroyFailedException;
 
 import org.snf4j.tls.Args;
-import org.snf4j.tls.cipher.ICipherSuiteInfo;
+import org.snf4j.tls.cipher.ICipherSuiteSpec;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class KeySchedule {
@@ -65,7 +65,7 @@ public class KeySchedule {
 	
 	private final ITranscriptHash transcriptHash;
 	
-	private final ICipherSuiteInfo cipherSuiteInfo;
+	private final ICipherSuiteSpec cipherSuiteSpec;
 	
 	private final int hashLength;
 	
@@ -103,15 +103,15 @@ public class KeySchedule {
 		}
 	}
 	
-	public KeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, ICipherSuiteInfo cipherSuiteInfo) {
+	public KeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, ICipherSuiteSpec cipherSuiteSpec) {
 		Args.checkNull(hkdf, "hkdf");
 		Args.checkNull(transcriptHash, "transcriptHash");
-		Args.checkNull(cipherSuiteInfo, "cipherSuiteInfo");
+		Args.checkNull(cipherSuiteSpec, "cipherSuiteSpec");
 		this.hkdf = hkdf;
 		this.transcriptHash = transcriptHash;
-		this.cipherSuiteInfo = cipherSuiteInfo;
-		emptyHash = cipherSuiteInfo.getHashInfo().getEmptyHash();
-		hashLength = cipherSuiteInfo.getHashInfo().getHashLength();
+		this.cipherSuiteSpec = cipherSuiteSpec;
+		emptyHash = cipherSuiteSpec.getHashSpec().getEmptyHash();
+		hashLength = cipherSuiteSpec.getHashSpec().getHashLength();
 	}
 		
 	public void deriveEarlySecret(byte[] psk, boolean externalPsk) throws InvalidKeyException {
@@ -181,12 +181,12 @@ public class KeySchedule {
 		return hmac;
 	}
 	
-	protected SecretKey createKey(byte[] key, ICipherSuiteInfo cipherSuiteInfo) {
-		return new SecretKeySpec(key, cipherSuiteInfo.getKeyAlgorithm());
+	protected SecretKey createKey(byte[] key, ICipherSuiteSpec cipherSuiteSpec) {
+		return new SecretKeySpec(key, cipherSuiteSpec.getKeyAlgorithm());
 	}
 	
 	private SecretKey createKey(byte[] key) {
-		SecretKey secretKey = createKey(key, cipherSuiteInfo);
+		SecretKey secretKey = createKey(key, cipherSuiteSpec);
 		
 		Arrays.fill(key, (byte)0);
 		return secretKey;
@@ -198,11 +198,11 @@ public class KeySchedule {
 		byte[] iv = hkdfExpandLabel(earlyTrafficSecret,
 				IV,
 				EMPTY,
-				cipherSuiteInfo.getIvLength());
+				cipherSuiteSpec.getIvLength());
 		byte[] key = hkdfExpandLabel(earlyTrafficSecret,
 				KEY,
 				EMPTY,
-				cipherSuiteInfo.getKeyLength());
+				cipherSuiteSpec.getKeyLength());
 		clientIv = iv;
 		clientKey = createKey(key);
 	}
@@ -255,19 +255,19 @@ public class KeySchedule {
 		byte[] civ = hkdfExpandLabel(clientHandshakeTrafficSecret,
 				IV,
 				EMPTY,
-				cipherSuiteInfo.getIvLength());
+				cipherSuiteSpec.getIvLength());
 		byte[] ckey = hkdfExpandLabel(clientHandshakeTrafficSecret,
 				KEY,
 				EMPTY,
-				cipherSuiteInfo.getKeyLength());
+				cipherSuiteSpec.getKeyLength());
 		byte[] siv = hkdfExpandLabel(serverHandshakeTrafficSecret,
 				IV,
 				EMPTY,
-				cipherSuiteInfo.getIvLength());
+				cipherSuiteSpec.getIvLength());
 		byte[] skey = hkdfExpandLabel(serverHandshakeTrafficSecret,
 				KEY,
 				EMPTY,
-				cipherSuiteInfo.getKeyLength());
+				cipherSuiteSpec.getKeyLength());
 		clientIv = civ;
 		clientKey = createKey(ckey);
 		serverIv = siv;

@@ -44,6 +44,16 @@ public class AlertException extends ProtocolException {
 	protected AlertException(String message, AlertDescription description) {
 		this(message, AlertLevel.FATAL, description);
 	}
+
+	protected AlertException(String message, AlertLevel level, AlertDescription description, Throwable cause) {
+		super(message, cause);
+		this.level = level;
+		this.description = description;
+	}
+
+	protected AlertException(String message, AlertDescription description, Throwable cause) {
+		this(message, AlertLevel.FATAL, description, cause);
+	}
 	
 	public AlertLevel getLevel() { return level; }
 	

@@ -25,7 +25,9 @@
  */
 package org.snf4j.tls.cipher;
 
-public interface ICipherSuiteInfo {
+public interface ICipherSuiteSpec {
+	
+	boolean isImplemented();
 	
 	int getAuthenticationTagLength();
 	
@@ -35,6 +37,6 @@ public interface ICipherSuiteInfo {
 	
 	int getIvLength();
 	
-	IHashInfo getHashInfo();
+	IHashSpec getHashSpec();
 	
 }

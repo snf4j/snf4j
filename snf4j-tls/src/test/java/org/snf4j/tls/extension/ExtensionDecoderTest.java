@@ -36,7 +36,9 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionDecoderTest extends ExtensionTest {
 
@@ -50,18 +52,18 @@ public class ExtensionDecoderTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testDecode() throws DecodeErrorAlertException {
+	public void testDecode() throws AlertException {
 		new ServerNameExtension("abc").getBytes(buffer);
-		IExtension e = decoder.decode(array(buffer(),0), 100);
+		IExtension e = decoder.decode(HandshakeType.CLIENT_HELLO, array(buffer(),0), 100);
 		assertSame(ServerNameExtension.class, e.getClass());
 		assertEquals("abc", ((ServerNameExtension)e).getHostName());
 		assertTrue(e.isKnown());
 		
 		buffer.put(bytes(1,0,0,2,1,2));
 		ByteBufferArray a = ByteBufferArray.wrap(array(buffer(),0));
-		e = decoder.decode(a, 100);
+		e = decoder.decode(HandshakeType.CLIENT_HELLO, a, 100);
 		assertSame(ServerNameExtension.class, e.getClass());
-		e = decoder.decode(a, 100);
+		e = decoder.decode(HandshakeType.CLIENT_HELLO, a, 100);
 		assertSame(UnknownExtension.class, e.getClass());
 		assertEquals(0x0100, e.getType().value());
 		assertFalse(e.isKnown());
@@ -69,7 +71,7 @@ public class ExtensionDecoderTest extends ExtensionTest {
 		assertArrayEquals(bytes(1,2), ue.getData());
 		
 		a = ByteBufferArray.wrap(array(bytes(0,0,0,0),0));
-		e = decoder.decode(a, 4);
+		e = decoder.decode(HandshakeType.CLIENT_HELLO, a, 4);
 		assertSame(ServerNameExtension.class, e.getClass());
 		assertEquals(0, a.remaining());
 		assertEquals("", ((ServerNameExtension)e).getHostName());
@@ -77,9 +79,9 @@ public class ExtensionDecoderTest extends ExtensionTest {
 	
 	void assertFailure(ByteBuffer[] array, int remaining, String message) {
 		try {
-			decoder.decode(array, remaining);
+			decoder.decode(HandshakeType.CLIENT_HELLO, array, remaining);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (AlertException e) {
 			assertEquals(message, e.getMessage());
 		}
 	}
@@ -100,15 +102,15 @@ public class ExtensionDecoderTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testParserManagement() throws DecodeErrorAlertException {
+	public void testParserManagement() throws AlertException {
 		decoder.clearParsers();
 		assertEquals(0, decoder.getParsers().size());
 		
-		IExtension e = decoder.decode(array(bytes(0,0,0,0), 0), 4);
+		IExtension e = decoder.decode(HandshakeType.CLIENT_HELLO, array(bytes(0,0,0,0), 0), 4);
 		assertFalse(e.isKnown());
 		decoder.addParser(ServerNameExtension.getParser());
 		assertEquals(1, decoder.getParsers().size());
-		e = decoder.decode(array(bytes(0,0,0,0), 0), 4);
+		e = decoder.decode(HandshakeType.CLIENT_HELLO, array(bytes(0,0,0,0), 0), 4);
 		assertTrue(e.isKnown());
 		assertTrue(decoder.hasParser(ExtensionType.SERVER_NAME));
 		assertFalse(decoder.hasParser(ExtensionType.COOKIE));
@@ -117,9 +119,9 @@ public class ExtensionDecoderTest extends ExtensionTest {
 		assertTrue(decoder.hasParser(ExtensionType.SERVER_NAME));
 		assertTrue(decoder.hasParser(ExtensionType.COOKIE));
 		assertEquals(2, decoder.getParsers().size());
-		e = decoder.decode(array(bytes(0,44,0,0), 0), 4);
+		e = decoder.decode(HandshakeType.CLIENT_HELLO, array(bytes(0,44,0,0), 0), 4);
 		assertEquals(44, e.getType().value());
-		e = decoder.decode(array(bytes(0,0,0,0), 0), 4);
+		e = decoder.decode(HandshakeType.CLIENT_HELLO, array(bytes(0,0,0,0), 0), 4);
 		assertEquals(0, e.getType().value());
 		
 		assertSame(ServerNameExtension.getParser(), decoder.removeParser(ExtensionType.SERVER_NAME));

@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionDecoder;
@@ -72,7 +73,7 @@ public class ClientHelloTest extends HandshakeTest {
 	}
 
 	@Test
-	public void testParseRealData() throws DecodeErrorAlertException {
+	public void testParseRealData() throws AlertException {
 		byte[] data = bytes(new int[] {
 				0x01,0x00,0x00,0xf4,
 				0x03,0x03,0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,

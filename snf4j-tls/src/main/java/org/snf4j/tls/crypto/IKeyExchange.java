@@ -23,17 +23,22 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.crypto;
 
-import java.nio.ByteBuffer;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-
-public interface IHandshakeDecoder {
+public interface IKeyExchange {
 	
-	IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException;
-
-	IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException;
-
+	String getAlgorithm();
+	
+	boolean isImplemented();
+	
+	byte[] generateSecret(PrivateKey privateKey, PublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException;
+	
+	KeyPair generateKeyPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException;
 }

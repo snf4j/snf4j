@@ -63,7 +63,7 @@ public class ArgsTest {
 	}
 	
 	@Test
-	public void testFixedArray() {
+	public void testFixedByteArray() {
 		Args.checkFixed(new byte[10], 10, "name");
 		try {
 			Args.checkFixed(new byte[10], 9, "name");
@@ -78,7 +78,30 @@ public class ArgsTest {
 			assertEquals("name's length is not 11", e.getMessage());		
 		}
 		try {
-			Args.checkFixed(null, 11, "name");
+			Args.checkFixed((byte[])null, 11, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name is null", e.getMessage());		
+		}
+	}
+
+	@Test
+	public void testFixedObjectArray() {
+		Args.checkFixed(new String[10], 10, "name");
+		try {
+			Args.checkFixed(new String[10], 9, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name's length is not 9", e.getMessage());		
+		}
+		try {
+			Args.checkFixed(new String[10], 11, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name's length is not 11", e.getMessage());		
+		}
+		try {
+			Args.checkFixed((String[])null, 11, "name");
 			fail();
 		} catch (IllegalArgumentException e) {
 			assertEquals("name is null", e.getMessage());		

@@ -32,7 +32,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionDecoder implements IExtensionDecoder {
 
@@ -63,12 +65,12 @@ public class ExtensionDecoder implements IExtensionDecoder {
 	}
 	
 	@Override
-	public IExtension decode(ByteBuffer[] srcs, int remaining) throws DecodeErrorAlertException {
-		return decode(ByteBufferArray.wrap(srcs), remaining);
+	public IExtension decode(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws AlertException {
+		return decode(handshakeType, ByteBufferArray.wrap(srcs), remaining);
 	}
 	
 	@Override
-	public IExtension decode(ByteBufferArray srcs, int remaining) throws DecodeErrorAlertException {
+	public IExtension decode(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
 		if (remaining >= 4) {
 			ExtensionType type = getType(srcs.getUnsignedShort());
 			int len = srcs.getUnsignedShort();
@@ -78,7 +80,7 @@ public class ExtensionDecoder implements IExtensionDecoder {
 				IExtensionParser parser = parsers.get(type);
 
 				if (parser != null) {
-					return parser.parse(srcs, len);
+					return parser.parse(handshakeType, srcs, len);
 				}
 				byte[] data = new byte[len];
 				srcs.get(data);

@@ -28,6 +28,7 @@ package org.snf4j.tls.handshake;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
 import org.snf4j.tls.extension.IExtensionDecoder;
 
@@ -42,7 +43,7 @@ public abstract class AbstractHandshakeParser implements IHandshakeParser {
 	}
 	
 	@Override
-	public IHandshake parse(ByteBuffer[] srcs, int remaining, IExtensionDecoder decoder) throws DecodeErrorAlertException  {
+	public IHandshake parse(ByteBuffer[] srcs, int remaining, IExtensionDecoder decoder) throws AlertException  {
 		return parse(ByteBufferArray.wrap(srcs), remaining, decoder);
 	}
 

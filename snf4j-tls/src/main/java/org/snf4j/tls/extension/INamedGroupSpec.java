@@ -23,17 +23,28 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
+import java.security.PublicKey;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.crypto.IKeyExchange;
 
-public interface IHandshakeDecoder {
+public interface INamedGroupSpec {
+
+	boolean isImplemented();
 	
-	IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException;
+	ParsedKey parse(ByteBufferArray srcs, int remaining) throws AlertException;
 
-	IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException;
+	int getDataLength();
+	
+	void getData(ByteBuffer buffer, PublicKey key);
 
+	void getData(ByteBuffer buffer, ParsedKey key);
+	
+	IKeyExchange getKeyExchange();
+	
+	PublicKey generateKey(ParsedKey key) throws AlertException;
 }

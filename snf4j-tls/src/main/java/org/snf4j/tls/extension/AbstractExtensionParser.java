@@ -28,7 +28,10 @@ package org.snf4j.tls.extension;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.UnsupportedExtensionAlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public abstract class AbstractExtensionParser implements IExtensionParser {
 	
@@ -38,9 +41,16 @@ public abstract class AbstractExtensionParser implements IExtensionParser {
 				+ "' parsing failure: " 
 				+ message);
 	}
+
+	protected UnsupportedExtensionAlertException unsupportedExtension(HandshakeType handshakeType) {
+		return new UnsupportedExtensionAlertException("Extension '" 
+				+ getType().name() 
+				+ "' is prohibited in " 
+				+ handshakeType.name());
+	}
 	
 	@Override
-	public IExtension parse(ByteBuffer[] srcs, int remaining) throws DecodeErrorAlertException  {
-		return parse(ByteBufferArray.wrap(srcs), remaining);
+	public IExtension parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws AlertException  {
+		return parse(handshakeType, ByteBufferArray.wrap(srcs), remaining);
 	}
 }

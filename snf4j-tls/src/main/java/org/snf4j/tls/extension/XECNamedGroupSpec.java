@@ -23,17 +23,67 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
+import java.security.PublicKey;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.crypto.IKeyExchange;
 
-public interface IHandshakeDecoder {
+public class XECNamedGroupSpec extends AbstractNamedGroupSpec {
 	
-	IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException;
+	private final int contentLength;
+	
+	private final static boolean IMPLEMENTED;
+	
+	static {
+		boolean implemented;
+		try {
+			Class.forName("java.security.interfaces.XECPublicKey");
+			implemented = true;
+		} catch (ClassNotFoundException e) {
+			implemented = false;
+		}
+		IMPLEMENTED = implemented;
+	}
+	
+	@Override
+	public boolean isImplemented() {
+		return IMPLEMENTED;
+	}
 
-	IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException;
+	public XECNamedGroupSpec(int contentLength) {
+		this.contentLength = contentLength;
+	}
+
+	@Override
+	public ParsedKey parse(ByteBufferArray srcs, int remaining) {
+		return null;
+	}
+
+	@Override
+	public PublicKey generateKey(ParsedKey key) throws AlertException {
+		return null;
+	}
+	
+	@Override
+	public int getDataLength() {
+		return contentLength;
+	}
+
+	@Override
+	public void getData(ByteBuffer buffer, PublicKey key) {
+	}
+
+	@Override
+	public void getData(ByteBuffer buffer, ParsedKey key) {
+	}
+
+	@Override
+	public IKeyExchange getKeyExchange() {
+		return null;
+	}
 
 }
