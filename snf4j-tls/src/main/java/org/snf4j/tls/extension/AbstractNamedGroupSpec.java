@@ -64,4 +64,28 @@ abstract public class AbstractNamedGroupSpec implements INamedGroupSpec {
 		}
 	}
 
+	static protected void getDataWithRightPadding(ByteBuffer buffer, byte[] data, int length) {
+		int dataLen = data.length;
+		
+		if (dataLen == length) {
+			buffer.put(data);
+		}
+		else {
+			int padding = dataLen - length;
+			
+			if (padding > 0) {
+				for (int i=0; i<padding; ++i) {
+					if (data[length+i] != 0) {
+						throw new IllegalArgumentException("Data too big for padding");
+					}
+				}
+				buffer.put(data, 0, length);
+			}
+			else {
+				buffer.put(data);
+				buffer.put(new byte[-padding]);
+			}
+		}
+	}
+	
 }

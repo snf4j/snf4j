@@ -31,10 +31,13 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import java.math.BigInteger;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
+
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.AlertDescription;
@@ -104,6 +107,31 @@ public class DHNamedGroupSpecTest extends ExtensionTest {
 		assertTrue(spec.isImplemented());
 	}
 
+	@Test
+	public void testParseInproperY() throws Exception {
+		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair(); 
+		KeyPair kp2 = DHKeyExchange.FFDHE2048.generateKeyPair(); 
+		DHNamedGroupSpec spec = DHNamedGroupSpec.FFDHE2048;
+		
+		spec.getData(buffer, kp1.getPublic());
+		byte[] data = buffer();
+		Arrays.fill(data, (byte)0);
+		ParsedKey pk = spec.parse(ByteBufferArray.wrap(array(data,0)), data.length);
+		PublicKey k = spec.generateKey(pk);
+		try {
+			spec.getKeyExchange().generateSecret(kp2.getPrivate(), k);
+			fail();
+		} catch (InvalidKeyException e) {}
+
+		Arrays.fill(data, (byte)0xff);
+		pk = spec.parse(ByteBufferArray.wrap(array(data,0)), data.length);
+		k = spec.generateKey(pk);
+		try {
+			spec.getKeyExchange().generateSecret(kp2.getPrivate(), k);
+			fail();
+		} catch (InvalidKeyException e) {}
+	}
+	
 	void assertFailure(DHNamedGroupSpec spec, byte[] data, int remaining, AlertDescription desc, String message) {
 		try {
 			ParsedKey key = spec.parse(ByteBufferArray.wrap(array(data,0)), remaining);

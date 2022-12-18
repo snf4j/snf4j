@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.snf4j.tls.IntConstantTester;
 import org.snf4j.tls.crypto.IDHKeyExchange;
 import org.snf4j.tls.crypto.IECKeyExchange;
+import org.snf4j.tls.crypto.IXDHKeyExchange;
 
 public class NamedGroupTest {
 	
@@ -90,6 +91,14 @@ public class NamedGroupTest {
 
 		ex2 = (IECKeyExchange) NamedGroup.SECP521R1.spec().getKeyExchange();
 		assertEquals("SECP521R1".toLowerCase(), ex2.getAlgorithm());
+		
+		IXDHKeyExchange ex3;
+
+		ex3 = (IXDHKeyExchange) NamedGroup.X25519.spec().getKeyExchange();
+		assertEquals("X25519", ex3.getAlgorithm());
+		
+		ex3 = (IXDHKeyExchange) NamedGroup.X448.spec().getKeyExchange();
+		assertEquals("X448", ex3.getAlgorithm());
 	}
 	
 }

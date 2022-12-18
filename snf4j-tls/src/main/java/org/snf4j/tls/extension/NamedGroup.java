@@ -35,9 +35,9 @@ public class NamedGroup extends IntConstant {
 
 	public static final NamedGroup SECP521R1 = new NamedGroup("secp521r1",0x0019, ECNamedGroupSpec.SECP521R1);
 	
-	public static final NamedGroup X25519 = new NamedGroup("x25519",0x001D, new XECNamedGroupSpec(32));
+	public static final NamedGroup X25519 = new NamedGroup("x25519",0x001D, XECNamedGroupSpec.X25519);
 
-	public static final NamedGroup X448 = new NamedGroup("x448",0x001E, new XECNamedGroupSpec(56));
+	public static final NamedGroup X448 = new NamedGroup("x448",0x001E, XECNamedGroupSpec.X448);
 	
 	public static final NamedGroup FFDHE2048 = new NamedGroup("ffdhe2048",0x0100, DHNamedGroupSpec.FFDHE2048);
 

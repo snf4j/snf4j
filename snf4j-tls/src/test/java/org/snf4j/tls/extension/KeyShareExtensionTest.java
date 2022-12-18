@@ -190,11 +190,13 @@ public class KeyShareExtensionTest extends ExtensionTest {
 		KeyShareEntry entry = e.getEntries()[0];
 		assertSame(NamedGroup.X25519, entry.getNamedGroup());
 		if (TLS1_3) {
-			assertNotNull(entry.getKey());
+			assertNotNull(entry.getParsedKey());
+			assertNull(entry.getKey());
 			assertNull(entry.getRawKey());
 		}
 		else {
 			assertNull(entry.getKey());
+			assertNull(entry.getParsedKey());
 			assertEquals(32, entry.getRawKey().length);
 			assertArrayEquals(bytes(data, data.length-32, 32), entry.getRawKey());
 		}
@@ -216,10 +218,12 @@ public class KeyShareExtensionTest extends ExtensionTest {
 		entry = e.getEntries()[0];
 		assertSame(NamedGroup.X25519, entry.getNamedGroup());
 		if (TLS1_3) {
-			assertNotNull(entry.getKey());
+			assertNotNull(entry.getParsedKey());
+			assertNull(entry.getKey());
 			assertNull(entry.getRawKey());
 		}
 		else {
+			assertNull(entry.getParsedKey());
 			assertNull(entry.getKey());
 			assertEquals(32, entry.getRawKey().length);
 			assertArrayEquals(bytes(data, data.length-32, 32), entry.getRawKey());
