@@ -27,19 +27,28 @@ package org.snf4j.tls;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Random;
 
 import org.junit.Before;
 
 public class CommonTest {
 
 	protected final ByteBuffer buffer = ByteBuffer.allocate(0x20010);
+
+	private static Random RANDOM = new Random(); 
 	
-	public static final boolean TLS1_3;
+	public static final boolean JAVA11;
+
+	public static final boolean JAVA8;
+	
+	public static final boolean JAVA15;
 
 	static {
 		double version = Double.parseDouble(System.getProperty("java.specification.version"));
 		
-		TLS1_3 = version >= 11.0;
+		JAVA8 = version < 9.0;
+		JAVA11 = version >= 11.0;
+		JAVA15 = version >= 15.0;
 	}
 	
 	protected byte[] buffer() {
@@ -122,6 +131,13 @@ public class CommonTest {
 		return array;
 	}
 	
+	protected byte[] random(int len) {
+		byte[] data = new byte[len];
+		
+		RANDOM.nextBytes(data);
+		return data;
+	}
+
 	@Before
 	public void before() {
 		buffer.clear();

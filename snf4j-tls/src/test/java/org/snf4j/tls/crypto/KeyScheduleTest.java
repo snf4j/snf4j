@@ -570,7 +570,7 @@ public class KeyScheduleTest extends CommonTest {
 
 		@Test
 		protected SecretKey createKey(byte[] key, ICipherSuiteSpec cipherSuiteSpec) {
-			return new TestSecretKey(key, cipherSuiteSpec.getKeyAlgorithm());
+			return new TestSecretKey(key, "AES");
 		}
 	}
 }

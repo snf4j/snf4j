@@ -23,16 +23,20 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.extension;
 
-import org.snf4j.tls.crypto.IAead;
+public class SignatureAlgorithmsCertExtension extends SignatureAlgorithmsExtension {
 
-public interface ICipherSuiteSpec {
-	
-	boolean isImplemented();
-	
-	IAead getAead();
-	
-	IHashSpec getHashSpec();
-	
+	private final static ExtensionType TYPE = ExtensionType.SIGNATURE_ALGORITHMS_CERT;
+
+	private final static AbstractExtensionParser PARSER = new Parser(TYPE);
+
+	public static IExtensionParser getParser() {
+		return PARSER;
+	}
+
+	public SignatureAlgorithmsCertExtension(SignatureScheme... schemes) {
+		super(TYPE, schemes);
+	}
+
 }

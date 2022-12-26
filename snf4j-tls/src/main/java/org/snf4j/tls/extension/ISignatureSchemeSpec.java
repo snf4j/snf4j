@@ -23,16 +23,13 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.extension;
 
-import org.snf4j.tls.crypto.IAead;
+import org.snf4j.tls.crypto.ISignature;
 
-public interface ICipherSuiteSpec {
+public interface ISignatureSchemeSpec {
 	
 	boolean isImplemented();
 	
-	IAead getAead();
-	
-	IHashSpec getHashSpec();
-	
+	ISignature getSignature();
 }

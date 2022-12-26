@@ -31,7 +31,7 @@ public class CipherSuite extends IntConstant {
 	
 	public static final CipherSuite TLS_AES_128_GCM_SHA256 = new CipherSuite("TLS_AES_128_GCM_SHA256",0x1301,CipherSuiteSpec.TLS_AES_128_GCM_SHA256);
 	public static final CipherSuite TLS_AES_256_GCM_SHA384 = new CipherSuite("TLS_AES_256_GCM_SHA384",0x1302,CipherSuiteSpec.TLS_AES_256_GCM_SHA384);
-	public static final CipherSuite TLS_CHACHA20_POLY1305_SHA256 = new CipherSuite("TLS_CHACHA20_POLY1305_SHA256",0x1303,null);
+	public static final CipherSuite TLS_CHACHA20_POLY1305_SHA256 = new CipherSuite("TLS_CHACHA20_POLY1305_SHA256",0x1303,CipherSuiteSpec.TLS_CHACHA20_POLY1305_SHA256);
 	public static final CipherSuite TLS_AES_128_CCM_SHA256 = new CipherSuite("TLS_AES_128_CCM_SHA256",0x1304,null);
 	public static final CipherSuite TLS_AES_128_CCM_8_SHA256 = new CipherSuite("TLS_AES_128_CCM_8_SHA256",0x1305,null);
 	

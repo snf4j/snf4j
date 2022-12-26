@@ -23,16 +23,12 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.crypto;
 
-import org.snf4j.tls.crypto.IAead;
+import java.security.GeneralSecurityException;
 
-public interface ICipherSuiteSpec {
+public interface IAeadDecrypt {
 	
-	boolean isImplemented();
-	
-	IAead getAead();
-	
-	IHashSpec getHashSpec();
-	
+	byte[] decrypt(byte[] nonce, byte[] additionalData, byte[] plaintext) throws GeneralSecurityException;
+
 }

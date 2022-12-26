@@ -23,16 +23,32 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.crypto;
 
-import org.snf4j.tls.crypto.IAead;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
-public interface ICipherSuiteSpec {
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+
+public interface IAead {
+
+	int getTagLength();
+	
+	int getKeyLength();
+	
+	int getIvLength();
 	
 	boolean isImplemented();
 	
-	IAead getAead();
+	Cipher createCipher() throws NoSuchAlgorithmException, NoSuchPaddingException;
 	
-	IHashSpec getHashSpec();
+	SecretKey createKey(byte[] key);
 	
+	void initDecrypt(Cipher cipher, SecretKey key, byte[] nonce) throws InvalidKeyException, InvalidAlgorithmParameterException;
+
+	void initEncrypt(Cipher cipher, SecretKey key, byte[] nonce) throws InvalidKeyException, InvalidAlgorithmParameterException;
+
 }

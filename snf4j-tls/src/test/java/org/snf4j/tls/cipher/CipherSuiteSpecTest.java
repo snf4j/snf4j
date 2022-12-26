@@ -30,17 +30,17 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.snf4j.tls.CommonTest;
+import org.snf4j.tls.crypto.AESAead;
+import org.snf4j.tls.crypto.ChaCha20Aead;
 
-public class CipherSuiteSpecTest {
+public class CipherSuiteSpecTest extends CommonTest {
 
 	@Test
 	public void testTlsAes128GcmSha256() {
 		CipherSuiteSpec i = CipherSuiteSpec.TLS_AES_128_GCM_SHA256;
 		
-		assertEquals(16, i.getAuthenticationTagLength());
-		assertEquals("AES", i.getKeyAlgorithm());
-		assertEquals(16, i.getKeyLength());
-		assertEquals(12, i.getIvLength());
+		assertSame(AESAead.AEAD_AES_128_GCM, i.getAead());
 		assertSame(HashSpec.SHA256, i.getHashSpec());
 		assertTrue(i.isImplemented());
 	}
@@ -49,11 +49,17 @@ public class CipherSuiteSpecTest {
 	public void testTlsAes256GcmSha384() {
 		CipherSuiteSpec i = CipherSuiteSpec.TLS_AES_256_GCM_SHA384;
 		
-		assertEquals(16, i.getAuthenticationTagLength());
-		assertEquals("AES", i.getKeyAlgorithm());
-		assertEquals(32, i.getKeyLength());
-		assertEquals(12, i.getIvLength());
+		assertSame(AESAead.AEAD_AES_256_GCM, i.getAead());
 		assertSame(HashSpec.SHA384, i.getHashSpec());
 		assertTrue(i.isImplemented());
+	}
+
+	@Test
+	public void testTlsChaCha20Poly1305Sha256() {
+		CipherSuiteSpec i = CipherSuiteSpec.TLS_CHACHA20_POLY1305_SHA256;
+		
+		assertSame(ChaCha20Aead.AEAD_CHACHA20_POLY1305, i.getAead());
+		assertSame(HashSpec.SHA256, i.getHashSpec());
+		assertEquals(JAVA11, i.isImplemented());
 	}
 }

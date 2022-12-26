@@ -77,4 +77,13 @@ public final class Args {
 		}
 	}
 	
+	public static void checkMin(Object[] array, int min, String name) {
+		if (array == null) {
+			throw new IllegalArgumentException(name + " is null");
+		}
+		if (array.length < min) {
+			throw new IllegalArgumentException(name + "'s length is less than " + min);
+		}
+	}
+
 }

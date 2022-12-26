@@ -23,16 +23,17 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.crypto;
 
-import org.snf4j.tls.crypto.IAead;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
 
-public interface ICipherSuiteSpec {
-	
+public interface ISignature {
+
 	boolean isImplemented();
 	
-	IAead getAead();
+	String keyAlgorithm();
 	
-	IHashSpec getHashSpec();
-	
+	Signature createSignature() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException;
 }

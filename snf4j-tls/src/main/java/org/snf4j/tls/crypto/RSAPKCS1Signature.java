@@ -23,16 +23,41 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.crypto;
 
-import org.snf4j.tls.crypto.IAead;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
 
-public interface ICipherSuiteSpec {
+public class RSAPKCS1Signature implements ISignature {
+
+	public final static RSAPKCS1Signature RSA_PKCS1_SHA1 = new RSAPKCS1Signature("SHA1withRSA");
+
+	public final static RSAPKCS1Signature RSA_PKCS1_SHA256 = new RSAPKCS1Signature("SHA256withRSA");
 	
-	boolean isImplemented();
+	public final static RSAPKCS1Signature RSA_PKCS1_SHA384 = new RSAPKCS1Signature("SHA384withRSA");
+
+	public final static RSAPKCS1Signature RSA_PKCS1_SHA512 = new RSAPKCS1Signature("SHA512withRSA");
 	
-	IAead getAead();
+	private final String algorithm;
 	
-	IHashSpec getHashSpec();
+	public RSAPKCS1Signature(String algorithm) {
+		this.algorithm = algorithm;
+	}
 	
+	@Override
+	public boolean isImplemented() {
+		return true;
+	}
+
+	@Override
+	public Signature createSignature() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+		return Signature.getInstance(algorithm);
+	}
+
+	@Override
+	public String keyAlgorithm() {
+		return "RSA";
+	}
+
 }

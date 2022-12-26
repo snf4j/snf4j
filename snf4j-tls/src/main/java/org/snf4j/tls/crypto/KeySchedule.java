@@ -30,7 +30,6 @@ import java.security.InvalidKeyException;
 import java.util.Arrays;
 
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.DestroyFailedException;
 
 import org.snf4j.tls.Args;
@@ -182,7 +181,7 @@ public class KeySchedule {
 	}
 	
 	protected SecretKey createKey(byte[] key, ICipherSuiteSpec cipherSuiteSpec) {
-		return new SecretKeySpec(key, cipherSuiteSpec.getKeyAlgorithm());
+		return cipherSuiteSpec.getAead().createKey(key);
 	}
 	
 	private SecretKey createKey(byte[] key) {
@@ -198,11 +197,11 @@ public class KeySchedule {
 		byte[] iv = hkdfExpandLabel(earlyTrafficSecret,
 				IV,
 				EMPTY,
-				cipherSuiteSpec.getIvLength());
+				cipherSuiteSpec.getAead().getIvLength());
 		byte[] key = hkdfExpandLabel(earlyTrafficSecret,
 				KEY,
 				EMPTY,
-				cipherSuiteSpec.getKeyLength());
+				cipherSuiteSpec.getAead().getKeyLength());
 		clientIv = iv;
 		clientKey = createKey(key);
 	}
@@ -255,19 +254,19 @@ public class KeySchedule {
 		byte[] civ = hkdfExpandLabel(clientHandshakeTrafficSecret,
 				IV,
 				EMPTY,
-				cipherSuiteSpec.getIvLength());
+				cipherSuiteSpec.getAead().getIvLength());
 		byte[] ckey = hkdfExpandLabel(clientHandshakeTrafficSecret,
 				KEY,
 				EMPTY,
-				cipherSuiteSpec.getKeyLength());
+				cipherSuiteSpec.getAead().getKeyLength());
 		byte[] siv = hkdfExpandLabel(serverHandshakeTrafficSecret,
 				IV,
 				EMPTY,
-				cipherSuiteSpec.getIvLength());
+				cipherSuiteSpec.getAead().getIvLength());
 		byte[] skey = hkdfExpandLabel(serverHandshakeTrafficSecret,
 				KEY,
 				EMPTY,
-				cipherSuiteSpec.getKeyLength());
+				cipherSuiteSpec.getAead().getKeyLength());
 		clientIv = civ;
 		clientKey = createKey(ckey);
 		serverIv = siv;

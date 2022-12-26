@@ -189,7 +189,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 		assertNull(e.getNamedGroup());
 		KeyShareEntry entry = e.getEntries()[0];
 		assertSame(NamedGroup.X25519, entry.getNamedGroup());
-		if (TLS1_3) {
+		if (JAVA11) {
 			assertNotNull(entry.getParsedKey());
 			assertNull(entry.getKey());
 			assertNull(entry.getRawKey());
@@ -217,7 +217,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 		assertNull(e.getNamedGroup());
 		entry = e.getEntries()[0];
 		assertSame(NamedGroup.X25519, entry.getNamedGroup());
-		if (TLS1_3) {
+		if (JAVA11) {
 			assertNotNull(entry.getParsedKey());
 			assertNull(entry.getKey());
 			assertNull(entry.getRawKey());
@@ -452,7 +452,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 		assertFalse(entry.getNamedGroup().isKnown());
 		assertEquals(0x7833, entry.getNamedGroup().value());
 		
-		if (!TLS1_3) {
+		if (!JAVA11) {
 			data = new byte[] {0,0x1D,0,31,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1};
 			try {
 				e = (KeyShareExtension) KeyShareExtension.getParser().parse(HandshakeType.SERVER_HELLO, array(data, 0), data.length);

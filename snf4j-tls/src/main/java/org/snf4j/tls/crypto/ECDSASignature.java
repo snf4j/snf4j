@@ -23,16 +23,41 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.crypto;
 
-import org.snf4j.tls.crypto.IAead;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
 
-public interface ICipherSuiteSpec {
+public class ECDSASignature implements ISignature {
 	
-	boolean isImplemented();
+	public final static ECDSASignature ECDSA_SHA1 = new ECDSASignature("SHA1withECDSA");
+
+	public final static ECDSASignature ECDSA_SECP256R1_SHA256 = new ECDSASignature("SHA256withECDSA");
+
+	public final static ECDSASignature ECDSA_SECP384R1_SHA384 = new ECDSASignature("SHA384withECDSA");
 	
-	IAead getAead();
+	public final static ECDSASignature ECDSA_SECP521R1_SHA512 = new ECDSASignature("SHA512withECDSA");
 	
-	IHashSpec getHashSpec();
+	private final String algorithm;
 	
+	public ECDSASignature(String algorithm) {
+		this.algorithm = algorithm;
+	}
+	
+	@Override
+	public boolean isImplemented() {
+		return true;
+	}
+
+	@Override
+	public Signature createSignature() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+		return Signature.getInstance(algorithm);
+	}
+
+	@Override
+	public String keyAlgorithm() {
+		return "EC";
+	}
+
 }

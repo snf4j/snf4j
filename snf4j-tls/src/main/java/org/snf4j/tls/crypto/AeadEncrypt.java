@@ -23,16 +23,34 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.crypto;
 
-import org.snf4j.tls.crypto.IAead;
+import java.security.GeneralSecurityException;
+import java.security.NoSuchAlgorithmException;
 
-public interface ICipherSuiteSpec {
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+
+public class AeadEncrypt implements IAeadEncrypt {
 	
-	boolean isImplemented();
+	private final SecretKey key;
 	
-	IAead getAead();
+	private final Cipher cipher;
 	
-	IHashSpec getHashSpec();
+	private final IAead aead;
+	
+	public AeadEncrypt(SecretKey key, IAead aead) throws NoSuchAlgorithmException, NoSuchPaddingException {
+		this.key = key;
+		this.aead = aead;
+		cipher = aead.createCipher();
+	}
+	
+	@Override
+	public byte[] encrypt(byte[] nonce, byte[] additionalData, byte[] plaintext) throws GeneralSecurityException {
+		aead.initEncrypt(cipher, key, nonce);
+		cipher.updateAAD(additionalData);
+		return cipher.doFinal(plaintext);
+	}
 	
 }

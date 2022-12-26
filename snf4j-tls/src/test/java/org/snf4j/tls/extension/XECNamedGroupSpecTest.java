@@ -50,7 +50,7 @@ public class XECNamedGroupSpecTest extends ExtensionTest {
 
 	@Test
 	public void test() throws Exception {
-		Assume.assumeTrue(TLS1_3);
+		Assume.assumeTrue(JAVA11);
 
 		XECNamedGroupSpec spec = XECNamedGroupSpec.X25519;
 		KeyPair kp = spec.getKeyExchange().generateKeyPair();
@@ -147,8 +147,8 @@ public class XECNamedGroupSpecTest extends ExtensionTest {
 	
 	@Test
 	public void testisImplemented() {
-		assertEquals(TLS1_3, XECNamedGroupSpec.X25519.isImplemented());
-		assertEquals(TLS1_3, XECNamedGroupSpec.X448.isImplemented());
+		assertEquals(JAVA11, XECNamedGroupSpec.X25519.isImplemented());
+		assertEquals(JAVA11, XECNamedGroupSpec.X448.isImplemented());
 	}
 	
 	@Test

@@ -62,7 +62,7 @@ public class XDHKeyExchangeTest extends CommonTest {
 		KeyPair kp2 = dh.generateKeyPair();
 		
 		assertEquals(getU(kp1.getPublic()), dh.getU(kp1.getPublic()));
-		assertEquals(TLS1_3, dh.isImplemented());
+		assertEquals(JAVA11, dh.isImplemented());
 		assertEquals(algo, dh.getAlgorithm());
 		
 		assertEquals(kp1.getPublic(), dh.generatePublicKey(getU(kp1.getPublic())));
@@ -75,7 +75,7 @@ public class XDHKeyExchangeTest extends CommonTest {
 
 	@Test
 	public void testAll() throws Exception {
-		Assume.assumeTrue(TLS1_3);
+		Assume.assumeTrue(JAVA11);
 		assertKeyExchange(XDHKeyExchange.X25519, "X25519", 32);
 		assertKeyExchange(XDHKeyExchange.X448, "X448", 56);
 	}
@@ -158,7 +158,7 @@ public class XDHKeyExchangeTest extends CommonTest {
 	
 	@Test
 	public void testIsImplemented() {
-		assertEquals(TLS1_3, XDHKeyExchange.X25519.isImplemented());
+		assertEquals(JAVA11, XDHKeyExchange.X25519.isImplemented());
 	}
 	
 	@Test

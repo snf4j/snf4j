@@ -25,57 +25,41 @@
  */
 package org.snf4j.tls.cipher;
 
+import org.snf4j.tls.Args;
+import org.snf4j.tls.crypto.AESAead;
+import org.snf4j.tls.crypto.ChaCha20Aead;
+import org.snf4j.tls.crypto.IAead;
+
 public class CipherSuiteSpec implements ICipherSuiteSpec {
 
-	public final static CipherSuiteSpec TLS_AES_128_GCM_SHA256 = new CipherSuiteSpec(16, "AES", 16, 12, HashSpec.SHA256);
+	public final static CipherSuiteSpec TLS_AES_128_GCM_SHA256 = new CipherSuiteSpec(AESAead.AEAD_AES_128_GCM, HashSpec.SHA256);
 	
-	public final static CipherSuiteSpec TLS_AES_256_GCM_SHA384 = new CipherSuiteSpec(16, "AES", 32, 12, HashSpec.SHA384);
+	public final static CipherSuiteSpec TLS_AES_256_GCM_SHA384 = new CipherSuiteSpec(AESAead.AEAD_AES_256_GCM, HashSpec.SHA384);
 	
-	private final int authenticationTagLength;
+	public final static CipherSuiteSpec TLS_CHACHA20_POLY1305_SHA256 = new CipherSuiteSpec(ChaCha20Aead.AEAD_CHACHA20_POLY1305, HashSpec.SHA256);
 	
-	private final String KeyAlgorithm;
-	
-	private final int keyLength;
-	
-	private final int ivLength;
+	private final IAead aead;
 	
 	private final IHashSpec hashSpec;
 
-	public CipherSuiteSpec(int authenticationTagLength, String keyAlgorithm, int keyLength, int ivLength,
-			IHashSpec hashSpec) {
+	public CipherSuiteSpec(IAead aead, IHashSpec hashSpec) {
 		super();
-		this.authenticationTagLength = authenticationTagLength;
-		KeyAlgorithm = keyAlgorithm;
-		this.keyLength = keyLength;
-		this.ivLength = ivLength;
+		Args.checkNull(aead, "aead");
+		Args.checkNull(hashSpec, "hashSpec");
+		this.aead = aead;
 		this.hashSpec = hashSpec;
 	}
 	
 	@Override
 	public boolean isImplemented() {
-		return true;
+		return aead.isImplemented();
 	}
 	
 	@Override
-	public int getAuthenticationTagLength() {
-		return authenticationTagLength;
+	public IAead getAead() {
+		return aead;
 	}
-
-	@Override
-	public String getKeyAlgorithm() {
-		return KeyAlgorithm;
-	}
-
-	@Override
-	public int getKeyLength() {
-		return keyLength;
-	}
-
-	@Override
-	public int getIvLength() {
-		return ivLength;
-	}
-
+	
 	@Override
 	public IHashSpec getHashSpec() {
 		return hashSpec;

@@ -36,9 +36,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import org.junit.Test;
+import org.snf4j.tls.CommonTest;
 import org.snf4j.tls.handshake.HandshakeType;
 
-public class TranscriptHashTest {
+public class TranscriptHashTest extends CommonTest {
 
 	static byte[] hash(byte[]... messages) throws NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -49,12 +50,12 @@ public class TranscriptHashTest {
 		return md.digest();
 	}
 	
-	static byte[] bytes(String s) {
+	static byte[] ascii(String s) {
 		return s.getBytes(StandardCharsets.US_ASCII);
 	}
 	
 	void assertHash(String expected, byte[] value) throws NoSuchAlgorithmException {
-		assertArrayEquals(hash(bytes(expected)), value);
+		assertArrayEquals(hash(ascii(expected)), value);
 	}
 	
 	void assertIllegalAgument(TranscriptHash th, HandshakeType t, Boolean client) {
@@ -71,7 +72,7 @@ public class TranscriptHashTest {
 		}
 		if (client == null) {
 			try {
-				th.getHash(t, bytes(""));
+				th.getHash(t, ascii(""));
 				fail();
 			}
 			catch (IllegalArgumentException e) {
@@ -83,35 +84,37 @@ public class TranscriptHashTest {
 	public void testGetHashFunction() throws Exception {
 		TranscriptHash th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
 		
-		th.update(HandshakeType.CLIENT_HELLO, bytes("CH"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
-		th.update(HandshakeType.SERVER_HELLO, bytes("SH"));
+		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		MessageDigest md = th.getHashFunction();
 		assertNotSame(md, th.getHashFunction());
-		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, bytes("EE"));
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("EE"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		assertHash("CH", md.digest("CH".getBytes()));
 		
 		th = new TranscriptHash(MessageDigest.getInstance("SHA-384"));
-		th.update(HandshakeType.CLIENT_HELLO, bytes("CH"));
-		th.update(HandshakeType.SERVER_HELLO, bytes("SH"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
+		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		md = th.getHashFunction();
-		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, bytes("EE"));
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("EE"));
 		assertArrayEquals(md.digest("CHSHEE".getBytes()), th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		
-		th = new TranscriptHash(new MD(MessageDigest.getInstance("SHA-256"), null));
-		md = th.getHashFunction();
-		assertEquals("SHA-256", md.getAlgorithm());
-		assertHash("", md.digest());
-		th = new TranscriptHash(new MD(MessageDigest.getInstance("SHA-256"), "SHA-xxx"));
-		try {
+		if (JAVA8) {
+			th = new TranscriptHash(new MD(MessageDigest.getInstance("SHA-256"), null));
 			md = th.getHashFunction();
-			fail();
-		} catch (UnsupportedOperationException e) {}
+			assertEquals("SHA-256", md.getAlgorithm());
+			assertHash("", md.digest());
+			th = new TranscriptHash(new MD(MessageDigest.getInstance("SHA-256"), "SHA-xxx"));
+			try {
+				md = th.getHashFunction();
+				fail();
+			} catch (UnsupportedOperationException e) {}
+		}
 	}
 	
 	@Test
@@ -137,10 +140,10 @@ public class TranscriptHashTest {
 		assertHash("", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		assertHash("", th.getHash(HandshakeType.END_OF_EARLY_DATA));
-		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, bytes("")));
-		assertHash("", th.getHash(HandshakeType.SERVER_HELLO, bytes("")));
-		assertHash("", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS, bytes("")));
-		assertHash("", th.getHash(HandshakeType.END_OF_EARLY_DATA, bytes("")));
+		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii("")));
+		assertHash("", th.getHash(HandshakeType.SERVER_HELLO, ascii("")));
+		assertHash("", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("")));
+		assertHash("", th.getHash(HandshakeType.END_OF_EARLY_DATA, ascii("")));
 		assertIllegalAgument(th, HandshakeType.CERTIFICATE_REQUEST, null);
 		assertIllegalAgument(th, HandshakeType.CERTIFICATE, null);
 		assertIllegalAgument(th, HandshakeType.CERTIFICATE_VERIFY, null);
@@ -170,16 +173,16 @@ public class TranscriptHashTest {
 		MD md = new MD(MessageDigest.getInstance("SHA-256"), null);
 		TranscriptHash th = new TranscriptHash(md);
 		
-		th.update(HandshakeType.CLIENT_HELLO, bytes("CH"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
 		try {
-			th.update(HandshakeType.SERVER_HELLO, bytes("SH"));
+			th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 			fail();
 		} catch (UnsupportedOperationException e) {}
 	}
 
 	void assertIllegalState(TranscriptHash th, HandshakeType t) {
 		try {
-			th.update(t, bytes("XX"));
+			th.update(t, ascii("XX"));
 			fail();
 		}
 		catch (IllegalStateException e) {
@@ -191,19 +194,19 @@ public class TranscriptHashTest {
 		TranscriptHash th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
 		
 		try {
-			th.update(HandshakeType.KEY_UPDATE, bytes("KU"));
+			th.update(HandshakeType.KEY_UPDATE, ascii("KU"));
 			fail();
 		} catch (ArrayIndexOutOfBoundsException e) {}
 		try {
-			th.update(HandshakeType.NEW_SESSION_TICKET, bytes("KU"));
+			th.update(HandshakeType.NEW_SESSION_TICKET, ascii("KU"));
 			fail();
 		} catch (IllegalArgumentException e) {}
-		th.update(HandshakeType.CLIENT_HELLO, bytes("CH"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
 		assertIllegalState(th, HandshakeType.CLIENT_HELLO);
-		th.update(HandshakeType.SERVER_HELLO, bytes("SH"));
+		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		assertIllegalState(th, HandshakeType.SERVER_HELLO);
 		assertIllegalState(th, HandshakeType.CLIENT_HELLO);
-		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, bytes("EE"));
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("EE"));
 		assertIllegalState(th, HandshakeType.SERVER_HELLO);
 		assertIllegalState(th, HandshakeType.CLIENT_HELLO);
 		assertIllegalState(th, HandshakeType.ENCRYPTED_EXTENSIONS);
@@ -215,36 +218,36 @@ public class TranscriptHashTest {
 		TranscriptHash th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
 
 		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO));
-		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, bytes("")));
-		assertHash("XX", th.getHash(HandshakeType.CLIENT_HELLO, bytes("XX")));
+		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii("")));
+		assertHash("XX", th.getHash(HandshakeType.CLIENT_HELLO, ascii("XX")));
 		assertHash("", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.CLIENT_HELLO, bytes("CH"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
-		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, bytes("")));
-		assertHash("XX", th.getHash(HandshakeType.CLIENT_HELLO, bytes("XX")));
+		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii("")));
+		assertHash("XX", th.getHash(HandshakeType.CLIENT_HELLO, ascii("XX")));
 		assertHash("CH", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CH", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.SERVER_HELLO, bytes("SH"));
+		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
-		assertHash("CH", th.getHash(HandshakeType.SERVER_HELLO, bytes("")));
-		assertHash("CHXX", th.getHash(HandshakeType.SERVER_HELLO, bytes("XX")));
+		assertHash("CH", th.getHash(HandshakeType.SERVER_HELLO, ascii("")));
+		assertHash("CHXX", th.getHash(HandshakeType.SERVER_HELLO, ascii("XX")));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSH", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, bytes("EE"));
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("EE"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		assertHash("CHSHEE", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSHEE", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.FINISHED, bytes("SF"));
+		th.update(HandshakeType.FINISHED, ascii("SF"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		assertHash("CHSHEESF", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSHEESF", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.FINISHED, bytes("CF"));
+		th.update(HandshakeType.FINISHED, ascii("CF"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -259,29 +262,29 @@ public class TranscriptHashTest {
 		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.CLIENT_HELLO, bytes("CH"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CH", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CH", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.SERVER_HELLO, bytes("SH"));
+		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSH", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, bytes("EE"));
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("EE"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		assertHash("CHSHEE", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSHEE", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.CERTIFICATE_REQUEST, bytes("CR"));
+		th.update(HandshakeType.CERTIFICATE_REQUEST, ascii("CR"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		assertHash("CHSHEECR", th.getHash(HandshakeType.CERTIFICATE_REQUEST,false));
 		assertHash("CHSHEECR", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSHEECR", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.CERTIFICATE, bytes("C"));
+		th.update(HandshakeType.CERTIFICATE, ascii("C"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -289,7 +292,7 @@ public class TranscriptHashTest {
 		assertHash("CHSHEECRC", th.getHash(HandshakeType.CERTIFICATE,false));
 		assertHash("CHSHEECRC", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSHEECRC", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.CERTIFICATE_VERIFY, bytes("CV"));
+		th.update(HandshakeType.CERTIFICATE_VERIFY, ascii("CV"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -298,7 +301,7 @@ public class TranscriptHashTest {
 		assertHash("CHSHEECRCCV", th.getHash(HandshakeType.CERTIFICATE_VERIFY,false));
 		assertHash("CHSHEECRCCV", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSHEECRCCV", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.FINISHED, bytes("SF"));
+		th.update(HandshakeType.FINISHED, ascii("SF"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -307,7 +310,7 @@ public class TranscriptHashTest {
 		assertHash("CHSHEECRCCV", th.getHash(HandshakeType.CERTIFICATE_VERIFY,false));
 		assertHash("CHSHEECRCCVSF", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSHEECRCCVSF", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.END_OF_EARLY_DATA, bytes("ED"));
+		th.update(HandshakeType.END_OF_EARLY_DATA, ascii("ED"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -317,7 +320,7 @@ public class TranscriptHashTest {
 		assertHash("CHSHEECRCCVSF", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSHEECRCCVSFED", th.getHash(HandshakeType.END_OF_EARLY_DATA));
 		assertHash("CHSHEECRCCVSFED", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.CERTIFICATE, bytes("c"));
+		th.update(HandshakeType.CERTIFICATE, ascii("c"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -328,7 +331,7 @@ public class TranscriptHashTest {
 		assertHash("CHSHEECRCCVSFED", th.getHash(HandshakeType.END_OF_EARLY_DATA));
 		assertHash("CHSHEECRCCVSFEDc", th.getHash(HandshakeType.CERTIFICATE, true));
 		assertHash("CHSHEECRCCVSFEDc", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.CERTIFICATE_VERIFY, bytes("cv"));
+		th.update(HandshakeType.CERTIFICATE_VERIFY, ascii("cv"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -340,7 +343,7 @@ public class TranscriptHashTest {
 		assertHash("CHSHEECRCCVSFEDc", th.getHash(HandshakeType.CERTIFICATE, true));
 		assertHash("CHSHEECRCCVSFEDccv", th.getHash(HandshakeType.CERTIFICATE_VERIFY, true));
 		assertHash("CHSHEECRCCVSFEDccv", th.getHash(HandshakeType.FINISHED, true));
-		th.update(HandshakeType.FINISHED, bytes("CF"));
+		th.update(HandshakeType.FINISHED, ascii("CF"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -359,14 +362,14 @@ public class TranscriptHashTest {
 		TranscriptHash th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
 		
 		try {
-			th.updateHelloRetryRequest(bytes("HRR"));
+			th.updateHelloRetryRequest(ascii("HRR"));
 			fail();
 		} catch (IllegalStateException e) {}
-		th.update(HandshakeType.CLIENT_HELLO, bytes("ch1"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("ch1"));
 		assertHash("ch1", th.getHash(HandshakeType.CLIENT_HELLO));
-		th.updateHelloRetryRequest(bytes("HRR"));
-		th.update(HandshakeType.CLIENT_HELLO, bytes("CH"));
-		th.update(HandshakeType.SERVER_HELLO, bytes("SH"));
+		th.updateHelloRetryRequest(ascii("HRR"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
+		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		
 		MessageDigest md = MessageDigest.getInstance("SHA-256");
 		byte[] digest = md.digest("ch1".getBytes());
@@ -397,11 +400,13 @@ public class TranscriptHashTest {
 		
 		MD(MessageDigest md, String algorithm) {
 			super(algorithm == null ? md.getAlgorithm() : algorithm);
-			try {
-				Field f = MessageDigest.class.getDeclaredField("provider");
-				f.setAccessible(true);
-				f.set(this, md.getProvider());
-			} catch (Exception e) {
+			if (JAVA8) {
+				try {
+					Field f = MessageDigest.class.getDeclaredField("provider");
+					f.setAccessible(true);
+					f.set(this, md.getProvider());
+				} catch (Exception e) {
+				}
 			}
 			this.md = md;
 		}
