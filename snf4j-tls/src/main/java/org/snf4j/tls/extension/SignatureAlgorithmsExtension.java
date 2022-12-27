@@ -32,7 +32,7 @@ import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.handshake.HandshakeType;
 
-public class SignatureAlgorithmsExtension extends KnownExtension {
+public class SignatureAlgorithmsExtension extends KnownExtension implements ISignatureAlgorithmsExtension {
 
 	private final static ExtensionType TYPE = ExtensionType.SIGNATURE_ALGORITHMS;
 
@@ -90,6 +90,7 @@ public class SignatureAlgorithmsExtension extends KnownExtension {
 		return PARSER;
 	}
 
+	@Override
 	public SignatureScheme[] getSchemes() {
 		return schemes;
 	}

@@ -27,16 +27,20 @@ package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
 
+import static org.snf4j.tls.handshake.HandshakeType.CLIENT_HELLO;
+
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.handshake.HandshakeType;
 
-public class SupportedGroupsExtension extends KnownExtension implements ISupportedGroupsExtension {
+public class SupportedVersionsExtension extends KnownExtension implements ISupportedVersionsExtension {
+
+	private final static ExtensionType TYPE = ExtensionType.SUPPORTED_VERSIONS;
 	
-	private final static ExtensionType TYPE = ExtensionType.SUPPORTED_GROUPS;
+	private final Mode mode;
 	
-	private final NamedGroup[] groups;
+	private final int[] versions;
 	
 	private final static AbstractExtensionParser PARSER = new AbstractExtensionParser() {
 
@@ -47,51 +51,76 @@ public class SupportedGroupsExtension extends KnownExtension implements ISupport
 
 		@Override
 		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
-			if (remaining >= 4) {
-				int len = srcs.getUnsignedShort();
-				
-				if ((len & 1) != 0 || len == 0) {
-					throw decodeError("Incorrect length");
-				}
-				remaining -= 2;
-				if (len == remaining) {
-					NamedGroup[] groups = new NamedGroup[len/2];
+			if (remaining >= 2) {
+				if (handshakeType.value() == CLIENT_HELLO.value()) {
+					int len = srcs.getUnsigned();
 					
-					for (int i=0; i<groups.length; ++i) {
-						groups[i] = NamedGroup.of(srcs.getUnsignedShort());
+					if ((len & 1) != 0 || len == 0) {
+						throw decodeError("Incorrect length");
 					}
-					return new SupportedGroupsExtension(groups);
+					--remaining;
+					if (len == remaining) {
+						int[] versions = new int[len/2];
+						
+						for (int i=0; i<versions.length; ++i) {
+							versions[i] = srcs.getUnsignedShort();
+						}
+						return new SupportedVersionsExtension(Mode.CLIENT_HELLO, versions);
+					}
+				}
+				else if (remaining == 2) {
+					return new SupportedVersionsExtension(Mode.SERVER_HELLO, srcs.getUnsignedShort());
 				}
 			}
 			throw decodeError("Inconsistent length");
 		}
 	};
 	
-	public SupportedGroupsExtension(NamedGroup... groups) {
+	protected SupportedVersionsExtension(Mode mode, int... versions) {
 		super(TYPE);
-		Args.checkMin(groups, 1, "groups");
-		this.groups = groups;
+		Args.checkNull(mode, "mode");
+		this.mode = mode;
+		if (mode == Mode.CLIENT_HELLO) {
+			Args.checkMin(versions, 1, "versions");
+		}
+		else {
+			Args.checkFixed(versions, 1, "versions");
+		}
+		this.versions = versions;
 	}
 
 	public static IExtensionParser getParser() {
 		return PARSER;
 	}
-
-	@Override
-	public NamedGroup[] getGroups() {
-		return groups;
-	}
 	
 	@Override
 	public int getDataLength() {
-		return 2 + groups.length*2;
+		if (mode == Mode.CLIENT_HELLO) {
+			return 1 + versions.length * 2;
+		}
+		return 2;
 	}
 
 	@Override
 	protected void getData(ByteBuffer buffer) {
-		buffer.putShort((short) (groups.length*2));
-		for (NamedGroup group: groups) {
-			buffer.putShort((short)group.value());
+		if (mode == Mode.CLIENT_HELLO) {
+			buffer.put((byte) (versions.length*2));
+			for (int version: versions) {
+				buffer.putShort((short) version);
+			}
 		}
+		else {
+			buffer.putShort((short) versions[0]);
+		}
+	}
+
+	@Override
+	public int[] getVersions() {
+		return versions;
+	}
+
+	@Override
+	public Mode getMode() {
+		return mode;
 	}
 }

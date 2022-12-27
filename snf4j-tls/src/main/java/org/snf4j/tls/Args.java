@@ -52,6 +52,15 @@ public final class Args {
 			throw new IllegalArgumentException(name + "'s length is not " + fixed);
 		}
 	}
+
+	public static void checkFixed(int[] array, int fixed, String name) {
+		if (array == null) {
+			throw new IllegalArgumentException(name + " is null");
+		}
+		if (array.length != fixed) {
+			throw new IllegalArgumentException(name + "'s length is not " + fixed);
+		}
+	}
 	
 	public static void checkRange(int value, int min, int max, String name) {
 		if (value < min) {
@@ -86,4 +95,13 @@ public final class Args {
 		}
 	}
 
+	public static void checkMin(int[] array, int min, String name) {
+		if (array == null) {
+			throw new IllegalArgumentException(name + " is null");
+		}
+		if (array.length < min) {
+			throw new IllegalArgumentException(name + "'s length is less than " + min);
+		}
+	}
+	
 }

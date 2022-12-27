@@ -37,7 +37,7 @@ import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.handshake.HandshakeType;
 
-public class KeyShareExtension extends KnownExtension {
+public class KeyShareExtension extends KnownExtension implements IKeyShareExtension {
 	
 	private final static ExtensionType TYPE = ExtensionType.KEY_SHARE;
 
@@ -46,8 +46,6 @@ public class KeyShareExtension extends KnownExtension {
 	private final KeyShareEntry[] entries;
 	
 	private final NamedGroup namedGroup;
-	
-	public enum Mode {CLIENT_HELLO, SERVER_HELLO, HELLO_RETRY_REQUEST};
 	
 	private final static AbstractExtensionParser PARSER = new AbstractExtensionParser() {
 
@@ -199,14 +197,17 @@ public class KeyShareExtension extends KnownExtension {
 		return PARSER;
 	}
 	
+	@Override
 	public NamedGroup getNamedGroup() {
 		return namedGroup;
 	}
 	
+	@Override
 	public KeyShareEntry[] getEntries() {
 		return entries;
 	}
 	
+	@Override
 	public Mode getMode() {
 		return mode;
 	}
