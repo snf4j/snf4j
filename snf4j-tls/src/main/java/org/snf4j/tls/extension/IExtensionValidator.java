@@ -29,6 +29,7 @@ import org.snf4j.tls.handshake.HandshakeType;
 
 public interface IExtensionValidator {
 	
-	boolean canAppearInMessage(ExtensionType extensionType, HandshakeType handshakeType);
+	boolean isAllowed(ExtensionType extensionType, HandshakeType handshakeType);
 
+	boolean isAllowedInHelloRetryRequest(ExtensionType extensionType);
 }

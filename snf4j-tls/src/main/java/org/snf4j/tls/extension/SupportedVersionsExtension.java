@@ -76,7 +76,7 @@ public class SupportedVersionsExtension extends KnownExtension implements ISuppo
 		}
 	};
 	
-	protected SupportedVersionsExtension(Mode mode, int... versions) {
+	public SupportedVersionsExtension(Mode mode, int... versions) {
 		super(TYPE);
 		Args.checkNull(mode, "mode");
 		this.mode = mode;

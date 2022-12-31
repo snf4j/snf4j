@@ -26,6 +26,9 @@
 package org.snf4j.tls.handshake;
 
 import java.nio.ByteBuffer;
+import java.util.List;
+
+import org.snf4j.tls.extension.IExtension;
 
 public interface IHandshake {
 	
@@ -33,8 +36,17 @@ public interface IHandshake {
 	
 	void getBytes(ByteBuffer buffer);
 	
+	int getLength();
+	
 	int getDataLength();
 	
 	boolean isKnown();
 	
+	/**
+	 * Returns extensions associated with this handshake message.
+	 * 
+	 * @return the associated extensions or {@code null} if extensions are not
+	 *         supported by this handshake message.
+	 */
+	List<IExtension> getExtensioins();
 }

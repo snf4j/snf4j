@@ -23,33 +23,28 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.security.MessageDigest;
+import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.record.RecordType;
 
-import org.snf4j.tls.handshake.HandshakeType;
-
-public interface ITranscriptHash {
+public class ProducedHandshake {
 	
-	void update(HandshakeType type, byte[] message);
-
-	void update(HandshakeType type, ByteBuffer[] message);
+	private final IHandshake handshake;
 	
-	void updateHelloRetryRequest(byte[] message);
+	private final RecordType recordType;
 
-	void updateHelloRetryRequest(ByteBuffer[] message);
-	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
+	public ProducedHandshake(IHandshake handshake, RecordType recordType) {
+		this.handshake = handshake;
+		this.recordType = recordType;
+	}
 
-	byte[] getHash(HandshakeType type, byte[] replacement);
+	public IHandshake getHandshake() {
+		return handshake;
+	}
 
-	String getAlgorithm();
+	public RecordType getRecordType() {
+		return recordType;
+	}
 	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
-
 }

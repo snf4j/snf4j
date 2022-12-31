@@ -25,6 +25,8 @@
  */
 package org.snf4j.tls.cipher;
 
+import org.snf4j.tls.crypto.IHash;
+
 public interface IHashSpec {
 	
 	String getAlgorithm();
@@ -32,4 +34,6 @@ public interface IHashSpec {
 	int getHashLength();
 	
 	byte[] getEmptyHash();
+	
+	IHash getHash();
 }

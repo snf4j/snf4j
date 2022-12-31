@@ -31,8 +31,10 @@ import static org.junit.Assert.fail;
 
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.junit.Test;
+import org.snf4j.tls.extension.IExtension;
 
 public class AbstractHandshakeTest extends HandshakeTest {
 
@@ -81,6 +83,11 @@ public class AbstractHandshakeTest extends HandshakeTest {
 		@Override
 		public boolean isKnown() {
 			return true;
+		}
+
+		@Override
+		public List<IExtension> getExtensioins() {
+			return null;
 		}
 	}
 }

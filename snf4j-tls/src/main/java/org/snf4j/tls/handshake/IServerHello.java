@@ -25,12 +25,9 @@
  */
 package org.snf4j.tls.handshake;
 
-import java.util.List;
-
 import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.extension.IExtension;
 
-public interface IServerHello {
+public interface IServerHello extends IHandshake {
 
 	int getLegacyVersion();
 	
@@ -40,8 +37,6 @@ public interface IServerHello {
 	
 	CipherSuite getCipherSuite();
 	
-	int getLegacyCompressionMethod();
+	byte getLegacyCompressionMethod();
 	
-	List<IExtension> getExtensioins();
-
 }

@@ -23,33 +23,47 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.security.MessageDigest;
-
-import org.snf4j.tls.handshake.HandshakeType;
-
-public interface ITranscriptHash {
+public enum MachineState {
+	CLI_START(true), 
+	CLI_WAIT_SH(true), 
+	CLI_WAIT_EE(true), 
+	CLI_WAIT_CERT_CR(true), 
+	CLI_WAIT_CERT(true), 
+	CLI_WAIT_CV(true), 
+	CLI_WAIT_FINISHED(true),
+	CLI_CONNECTED(true, true),
 	
-	void update(HandshakeType type, byte[] message);
-
-	void update(HandshakeType type, ByteBuffer[] message);
+	SRV_START(false),
+	SRV_RECVD_CH(false),
+	SRV_NEGOTIATED(false),
+	SRV_WAIT_EOED(false),
+	SRV_WAIT_FLIGHT2(false),
+	SRV_WAIT_CERT(false),
+	SRV_WAIT_CV(false),
+	SRV_WAIT_FINISHED(false),
+	SRV_CONNECTED(false, true);
 	
-	void updateHelloRetryRequest(byte[] message);
-
-	void updateHelloRetryRequest(ByteBuffer[] message);
+	private final boolean clientMode;
 	
-	byte[] getHash(HandshakeType type);
+	private final boolean connected;
 	
-	byte[] getHash(HandshakeType type, boolean client);
+	MachineState(boolean clientMode, boolean connected) {
+		this.clientMode = clientMode;
+		this.connected = connected;
+	}
 
-	byte[] getHash(HandshakeType type, byte[] replacement);
-
-	String getAlgorithm();
+	MachineState(boolean clientMode) {
+		this(clientMode, false);
+	}
 	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
+	public boolean clientMode() {
+		return clientMode;
+	}
 
+	public boolean isConnected() {
+		return connected;
+	}
+	
 }

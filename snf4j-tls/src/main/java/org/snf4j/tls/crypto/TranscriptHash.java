@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.crypto;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -184,7 +185,7 @@ public class TranscriptHash implements ITranscriptHash {
 		}
 	}
 	
-	private void update(int index, byte[] message) {
+	private void update(int index, byte[] message, ByteBuffer[] buffers) {
 		if ((mask & (0xffffffff << index)) != 0) {
 			throw new IllegalStateException();
 		}
@@ -196,7 +197,14 @@ public class TranscriptHash implements ITranscriptHash {
 			}
 		}
 		MessageDigest md = item != null ? clone(item.md) : this.md;
-		md.update(message);
+		if (message != null) {
+			md.update(message);
+		}
+		else {
+			for (ByteBuffer buffer: buffers) {
+				md.update(buffer);
+			}
+		}
 		items[index] = new Item(md);
 		mask |= 1 << index;
 	}
@@ -229,6 +237,15 @@ public class TranscriptHash implements ITranscriptHash {
 
 	@Override
 	public void update(HandshakeType type, byte[] message) {
+		update(type, message, null);
+	}
+
+	@Override
+	public void update(HandshakeType type, ByteBuffer[] message) {
+		update(type, null, message);
+	}
+	
+	private void update(HandshakeType type, byte[] message, ByteBuffer[] buffers) {
 		int index = -1;
 		
 		if (type.value() == HandshakeType.CLIENT_HELLO.value()) {
@@ -245,7 +262,7 @@ public class TranscriptHash implements ITranscriptHash {
 			}
 		}
 		if (index != -1) {
-			update(index, message);
+			update(index, message, buffers);
 		}
 		else {
 			throw new IllegalArgumentException();
@@ -254,6 +271,15 @@ public class TranscriptHash implements ITranscriptHash {
 
 	@Override
 	public void updateHelloRetryRequest(byte[] message) {
+		updateHelloRetryRequest(message, null);
+	}
+
+	@Override
+	public void updateHelloRetryRequest(ByteBuffer[] message) {
+		updateHelloRetryRequest(null, message);
+	}
+	
+	private void updateHelloRetryRequest(byte[] message, ByteBuffer[] buffers) {
 		if (mask != CLIENT_HELLO1_MASK) {
 			throw new IllegalStateException();
 		}
@@ -270,7 +296,14 @@ public class TranscriptHash implements ITranscriptHash {
 				
 		i = HELLO_RETRY_REQUEST_INDEX;
 		md = clone(md);
-		md.update(message);
+		if (message != null) {
+			md.update(message);
+		}
+		else {
+			for (ByteBuffer buffer: buffers) {
+				md.update(buffer);
+			}
+		}
 		items[i] = new Item(md);
 		mask |= HELLO_RETRY_REQUEST_MASK;
 	}

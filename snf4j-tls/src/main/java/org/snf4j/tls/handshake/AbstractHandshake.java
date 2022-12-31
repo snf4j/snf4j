@@ -42,6 +42,11 @@ public abstract class AbstractHandshake implements IHandshake {
 	}
 
 	@Override
+	public int getLength() {
+		return 4 + getDataLength();
+	}
+	
+	@Override
 	public void getBytes(ByteBuffer buffer) {
 		int len = getDataLength();
 		

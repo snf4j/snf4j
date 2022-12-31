@@ -50,7 +50,7 @@ public class ClientHelloTest extends HandshakeTest {
 
 	byte[] compressions = new byte[1];
 	
-	List<CipherSuite> cipherSuites = new ArrayList<CipherSuite>();
+	CipherSuite[] cipherSuites;
 	
 	List<IExtension> extensions = new ArrayList<IExtension>();
 	
@@ -63,9 +63,9 @@ public class ClientHelloTest extends HandshakeTest {
 			random[i] = (byte) i;
 			sessionId[i] = (byte) (0x20 + i);
 		}
-		cipherSuites.clear();
-		cipherSuites.add(CipherSuite.TLS_AES_128_GCM_SHA256);
-		cipherSuites.add(CipherSuite.TLS_AES_256_GCM_SHA384);
+		cipherSuites = new CipherSuite[2];
+		cipherSuites[0] = CipherSuite.TLS_AES_128_GCM_SHA256;
+		cipherSuites[1] = CipherSuite.TLS_AES_256_GCM_SHA384;
 		extensions.clear();
 		extensions.add(new ServerNameExtension("abcdefgh"));
 		decoder.clearParsers();
@@ -106,22 +106,23 @@ public class ClientHelloTest extends HandshakeTest {
 				0xea,0xeb,0xec,0xed,0xee,0xef,0xf0,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,
 				0xf7,0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xfe,0xff), ch.getLegacySessionId());
 		assertArrayEquals(bytes(0), ch.getLegacyCompressionMethods());
-		assertEquals(4, ch.getCipherSuites().size());
-		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, ch.getCipherSuites().get(0));
-		assertSame(CipherSuite.TLS_CHACHA20_POLY1305_SHA256, ch.getCipherSuites().get(1));
-		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, ch.getCipherSuites().get(2));
-		assertEquals(0x00ff, ch.getCipherSuites().get(3).value());
+		assertEquals(4, ch.getCipherSuites().length);
+		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, ch.getCipherSuites()[0]);
+		assertSame(CipherSuite.TLS_CHACHA20_POLY1305_SHA256, ch.getCipherSuites()[1]);
+		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, ch.getCipherSuites()[2]);
+		assertEquals(0x00ff, ch.getCipherSuites()[3].value());
 		assertEquals(10, ch.getExtensioins().size());
 		assertSame(ExtensionType.SERVER_NAME, ch.getExtensioins().get(0).getType());	
 		
 		assertEquals(data.length-4, ch.getDataLength());
 		ch.getBytes(buffer);
 		assertArrayEquals(data, buffer());
+		assertEquals(data.length, ch.getLength());
 	}
 	
 	@Test
 	public void testMinValues() throws Exception {
-		cipherSuites.clear();
+		cipherSuites = new CipherSuite[0];
 		extensions.clear();
 		ClientHello ch = new ClientHello(0x0301, random, new byte[0], cipherSuites, new byte[0], extensions);
 		ch.getBytes(buffer);
@@ -130,7 +131,7 @@ public class ClientHelloTest extends HandshakeTest {
 		assertEquals(0, ch.getLegacySessionId().length);
 		assertEquals(0, ch.getLegacyCompressionMethods().length);
 		assertEquals(0, ch.getExtensioins().size());
-		assertEquals(0, ch.getCipherSuites().size());
+		assertEquals(0, ch.getCipherSuites().length);
 	}
 
 	@Test
@@ -142,11 +143,11 @@ public class ClientHelloTest extends HandshakeTest {
 		assertEquals(32, ch.getLegacySessionId().length);
 		assertEquals(255, ch.getLegacyCompressionMethods().length);
 		assertEquals(1, ch.getExtensioins().size());
-		assertEquals(2, ch.getCipherSuites().size());
+		assertEquals(2, ch.getCipherSuites().length);
 	}
 	
 	void assertIllegalArguments(int legacyVersion, byte[] random, byte[] legacySessionId, 
-			List<CipherSuite> cipherSuites, byte[] legacyCompressionMethods, 
+			CipherSuite[] cipherSuites, byte[] legacyCompressionMethods, 
 			List<IExtension> extensions, String message) {
 		try {
 			new ClientHello(legacyVersion, random, legacySessionId, cipherSuites, legacyCompressionMethods, extensions);
@@ -240,12 +241,12 @@ public class ClientHelloTest extends HandshakeTest {
 		assertEquals(0, buffer()[38]);
 		assertArrayEquals(bytes(0,4,0x13,1,0x13,2), buffer(39,6));
 		ch = (ClientHello) ClientHello.getParser().parse(array(buffer(), 4), 62, decoder);
-		assertEquals(2, ch.getCipherSuites().size());	
-		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, ch.getCipherSuites().get(0));
-		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, ch.getCipherSuites().get(1));
+		assertEquals(2, ch.getCipherSuites().length);	
+		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, ch.getCipherSuites()[0]);
+		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, ch.getCipherSuites()[1]);
 		
 		buffer.clear();
-		cipherSuites.clear();
+		cipherSuites = new CipherSuite[0];
 		ch = new ClientHello(0x0303, random, bytes(), cipherSuites, compressions, extensions);
 		ch.getBytes(buffer);
 		assertEquals(58, ch.getDataLength());
@@ -254,12 +255,12 @@ public class ClientHelloTest extends HandshakeTest {
 		assertEquals(0, buffer()[38]);
 		assertArrayEquals(bytes(0,0), buffer(39,2));
 		ch = (ClientHello) ClientHello.getParser().parse(array(buffer(), 4), 58, decoder);
-		assertEquals(0, ch.getCipherSuites().size());	
+		assertEquals(0, ch.getCipherSuites().length);	
 		
 		buffer.clear();
-		cipherSuites.clear();
+		cipherSuites = new CipherSuite[0xfffe/2];
 		for (int i=0; i<0xfffe/2; ++i) {
-			cipherSuites.add(CipherSuite.of(i));
+			cipherSuites[i] = CipherSuite.of(i);
 		}
 		ch = new ClientHello(0x0303, random, bytes(), cipherSuites, compressions, extensions);
 		ch.getBytes(buffer);
@@ -269,12 +270,12 @@ public class ClientHelloTest extends HandshakeTest {
 		assertEquals(0, buffer()[38]);
 		assertArrayEquals(bytes(0xff,0xfe,0,0,0,1), buffer(39,6));
 		ch = (ClientHello) ClientHello.getParser().parse(array(buffer(), 4), 58+0xfffe, decoder);
-		assertEquals(0xfffe/2, ch.getCipherSuites().size());	
+		assertEquals(0xfffe/2, ch.getCipherSuites().length);	
 	}
 	
 	@Test
 	public void testGetLegacyCompressionMethods() throws Exception {
-		cipherSuites.clear();
+		cipherSuites = new CipherSuite[0];
 		ClientHello ch = new ClientHello(0x0303, random, bytes(), cipherSuites, compressions, extensions);
 		ch.getBytes(buffer);
 		assertEquals(58, ch.getDataLength());
@@ -318,7 +319,7 @@ public class ClientHelloTest extends HandshakeTest {
 	
 	@Test
 	public void testGetExtensions() throws Exception {
-		cipherSuites.clear();
+		cipherSuites = new CipherSuite[0];
 		extensions.clear();
 		ClientHello ch = new ClientHello(0x0303, random, bytes(), cipherSuites, compressions, extensions);
 		ch.getBytes(buffer);

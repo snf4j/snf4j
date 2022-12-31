@@ -31,6 +31,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -52,6 +53,24 @@ public class TranscriptHashTest extends CommonTest {
 	
 	static byte[] ascii(String s) {
 		return s.getBytes(StandardCharsets.US_ASCII);
+	}
+	
+	static ByteBuffer[] asciiBuffers(String s, int split) {
+		byte[] ascii = ascii(s);
+		int partSize = ascii.length / split;
+		int off = 0;
+		int remaining = ascii.length;
+		ByteBuffer[] buffers = new ByteBuffer[split];
+		
+		for (int i=0; i<split; ++i) {
+			byte[] part = new byte[(split == i+1) ? remaining : partSize];
+
+			System.arraycopy(ascii, off, part, 0, part.length);
+			remaining -= part.length;
+			off += part.length;
+			buffers[i] =  ByteBuffer.wrap(part);
+		}
+		return buffers;
 	}
 	
 	void assertHash(String expected, byte[] value) throws NoSuchAlgorithmException {
@@ -91,7 +110,7 @@ public class TranscriptHashTest extends CommonTest {
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		MessageDigest md = th.getHashFunction();
 		assertNotSame(md, th.getHashFunction());
-		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("EE"));
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, asciiBuffers("EE", 1));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSHEE", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
@@ -101,7 +120,7 @@ public class TranscriptHashTest extends CommonTest {
 		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
 		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		md = th.getHashFunction();
-		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("EE"));
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, asciiBuffers("EE",2));
 		assertArrayEquals(md.digest("CHSHEE".getBytes()), th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		
 		if (JAVA8) {
@@ -390,6 +409,20 @@ public class TranscriptHashTest extends CommonTest {
 		md.update("HRR".getBytes());
 		md.update("CH".getBytes());
 		digest = md.digest();
+		assertArrayEquals(digest, th.getHash(HandshakeType.CLIENT_HELLO));
+
+		th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("ch1"));
+		th.updateHelloRetryRequest(asciiBuffers("HRR",1));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
+		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
+		assertArrayEquals(digest, th.getHash(HandshakeType.CLIENT_HELLO));
+
+		th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("ch1"));
+		th.updateHelloRetryRequest(asciiBuffers("HRR",2));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
+		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		assertArrayEquals(digest, th.getHash(HandshakeType.CLIENT_HELLO));
 		
 	}

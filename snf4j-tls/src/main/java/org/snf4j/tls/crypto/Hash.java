@@ -25,31 +25,33 @@
  */
 package org.snf4j.tls.crypto;
 
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
-import org.snf4j.tls.handshake.HandshakeType;
+import javax.crypto.Mac;
 
-public interface ITranscriptHash {
+public class Hash implements IHash {
 	
-	void update(HandshakeType type, byte[] message);
+	public final static IHash SHA256 = new Hash("SHA-256","HmacSHA256");
 
-	void update(HandshakeType type, ByteBuffer[] message);
+	public final static IHash SHA384 = new Hash("SHA-384","HmacSHA384");
 	
-	void updateHelloRetryRequest(byte[] message);
-
-	void updateHelloRetryRequest(ByteBuffer[] message);
+	private final String hashAlgoritm;
 	
-	byte[] getHash(HandshakeType type);
+	private final String macAlgorithm;
 	
-	byte[] getHash(HandshakeType type, boolean client);
-
-	byte[] getHash(HandshakeType type, byte[] replacement);
-
-	String getAlgorithm();
+	public Hash(String hashAlgorithm, String macAlgorithm) {
+		this.hashAlgoritm = hashAlgorithm;
+		this.macAlgorithm = macAlgorithm;
+	}
 	
-	MessageDigest getHashFunction();
+	@Override
+	public MessageDigest createMessageDigest() throws NoSuchAlgorithmException {
+		return MessageDigest.getInstance(hashAlgoritm);
+	}
 	
-	int getHashLength();
-
+	@Override
+	public Mac createMac() throws NoSuchAlgorithmException {
+		return Mac.getInstance(macAlgorithm);
+	}
 }

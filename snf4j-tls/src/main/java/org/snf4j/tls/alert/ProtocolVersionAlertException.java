@@ -23,33 +23,14 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.alert;
 
-import java.nio.ByteBuffer;
-import java.security.MessageDigest;
+public class ProtocolVersionAlertException extends AlertException {
 
-import org.snf4j.tls.handshake.HandshakeType;
-
-public interface ITranscriptHash {
+	private static final long serialVersionUID = 1L;
 	
-	void update(HandshakeType type, byte[] message);
-
-	void update(HandshakeType type, ByteBuffer[] message);
-	
-	void updateHelloRetryRequest(byte[] message);
-
-	void updateHelloRetryRequest(ByteBuffer[] message);
-	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
-
-	byte[] getHash(HandshakeType type, byte[] replacement);
-
-	String getAlgorithm();
-	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
+	public ProtocolVersionAlertException(String message) {
+		super(message, AlertDescription.PROTOCOL_VERSION);
+	}
 
 }

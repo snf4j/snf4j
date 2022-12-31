@@ -37,14 +37,14 @@ import org.snf4j.tls.extension.ExtensionsUtil;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionDecoder;
 
-public class ClientHello extends AbstractHello implements IClientHello {
-
-	private final static HandshakeType TYPE = HandshakeType.CLIENT_HELLO;
-
-	private final CipherSuite[] cipherSuites;
+public class ServerHello extends AbstractHello implements IServerHello {
 	
-	private final byte[] legacyCompressionMethods;
+	private final static HandshakeType TYPE = HandshakeType.SERVER_HELLO;
 
+	private final CipherSuite cipherSuite;
+	
+	private final byte legacyCompressionMethod;
+	
 	private final List<IExtension> extensions;
 	
 	private final static AbstractHandshakeParser PARSER = new AbstractHandshakeParser() {
@@ -72,50 +72,27 @@ public class ClientHello extends AbstractHello implements IClientHello {
 							srcs.get(legacySessionId);
 							remaining -= len;
 						}
-						if (remaining >= 4) {
-							len = srcs.getUnsignedShort();
-							remaining -= 2;
-							if ((len & 1) == 0) {
-								if (remaining >= len) {
-									remaining -= len;
-									len /= 2;
-									CipherSuite[] cipherSuites = new CipherSuite[len];
-									int i = 0;
-									
-									while (len > 0) {
-										cipherSuites[i++] = CipherSuite.of(srcs.getUnsignedShort());
-										--len;
-									}
-									if (remaining >= 2) {
-										len = srcs.getUnsigned();
-										--remaining;
-										if (remaining >= len) {
-											byte[] legacyCompressionMethods = new byte[len];
+						if (remaining >= 3) {
+							CipherSuite cipherSuite = CipherSuite.of(srcs.getUnsignedShort());
+							byte legacyCompressionMethod = srcs.get();
+							
+							remaining -= 3;
+							if (remaining >= 2) {
+								ExtensionsParser parser = new ExtensionsParser(0, 0xffff, decoder);
 
-											srcs.get(legacyCompressionMethods);
-											remaining -= len;
-											if (remaining >= 2) {
-												ExtensionsParser parser = new ExtensionsParser(0, 0xffff, decoder);
-
-												parser.parse(TYPE, srcs, remaining);
-												if (parser.isComplete() && remaining == parser.getConsumedBytes()) {
-													return new ClientHello(
-															legacyVersion,
-															random,
-															legacySessionId,
-															cipherSuites,
-															legacyCompressionMethods,
-															parser.getExtensions()
-															);
-												}
-											}
-										}
-									}
+								parser.parse(TYPE, srcs, remaining);
+								if (parser.isComplete() && remaining == parser.getConsumedBytes()) {
+									return new ServerHello(
+											legacyVersion,
+											random,
+											legacySessionId,
+											cipherSuite,
+											legacyCompressionMethod,
+											parser.getExtensions()
+											);
 								}
 							}
-							else {
-								throw decodeError("Cipher suites invalid length");
-							}
+							
 						}
 					}
 				}
@@ -127,24 +104,13 @@ public class ClientHello extends AbstractHello implements IClientHello {
 		}
 	};
 	
-	public ClientHello(int legacyVersion, byte[] random, byte[] legacySessionId, CipherSuite[] cipherSuites, byte[] legacyCompressionMethods, List<IExtension> extensions) {
+	public ServerHello(int legacyVersion, byte[] random, byte[] legacySessionId, CipherSuite cipherSuite, byte legacyCompressionMethod, List<IExtension> extensions) {
 		super(TYPE, legacyVersion, random, legacySessionId);
-		Args.checkNull(cipherSuites, "cipherSuites");
+		Args.checkNull(cipherSuite, "cipherSuite");
 		Args.checkNull(extensions, "extensions");
-		Args.checkMax(legacyCompressionMethods, 255, "legacyCompressionMethods");
-		this.cipherSuites = cipherSuites;
-		this.legacyCompressionMethods = legacyCompressionMethods;
+		this.cipherSuite = cipherSuite;
+		this.legacyCompressionMethod = legacyCompressionMethod;
 		this.extensions = extensions;
-	}
-	
-	@Override
-	public CipherSuite[] getCipherSuites() {
-		return cipherSuites;
-	}
-
-	@Override
-	public byte[] getLegacyCompressionMethods() {
-		return legacyCompressionMethods;
 	}
 
 	@Override
@@ -152,17 +118,25 @@ public class ClientHello extends AbstractHello implements IClientHello {
 		return extensions;
 	}
 
+	@Override
+	public CipherSuite getCipherSuite() {
+		return cipherSuite;
+	}
+
+	@Override
+	public byte getLegacyCompressionMethod() {
+		return legacyCompressionMethod;
+	}
+
 	public static IHandshakeParser getParser() {
 		return PARSER;
 	}
-	
+
 	@Override
 	public int getDataLength() {
 		return super.getDataLength() 
 				+ 2 
-				+ cipherSuites.length * 2 
 				+ 1 
-				+ legacyCompressionMethods.length
 				+ 2
 				+ ExtensionsUtil.calculateLength(extensions);
 	}
@@ -170,13 +144,8 @@ public class ClientHello extends AbstractHello implements IClientHello {
 	@Override
 	protected void getData(ByteBuffer buffer) {
 		super.getData(buffer);
-		int size = cipherSuites.length;
-		buffer.putShort((short) (size*2));
-		for (CipherSuite cs: cipherSuites) {
-			buffer.putShort((short) cs.value());
-		}
-		buffer.put((byte) legacyCompressionMethods.length);
-		buffer.put(legacyCompressionMethods);
+		buffer.putShort((short) cipherSuite.value());
+		buffer.put(legacyCompressionMethod);
 		buffer.putShort((short) ExtensionsUtil.calculateLength(extensions));
 		for (IExtension e: extensions) {
 			e.getBytes(buffer);

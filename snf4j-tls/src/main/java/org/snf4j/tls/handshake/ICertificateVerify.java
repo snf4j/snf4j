@@ -25,6 +25,8 @@
  */
 package org.snf4j.tls.handshake;
 
+import org.snf4j.tls.extension.SignatureScheme;
+
 public interface ICertificateVerify {
 	
 	SignatureScheme getAlgorithm();

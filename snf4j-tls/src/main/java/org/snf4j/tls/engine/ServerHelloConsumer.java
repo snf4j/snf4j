@@ -23,33 +23,23 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
-import java.security.MessageDigest;
 
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
 
-public interface ITranscriptHash {
-	
-	void update(HandshakeType type, byte[] message);
+public class ServerHelloConsumer extends AbstractConsumer {
 
-	void update(HandshakeType type, ByteBuffer[] message);
-	
-	void updateHelloRetryRequest(byte[] message);
+	@Override
+	public HandshakeType getType() {
+		return HandshakeType.SERVER_HELLO;
+	}
 
-	void updateHelloRetryRequest(ByteBuffer[] message);
-	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
-
-	byte[] getHash(HandshakeType type, byte[] replacement);
-
-	String getAlgorithm();
-	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
+	@Override
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] message) throws AlertException {
+	}
 
 }

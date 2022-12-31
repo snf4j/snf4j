@@ -100,4 +100,29 @@ public class KeyShareEntry {
 			buffer.put(rawKey);
 		}
 	}
+	
+	public static KeyShareEntry find(KeyShareEntry[] entries, NamedGroup namedGroup) {
+		int value = namedGroup.value();
+		
+		for (KeyShareEntry e: entries) {
+			if (e.namedGroup.value() == value) {
+				return e;
+			}
+		}
+		return null;
+	}
+	
+	public static KeyShareEntry firstMatch(NamedGroup[] groups, KeyShareEntry[] entries) {
+		for (NamedGroup g: groups) {
+			int value = g.value();
+
+			for (KeyShareEntry e: entries) {
+				if (e.namedGroup.value() == value) {
+					return e;
+				}
+			}
+		}
+		return null;
+	}
+	
 }

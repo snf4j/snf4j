@@ -62,19 +62,34 @@ public class HandshakeDecoderTest extends HandshakeTest {
 	
 	@Test
 	public void testDecode() throws AlertException {
-		List<CipherSuite> ciphers = Arrays.asList(new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256});
+		CipherSuite[] ciphers = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
 		List<IExtension> extensions = Arrays.asList(new IExtension[0]);
-		new ClientHello(0x303, new byte[32], new byte[0], ciphers, new byte[1], extensions).getBytes(buffer);
-		IHandshake h = decoder.decode(array(buffer(),0), 1000);
+		ClientHello ch = new ClientHello(0x303, new byte[32], new byte[0], ciphers, new byte[1], extensions);
+		ch.getBytes(buffer);
+		byte[] data = buffer();
+		IHandshake h = decoder.decode(array(data,0), ch.getLength());
 		assertSame(ClientHello.class, h.getClass());
 		assertTrue(h.isKnown());
-		ClientHello ch = (ClientHello) h;
+		ch = (ClientHello) h;
 		assertEquals(0x303, ch.getLegacyVersion());
 		assertEquals(0, ch.getExtensioins().size());
 
+		try {
+			decoder.decode(array(data,0), ch.getLength()-1);
+			fail();
+		} catch (AlertException e) {
+			assertEquals("Handshake message 'client_hello' parsing failure: Data underflow", e.getMessage());
+		}
+		try {
+			decoder.decode(array(Arrays.copyOf(data, data.length+1),0), ch.getLength()+1);
+			fail();
+		} catch (AlertException e) {
+			assertEquals("Handshake message 'client_hello' parsing failure: Inconsistent length", e.getMessage());
+		}
+		
 		buffer.clear();
 		buffer.put(bytes(230,0,0,2,1,2));
-		h = decoder.decode(array(buffer(),0), 1000);
+		h = decoder.decode(array(buffer(),0), 6);
 		assertSame(UnknownHandshake.class, h.getClass());
 		UnknownHandshake uh = (UnknownHandshake) h;
 		assertArrayEquals(bytes(1,2), uh.getData());
@@ -90,7 +105,7 @@ public class HandshakeDecoderTest extends HandshakeTest {
 		assertEquals(66051, uh.getData().length);
 
 		ByteBufferArray a = ByteBufferArray.wrap(array(bytes(230,0,0,2,1,2),0));
-		uh = (UnknownHandshake) decoder.decode(a, 100);
+		uh = (UnknownHandshake) decoder.decode(a, (int)a.remaining());
 		assertEquals(0, a.remaining());
 	}
 	

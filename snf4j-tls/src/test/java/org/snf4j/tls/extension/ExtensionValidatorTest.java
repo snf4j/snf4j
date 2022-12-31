@@ -59,7 +59,7 @@ public class ExtensionValidatorTest {
 			 "| signature_algorithms_cert (RFC 8446) | CH, CR |";
 
 	@Test
-	public void testCanAppearInMessage() throws Exception {
+	public void testIsAllowed() throws Exception {
 		ExtensionValidator v = new ExtensionValidator();
 		String[] entries = ENTRIES.split("\\|");
 		
@@ -95,13 +95,13 @@ public class ExtensionValidatorTest {
 				bits[htype.value()] = true;
 			}
 			for (int b=0; b<bits.length; ++b) {
-				assertEquals(bits[b], v.canAppearInMessage(type, HandshakeType.of(b)));
-				assertFalse(v.canAppearInMessage(ExtensionType.of(-1), HandshakeType.of(b)));
-				assertFalse(v.canAppearInMessage(ExtensionType.of(52), HandshakeType.of(b)));
+				assertEquals(bits[b], v.isAllowed(type, HandshakeType.of(b)));
+				assertFalse(v.isAllowed(ExtensionType.of(-1), HandshakeType.of(b)));
+				assertFalse(v.isAllowed(ExtensionType.of(52), HandshakeType.of(b)));
 				
 			}
-			assertFalse(v.canAppearInMessage(type, HandshakeType.of(-1)));
-			assertFalse(v.canAppearInMessage(type, HandshakeType.of(32)));
+			assertFalse(v.isAllowed(type, HandshakeType.of(-1)));
+			assertFalse(v.isAllowed(type, HandshakeType.of(32)));
 		}
 	}
 }

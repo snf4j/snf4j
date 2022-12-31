@@ -52,4 +52,28 @@ public class IntConstant extends Constant {
         }
         return false;
     } 
+	
+	public static <T extends IntConstant> T firstMatch(T[] primary, T[] secondary) {
+		for (T p: primary) {
+			int pValue = p.value();
+			
+			for (T s: secondary) {
+				if (pValue == s.value()) {
+					return p;
+				}
+			}
+		}
+		return null;
+	}
+	
+	public static <T extends IntConstant> T findFirst(T[] constants, T constant) {
+		int value = constant.value();
+		
+		for (T c: constants) {
+			if (value == c.value()) {
+				return c;
+			}
+		}
+		return null;
+	}
 }

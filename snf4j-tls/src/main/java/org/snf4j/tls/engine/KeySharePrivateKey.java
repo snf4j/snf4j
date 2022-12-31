@@ -23,33 +23,30 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.security.MessageDigest;
+import java.security.PrivateKey;
 
-import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.extension.NamedGroup;
 
-public interface ITranscriptHash {
+public class KeySharePrivateKey {
 	
-	void update(HandshakeType type, byte[] message);
-
-	void update(HandshakeType type, ByteBuffer[] message);
+	private final NamedGroup group;
 	
-	void updateHelloRetryRequest(byte[] message);
+	private final PrivateKey key;
 
-	void updateHelloRetryRequest(ByteBuffer[] message);
-	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
+	public KeySharePrivateKey(NamedGroup group, PrivateKey key) {
+		this.group = group;
+		this.key = key;
+	}
 
-	byte[] getHash(HandshakeType type, byte[] replacement);
+	public NamedGroup getGroup() {
+		return group;
+	}
 
-	String getAlgorithm();
+	public PrivateKey getKey() {
+		return key;
+	}
 	
-	MessageDigest getHashFunction();
 	
-	int getHashLength();
-
 }

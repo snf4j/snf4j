@@ -23,42 +23,72 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import java.security.SecureRandom;
 
-import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.SignatureScheme;
 
-public class UnknownHandshake extends AbstractHandshake {
+public class TestParameters implements IEngineParameters {
 
-	private final byte[] data;
+	private final static SecureRandom SECURE_RANDOM = new SecureRandom();
+
+	CipherSuite[] cipherSuites = new CipherSuite[] {
+			CipherSuite.TLS_AES_256_GCM_SHA384,
+			CipherSuite.TLS_AES_128_GCM_SHA256
+			};
 	
-	public UnknownHandshake(HandshakeType type, byte[] data) {
-		super(type);
-		this.data = data;
-	}
-
-	@Override
-	public int getDataLength() {
-		return data.length;
-	}
-
-	public byte[] getData() {
-		return data;
-	}
+	NamedGroup[] namedGroups = new NamedGroup[] {
+			NamedGroup.SECP256R1,
+			NamedGroup.SECP384R1
+			};
 	
+	SignatureScheme[] signatureSchemes = new SignatureScheme[] {
+			SignatureScheme.ECDSA_SECP256R1_SHA256,
+			SignatureScheme.ECDSA_SECP384R1_SHA384
+			};
+	
+	boolean compatibilityMode;
+	
+	int numberOfOfferedSharedKeys = 1;
+	
+	String serverName;
+
 	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
+	public CipherSuite[] getCipherSuites() {
+		return cipherSuites;
 	}
 
 	@Override
-	public final boolean isKnown() { return false; }
+	public NamedGroup[] getNamedGroups() {
+		return namedGroups;
+	}
 
 	@Override
-	public List<IExtension> getExtensioins() {
-		return null;
+	public SignatureScheme[] getSignatureSchemes() {
+		return signatureSchemes;
+	}
+
+	@Override
+	public boolean isCompatibilityMode() {
+		return compatibilityMode;
+	}
+
+	@Override
+	public SecureRandom getSecureRandom() {
+		return SECURE_RANDOM;
+	}
+
+	@Override
+	public String getServerName() {
+		return serverName;
+	}
+
+	@Override
+	public int getNumberOfOfferedSharedKeys() {
+		return numberOfOfferedSharedKeys;
 	}
 
 }

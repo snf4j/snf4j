@@ -27,6 +27,8 @@ package org.snf4j.tls.extension;
 
 import java.util.List;
 
+import org.snf4j.tls.handshake.IHandshake;
+
 public final class ExtensionsUtil {
 	
 	private ExtensionsUtil() {}
@@ -38,5 +40,17 @@ public final class ExtensionsUtil {
 			len += e.getDataLength();
 		}
 		return len;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T extends IExtension> T findExtension(IHandshake handshake, ExtensionType type) {
+		int value = type.value();
+		
+		for (IExtension e: handshake.getExtensioins()) {
+			if (e.getType().value() == value) {
+				return (T) e;
+			}
+		}
+		return null;
 	}
 }

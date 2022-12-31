@@ -29,6 +29,8 @@ import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionValidator implements IExtensionValidator {
 
+	public final static IExtensionValidator DEFAULT = new ExtensionValidator();
+	
 	private final static int CH = HandshakeType.CLIENT_HELLO.value();
 	
 	private final static int SH = HandshakeType.SERVER_HELLO.value();
@@ -78,18 +80,25 @@ public class ExtensionValidator implements IExtensionValidator {
 		addMapping(ExtensionType.POST_HANDSHAKE_AUTH, CH );
 		addMapping(ExtensionType.SIGNATURE_ALGORITHMS_CERT, CH, CR );
 	}
-	
-	@Override
-	public boolean canAppearInMessage(ExtensionType extensionType, HandshakeType handshakeType) {
+
+	private boolean isAllowed(ExtensionType extensionType, int handshakeValue) {
 		int type = extensionType.value();
 		
 		if (type >=0 && type < MAPPING.length) {
-			int shift = handshakeType.value();
-			
-			if (shift >= 0 && shift < 31) {
-				return (MAPPING[type] & (1 << shift)) != 0; 
+			if (handshakeValue >= 0 && handshakeValue < 31) {
+				return (MAPPING[type] & (1 << handshakeValue)) != 0; 
 			}
 		}
 		return false;
+	}
+	
+	@Override
+	public boolean isAllowed(ExtensionType extensionType, HandshakeType handshakeType) {
+		return isAllowed(extensionType, handshakeType.value());
+	}
+
+	@Override
+	public boolean isAllowedInHelloRetryRequest(ExtensionType extensionType) {
+		return isAllowed(extensionType, HRR);
 	}
 }

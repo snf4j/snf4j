@@ -23,33 +23,40 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
-import java.security.MessageDigest;
 
 import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.handshake.UnknownHandshake;
+import org.snf4j.tls.record.RecordType;
 
-public interface ITranscriptHash {
-	
-	void update(HandshakeType type, byte[] message);
+abstract public class AbstractConsumer implements IHandshakeConsumer {
 
-	void update(HandshakeType type, ByteBuffer[] message);
-	
-	void updateHelloRetryRequest(byte[] message);
+	static void updateTranscriptHash(EngineState state, HandshakeType type, ByteBuffer[] message) {
+		state.getTranscriptHash().update(type, message);
+	}
 
-	void updateHelloRetryRequest(ByteBuffer[] message);
+	static void updateHRRTranscriptHash(EngineState state, ByteBuffer[] message) {
+		state.getTranscriptHash().updateHelloRetryRequest(message);
+	}
 	
-	byte[] getHash(HandshakeType type);
+	static byte[] produce0(EngineState state, IHandshake handshake, RecordType recordType) {
+		byte[] message = new byte[handshake.getLength()];
+		
+		ByteBuffer buffer = ByteBuffer.wrap(message);
+		handshake.getBytes(buffer);
+		state.produce(new ProducedHandshake(new UnknownHandshake(handshake.getType(), message), recordType));
+		return message;
+	}
 	
-	byte[] getHash(HandshakeType type, boolean client);
-
-	byte[] getHash(HandshakeType type, byte[] replacement);
-
-	String getAlgorithm();
+	static void produce(EngineState state, IHandshake handshake, RecordType recordType) {
+		state.getTranscriptHash().update(handshake.getType(), produce0(state, handshake, recordType));
+	}
 	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
+	static void produceHRR(EngineState state, IHandshake handshake, RecordType recordType) {
+		state.getTranscriptHash().updateHelloRetryRequest(produce0(state, handshake, recordType));
+	}
 
 }

@@ -23,42 +23,69 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import java.security.SecureRandom;
 
-import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.SignatureScheme;
 
-public class UnknownHandshake extends AbstractHandshake {
-
-	private final byte[] data;
+public class EngineParameters implements IEngineParameters {
 	
-	public UnknownHandshake(HandshakeType type, byte[] data) {
-		super(type);
-		this.data = data;
+	private final CipherSuite[] cipherSuites;
+	
+	private final NamedGroup[] namedGroups;
+	
+	private final SignatureScheme[] signatureSchemes;
+	
+	private boolean compatibilityMode;
+	
+	private int numberOfOfferedSharedKeys = 1;
+	
+	private SecureRandom secureRandom = new SecureRandom();
+	
+	private String serverName;
+	
+	public EngineParameters() {
+		cipherSuites = EngineDefaults.getDefaultCipherSuites();
+		namedGroups = EngineDefaults.getDefaultNamedGroups();
+		signatureSchemes = EngineDefaults.getDefaulSignatureSchemes();
 	}
 
 	@Override
-	public int getDataLength() {
-		return data.length;
+	public CipherSuite[] getCipherSuites() {
+		return cipherSuites;
 	}
 
-	public byte[] getData() {
-		return data;
+	@Override
+	public NamedGroup[] getNamedGroups() {
+		return namedGroups;
+	}
+
+	@Override
+	public SignatureScheme[] getSignatureSchemes() {
+		return signatureSchemes;
+	}
+
+	@Override
+	public boolean isCompatibilityMode() {
+		return compatibilityMode;
+	}
+
+	@Override
+	public SecureRandom getSecureRandom() {
+		return secureRandom;
+	}
+
+	@Override
+	public String getServerName() {
+		return serverName;
+	}
+
+	@Override
+	public int getNumberOfOfferedSharedKeys() {
+		return numberOfOfferedSharedKeys;
 	}
 	
-	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
-	}
-
-	@Override
-	public final boolean isKnown() { return false; }
-
-	@Override
-	public List<IExtension> getExtensioins() {
-		return null;
-	}
-
 }

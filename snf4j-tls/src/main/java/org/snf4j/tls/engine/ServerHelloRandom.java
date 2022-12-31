@@ -23,39 +23,40 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-import org.junit.Test;
-import org.snf4j.tls.IntConstantTester;
+import org.snf4j.tls.handshake.IServerHello;
 
-public class SignatureSchemeTest {
+public class ServerHelloRandom {
 
-	final static String ENTRIES = 
-			"|" + "rsa_pkcs1_sha256(0x0401),"+
-			"|" + "rsa_pkcs1_sha384(0x0501),"+
-			"|" + "rsa_pkcs1_sha512(0x0601),"+
-			"|" + "ecdsa_secp256r1_sha256(0x0403),"+
-			"|" + "ecdsa_secp384r1_sha384(0x0503),"+
-			"|" + "ecdsa_secp521r1_sha512(0x0603),"+
-			"|" + "rsa_pss_rsae_sha256(0x0804),"+
-			"|" + "rsa_pss_rsae_sha384(0x0805),"+
-			"|" + "rsa_pss_rsae_sha512(0x0806),"+
-			"|" + "ed25519(0x0807),"+
-			"|" + "ed448(0x0808),"+
-			"|" + "rsa_pss_pss_sha256(0x0809),"+
-			"|" + "rsa_pss_pss_sha384(0x080a),"+
-			"|" + "rsa_pss_pss_sha512(0x080b),"+
-			"|" + "rsa_pkcs1_sha1(0x0201),"+
-			"|" + "ecdsa_sha1(0x0203),";
-
-	@Test
-	public void testValues() throws Exception {
-		new IntConstantTester<SignatureScheme>(ENTRIES, SignatureScheme.class, SignatureScheme[].class).assertValues("0x%04x");
-	}
-
-	@Test
-	public void testOf() throws Exception {
-		new IntConstantTester<SignatureScheme>(ENTRIES, SignatureScheme.class, SignatureScheme[].class).assertOf(0, 0x900);
+	private final static byte[] RANDOM = new byte[] {
+			(byte)0xCF,0x21,(byte)0xAD,0x74,(byte)0xE5,(byte)0x9A,0x61,0x11,
+			(byte)0xBE,0x1D,(byte)0x8C,0x02,0x1E,0x65,(byte)0xB8,(byte)0x91,
+			(byte)0xC2,(byte)0xA2,0x11,0x16,0x7A,(byte)0xBB,(byte)0x8C,0x5E,
+			0x07,(byte)0x9E,0x09,(byte)0xE2,(byte)0xC8,(byte)0xA8,0x33,
+			(byte)0x9C
+	};
+	
+	private ServerHelloRandom() {
 	}
 	
+	public static byte[] getHelloRetryRequestRandom() {
+		return RANDOM.clone();
+	}
+
+	public static boolean isHelloRetryRequest(byte[] random) {
+		if (random.length != 32 || random[0] != (byte)0xCF) {
+			return false;
+		}
+		for (int i=1; i<32; ++i) {
+			if (RANDOM[i] != random[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public static boolean isHelloRetryRequest(IServerHello serverHello) {
+		return isHelloRetryRequest(serverHello.getRandom());
+	}
 }

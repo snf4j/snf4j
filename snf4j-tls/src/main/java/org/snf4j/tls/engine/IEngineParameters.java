@@ -23,33 +23,28 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.security.MessageDigest;
+import java.security.SecureRandom;
 
-import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.SignatureScheme;
 
-public interface ITranscriptHash {
+public interface IEngineParameters {
 	
-	void update(HandshakeType type, byte[] message);
+	CipherSuite[] getCipherSuites();
 
-	void update(HandshakeType type, ByteBuffer[] message);
-	
-	void updateHelloRetryRequest(byte[] message);
+	NamedGroup[] getNamedGroups();
 
-	void updateHelloRetryRequest(ByteBuffer[] message);
-	
-	byte[] getHash(HandshakeType type);
-	
-	byte[] getHash(HandshakeType type, boolean client);
+	SignatureScheme[] getSignatureSchemes();
 
-	byte[] getHash(HandshakeType type, byte[] replacement);
+	boolean isCompatibilityMode();
 
-	String getAlgorithm();
-	
-	MessageDigest getHashFunction();
-	
-	int getHashLength();
+	SecureRandom getSecureRandom();
+
+	String getServerName();
+
+	int getNumberOfOfferedSharedKeys();
 
 }

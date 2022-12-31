@@ -38,6 +38,20 @@ import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionDecoder implements IExtensionDecoder {
 
+	public final static IExtensionDecoder DEFAULT;
+	
+	static {
+		ExtensionDecoder decoder = new ExtensionDecoder();
+		
+		decoder.addParser(ServerNameExtension.getParser());
+		decoder.addParser(SupportedVersionsExtension.getParser());
+		decoder.addParser(SupportedGroupsExtension.getParser());
+		decoder.addParser(KeyShareExtension.getParser());
+		decoder.addParser(SignatureAlgorithmsExtension.getParser());
+		decoder.addParser(SignatureAlgorithmsCertExtension.getParser());
+		DEFAULT = decoder;
+	}
+	
 	private final Map<ExtensionType,IExtensionParser> parsers = new HashMap<>();
 	
 	protected ExtensionType getType(int type) {
