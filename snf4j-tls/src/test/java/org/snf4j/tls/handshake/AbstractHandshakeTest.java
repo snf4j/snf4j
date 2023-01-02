@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,9 @@
 package org.snf4j.tls.handshake;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.BufferOverflowException;
@@ -59,6 +61,37 @@ public class AbstractHandshakeTest extends HandshakeTest {
 		e = new Handshake(HandshakeType.SERVER_HELLO, new byte[0x10102]);
 		e.getBytes(buffer);
 		assertArrayEquals(bytes(2,1,1,2,0,0), buffer(0,6));
+	}
+	
+	@Test
+	public void testPrepare() {
+		Handshake e = new Handshake(HandshakeType.CLIENT_HELLO, bytes(0,5,0,0,2,97,98));
+		
+		assertFalse(e.isPrepared());
+		e.getBytes(buffer);
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,98), buffer());
+		e.data[6] = 99;
+		buffer.clear();
+		e.getBytes(buffer);
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,99), buffer());
+		
+		byte[] prepared = e.prepare();
+		
+		assertTrue(e.isPrepared());
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,99), prepared);
+		buffer.clear();
+		e.getBytes(buffer);
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,99), buffer());
+		e.data[6] = 98;
+		buffer.clear();
+		e.getBytes(buffer);
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,99), buffer());
+		buffer.clear();
+		
+		prepared = e.prepare();
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,98), prepared);
+		e.getBytes(buffer);
+		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,98), buffer());
 	}
 	
 	class Handshake extends AbstractHandshake {

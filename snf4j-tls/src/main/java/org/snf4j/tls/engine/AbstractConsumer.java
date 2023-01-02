@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,6 @@ import java.nio.ByteBuffer;
 
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.handshake.UnknownHandshake;
 import org.snf4j.tls.record.RecordType;
 
 abstract public class AbstractConsumer implements IHandshakeConsumer {
@@ -42,21 +41,14 @@ abstract public class AbstractConsumer implements IHandshakeConsumer {
 		state.getTranscriptHash().updateHelloRetryRequest(message);
 	}
 	
-	static byte[] produce0(EngineState state, IHandshake handshake, RecordType recordType) {
-		byte[] message = new byte[handshake.getLength()];
-		
-		ByteBuffer buffer = ByteBuffer.wrap(message);
-		handshake.getBytes(buffer);
-		state.produce(new ProducedHandshake(new UnknownHandshake(handshake.getType(), message), recordType));
-		return message;
-	}
-	
 	static void produce(EngineState state, IHandshake handshake, RecordType recordType) {
-		state.getTranscriptHash().update(handshake.getType(), produce0(state, handshake, recordType));
+		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
+		state.produce(new ProducedHandshake(handshake, recordType));
 	}
 	
 	static void produceHRR(EngineState state, IHandshake handshake, RecordType recordType) {
-		state.getTranscriptHash().updateHelloRetryRequest(produce0(state, handshake, recordType));
+		state.getTranscriptHash().updateHelloRetryRequest(handshake.prepare());
+		state.produce(new ProducedHandshake(handshake, recordType));
 	}
 
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@ public final class ExtensionsUtil {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <T extends IExtension> T findExtension(IHandshake handshake, ExtensionType type) {
+	public static <T extends IExtension> T find(IHandshake handshake, ExtensionType type) {
 		int value = type.value();
 		
 		for (IExtension e: handshake.getExtensioins()) {

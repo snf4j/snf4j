@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ public class IntConstant extends Constant {
         return false;
     } 
 	
-	public static <T extends IntConstant> T firstMatch(T[] primary, T[] secondary) {
+	public static <T extends IntConstant> T findMatch(T[] primary, T[] secondary) {
 		for (T p: primary) {
 			int pValue = p.value();
 			
@@ -66,7 +66,7 @@ public class IntConstant extends Constant {
 		return null;
 	}
 	
-	public static <T extends IntConstant> T findFirst(T[] constants, T constant) {
+	public static <T extends IntConstant> T find(T[] constants, T constant) {
 		int value = constant.value();
 		
 		for (T c: constants) {

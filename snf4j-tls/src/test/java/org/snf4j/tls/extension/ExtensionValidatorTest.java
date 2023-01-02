@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package org.snf4j.tls.extension;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -95,13 +96,24 @@ public class ExtensionValidatorTest {
 				bits[htype.value()] = true;
 			}
 			for (int b=0; b<bits.length; ++b) {
-				assertEquals(bits[b], v.isAllowed(type, HandshakeType.of(b)));
-				assertFalse(v.isAllowed(ExtensionType.of(-1), HandshakeType.of(b)));
-				assertFalse(v.isAllowed(ExtensionType.of(52), HandshakeType.of(b)));
+				HandshakeType htype = HandshakeType.of(b);
+				String msg = type.name() + " in " + htype.name();
 				
+				if (b == 6) {
+					assertFalse(htype.isKnown());
+					assertEquals(msg, bits[b], v.isAllowedInHelloRetryRequest(type));
+					assertEquals(msg, bits[b], v.isAllowed(type, htype));
+					assertTrue(v.isAllowedInHelloRetryRequest(ExtensionType.of(-1)));
+					assertTrue(v.isAllowedInHelloRetryRequest(ExtensionType.of(52)));
+				}
+				else {
+					assertEquals(msg, bits[b] || !htype.isKnown(), v.isAllowed(type, htype));
+					assertTrue(v.isAllowed(ExtensionType.of(-1), htype));
+					assertTrue(v.isAllowed(ExtensionType.of(52), htype));
+				}
 			}
-			assertFalse(v.isAllowed(type, HandshakeType.of(-1)));
-			assertFalse(v.isAllowed(type, HandshakeType.of(32)));
+			assertTrue(v.isAllowed(type, HandshakeType.of(-1)));
+			assertTrue(v.isAllowed(type, HandshakeType.of(32)));
 		}
 	}
 }

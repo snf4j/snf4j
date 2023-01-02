@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -101,8 +101,8 @@ public class KeyShareEntry {
 		}
 	}
 	
-	public static KeyShareEntry find(KeyShareEntry[] entries, NamedGroup namedGroup) {
-		int value = namedGroup.value();
+	public static KeyShareEntry find(KeyShareEntry[] entries, NamedGroup group) {
+		int value = group.value();
 		
 		for (KeyShareEntry e: entries) {
 			if (e.namedGroup.value() == value) {
@@ -112,7 +112,7 @@ public class KeyShareEntry {
 		return null;
 	}
 	
-	public static KeyShareEntry firstMatch(NamedGroup[] groups, KeyShareEntry[] entries) {
+	public static KeyShareEntry findMatch(KeyShareEntry[] entries, NamedGroup[] groups) {
 		for (NamedGroup g: groups) {
 			int value = g.value();
 

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,23 +23,73 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
 
+import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
 
-public class ServerHelloConsumer extends AbstractConsumer {
+public class CookieExtension extends KnownExtension implements ICookieExtension {
+	
+	private final static ExtensionType TYPE = ExtensionType.COOKIE;
+	
+	private final byte[] cookie;
+	
+	private final static AbstractExtensionParser PARSER = new AbstractExtensionParser() {
 
-	@Override
-	public HandshakeType getType() {
-		return HandshakeType.SERVER_HELLO;
+		@Override
+		public ExtensionType getType() {
+			return TYPE;
+		}
+
+		@Override
+		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+			if (remaining >= 2) {
+				int len = srcs.getUnsignedShort();
+				
+				remaining -= 2;
+				if (len == remaining) {
+					if (len > 0) {
+						byte[] cookie = new byte[len];
+						
+						srcs.get(cookie);
+						return new CookieExtension(cookie);
+					}
+					else {
+						throw decodeError("Cookie is empty");
+					}
+				}
+			}
+			throw decodeError("Inconsistent length");
+		}
+	};
+	
+	public CookieExtension(byte[] cookie) {
+		super(TYPE);
+		Args.checkMin(cookie, 1, "cookie");
+		this.cookie = cookie;
 	}
 
 	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException {
+	public int getDataLength() {
+		return 2 + cookie.length;
 	}
 
+	@Override
+	public byte[] getCookie() {
+		return cookie;
+	}
+	
+	public static IExtensionParser getParser() {
+		return PARSER;
+	}
+
+	@Override
+	protected void getData(ByteBuffer buffer) {
+		buffer.putShort((short) cookie.length);
+		buffer.put(cookie);
+	}
 }

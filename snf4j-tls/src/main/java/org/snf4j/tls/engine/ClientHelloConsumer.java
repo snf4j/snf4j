@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,12 +25,12 @@
  */
 package org.snf4j.tls.engine;
 
-import static org.snf4j.tls.IntConstant.firstMatch;
-import static org.snf4j.tls.IntConstant.findFirst;
+import static org.snf4j.tls.IntConstant.findMatch;
+import static org.snf4j.tls.IntConstant.find;
 import static org.snf4j.tls.extension.ExtensionType.KEY_SHARE;
 import static org.snf4j.tls.extension.ExtensionType.SUPPORTED_GROUPS;
 import static org.snf4j.tls.extension.ExtensionType.SUPPORTED_VERSIONS;
-import static org.snf4j.tls.extension.ExtensionsUtil.findExtension;
+import static org.snf4j.tls.extension.ExtensionsUtil.find;
 
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
@@ -76,18 +76,18 @@ public class ClientHelloConsumer extends AbstractConsumer {
 	}
 	
 	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] message) throws AlertException {
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException {
 		if (state.getState() != MachineState.SRV_START) {
 			throw new UnexpectedMessageAlertException("Unexpected ClientHello message");
 		}
 		
 		IClientHello clientHello = (IClientHello) handshake;
 		
-		if (clientHello.getLegacyVersion() != 0x0303) {
-			throw new ProtocolVersionAlertException("Legacy version must be 0x0303");
+		if (clientHello.getLegacyVersion() != EngineDefaults.LEGACY_VERSION) {
+			throw new ProtocolVersionAlertException("Invalid legacy version");
 		}
 		
-		ISupportedVersionsExtension versions = findExtension(handshake, SUPPORTED_VERSIONS);
+		ISupportedVersionsExtension versions = find(handshake, SUPPORTED_VERSIONS);
 		if (versions == null) {
 			throw new ProtocolVersionAlertException("No support for TLS 1.2 or prior");
 		}
@@ -102,32 +102,38 @@ public class ClientHelloConsumer extends AbstractConsumer {
 			throw new ProtocolVersionAlertException("No support for TLS 1.3 by peer");
 		}
 		
-		CipherSuite cipherSuite = firstMatch(state.getParameters().getCipherSuites(), clientHello.getCipherSuites());
+		CipherSuite cipherSuite = findMatch(
+				state.getParameters().getCipherSuites(), 
+				clientHello.getCipherSuites());
 		if (cipherSuite == null) {
 			throw new HandshakeFailureAlertException("Failed to negotiate cipher suite");
 		}
 		
-		IKeyShareExtension keyShare = findExtension(handshake, KEY_SHARE);
+		IKeyShareExtension keyShare = find(handshake, KEY_SHARE);
 		if (keyShare == null) {
 			throw new MissingExtensionAlertException("Missing key_share extension in ClientHello");
 		}
 		
-		ISupportedGroupsExtension supportedGroups = findExtension(handshake, SUPPORTED_GROUPS);
+		ISupportedGroupsExtension supportedGroups = find(handshake, SUPPORTED_GROUPS);
 		if (supportedGroups == null) {
 			throw new MissingExtensionAlertException("Missing supported_groups extension in ClientHello");
 		}
 		
-		KeyShareEntry keyShareEntry = KeyShareEntry.firstMatch(state.getParameters().getNamedGroups(), keyShare.getEntries());
+		KeyShareEntry keyShareEntry = KeyShareEntry.findMatch(
+				keyShare.getEntries(), 
+				state.getParameters().getNamedGroups());
 
 		NamedGroup namedGroup = null;
 		if (keyShareEntry != null) {
-			namedGroup = findFirst(supportedGroups.getGroups(), keyShareEntry.getNamedGroup());
+			namedGroup = find(supportedGroups.getGroups(), keyShareEntry.getNamedGroup());
 			if (namedGroup == null) {
 				throw new IllegalParameterAlertException("KeyShareEntry not correspond with supported_groups extension");
 			}
 		}
 		if (namedGroup == null) {
-			namedGroup = firstMatch(state.getParameters().getNamedGroups(), supportedGroups.getGroups());
+			namedGroup = findMatch(
+					state.getParameters().getNamedGroups(), 
+					supportedGroups.getGroups());
 			if (namedGroup == null) {
 				throw new HandshakeFailureAlertException("Failed to negotiate supported group");
 			}
@@ -146,7 +152,7 @@ public class ClientHelloConsumer extends AbstractConsumer {
 				throw new InternalErrorAlertException("Failed to create key schedule", e);
 			}			
 		}
-		updateTranscriptHash(state, handshake.getType(), message);
+		updateTranscriptHash(state, handshake.getType(), data);
 		
 		List<IExtension> extensions = new ArrayList<IExtension>();
 
@@ -156,7 +162,7 @@ public class ClientHelloConsumer extends AbstractConsumer {
 		if (keyShareEntry == null) {
 			extensions.add(new KeyShareExtension(namedGroup));
 			ServerHello helloRetryRequest = new ServerHello(
-					0x0303,
+					EngineDefaults.LEGACY_VERSION,
 					ServerHelloRandom.getHelloRetryRequestRandom(),
 					clientHello.getLegacySessionId(),
 					cipherSuite,
@@ -186,7 +192,7 @@ public class ClientHelloConsumer extends AbstractConsumer {
 		state.getParameters().getSecureRandom().nextBytes(random);
 
 		ServerHello serverHello = new ServerHello(
-				0x0303,
+				EngineDefaults.LEGACY_VERSION,
 				random,
 				clientHello.getLegacySessionId(),
 				cipherSuite,

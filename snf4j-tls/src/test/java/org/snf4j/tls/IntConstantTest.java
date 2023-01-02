@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package org.snf4j.tls;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -73,5 +74,39 @@ public class IntConstantTest {
 		assertFalse(v.equals(new IntConstant("xxx",46)));
 		assertFalse(v.equals(new Integer(45)));
 		assertFalse(v.equals(null));
+	}
+	
+	IntConstant[] constants(int... values) {
+		IntConstant[] constants = new IntConstant[values.length];
+		
+		for (int i=0; i<values.length; ++i) {
+			constants[i] = new IntConstant(values[i]);
+		}
+		return constants;
+	}
+	
+	@Test
+	public void testFindMatch() {
+		assertEquals(1, IntConstant.findMatch(constants(1,2,3), constants(1,2,3)).value());
+		assertEquals(1, IntConstant.findMatch(constants(1,2,3), constants(3,2,1)).value());
+		assertEquals(3, IntConstant.findMatch(constants(3,2,1), constants(3,2,1)).value());
+		assertEquals(3, IntConstant.findMatch(constants(3,2,1), constants(1,2,3)).value());
+		assertEquals(1, IntConstant.findMatch(constants(3,2,1), constants(9,1,5,6)).value());
+		assertEquals(1, IntConstant.findMatch(constants(1), constants(1)).value());
+		
+		assertNull(IntConstant.findMatch(constants(3,2,1), constants(4,5,6)));
+		assertNull(IntConstant.findMatch(constants(3,2,1), constants()));
+		assertNull(IntConstant.findMatch(constants(), constants(1,2,3)));
+		assertNull(IntConstant.findMatch(constants(), constants()));
+	}
+	
+	@Test
+	public void testFind() {
+		assertEquals(1, IntConstant.find(constants(1,2,3), new IntConstant(1)).value());
+		assertEquals(2, IntConstant.find(constants(1,2,3), new IntConstant(2)).value());
+		assertEquals(3, IntConstant.find(constants(1,2,3), new IntConstant(3)).value());
+
+		assertNull(IntConstant.find(constants(3,2,1), new IntConstant(4)));
+		assertNull(IntConstant.find(constants(), new IntConstant(4)));
 	}
 }

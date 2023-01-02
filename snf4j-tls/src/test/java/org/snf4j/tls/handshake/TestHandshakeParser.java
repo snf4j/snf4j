@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,16 +25,28 @@
  */
 package org.snf4j.tls.handshake;
 
+import java.nio.ByteBuffer;
+import java.util.List;
+
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionDecoder;
 
 public class TestHandshakeParser extends AbstractHandshakeParser {
 
 	private final HandshakeType type;
 	
-	TestHandshakeParser(HandshakeType type) {
+	private final boolean known;
+	
+	public TestHandshakeParser(HandshakeType type) {
 		this.type = type;
+		known = false;
+	}
+
+	public TestHandshakeParser(HandshakeType type, boolean known) {
+		this.type = type;
+		this.known = known;
 	}
 	
 	@Override
@@ -48,6 +60,24 @@ public class TestHandshakeParser extends AbstractHandshakeParser {
 		byte[] data = new byte[remaining];
 		
 		srcs.get(data);
+		if (known) {
+			return new KnownHandshake(type) {
+
+				@Override
+				public int getDataLength() {
+					return 0;
+				}
+
+				@Override
+				public List<IExtension> getExtensioins() {
+					return null;
+				}
+
+				@Override
+				protected void getData(ByteBuffer buffer) {
+				}
+			};
+		}
 		return new UnknownHandshake(type, data);
 	}
 }

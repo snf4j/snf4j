@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,6 @@
 package org.snf4j.tls.engine;
 
 import java.security.SecureRandom;
-
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.SignatureScheme;
@@ -39,9 +38,9 @@ public interface IEngineParameters {
 
 	SignatureScheme[] getSignatureSchemes();
 
-	boolean isCompatibilityMode();
-
 	SecureRandom getSecureRandom();
+
+	boolean isCompatibilityMode();
 
 	String getServerName();
 

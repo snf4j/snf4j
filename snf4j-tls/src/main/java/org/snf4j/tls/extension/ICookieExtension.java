@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,33 +23,9 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.cipher;
+package org.snf4j.tls.extension;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+public interface ICookieExtension {
 
-import java.security.MessageDigest;
-
-import org.junit.Test;
-
-public class HashInfoTest {
-	
-	@Test
-	public void testSha256() throws Exception {
-		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashSpec.SHA256.getEmptyHash());
-		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashSpec.SHA256.getEmptyHash());
-		assertEquals("SHA-256", HashSpec.SHA256.getAlgorithm());
-		assertEquals(32, HashSpec.SHA256.getHashLength());
-		assertNotSame(HashSpec.SHA256.getEmptyHash(), HashSpec.SHA256.getEmptyHash());
-	}
-
-	@Test
-	public void testSha348() throws Exception {
-		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashSpec.SHA384.getEmptyHash());
-		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashSpec.SHA384.getEmptyHash());
-		assertEquals("SHA-348", HashSpec.SHA384.getAlgorithm());
-		assertEquals(48, HashSpec.SHA384.getHashLength());
-		assertNotSame(HashSpec.SHA384.getEmptyHash(), HashSpec.SHA384.getEmptyHash());
-	}
+	byte[] getCookie();
 }

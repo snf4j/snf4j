@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,8 @@
  */
 package org.snf4j.tls.extension;
 
+import java.util.Arrays;
+
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionValidator implements IExtensionValidator {
@@ -47,6 +49,8 @@ public class ExtensionValidator implements IExtensionValidator {
 	
 	private final static int[] MAPPING = new int[ExtensionType.KEY_SHARE.value() + 1];
 	
+	private final static boolean[] KNOWN_HANDSHAKES = new boolean[32];
+	
 	private static void addMapping(ExtensionType extensionType, int... handshakeTypes) {
 		int bits = 0;
 		
@@ -54,9 +58,14 @@ public class ExtensionValidator implements IExtensionValidator {
 			bits |= 1 << handshakeType;
 		}
 		MAPPING[extensionType.value()] = bits;
+		for (int i=0; i<KNOWN_HANDSHAKES.length; ++i) {
+			KNOWN_HANDSHAKES[i] = HandshakeType.of(i).isKnown();
+		}
+		KNOWN_HANDSHAKES[HRR] = true;
 	}
 	
 	static {
+		Arrays.fill(MAPPING, -1);
 		addMapping(ExtensionType.SERVER_NAME, CH, EE );
 		addMapping(ExtensionType.MAX_FRAGMENT_LENGTH, CH, EE );
 		addMapping(ExtensionType.STATUS_REQUEST, CH, CR, CT );
@@ -85,11 +94,14 @@ public class ExtensionValidator implements IExtensionValidator {
 		int type = extensionType.value();
 		
 		if (type >=0 && type < MAPPING.length) {
-			if (handshakeValue >= 0 && handshakeValue < 31) {
+			if (handshakeValue >= 0 && handshakeValue < 31 && KNOWN_HANDSHAKES[handshakeValue]) {
 				return (MAPPING[type] & (1 << handshakeValue)) != 0; 
 			}
+			else {
+				return true;
+			}
 		}
-		return false;
+		return true;
 	}
 	
 	@Override

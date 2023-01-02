@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,9 @@ package org.snf4j.tls.alert;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
+
+import java.lang.reflect.Field;
 
 import org.junit.Test;
 
@@ -58,28 +61,46 @@ public class AlertExceptionTest {
 		assertSame(cause, e.getCause());
 	}
 	
-	@Test
-	public void testImplementations() {
-		Exception cause = new Exception();
-		AlertException e = new InternalErrorAlertException("Text1");
-		assertEquals("Text1", e.getMessage());
+	static void assertAlert(AlertException e, String msg, Throwable cause) throws Exception {
 		assertSame(AlertLevel.FATAL, e.getLevel());
-		assertSame(AlertDescription.INTERNAL_ERROR, e.getDescription());
+		assertEquals(msg, e.getMessage());
+		assertEquals(cause, e.getCause());
 		
-		e = new InternalErrorAlertException("Text1",cause);
-		assertEquals("Text1", e.getMessage());
-		assertSame(AlertLevel.FATAL, e.getLevel());
-		assertSame(AlertDescription.INTERNAL_ERROR, e.getDescription());
-		assertSame(cause, e.getCause());
-
-		e = new DecodeErrorAlertException("Text1");
-		assertEquals("Text1", e.getMessage());
-		assertSame(AlertLevel.FATAL, e.getLevel());
-		assertSame(AlertDescription.DECODE_ERROR, e.getDescription());
-
-		e = new UnsupportedExtensionAlertException("Text1");
-		assertEquals("Text1", e.getMessage());
-		assertSame(AlertLevel.FATAL, e.getLevel());
-		assertSame(AlertDescription.UNSUPPORTED_EXTENSION, e.getDescription());
+		String name = e.getClass().getSimpleName().toUpperCase();
+		
+		for (Field field: AlertDescription.class.getDeclaredFields()) {
+			String fname = field.getName().replace("_", "");
+			
+			if (name.startsWith(fname + "ALERT")) {
+				assertSame(field.get(null), e.getDescription());
+				return;
+			}
+		}
+		fail();
+	}
+	
+	@Test
+	public void testImplementations() throws Exception {
+		Exception cause = new Exception();
+		AlertException[] alerts = new AlertException[] {
+				new InternalErrorAlertException("Text1",cause)
+		};
+		for (AlertException alert: alerts) {
+			assertAlert(alert, "Text1", cause);
+		}
+		
+		alerts = new AlertException[] {
+				new InternalErrorAlertException("Text1"),
+				new DecodeErrorAlertException("Text1"),
+				new UnsupportedExtensionAlertException("Text1"),
+				new HandshakeFailureAlertException("Text1"),
+				new IllegalParameterAlertException("Text1"),
+				new MissingExtensionAlertException("Text1"),
+				new ProtocolVersionAlertException("Text1"),
+				new UnexpectedMessageAlertException("Text1")
+		};
+		for (AlertException alert: alerts) {
+			assertAlert(alert, "Text1", null);
+		}
 	}
 }

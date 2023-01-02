@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,12 +29,13 @@ import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.IllegalParameterAlertException;
 import org.snf4j.tls.alert.InternalErrorAlertException;
 import org.snf4j.tls.alert.UnexpectedMessageAlertException;
-import org.snf4j.tls.alert.UnsupportedExtensionAlertException;
 import org.snf4j.tls.extension.ExtensionValidator;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionValidator;
@@ -52,9 +53,12 @@ import org.snf4j.tls.handshake.HandshakeDecoder;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.IHandshakeDecoder;
+import org.snf4j.tls.handshake.IServerHello;
 import org.snf4j.tls.record.RecordType;
 
 public class HandshakeEngine {
+	
+	private final static Random RANDOM = new Random();
 	
 	private final static IHandshakeConsumer[] CONSUMERS;
 	
@@ -100,12 +104,13 @@ public class HandshakeEngine {
 		else {
 			List<ByteBuffer> list = new ArrayList<ByteBuffer>(data.length);
 			int left = remaining;
+			int i = srcs.arrayIndex();
 			
-			for (int i = srcs.arrayIndex(); i<data.length; ++i) {
-				ByteBuffer dup = data[i].duplicate();
+			for (;;) {
+				ByteBuffer dup = data[i++].duplicate();
 				
 				list.add(dup);
-				if (dup.remaining() > left) {
+				if (dup.remaining() < left) {
 					left -= dup.remaining();
 				}
 				else {
@@ -124,23 +129,41 @@ public class HandshakeEngine {
 			throw new UnexpectedMessageAlertException("Unknown handshake type: " + value);
 		}
 		
-		IHandshakeConsumer consumer = value >= 0 && value < CONSUMERS.length ? CONSUMERS[value] : null;
+		IHandshakeConsumer consumer = value < CONSUMERS.length ? CONSUMERS[value] : null;
 		
 		if (consumer != null) {
 			List<IExtension> extensions = handshake.getExtensioins();
-			
-			if (extensions != null) {
-				for (IExtension extension: extensions) {
-					if (!extensionValidator.isAllowed(extension.getType(), type)) {
-						throw new UnsupportedExtensionAlertException(
-								"Extension " + 
-								extension.getType().name() + 
-								" not allowed in " + 
-								type.name());
-					}
+			boolean isHRR = false;
+
+			if (value == HandshakeType.SERVER_HELLO.value()) {
+				if (ServerHelloRandom.isHelloRetryRequest((IServerHello)handshake)) {
+					isHRR = true;
 				}
 			}
-			consumer.consume(state, handshake, data);
+			if (extensions != null) {
+				if (isHRR) {
+					for (IExtension extension: extensions) {
+						if (!extensionValidator.isAllowedInHelloRetryRequest(extension.getType())) {
+							throw new IllegalParameterAlertException(
+									"Extension " + 
+									extension.getType().name() + 
+									" not allowed in hello_retry_request");
+						}
+					}					
+				}
+				else {
+					for (IExtension extension: extensions) {
+						if (!extensionValidator.isAllowed(extension.getType(), type)) {
+							throw new IllegalParameterAlertException(
+									"Extension " + 
+									extension.getType().name() + 
+									" not allowed in " + 
+									type.name());
+						}
+					}					
+				}
+			}
+			consumer.consume(state, handshake, data, isHRR);
 		}
 		else {
 			throw new UnexpectedMessageAlertException("Unexpected handshake type: " + value);
@@ -171,6 +194,7 @@ public class HandshakeEngine {
 		params.getSecureRandom().nextBytes(random);
 		if (params.isCompatibilityMode()) {
 			legacySessionId = new byte[32];
+			RANDOM.nextBytes(legacySessionId);
 		}
 		else {
 			legacySessionId = new byte[0];
@@ -205,7 +229,7 @@ public class HandshakeEngine {
 		}
 		
 		ClientHello clientHello = new ClientHello(
-				0x0303, 
+				EngineDefaults.LEGACY_VERSION, 
 				random, 
 				legacySessionId, 
 				state.getParameters().getCipherSuites(), 

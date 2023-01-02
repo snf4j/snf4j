@@ -23,28 +23,37 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.cipher;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+
+import java.security.MessageDigest;
 
 import org.junit.Test;
+import org.snf4j.tls.crypto.Hash;
 
-public class UnknownHandshakeTest extends HandshakeTest {
+public class HashSpecTest {
 	
 	@Test
-	public void testAll() {
-		UnknownHandshake h = new UnknownHandshake(HandshakeType.CERTIFICATE, bytes(0,1,2));
-		
-		assertEquals(3, h.getDataLength());
-		assertEquals(7, h.getLength());
-		h.getBytes(buffer);
-		assertArrayEquals(bytes(11,0,0,3,0,1,2), buffer());
-		assertFalse(h.isKnown());
-		assertArrayEquals(bytes(0,1,2), h.getData());
-		assertNull(h.getExtensioins());
+	public void testSha256() throws Exception {
+		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashSpec.SHA256.getEmptyHash());
+		assertArrayEquals(MessageDigest.getInstance("SHA-256").digest(), HashSpec.SHA256.getEmptyHash());
+		assertEquals("SHA-256", HashSpec.SHA256.getAlgorithm());
+		assertEquals(32, HashSpec.SHA256.getHashLength());
+		assertSame(Hash.SHA256, HashSpec.SHA256.getHash());
+		assertNotSame(HashSpec.SHA256.getEmptyHash(), HashSpec.SHA256.getEmptyHash());
 	}
 
+	@Test
+	public void testSha348() throws Exception {
+		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashSpec.SHA384.getEmptyHash());
+		assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(), HashSpec.SHA384.getEmptyHash());
+		assertEquals("SHA-348", HashSpec.SHA384.getAlgorithm());
+		assertEquals(48, HashSpec.SHA384.getHashLength());
+		assertSame(Hash.SHA384, HashSpec.SHA384.getHash());
+		assertNotSame(HashSpec.SHA384.getEmptyHash(), HashSpec.SHA384.getEmptyHash());
+	}
 }

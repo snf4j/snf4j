@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,8 @@ import org.snf4j.tls.extension.SignatureScheme;
 
 class EngineDefaults {
 
+	private EngineDefaults() {}
+	
 	private final static CipherSuite[] DEFAULT_CIPHER_SUITES = new CipherSuite[] {
 			CipherSuite.TLS_AES_256_GCM_SHA384,
 			CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
@@ -78,6 +80,8 @@ class EngineDefaults {
 
 	private final static SignatureScheme[] IMPLEMENTED_SIGNATURE_SCHEMES = implemented(DEFAULT_SIGNATURE_SCHEMES);
 
+	public final static int LEGACY_VERSION = 0x0303;
+	
 	private static CipherSuite[] implemented(CipherSuite[] suites) {
 		CipherSuite[] implemented = new CipherSuite[suites.length];
 		int i=0;

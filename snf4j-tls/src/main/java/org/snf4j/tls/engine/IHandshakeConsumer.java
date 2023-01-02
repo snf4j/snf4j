@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,5 +35,5 @@ public interface IHandshakeConsumer {
 	
 	HandshakeType getType();
 	
-	void consume(EngineState state, IHandshake handshake, ByteBuffer[] message) throws AlertException;
+	void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException;
 }

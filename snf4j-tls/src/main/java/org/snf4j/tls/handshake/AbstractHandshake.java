@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,8 @@ public abstract class AbstractHandshake implements IHandshake {
 
 	private final HandshakeType type;
 	
+	private byte[] prepared;
+	
 	protected AbstractHandshake(HandshakeType type) {
 		this.type = type;
 	}
@@ -48,16 +50,36 @@ public abstract class AbstractHandshake implements IHandshake {
 	
 	@Override
 	public void getBytes(ByteBuffer buffer) {
-		int len = getDataLength();
-		
-		if (buffer.remaining() >= len + 4) {
-			buffer.put((byte) getType().value());
-			buffer.put((byte) (len >> 16));
-			buffer.putShort((short) (len & 0xffff));
-			getData(buffer);
-			return;
+		if (prepared != null) {
+			buffer.put(prepared);
 		}
-		throw new BufferOverflowException();
+		else {
+			int len = getDataLength();
+
+			if (buffer.remaining() >= len + 4) {
+				buffer.put((byte) getType().value());
+				buffer.put((byte) (len >> 16));
+				buffer.putShort((short) (len & 0xffff));
+				getData(buffer);
+				return;
+			}
+			throw new BufferOverflowException();
+		}
+	}
+
+	@Override
+	public boolean isPrepared() {
+		return prepared != null;
+	}
+	
+	@Override
+	public byte[] prepare() {
+		byte[] prepared = new byte[getLength()];
+		
+		this.prepared = null;
+		getBytes(ByteBuffer.wrap(prepared));
+		this.prepared = prepared;
+		return prepared;
 	}
 
 	protected abstract void getData(ByteBuffer buffer);

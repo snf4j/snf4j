@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -87,6 +87,15 @@ public final class Args {
 	}
 	
 	public static void checkMin(Object[] array, int min, String name) {
+		if (array == null) {
+			throw new IllegalArgumentException(name + " is null");
+		}
+		if (array.length < min) {
+			throw new IllegalArgumentException(name + "'s length is less than " + min);
+		}
+	}
+
+	public static void checkMin(byte[] array, int min, String name) {
 		if (array == null) {
 			throw new IllegalArgumentException(name + " is null");
 		}

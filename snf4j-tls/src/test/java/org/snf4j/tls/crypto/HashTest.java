@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,28 +23,33 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.crypto;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
+
+import java.security.MessageDigest;
+
+import javax.crypto.Mac;
 
 import org.junit.Test;
 
-public class UnknownHandshakeTest extends HandshakeTest {
-	
+public class HashTest {
+
 	@Test
-	public void testAll() {
-		UnknownHandshake h = new UnknownHandshake(HandshakeType.CERTIFICATE, bytes(0,1,2));
+	public void testSha256() throws Exception {
+		Mac mac = Hash.SHA256.createMac();
+		MessageDigest md = Hash.SHA256.createMessageDigest();
 		
-		assertEquals(3, h.getDataLength());
-		assertEquals(7, h.getLength());
-		h.getBytes(buffer);
-		assertArrayEquals(bytes(11,0,0,3,0,1,2), buffer());
-		assertFalse(h.isKnown());
-		assertArrayEquals(bytes(0,1,2), h.getData());
-		assertNull(h.getExtensioins());
+		assertEquals("HmacSHA256", mac.getAlgorithm());
+		assertEquals("SHA-256", md.getAlgorithm());
 	}
 
+	@Test
+	public void testSha384() throws Exception {
+		Mac mac = Hash.SHA384.createMac();
+		MessageDigest md = Hash.SHA384.createMessageDigest();
+		
+		assertEquals("HmacSHA384", mac.getAlgorithm());
+		assertEquals("SHA-384", md.getAlgorithm());
+	}
 }
