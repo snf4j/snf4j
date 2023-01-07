@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,41 +28,14 @@ package org.snf4j.tls.crypto;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
-import java.security.cert.CertificateFactory;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.List;
-
-import java.security.cert.X509Certificate;
-
-import org.snf4j.core.util.PemUtil;
-import org.snf4j.core.util.PemUtil.Label;
 import org.snf4j.tls.CommonTest;
 
 public class SignatureTest extends CommonTest {
-
-	X509Certificate cert(String name) throws Exception {
-		InputStream in = ECDSASignatureTest.class.getResourceAsStream("/certs/" + name + ".crt");
-		List<byte[]> certs = PemUtil.read(Label.CERTIFICATE, in);
-		in.close();
-		CertificateFactory factory = CertificateFactory.getInstance("X.509");
-		return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certs.get(0)));
-	}
-
-	PrivateKey key(String algorithm, String name) throws Exception {
-		InputStream in = ECDSASignatureTest.class.getResourceAsStream("/certs/" + name + ".key");
-		List<byte[]> keys = PemUtil.read(Label.PRIVATE_KEY, in);
-		in.close();
-		PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keys.get(0));
-		KeyFactory factory = KeyFactory.getInstance(algorithm);
-	    return factory.generatePrivate(spec);
-	}
 	
 	PrivateKey ecKey(String name) throws Exception {
 		return key("EC", name);

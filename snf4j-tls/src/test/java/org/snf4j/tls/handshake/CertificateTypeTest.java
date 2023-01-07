@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,31 +23,27 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.handshake;
 
-import java.security.SecureRandom;
-import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.extension.NamedGroup;
-import org.snf4j.tls.extension.SignatureScheme;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
-public interface IEngineParameters {
-	
-	CipherSuite[] getCipherSuites();
+import org.junit.Test;
 
-	NamedGroup[] getNamedGroups();
+public class CertificateTypeTest {
 
-	SignatureScheme[] getSignatureSchemes();
-
-	SecureRandom getSecureRandom();
-
-	boolean isCompatibilityMode();
-
-	String getServerName();
-
-	boolean isServerNameRequired();
-	
-	int getNumberOfOfferedSharedKeys();
-	
-	DelegatedTaskMode getDelegatedTaskMode();
-	
+	@Test
+	public void testAll() {
+		assertEquals(0, CertificateType.X509.value());
+		assertEquals(2, CertificateType.RAW_PUBLIC_KEY.value());
+		assertTrue(CertificateType.X509.isKnown());
+		assertTrue(CertificateType.RAW_PUBLIC_KEY.isKnown());
+		
+		assertSame(CertificateType.X509, CertificateType.of(0));
+		assertSame(CertificateType.RAW_PUBLIC_KEY, CertificateType.of(2));
+		assertFalse(CertificateType.of(1).isKnown());
+		assertFalse(CertificateType.of(255).isKnown());
+	}
 }

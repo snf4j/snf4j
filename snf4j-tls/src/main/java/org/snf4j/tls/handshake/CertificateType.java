@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,31 +23,34 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.handshake;
 
-import java.security.SecureRandom;
-import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.extension.NamedGroup;
-import org.snf4j.tls.extension.SignatureScheme;
+import org.snf4j.tls.IntConstant;
 
-public interface IEngineParameters {
+public class CertificateType extends IntConstant {
 	
-	CipherSuite[] getCipherSuites();
-
-	NamedGroup[] getNamedGroups();
-
-	SignatureScheme[] getSignatureSchemes();
-
-	SecureRandom getSecureRandom();
-
-	boolean isCompatibilityMode();
-
-	String getServerName();
-
-	boolean isServerNameRequired();
+	public static final CertificateType X509 = new CertificateType("X509",0);
 	
-	int getNumberOfOfferedSharedKeys();
+	public static final CertificateType RAW_PUBLIC_KEY = new CertificateType("RawPublicKey",2);
 	
-	DelegatedTaskMode getDelegatedTaskMode();
-	
+	protected CertificateType(String name, int value) {
+		super(name, value);
+	}
+
+	protected CertificateType(int value) {
+		super(value);
+	}
+
+	public static CertificateType of(int value) {
+		switch (value) {
+		case 0:
+			return X509;
+			
+		case 2:
+			return RAW_PUBLIC_KEY;
+			
+		default:
+			return new CertificateType(value);
+		}
+	}
 }

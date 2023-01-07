@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,31 +23,13 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.alert;
 
-import java.security.SecureRandom;
-import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.extension.NamedGroup;
-import org.snf4j.tls.extension.SignatureScheme;
+public class UnrecognizedNameAlertException extends AlertException {
 
-public interface IEngineParameters {
-	
-	CipherSuite[] getCipherSuites();
+	private static final long serialVersionUID = 1L;
 
-	NamedGroup[] getNamedGroups();
-
-	SignatureScheme[] getSignatureSchemes();
-
-	SecureRandom getSecureRandom();
-
-	boolean isCompatibilityMode();
-
-	String getServerName();
-
-	boolean isServerNameRequired();
-	
-	int getNumberOfOfferedSharedKeys();
-	
-	DelegatedTaskMode getDelegatedTaskMode();
-	
+	public UnrecognizedNameAlertException(String message) {
+		super(message, AlertDescription.UNRECOGNIZED_NAME);
+	}
 }

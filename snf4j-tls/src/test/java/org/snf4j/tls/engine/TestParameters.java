@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -56,6 +56,10 @@ public class TestParameters implements IEngineParameters {
 	
 	String serverName;
 
+	boolean serverNameRequired;
+
+	DelegatedTaskMode delegatedTaskMode = DelegatedTaskMode.ALL;
+	
 	@Override
 	public CipherSuite[] getCipherSuites() {
 		return cipherSuites;
@@ -89,6 +93,16 @@ public class TestParameters implements IEngineParameters {
 	@Override
 	public int getNumberOfOfferedSharedKeys() {
 		return numberOfOfferedSharedKeys;
+	}
+
+	@Override
+	public boolean isServerNameRequired() {
+		return serverNameRequired;
+	}
+
+	@Override
+	public DelegatedTaskMode getDelegatedTaskMode() {
+		return delegatedTaskMode;
 	}
 
 }

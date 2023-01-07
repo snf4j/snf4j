@@ -78,13 +78,13 @@ public class HandshakeEngine {
 	
 	private final EngineState state;
 	
-	public HandshakeEngine(boolean clientMode, IEngineParameters parameters) {
-		this(clientMode, parameters, HandshakeDecoder.DEFAULT);
+	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler) {
+		this(clientMode, parameters, handler, HandshakeDecoder.DEFAULT);
 	}
 
-	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IHandshakeDecoder decoder) {
+	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler, IHandshakeDecoder decoder) {
 		this.decoder = decoder;
-		state = new EngineState(clientMode ? MachineState.CLI_START : MachineState.SRV_START, parameters);
+		state = new EngineState(clientMode ? MachineState.CLI_START : MachineState.SRV_START, parameters, handler);
 		extensionValidator = ExtensionValidator.DEFAULT;
 	}
 	
@@ -170,8 +170,12 @@ public class HandshakeEngine {
 		}
 	}
 	
-	public ProducedHandshake[] produce() {
+	public ProducedHandshake[] produce() throws AlertException {
 		return state.getProduced();
+	}
+	
+	public Runnable getDelegatedTask() {
+		return state.getDelegatedTask();
 	}
 	
 	public boolean isStarted() {
@@ -221,7 +225,7 @@ public class HandshakeEngine {
 				KeyPair pair = group.spec().getKeyExchange().generateKeyPair();
 				
 				entries[i] = new KeyShareEntry(group, pair.getPublic());
-				state.add(group, pair.getPrivate());
+				state.storePrivateKey(group, pair.getPrivate());
 			}
 			extensions.add(new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries));
 		} catch (Exception e) {

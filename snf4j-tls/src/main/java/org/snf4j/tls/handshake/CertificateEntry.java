@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,31 +23,41 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.handshake;
 
-import java.security.SecureRandom;
-import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.extension.NamedGroup;
-import org.snf4j.tls.extension.SignatureScheme;
+import java.security.PublicKey;
+import java.security.cert.X509Certificate;
 
-public interface IEngineParameters {
+public class CertificateEntry {
 	
-	CipherSuite[] getCipherSuites();
-
-	NamedGroup[] getNamedGroups();
-
-	SignatureScheme[] getSignatureSchemes();
-
-	SecureRandom getSecureRandom();
-
-	boolean isCompatibilityMode();
-
-	String getServerName();
-
-	boolean isServerNameRequired();
+	private final CertificateType type;
 	
-	int getNumberOfOfferedSharedKeys();
+	private final X509Certificate certificate;
 	
-	DelegatedTaskMode getDelegatedTaskMode();
+	private final PublicKey key;
 	
+	CertificateEntry(X509Certificate certificate) {
+		type = CertificateType.X509;
+		this.certificate = certificate;
+		key = null;
+	}
+	
+	CertificateEntry(PublicKey key) {
+		type = CertificateType.RAW_PUBLIC_KEY;
+		this.key = key;
+		certificate = null;
+	}
+
+	public CertificateType getType() {
+		return type;
+	}
+
+	public X509Certificate getCertificate() {
+		return certificate;
+	}
+
+	public PublicKey getKey() {
+		return key;
+	}
+
 }

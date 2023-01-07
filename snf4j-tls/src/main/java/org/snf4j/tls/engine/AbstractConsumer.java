@@ -45,6 +45,11 @@ abstract public class AbstractConsumer implements IHandshakeConsumer {
 		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
 		state.produce(new ProducedHandshake(handshake, recordType));
 	}
+
+	static void prepare(EngineState state, IHandshake handshake, RecordType recordType) {
+		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
+		state.prepare(new ProducedHandshake(handshake, recordType));
+	}
 	
 	static void produceHRR(EngineState state, IHandshake handshake, RecordType recordType) {
 		state.getTranscriptHash().updateHelloRetryRequest(handshake.prepare());

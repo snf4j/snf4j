@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,7 +57,7 @@ public class ClientHelloTest extends HandshakeTest {
 	ExtensionDecoder decoder = new ExtensionDecoder();
 	
 	@Override
-	public void before() {
+	public void before() throws Exception {
 		super.before();
 		for (int i=0; i<32; ++i) {
 			random[i] = (byte) i;

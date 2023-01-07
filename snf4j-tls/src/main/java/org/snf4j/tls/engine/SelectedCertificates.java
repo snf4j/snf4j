@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,29 +25,28 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.SecureRandom;
-import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.extension.NamedGroup;
-import org.snf4j.tls.extension.SignatureScheme;
+import java.security.PrivateKey;
 
-public interface IEngineParameters {
+import org.snf4j.tls.handshake.CertificateEntry;
+
+public class SelectedCertificates {
 	
-	CipherSuite[] getCipherSuites();
-
-	NamedGroup[] getNamedGroups();
-
-	SignatureScheme[] getSignatureSchemes();
-
-	SecureRandom getSecureRandom();
-
-	boolean isCompatibilityMode();
-
-	String getServerName();
-
-	boolean isServerNameRequired();
+	private final CertificateEntry[] certificates;
 	
-	int getNumberOfOfferedSharedKeys();
+	private final PrivateKey key;
+
+	public SelectedCertificates(CertificateEntry[] certificates, PrivateKey key) {
+		this.certificates = certificates;
+		this.key = key;
+	}
+
+	public CertificateEntry[] getCertificates() {
+		return certificates;
+	}
+
+	public PrivateKey getKey() {
+		return key;
+	}
 	
-	DelegatedTaskMode getDelegatedTaskMode();
 	
 }

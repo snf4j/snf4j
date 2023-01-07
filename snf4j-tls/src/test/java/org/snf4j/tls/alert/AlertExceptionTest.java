@@ -97,7 +97,8 @@ public class AlertExceptionTest {
 				new IllegalParameterAlertException("Text1"),
 				new MissingExtensionAlertException("Text1"),
 				new ProtocolVersionAlertException("Text1"),
-				new UnexpectedMessageAlertException("Text1")
+				new UnexpectedMessageAlertException("Text1"),
+				new UnrecognizedNameAlertException("Text1")
 		};
 		for (AlertException alert: alerts) {
 			assertAlert(alert, "Text1", null);

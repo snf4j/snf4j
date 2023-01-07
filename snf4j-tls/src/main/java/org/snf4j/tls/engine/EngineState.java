@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,13 @@ package org.snf4j.tls.engine;
 
 import java.security.PrivateKey;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.alert.InternalErrorAlertException;
+import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.extension.NamedGroup;
@@ -38,7 +41,11 @@ import org.snf4j.tls.handshake.ClientHello;
 
 public class EngineState {
 	
+	private final static ProducedHandshake[] NONE_PRODUCED = new ProducedHandshake[0];
+	
 	private final IEngineParameters parameters;
+	
+	private final IEngineHandler handler;
 	
 	private MachineState state;
 	
@@ -47,20 +54,39 @@ public class EngineState {
 	private KeySchedule keySchedule;
 	
 	private List<ProducedHandshake> produced = new ArrayList<ProducedHandshake>();
+
+	private List<ProducedHandshake> prepared = new ArrayList<ProducedHandshake>();
+	
+	private Queue<IEngineTask> pendingTasks = new LinkedList<IEngineTask>();
+	
+	private Queue<IEngineTask> runningTasks = new LinkedList<IEngineTask>();
 	
 	private List<KeySharePrivateKey> privateKeys = new ArrayList<KeySharePrivateKey>();
 	
 	private ClientHello clientHello;
 	
-	public EngineState(MachineState state, IEngineParameters parameters) {
+	private CipherSuite cipherSuite;
+	
+	private NamedGroup namedGroup;
+	
+	private String hostName;
+	
+	private int version;
+	
+	public EngineState(MachineState state, IEngineParameters parameters, IEngineHandler handler) {
 		this.state = state;
 		this.parameters = parameters;
+		this.handler = handler;
 	}
 	
 	public IEngineParameters getParameters() {
 		return parameters;
 	}
 	
+	public IEngineHandler getHandler() {
+		return handler;
+	}
+
 	public MachineState getState() {
 		return state;
 	}
@@ -80,9 +106,10 @@ public class EngineState {
 		return keySchedule != null;
 	}
 	
-	public void initialize(KeySchedule keySchedule, ITranscriptHash transcriptHash) {
+	public void initialize(KeySchedule keySchedule, ITranscriptHash transcriptHash, CipherSuite cipherSuite) {
 		this.keySchedule = keySchedule;
 		this.transcriptHash = transcriptHash;
+		this.cipherSuite = cipherSuite;
 	}
 	
 	public ITranscriptHash getTranscriptHash() {
@@ -91,6 +118,34 @@ public class EngineState {
 
 	public KeySchedule getKeySchedule() {
 		return keySchedule;
+	}
+
+	public CipherSuite getCipherSuite() {
+		return cipherSuite;
+	}
+	
+	public NamedGroup getNamedGroup() {
+		return namedGroup;
+	}
+
+	public void setNamedGroup(NamedGroup namedGroup) {
+		this.namedGroup = namedGroup;
+	}
+
+	public String getHostName() {
+		return hostName;
+	}
+
+	public void setHostName(String hostName) {
+		this.hostName = hostName;
+	}
+
+	public int getVersion() {
+		return version;
+	}
+
+	public void setVersion(int version) {
+		this.version = version;
 	}
 
 	public ClientHello getClientHello() {
@@ -104,8 +159,36 @@ public class EngineState {
 	public void produce(ProducedHandshake handshake) {
 		produced.add(handshake);
 	}
+
+	public void prepare(ProducedHandshake handshake) {
+		prepared.add(handshake);
+	}
 	
-	public ProducedHandshake[] getProduced() {
+	public ProducedHandshake[] getProduced() throws AlertException {
+		if (pendingTasks.isEmpty()) {
+			IEngineTask task;
+			
+			while ((task = runningTasks.peek()) != null) {
+				if (task.isDone()) {
+					runningTasks.poll();
+					if (task.isSuccessful()) {
+						task.prepare(this);
+					}
+					else {
+						throw new InternalErrorAlertException(task.name() + " task failed", task.cause());
+					}
+				}
+				else {
+					break;
+				}
+			}
+
+			if (task == null && !prepared.isEmpty()) {
+				produced.addAll(prepared);
+				prepared.clear();
+			}
+		}
+		
 		int size = produced.size();
 		
 		if (size > 0) {
@@ -114,10 +197,25 @@ public class EngineState {
 			produced.clear();
 			return msgs;
 		}
-		return new ProducedHandshake[0];
+		return NONE_PRODUCED;
 	}
 	
-	public void add(NamedGroup group, PrivateKey key) {
+	public Runnable getDelegatedTask() {
+		if (pendingTasks.isEmpty()) {
+			return null;
+		}
+		
+		IEngineTask task = pendingTasks.poll();
+		
+		runningTasks.add(task);
+		return task;
+	}
+	
+	public void addDelegatedTask(IEngineTask task) {
+		pendingTasks.add(task);
+	}
+	
+	public void storePrivateKey(NamedGroup group, PrivateKey key) {
 		privateKeys.add(new KeySharePrivateKey(group, key));
 	}
 }

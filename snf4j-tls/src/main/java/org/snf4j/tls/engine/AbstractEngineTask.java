@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,29 +25,55 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.SecureRandom;
-import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.extension.NamedGroup;
-import org.snf4j.tls.extension.SignatureScheme;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public interface IEngineParameters {
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.InternalErrorAlertException;
+
+abstract public class AbstractEngineTask implements IEngineTask {
+
+	private final AtomicBoolean started = new AtomicBoolean();
 	
-	CipherSuite[] getCipherSuites();
-
-	NamedGroup[] getNamedGroups();
-
-	SignatureScheme[] getSignatureSchemes();
-
-	SecureRandom getSecureRandom();
-
-	boolean isCompatibilityMode();
-
-	String getServerName();
-
-	boolean isServerNameRequired();
+	private volatile Throwable cause;
 	
-	int getNumberOfOfferedSharedKeys();
+	private volatile boolean done;
 	
-	DelegatedTaskMode getDelegatedTaskMode();
+	@Override
+	public void run() {
+		if (!started.compareAndSet(false, true)) {
+			throw new IllegalStateException("Task has already started");
+		}
+		try {
+			execute();
+		} catch (Exception e) {
+			cause = e;
+		}
+		done = true;
+	}
+
+	public void run(EngineState state) throws AlertException {
+		try {
+			execute();
+		} catch (Exception e) {
+			throw new InternalErrorAlertException(name() + " task failed", e);
+		}
+		prepare(state);
+	}
 	
+	@Override
+	public boolean isDone() {
+		return done;
+	}
+
+	@Override
+	public boolean isSuccessful() {
+		return cause == null;
+	}
+	
+	@Override
+	public Throwable cause() {
+		return cause;
+	}
+	
+	abstract void execute() throws Exception;
 }

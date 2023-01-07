@@ -1,0 +1,576 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2023 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
+package org.snf4j.tls.engine;
+
+import static org.snf4j.tls.cipher.CipherSuite.TLS_AES_128_GCM_SHA256;
+import static org.snf4j.tls.cipher.CipherSuite.TLS_AES_256_GCM_SHA384;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.snf4j.tls.cipher.CipherSuite.TLS_AES_128_CCM_8_SHA256;
+
+import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.security.KeyPair;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.Test;
+import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.HandshakeFailureAlertException;
+import org.snf4j.tls.alert.IllegalParameterAlertException;
+import org.snf4j.tls.alert.InternalErrorAlertException;
+import org.snf4j.tls.alert.MissingExtensionAlertException;
+import org.snf4j.tls.alert.ProtocolVersionAlertException;
+import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.UnrecognizedNameAlertException;
+import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.ExtensionType;
+import org.snf4j.tls.extension.ExtensionsUtil;
+import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.extension.IKeyShareExtension;
+import org.snf4j.tls.extension.ISupportedVersionsExtension;
+import org.snf4j.tls.extension.KeyShareEntry;
+import org.snf4j.tls.extension.KeyShareExtension;
+import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.ParsedKey;
+import org.snf4j.tls.extension.ServerNameExtension;
+import org.snf4j.tls.extension.SignatureAlgorithmsCertExtension;
+import org.snf4j.tls.extension.SignatureAlgorithmsExtension;
+import org.snf4j.tls.extension.SignatureScheme;
+import org.snf4j.tls.extension.SupportedGroupsExtension;
+import org.snf4j.tls.extension.SupportedVersionsExtension;
+import org.snf4j.tls.handshake.ClientHello;
+import org.snf4j.tls.handshake.EncryptedExtensions;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.ServerHello;
+import org.snf4j.tls.record.RecordType;
+
+public class ClientHelloConsumerTest extends EngineTest {
+
+	TestParameters params;
+	
+	ClientHelloConsumer consumer;
+	
+	List<IExtension> extensions;
+	
+	List<KeyShareEntry> entries;
+	
+	EngineState state;
+	
+	byte[] random;
+	
+	byte[] legacySessionId;
+	
+	@Override
+	public void before() throws Exception {
+		super.before();
+		params = new TestParameters();
+		consumer = new ClientHelloConsumer();
+		
+		extensions = new ArrayList<IExtension>();
+		extensions.add(serverName("snf4j.org"));
+		extensions.add(versions(0x0304));
+		extensions.add(keyShare(NamedGroup.SECP256R1));
+		extensions.add(groups(NamedGroup.SECP256R1, NamedGroup.SECP384R1));
+		extensions.add(schemes(SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PSS_RSAE_SHA256));
+		state = new EngineState(MachineState.SRV_START,params, handler);
+		random = new byte[32];
+		legacySessionId = new byte[0];
+	}
+
+	static CipherSuite[] suites(CipherSuite... suites) {
+		return suites;
+	}
+	
+	EngineState serverState() {
+		return new EngineState(MachineState.SRV_START, params, handler);
+	}
+	
+	static ServerNameExtension serverName(String serverName) {
+		return new ServerNameExtension(serverName);
+	}
+	
+	static SupportedVersionsExtension versions(int... versions) {
+		return new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, versions);
+	}
+	
+	KeyShareExtension keyShare(NamedGroup... groups) throws Exception {
+		entries = new ArrayList<KeyShareEntry>();
+		
+		for (NamedGroup group: groups) {
+			KeyPair pair = group.spec().getKeyExchange().generateKeyPair();
+			
+			ByteBuffer buffer = ByteBuffer.allocate(1000);
+			group.spec().getData(buffer, pair.getPublic());
+			buffer.flip();
+			ParsedKey parsedKey = group.spec().parse(ByteBufferArray.wrap(new ByteBuffer[] {buffer}), buffer.remaining());
+			
+			entries.add(new KeyShareEntry(group, parsedKey));
+		}
+		return new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries.toArray(new KeyShareEntry[entries.size()]));
+	}
+	
+	static SupportedGroupsExtension groups(NamedGroup... groups) {
+		return new SupportedGroupsExtension(groups);
+	}
+	
+	static SignatureAlgorithmsExtension schemes(SignatureScheme... schemes) {
+		return new SignatureAlgorithmsExtension(schemes);
+	}
+
+	static SignatureAlgorithmsExtension certSchemes(SignatureScheme... schemes) {
+		return new SignatureAlgorithmsCertExtension(schemes);
+	}
+	
+	static void replace(List<IExtension> extensions, IExtension extension) {
+		for (int i=0; i<extensions.size(); ++i) {
+			IExtension e = extensions.get(i);
+			
+			if (e.getType().equals(extension.getType())) {
+				extensions.set(i, extension);
+			}
+		}
+	}
+
+	static void remove(List<IExtension> extensions, ExtensionType type) {
+		for (int i=0; i<extensions.size(); ++i) {
+			IExtension e = extensions.get(i);
+			
+			if (e.getType().equals(type)) {
+				extensions.remove(i);
+			}
+		}
+	}
+	
+	ByteBuffer[] data(ClientHello ch, int... sizes) {
+		ch.getBytes(buffer);
+		byte[] data = buffer();
+		buffer.clear();
+		return array(data,0,sizes);
+	}
+
+	ClientHello clientHello() {
+		return new ClientHello(0x0303, random, legacySessionId, suites(TLS_AES_128_GCM_SHA256), new byte[1], extensions);
+	}
+	
+	ClientHello clientHello(int legacyVersion) {
+		return new ClientHello(legacyVersion, random, legacySessionId, suites(TLS_AES_128_GCM_SHA256), new byte[1], extensions);
+	}
+
+	ClientHello clientHelloCompress(byte[] compressions) {
+		return new ClientHello(0x0303, random, legacySessionId, suites(TLS_AES_128_GCM_SHA256), compressions, extensions);
+	}
+
+	ClientHello clientHelloEx(IExtension... extensions) {
+		return new ClientHello(0x0303, random, legacySessionId, suites(TLS_AES_128_GCM_SHA256), new byte[1], Arrays.asList(extensions));
+	}
+
+	ClientHello clientHelloCS(CipherSuite... suites) {
+		return new ClientHello(0x0303, random, legacySessionId, suites, new byte[1], extensions);
+	}
+	
+	@Test
+	public void testNegotiateCipherSuite() throws Exception {
+		replace(extensions, keyShare());
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		consumer.consume(state, ch, data(ch), false);
+		ServerHello sh = (ServerHello) state.getProduced()[0].getHandshake();
+		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
+		assertSame(TLS_AES_128_GCM_SHA256, sh.getCipherSuite());
+
+		state = new EngineState(MachineState.SRV_START,params, handler);
+		ch = clientHelloCS(TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+		sh = (ServerHello) state.getProduced()[0].getHandshake();
+		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
+		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
+
+		state = new EngineState(MachineState.SRV_START,params, handler);
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+		sh = (ServerHello) state.getProduced()[0].getHandshake();
+		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
+		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
+	}
+
+	@Test
+	public void testProducedServerHello() throws Exception {
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+		assertEquals(0, state.getProduced().length);
+		Runnable task1 = state.getDelegatedTask();
+		Runnable task2 = state.getDelegatedTask();
+		assertEquals("Key exchange", ((IEngineTask)task1).name());
+		assertEquals("Certificate", ((IEngineTask)task2).name());
+		assertNotNull(task1);
+		assertNotNull(task2);
+		assertNull(state.getDelegatedTask());
+		assertEquals(0, state.getProduced().length);
+		task1.run();
+		assertEquals(0, state.getProduced().length);
+		task2.run();
+		ProducedHandshake[] produced = state.getProduced();
+		assertEquals(2, produced.length);
+		ServerHello sh = (ServerHello) produced[0].getHandshake();
+		assertSame(RecordType.INITIAL, produced[0].getRecordType());
+		assertNotNull(sh);
+		assertEquals(0x0303, sh.getLegacyVersion());
+		assertEquals(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
+		assertEquals(0, sh.getLegacyCompressionMethod());
+		assertArrayEquals(ch.getLegacySessionId(), sh.getLegacySessionId());
+		assertFalse(ServerHelloRandom.isHelloRetryRequest(sh.getRandom()));
+		assertEquals(2, sh.getExtensioins().size());
+		KeyShareExtension kse = ExtensionsUtil.find(sh, ExtensionType.KEY_SHARE);
+		assertEquals(1, kse.getEntries().length);
+		assertSame(NamedGroup.SECP256R1, kse.getEntries()[0].getNamedGroup());
+		SupportedVersionsExtension sve = ExtensionsUtil.find(sh, ExtensionType.SUPPORTED_VERSIONS);
+		assertEquals(1, sve.getVersions().length);
+		assertEquals(0x0304, sve.getVersions()[0]);
+		
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		state = serverState();
+		consumer.consume(state, ch, data(ch), false);
+		produced = state.getProduced();
+		assertEquals(2, produced.length);
+		sh = (ServerHello) produced[0].getHandshake();
+		assertNotNull(sh);
+	}
+
+	@Test
+	public void testProducedEncryptedExtensions() throws Exception {
+		params.namedGroups = new NamedGroup[] {NamedGroup.SECP256R1, NamedGroup.SECP521R1};
+		replace(extensions, groups(NamedGroup.SECP256R1));
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+		state.getDelegatedTask().run();
+		state.getDelegatedTask().run();
+		ProducedHandshake[] produced = state.getProduced();
+		assertEquals(2, produced.length);
+		EncryptedExtensions ee = (EncryptedExtensions) produced[1].getHandshake();
+		assertEquals(2, ee.getExtensioins().size());
+		ServerNameExtension sne = ExtensionsUtil.find(ee, ExtensionType.SERVER_NAME);
+		assertEquals("", sne.getHostName());
+		SupportedGroupsExtension sge = ExtensionsUtil.find(ee, ExtensionType.SUPPORTED_GROUPS);
+		assertEquals(2, sge.getGroups().length);
+		assertSame(NamedGroup.SECP256R1, sge.getGroups()[0]);
+		assertSame(NamedGroup.SECP521R1, sge.getGroups()[1]);
+		
+		params.namedGroups = new NamedGroup[] {NamedGroup.SECP256R1};
+		remove(extensions, ExtensionType.SERVER_NAME);
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
+		state = serverState();
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		consumer.consume(state, ch, data(ch), false);
+		produced = state.getProduced();
+		assertEquals(2, produced.length);
+		ee = (EncryptedExtensions) produced[1].getHandshake();
+		assertEquals(1, ee.getExtensioins().size());
+		sge = ExtensionsUtil.find(ee, ExtensionType.SUPPORTED_GROUPS);
+		assertEquals(1, sge.getGroups().length);
+		assertSame(NamedGroup.SECP256R1, sge.getGroups()[0]);
+	}
+	
+	@Test
+	public void testConsumeServerName() throws Exception {
+		params.serverNameRequired = true;
+		replace(extensions, keyShare());
+		ClientHello ch = clientHello();
+		consumer.consume(state, ch, data(ch), false);
+		assertEquals("VSN(snf4j.org)|", handler.trace());
+		
+		state = serverState();
+		remove(extensions, ExtensionType.SERVER_NAME);
+		ch = clientHello();
+		try {
+			consumer.consume(state, ch, data(ch), false);
+			fail();
+		} catch (MissingExtensionAlertException e) {}
+		assertEquals("", handler.trace());
+		
+		state = serverState();
+		params.serverNameRequired = false;
+		ch = clientHello();
+		consumer.consume(state, ch, data(ch), false);
+		assertEquals("", handler.trace());
+		
+		extensions.add(serverName("snf4j.org"));
+		handler.verifyServerName = false;
+		state = serverState();
+		params.serverNameRequired = true;
+		ch = clientHello();
+		try {
+			consumer.consume(state, ch, data(ch), false);
+			fail();
+		} catch (UnrecognizedNameAlertException e) {}
+		assertEquals("VSN(snf4j.org)|", handler.trace());
+	}
+	
+	@Test
+	public void testConsumeOnceAgainWithCipherSuiteMismatch() throws Exception {
+		replace(extensions, keyShare());
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+		ServerHello sh = (ServerHello) state.getProduced()[0].getHandshake();
+		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
+		KeyShareExtension kse = ExtensionsUtil.find(sh, ExtensionType.KEY_SHARE);
+		assertSame(NamedGroup.SECP256R1, kse.getNamedGroup());
+		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
+		
+		replace(extensions, keyShare(NamedGroup.SECP256R1));
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		try {
+			consumer.consume(state, ch, data(ch), false);
+			fail();
+		} catch (IllegalParameterAlertException e) {}
+
+		ch = clientHelloCS(TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+	}
+	
+	@Test
+	public void testConsumeOnceAgainWithNamedGroupMismatch() throws Exception {
+		replace(extensions, keyShare());
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		consumer.consume(state, ch, data(ch), false);
+		ServerHello sh = (ServerHello) state.getProduced()[0].getHandshake();
+		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
+		KeyShareExtension kse = ExtensionsUtil.find(sh, ExtensionType.KEY_SHARE);
+		assertSame(NamedGroup.SECP256R1, kse.getNamedGroup());
+		
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		try {
+			consumer.consume(state, ch, data(ch), false);
+			fail();
+		} catch (IllegalParameterAlertException e) {}
+
+		replace(extensions, keyShare(NamedGroup.SECP384R1));
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		try {
+			consumer.consume(state, ch, data(ch), false);
+			fail();
+		} catch (IllegalParameterAlertException e) {}
+
+		replace(extensions, keyShare(NamedGroup.SECP256R1, NamedGroup.SECP384R1));
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		try {
+			consumer.consume(state, ch, data(ch), false);
+			fail();
+		} catch (IllegalParameterAlertException e) {}
+
+		replace(extensions, keyShare(NamedGroup.SECP256R1));
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		consumer.consume(state, ch, data(ch), false);
+	}
+	
+	@Test
+	public void testProducedHelloRetryRequest() throws Exception {
+		replace(extensions, keyShare());
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		consumer.consume(state, ch, data(ch), false);
+		ServerHello sh = (ServerHello) state.getProduced()[0].getHandshake();
+		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
+		assertSame(TLS_AES_128_GCM_SHA256, sh.getCipherSuite());
+		assertEquals(2,sh.getExtensioins().size());
+		SupportedVersionsExtension sve = ExtensionsUtil.find(sh, ExtensionType.SUPPORTED_VERSIONS);
+		assertEquals(1, sve.getVersions().length);
+		assertEquals(0x0304, sve.getVersions()[0]);
+		KeyShareExtension kse = ExtensionsUtil.find(sh, ExtensionType.KEY_SHARE);
+		assertSame(NamedGroup.SECP256R1, kse.getNamedGroup());
+		assertArrayEquals(ch.getLegacySessionId(), sh.getLegacySessionId());
+		assertEquals(0, ch.getLegacySessionId().length);
+		assertEquals(0, sh.getLegacyCompressionMethod());
+		
+		replace(extensions, versions(0x0303,0x0304,0x0305));
+		legacySessionId = random(32);
+		state = new EngineState(MachineState.SRV_START,params, handler);
+		ch = clientHelloCS(TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+		sh = (ServerHello) state.getProduced()[0].getHandshake();
+		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
+		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
+		assertEquals(2,sh.getExtensioins().size());
+		sve = ExtensionsUtil.find(sh, ExtensionType.SUPPORTED_VERSIONS);
+		assertEquals(1, sve.getVersions().length);
+		assertEquals(0x0304, sve.getVersions()[0]);
+		kse = ExtensionsUtil.find(sh, ExtensionType.KEY_SHARE);
+		assertSame(NamedGroup.SECP256R1, kse.getNamedGroup());
+		assertArrayEquals(ch.getLegacySessionId(), sh.getLegacySessionId());
+		assertEquals(32, ch.getLegacySessionId().length);
+
+		replace(extensions, versions(0x0304));
+		replace(extensions, groups(NamedGroup.SECP384R1));
+		state = new EngineState(MachineState.SRV_START,params, handler);
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+		sh = (ServerHello) state.getProduced()[0].getHandshake();
+		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
+		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
+		assertEquals(2,sh.getExtensioins().size());
+		sve = ExtensionsUtil.find(sh, ExtensionType.SUPPORTED_VERSIONS);
+		assertEquals(1, sve.getVersions().length);
+		assertEquals(0x0304, sve.getVersions()[0]);
+		kse = ExtensionsUtil.find(sh, ExtensionType.KEY_SHARE);
+		assertSame(NamedGroup.SECP384R1, kse.getNamedGroup());
+	}
+	
+	@Test
+	public void testGetType() {
+		assertSame(HandshakeType.CLIENT_HELLO, new ClientHelloConsumer().getType());
+	}
+	
+	@Test
+	public void testDeriveHandshakeSecretFailure() throws Exception {
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		consumer.consume(state, ch, data(ch), false);
+		Runnable task = state.getDelegatedTask();
+		task.run();
+		state.getDelegatedTask().run();
+		Field f = EngineState.class.getDeclaredField("keySchedule");
+		f.setAccessible(true);
+		f.set(state, null);
+		try {
+			state.getProduced();
+			fail();
+		} catch (InternalErrorAlertException e) {
+			assertEquals("Failed to derive handshake secret", e.getMessage());
+		}
+	}
+	
+	@Test(expected=UnexpectedMessageAlertException.class)
+	public void testInvalidMachineSate() throws Exception {
+		ClientHello ch = clientHello(0x0303);
+		consumer.consume(new EngineState(MachineState.SRV_RECVD_CH,params, handler), ch, data(ch), false);
+	}
+	
+	@Test(expected=ProtocolVersionAlertException.class)
+	public void testInvalidLegacyVersion() throws Exception {
+		ClientHello ch = clientHello(0x0302);
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=ProtocolVersionAlertException.class)
+	public void testConsumeNoSupportedVersions1() throws Exception {
+		ClientHello ch = clientHelloEx();
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=ProtocolVersionAlertException.class)
+	public void testConsumeNoSupportedVersions2() throws Exception {
+		ClientHello ch = clientHelloEx(versions(0x0303));
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=ProtocolVersionAlertException.class)
+	public void testConsumeNoSupportedVersions3() throws Exception {
+		ClientHello ch = clientHelloEx(versions(0x0303,0x0305));
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=HandshakeFailureAlertException.class)
+	public void testConsumeNoCipherSuite1() throws Exception {
+		ClientHello ch = clientHelloCS();
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=HandshakeFailureAlertException.class)
+	public void testConsumeNoCipherSuite2() throws Exception {
+		ClientHello ch = clientHelloCS(TLS_AES_128_CCM_8_SHA256);
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=MissingExtensionAlertException.class)
+	public void testConsumeNoKeyShare() throws Exception {
+		ClientHello ch = clientHelloEx(versions(0x0304));
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=MissingExtensionAlertException.class)
+	public void testConsumeNoSupportedGroups() throws Exception {
+		ClientHello ch = clientHelloEx(versions(0x0304), keyShare(NamedGroup.SECP256R1));
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=IllegalParameterAlertException.class)
+	public void testConsumeKeyShareFromNoSupportedGroup() throws Exception {
+		ClientHello ch = clientHelloEx(
+				versions(0x0304), 
+				keyShare(NamedGroup.SECP256R1),
+				groups(NamedGroup.FFDHE6144),
+				schemes(SignatureScheme.RSA_PKCS1_SHA256));
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=HandshakeFailureAlertException.class)
+	public void testConsumeEmptyKeyShareAndNoSupportedGroup() throws Exception {
+		ClientHello ch = clientHelloEx(
+				versions(0x0304), 
+				keyShare(),
+				groups(NamedGroup.FFDHE6144),
+				schemes(SignatureScheme.RSA_PKCS1_SHA256));
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=MissingExtensionAlertException.class)
+	public void testConsumeEmptyKeyShareAndNoSignatureAlgos() throws Exception {
+		ClientHello ch = clientHelloEx(
+				versions(0x0304), 
+				keyShare(),
+				groups(NamedGroup.FFDHE6144));
+		consumer.consume(state, ch, data(ch), false);
+	}
+	
+	@Test(expected=IllegalParameterAlertException.class)
+	public void testConsumeNoCompressions() throws Exception {
+		ClientHello ch = clientHelloCompress(new byte[0]);
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=IllegalParameterAlertException.class)
+	public void testConsumeToManyCompressions() throws Exception {
+		ClientHello ch = clientHelloCompress(new byte[2]);
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=IllegalParameterAlertException.class)
+	public void testConsumeWrongCompressions() throws Exception {
+		ClientHello ch = clientHelloCompress(new byte[] {1});
+		consumer.consume(state, ch, data(ch), false);
+	}
+	
+	@Test(expected=InternalErrorAlertException.class)
+	public void testConsumeKeyScheduleFailure() throws Exception {
+		params.cipherSuites[0] = new CipherSuite("xxx", 6666, null) {};
+		ClientHello ch = clientHelloCS(new CipherSuite("xxx", 6666, null) {});
+		consumer.consume(state, ch, data(ch), false);
+	}
+}

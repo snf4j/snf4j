@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -48,6 +48,13 @@ import org.snf4j.tls.record.RecordType;
 
 public class EngineTest extends CommonTest {
 
+	TestHandler handler;
+	
+	@Override
+	public void before() throws Exception {
+		handler = new TestHandler();
+	}
+	
 	protected static void assertProduced(ProducedHandshake h, HandshakeType type, RecordType recordType) {
 		assertEquals(type.value(), h.getHandshake().getType().value());
 		assertEquals(recordType, h.getRecordType());
