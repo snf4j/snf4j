@@ -31,7 +31,7 @@ import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 
-public class ServerHelloConsumer extends AbstractConsumer {
+public class ServerHelloConsumer implements IHandshakeConsumer {
 
 	@Override
 	public HandshakeType getType() {

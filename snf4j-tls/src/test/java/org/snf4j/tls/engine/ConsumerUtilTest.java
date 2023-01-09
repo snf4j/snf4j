@@ -25,36 +25,34 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.PrivateKey;
+import static org.junit.Assert.assertArrayEquals;
 
-import org.snf4j.tls.extension.SignatureScheme;
-import org.snf4j.tls.handshake.CertificateEntry;
+import java.nio.charset.StandardCharsets;
+import java.security.Signature;
+import java.util.Arrays;
 
-public class SelectedCertificates {
-	
-	private final SignatureScheme algorithm;
-	
-	private final CertificateEntry[] entries;
-	
-	private final PrivateKey privateKey;
+import org.junit.Test;
+import org.snf4j.tls.CommonTest;
+import org.snf4j.tls.handshake.CertificateType;
 
-	public SelectedCertificates(SignatureScheme algorithm, CertificateEntry[] entries, PrivateKey privateKey) {
-		this.algorithm = algorithm;
-		this.entries = entries;
-		this.privateKey = privateKey;
+public class ConsumerUtilTest extends CommonTest {
+
+	@Test
+	public void testSign() throws Exception {
+		SelectedCertificates certs = new TestCertificateSelector().selectCertificates(new CertificateCriteria(CertificateType.X509, "", null, null));
+		
+		Signature s = certs.getAlgorithm().spec().getSignature().createSignature();
+		byte[] octets = new byte[64];
+		Arrays.fill(octets, (byte)32);
+		byte[] server = "TLS 1.3, server CertificateVerify".getBytes(StandardCharsets.US_ASCII);
+		byte[] client = "TLS 1.3, client CertificateVerify".getBytes(StandardCharsets.US_ASCII);
+		s.initSign(certs.getPrivateKey());
+		s.update(cat(octets,server,bytes(0),bytes(1,2,3,4)));
+		assertArrayEquals(s.sign(), ConsumerUtil.sign(bytes(1,2,3,4), certs.getAlgorithm(), certs.getPrivateKey(), false));
+
+		s = certs.getAlgorithm().spec().getSignature().createSignature();
+		s.initSign(certs.getPrivateKey());
+		s.update(cat(octets,client,bytes(0),bytes(1,2,3,4,5)));
+		assertArrayEquals(s.sign(), ConsumerUtil.sign(bytes(1,2,3,4,5), certs.getAlgorithm(), certs.getPrivateKey(), true));
 	}
-
-	public SignatureScheme getAlgorithm() {
-		return algorithm;
-	}
-
-	public CertificateEntry[] getEntries() {
-		return entries;
-	}
-
-	public PrivateKey getPrivateKey() {
-		return privateKey;
-	}
-	
-	
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,18 +31,21 @@ import java.security.Signature;
 
 public class RSAPKCS1Signature implements ISignature {
 
-	public final static RSAPKCS1Signature RSA_PKCS1_SHA1 = new RSAPKCS1Signature("SHA1withRSA");
+	public final static RSAPKCS1Signature RSA_PKCS1_SHA1 = new RSAPKCS1Signature("SHA1withRSA", 511);
 
-	public final static RSAPKCS1Signature RSA_PKCS1_SHA256 = new RSAPKCS1Signature("SHA256withRSA");
+	public final static RSAPKCS1Signature RSA_PKCS1_SHA256 = new RSAPKCS1Signature("SHA256withRSA", 511);
 	
-	public final static RSAPKCS1Signature RSA_PKCS1_SHA384 = new RSAPKCS1Signature("SHA384withRSA");
+	public final static RSAPKCS1Signature RSA_PKCS1_SHA384 = new RSAPKCS1Signature("SHA384withRSA", 768);
 
-	public final static RSAPKCS1Signature RSA_PKCS1_SHA512 = new RSAPKCS1Signature("SHA512withRSA");
+	public final static RSAPKCS1Signature RSA_PKCS1_SHA512 = new RSAPKCS1Signature("SHA512withRSA", 768);
 	
 	private final String algorithm;
 	
-	public RSAPKCS1Signature(String algorithm) {
+	private final int minKeySize;
+	
+	public RSAPKCS1Signature(String algorithm, int minKeySize) {
 		this.algorithm = algorithm;
+		this.minKeySize = minKeySize;
 	}
 	
 	@Override
@@ -60,4 +63,9 @@ public class RSAPKCS1Signature implements ISignature {
 		return "RSA";
 	}
 
+	@Override
+	public int minKeySize() {
+		return minKeySize;
+	}
+	
 }

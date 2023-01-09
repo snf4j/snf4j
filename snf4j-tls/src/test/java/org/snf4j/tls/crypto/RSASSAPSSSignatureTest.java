@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -90,7 +90,7 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 	
 	@Test
 	public void testCreateSignature() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-		RSASSAPSSSignature signature = new RSASSAPSSSignature("RSA", "SHA-256", 32) {
+		RSASSAPSSSignature signature = new RSASSAPSSSignature("RSA", 528, "SHA-256", 32) {
 			
 			String algorithm;
 			

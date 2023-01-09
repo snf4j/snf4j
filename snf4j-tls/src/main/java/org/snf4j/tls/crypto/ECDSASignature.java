@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -60,4 +60,8 @@ public class ECDSASignature implements ISignature {
 		return "EC";
 	}
 
+	@Override
+	public int minKeySize() {
+		return -1;
+	}
 }

@@ -149,7 +149,7 @@ public class CommonTest {
 		return data;
 	}
 
-	protected X509Certificate cert(String name) throws Exception {
+	public static X509Certificate cert(String name) throws Exception {
 		InputStream in = ECDSASignatureTest.class.getResourceAsStream("/certs/" + name + ".crt");
 		List<byte[]> certs = PemUtil.read(Label.CERTIFICATE, in);
 		in.close();
@@ -157,7 +157,7 @@ public class CommonTest {
 		return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certs.get(0)));
 	}
 
-	protected PrivateKey key(String algorithm, String name) throws Exception {
+	public static PrivateKey key(String algorithm, String name) throws Exception {
 		InputStream in = ECDSASignatureTest.class.getResourceAsStream("/certs/" + name + ".key");
 		List<byte[]> keys = PemUtil.read(Label.PRIVATE_KEY, in);
 		in.close();

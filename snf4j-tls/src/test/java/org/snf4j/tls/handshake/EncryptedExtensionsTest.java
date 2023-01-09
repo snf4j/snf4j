@@ -45,11 +45,6 @@ import org.snf4j.tls.extension.SupportedGroupsExtension;
 
 public class EncryptedExtensionsTest extends HandshakeTest {
 
-	@Override
-	public void before() throws Exception {
-		super.before();
-	}
-	
 	@Test
 	public void testParseRealData() throws AlertException {
 		byte[] data = bytes(new int[] {

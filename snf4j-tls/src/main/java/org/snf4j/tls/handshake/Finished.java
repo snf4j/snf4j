@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,15 +25,64 @@
  */
 package org.snf4j.tls.handshake;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.Args;
+import org.snf4j.tls.alert.AlertException;
 import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.extension.IExtensionDecoder;
 
-public interface ICertificateEntry {
+public class Finished extends KnownHandshake implements IFinished {
+
+	private final static HandshakeType TYPE = HandshakeType.FINISHED;
 	
-	byte[] getData();
+	private final byte[] verifyData;
 	
-	int getDataLength();
+	private final static AbstractHandshakeParser PARSER = new AbstractHandshakeParser() {
+
+		@Override
+		public HandshakeType getType() {
+			return TYPE;
+		}
+
+		@Override
+		public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder) throws AlertException {
+			byte[] verifyData = new byte[remaining];
+			
+			srcs.get(verifyData);
+			return new Finished(verifyData);
+		}
+		
+	};
+	public Finished(byte[] verifyData) {
+		super(TYPE);
+		Args.checkNull(verifyData, "verifyData");
+		this.verifyData = verifyData;
+	}
+
+	@Override
+	public int getDataLength() {
+		return verifyData.length;
+	}
+
+	@Override
+	public List<IExtension> getExtensioins() {
+		return null;
+	}
+
+	public static IHandshakeParser getParser() {
+		return PARSER;
+	}
 	
-	List<IExtension> getExtensioins();
+	@Override
+	public byte[] getVerifyData() {
+		return verifyData;
+	}
+
+	@Override
+	protected void getData(ByteBuffer buffer) {
+		buffer.put(verifyData);
+	}
 }

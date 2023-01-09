@@ -47,6 +47,9 @@ public class HandshakeDecoder implements IHandshakeDecoder {
 		decoder.addParser(ClientHello.getParser());
 		decoder.addParser(ServerHello.getParser());
 		decoder.addParser(EncryptedExtensions.getParser());
+		decoder.addParser(Certificate.getParser());
+		decoder.addParser(CertificateVerify.getParser());
+		decoder.addParser(Finished.getParser());
 		DEFAULT = decoder;
 	}
 	

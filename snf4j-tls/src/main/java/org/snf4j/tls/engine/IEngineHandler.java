@@ -31,5 +31,11 @@ public interface IEngineHandler {
 	
 	boolean verify(IServerNameExtension serverName);
 	
-	ICertificateSelector createCertificateSelector();
+	ICertificateSelector getCertificateSelector();
+	
+	void onEarlyTrafficSecret(EngineState state) throws Exception;
+	
+	void onHandshakeTrafficSecrets(EngineState state) throws Exception;
+	
+	void onApplicationTrafficSecrets(EngineState state) throws Exception;
 }

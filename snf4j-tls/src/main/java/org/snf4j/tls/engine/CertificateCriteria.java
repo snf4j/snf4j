@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,35 +25,43 @@
  */
 package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
+import org.snf4j.tls.extension.SignatureScheme;
+import org.snf4j.tls.handshake.CertificateType;
 
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.RecordType;
+public class CertificateCriteria {
+	
+	private final CertificateType type;
+	
+	private final String hostName;
+	
+	private final SignatureScheme[] schemes;
+	
+	private final SignatureScheme[] certSchemes;
 
-abstract public class AbstractConsumer implements IHandshakeConsumer {
-
-	static void updateTranscriptHash(EngineState state, HandshakeType type, ByteBuffer[] message) {
-		state.getTranscriptHash().update(type, message);
+	public CertificateCriteria(CertificateType type, String hostName, SignatureScheme[] schemes,
+			SignatureScheme[] certSchemes) {
+		super();
+		this.type = type;
+		this.hostName = hostName;
+		this.schemes = schemes;
+		this.certSchemes = certSchemes;
 	}
 
-	static void updateHRRTranscriptHash(EngineState state, ByteBuffer[] message) {
-		state.getTranscriptHash().updateHelloRetryRequest(message);
+	public CertificateType getType() {
+		return type;
+	}
+
+	public String getHostName() {
+		return hostName;
+	}
+
+	public SignatureScheme[] getSchemes() {
+		return schemes;
+	}
+
+	public SignatureScheme[] getCertSchemes() {
+		return certSchemes;
 	}
 	
-	static void produce(EngineState state, IHandshake handshake, RecordType recordType) {
-		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
-		state.produce(new ProducedHandshake(handshake, recordType));
-	}
-
-	static void prepare(EngineState state, IHandshake handshake, RecordType recordType) {
-		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
-		state.prepare(new ProducedHandshake(handshake, recordType));
-	}
 	
-	static void produceHRR(EngineState state, IHandshake handshake, RecordType recordType) {
-		state.getTranscriptHash().updateHelloRetryRequest(handshake.prepare());
-		state.produce(new ProducedHandshake(handshake, recordType));
-	}
-
 }

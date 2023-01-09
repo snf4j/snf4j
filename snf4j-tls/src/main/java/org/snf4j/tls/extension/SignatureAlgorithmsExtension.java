@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,6 +53,10 @@ public class SignatureAlgorithmsExtension extends KnownExtension implements ISig
 			return type;
 		}
 
+		protected IExtension create(SignatureScheme[] schemes) {
+			return new SignatureAlgorithmsExtension(schemes);
+		}
+		
 		@Override
 		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
 			if (remaining >= 4) {
@@ -68,7 +72,7 @@ public class SignatureAlgorithmsExtension extends KnownExtension implements ISig
 					for (int i=0; i<schemes.length; ++i) {
 						schemes[i] = SignatureScheme.of(srcs.getUnsignedShort());
 					}
-					return new SignatureAlgorithmsExtension(schemes);
+					return create(schemes);
 				}
 			}
 			throw decodeError("Inconsistent length");

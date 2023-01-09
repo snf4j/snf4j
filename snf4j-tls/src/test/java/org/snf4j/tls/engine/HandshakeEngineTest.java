@@ -156,7 +156,7 @@ public class HandshakeEngineTest extends EngineTest {
 		he2.getDelegatedTask().run();
 		assertEquals(0, ByteBufferArray.wrap(array).remaining());
 		ProducedHandshake[] produced = he2.produce();
-		assertEquals(2, produced.length);
+		assertEquals(5, produced.length);
 		ServerHello sh = (ServerHello) produced[0].getHandshake();
 		assertTrue(sh.isPrepared());
 		
@@ -167,7 +167,7 @@ public class HandshakeEngineTest extends EngineTest {
 		he2.getDelegatedTask().run();
 		assertEquals(0, ByteBufferArray.wrap(array).remaining());
 		produced = he2.produce();
-		assertEquals(2, produced.length);
+		assertEquals(5, produced.length);
 		assertNotNull((ServerHello) produced[0].getHandshake());
 
 		he2 = new HandshakeEngine(false, params, handler);
@@ -176,7 +176,7 @@ public class HandshakeEngineTest extends EngineTest {
 		he2.getDelegatedTask().run();
 		he2.getDelegatedTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
-		assertEquals(2, he2.produce().length);
+		assertEquals(5, he2.produce().length);
 		
 		he2 = new HandshakeEngine(false, params, handler);
 		array = array(Arrays.copyOf(data, data.length+1), 0, 10, 10);
@@ -184,7 +184,7 @@ public class HandshakeEngineTest extends EngineTest {
 		he2.getDelegatedTask().run();
 		he2.getDelegatedTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
-		assertEquals(2, he2.produce().length);
+		assertEquals(5, he2.produce().length);
 
 		he2 = new HandshakeEngine(false, params, handler);
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0);
@@ -193,7 +193,7 @@ public class HandshakeEngineTest extends EngineTest {
 		he2.getDelegatedTask().run();
 		he2.getDelegatedTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
-		assertEquals(2, he2.produce().length);
+		assertEquals(5, he2.produce().length);
 		
 		he2 = new HandshakeEngine(false, params, handler);
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0, 10, 10);
@@ -202,7 +202,7 @@ public class HandshakeEngineTest extends EngineTest {
 		he2.getDelegatedTask().run();
 		he2.getDelegatedTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
-		assertEquals(2, he2.produce().length);
+		assertEquals(5, he2.produce().length);
 
 		he2 = new HandshakeEngine(false, params, handler);
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0, 1,1, 10, 10);
@@ -212,7 +212,7 @@ public class HandshakeEngineTest extends EngineTest {
 		he2.getDelegatedTask().run();
 		he2.getDelegatedTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
-		assertEquals(2, he2.produce().length);
+		assertEquals(5, he2.produce().length);
 		
 		he2 = new HandshakeEngine(false, params, handler);
 		array = array(data, 0);

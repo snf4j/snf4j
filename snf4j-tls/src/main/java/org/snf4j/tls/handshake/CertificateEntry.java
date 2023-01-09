@@ -25,39 +25,37 @@
  */
 package org.snf4j.tls.handshake;
 
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
+import java.util.List;
 
-public class CertificateEntry {
+import org.snf4j.tls.Args;
+import org.snf4j.tls.extension.IExtension;
+
+public class CertificateEntry implements ICertificateEntry {
 	
-	private final CertificateType type;
+	private final byte[] data;
 	
-	private final X509Certificate certificate;
+	private final List<IExtension> extensions;
 	
-	private final PublicKey key;
-	
-	CertificateEntry(X509Certificate certificate) {
-		type = CertificateType.X509;
-		this.certificate = certificate;
-		key = null;
+	public CertificateEntry(byte[] data, List<IExtension> extensions) {
+		Args.checkNull(data, "data");
+		Args.checkNull(extensions, "extensions");
+		this.data = data;
+		this.extensions = extensions;
 	}
 	
-	CertificateEntry(PublicKey key) {
-		type = CertificateType.RAW_PUBLIC_KEY;
-		this.key = key;
-		certificate = null;
+	@Override
+	public byte[] getData() {
+		return data;
 	}
 
-	public CertificateType getType() {
-		return type;
+	@Override
+	public int getDataLength() {
+		return data.length;
 	}
-
-	public X509Certificate getCertificate() {
-		return certificate;
-	}
-
-	public PublicKey getKey() {
-		return key;
+	
+	@Override
+	public List<IExtension> getExtensioins() {
+		return extensions;
 	}
 
 }

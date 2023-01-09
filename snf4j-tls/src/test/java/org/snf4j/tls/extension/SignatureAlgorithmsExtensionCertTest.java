@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.handshake.HandshakeType;
 
 public class SignatureAlgorithmsExtensionCertTest extends ExtensionTest {
 
@@ -70,6 +72,35 @@ public class SignatureAlgorithmsExtensionCertTest extends ExtensionTest {
 	public void testParser() {
 		assertSame(ExtensionType.SIGNATURE_ALGORITHMS_CERT, SignatureAlgorithmsCertExtension.getParser().getType());
 		assertSame(SignatureAlgorithmsCertExtension.getParser().getType(), SignatureAlgorithmsCertExtension.getParser().getType());
+	}
+	
+	@Test
+	public void testParseRealData() throws AlertException {
+		byte[] data = new byte[] {
+				0x00, 0x32, 0x00, 0x1e, 0x00, 0x1c, 0x04, 0x03, 0x05, 0x03, 0x06, 0x03, 0x08, 0x07, 0x08, 
+				0x08, 0x08, 0x09, 0x08, 0x0a, 0x08, 0x0b, 0x08, 0x04, 0x08, 0x05, 0x08, 0x06, 0x04, 0x01,
+				0x05, 0x01, 0x06, 0x01};
+		
+		SignatureAlgorithmsExtension e = (SignatureAlgorithmsExtension) SignatureAlgorithmsCertExtension.getParser().parse(HandshakeType.CLIENT_HELLO, array(data, 4), data.length-4);
+		assertSame(SignatureAlgorithmsCertExtension.class, e.getClass());
+		assertSame(ExtensionType.SIGNATURE_ALGORITHMS_CERT, e.getType());
+		e.getBytes(buffer);
+		assertArrayEquals(data, buffer());
+		assertEquals(14, e.getSchemes().length);
+		assertSame(SignatureScheme.ECDSA_SECP256R1_SHA256, e.getSchemes()[0]);
+		assertSame(SignatureScheme.ECDSA_SECP384R1_SHA384, e.getSchemes()[1]);
+		assertSame(SignatureScheme.ECDSA_SECP521R1_SHA512, e.getSchemes()[2]);
+		assertSame(SignatureScheme.ED25519, e.getSchemes()[3]);
+		assertSame(SignatureScheme.ED448, e.getSchemes()[4]);
+		assertSame(SignatureScheme.RSA_PSS_PSS_SHA256, e.getSchemes()[5]);
+		assertSame(SignatureScheme.RSA_PSS_PSS_SHA384, e.getSchemes()[6]);
+		assertSame(SignatureScheme.RSA_PSS_PSS_SHA512, e.getSchemes()[7]);
+		assertSame(SignatureScheme.RSA_PSS_RSAE_SHA256, e.getSchemes()[8]);
+		assertSame(SignatureScheme.RSA_PSS_RSAE_SHA384, e.getSchemes()[9]);
+		assertSame(SignatureScheme.RSA_PSS_RSAE_SHA512, e.getSchemes()[10]);
+		assertSame(SignatureScheme.RSA_PKCS1_SHA256, e.getSchemes()[11]);
+		assertSame(SignatureScheme.RSA_PKCS1_SHA384, e.getSchemes()[12]);
+		assertSame(SignatureScheme.RSA_PKCS1_SHA512, e.getSchemes()[13]);
 	}
 	
 }

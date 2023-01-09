@@ -25,13 +25,33 @@
  */
 package org.snf4j.tls.engine;
 
+import java.security.PrivateKey;
+import java.util.ArrayList;
+
+import org.snf4j.tls.CommonTest;
+import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.SignatureScheme;
+import org.snf4j.tls.handshake.CertificateEntry;
 
 public class TestCertificateSelector implements ICertificateSelector {
 
+	volatile String keyAlgorithm = "RSA"; 
+	
+	volatile String keyName = "rsa";
+	
+	volatile String[] certNames = new String[] {"rsasha256"};
+	
+	volatile SignatureScheme signatureScheme = SignatureScheme.RSA_PKCS1_SHA256;
+	
 	@Override
-	public SelectedCertificates selectCertificates(String serverName, SignatureScheme[] schemes, SignatureScheme[] certSchemes) {
-		return null;
+	public SelectedCertificates selectCertificates(CertificateCriteria criteria)  throws Exception {
+		PrivateKey key = CommonTest.key(keyAlgorithm, keyName);
+		CertificateEntry[] certs = new CertificateEntry[certNames.length];
+		
+		for (int i=0; i<certNames.length; ++i) {
+			certs[i] = new CertificateEntry(CommonTest.cert(certNames[i]).getEncoded(), new ArrayList<IExtension>(0));
+		}
+		return new SelectedCertificates(signatureScheme, certs, key);
 	}
 
 }

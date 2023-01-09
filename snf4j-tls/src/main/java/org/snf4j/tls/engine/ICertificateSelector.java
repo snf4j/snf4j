@@ -25,9 +25,7 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.extension.SignatureScheme;
-
 public interface ICertificateSelector {
 	
-	SelectedCertificates selectCertificates(String serverName, SignatureScheme[] schemes, SignatureScheme[] certSchemes) throws Exception;
+	SelectedCertificates selectCertificates(CertificateCriteria criteria) throws Exception;
 }

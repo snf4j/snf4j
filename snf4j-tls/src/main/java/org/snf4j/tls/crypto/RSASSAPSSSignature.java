@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,21 +34,23 @@ import java.security.spec.PSSParameterSpec;
 
 public class RSASSAPSSSignature implements ISignature {
 
-	public final static RSASSAPSSSignature RSA_PSS_RSAE_SHA256 = new RSASSAPSSSignature("RSA", "SHA-256", 32);
+	public final static RSASSAPSSSignature RSA_PSS_RSAE_SHA256 = new RSASSAPSSSignature("RSA", 528, "SHA-256", 32);
 
-	public final static RSASSAPSSSignature RSA_PSS_RSAE_SHA384 = new RSASSAPSSSignature("RSA", "SHA-384", 48);
+	public final static RSASSAPSSSignature RSA_PSS_RSAE_SHA384 = new RSASSAPSSSignature("RSA", 784, "SHA-384", 48);
 	
-	public final static RSASSAPSSSignature RSA_PSS_RSAE_SHA512 = new RSASSAPSSSignature("RSA", "SHA-512", 64);
+	public final static RSASSAPSSSignature RSA_PSS_RSAE_SHA512 = new RSASSAPSSSignature("RSA", 1040, "SHA-512", 64);
 
-	public final static RSASSAPSSSignature RSA_PSS_PSS_SHA256 = new RSASSAPSSSignature("RSASSA-PSS", "SHA-256", 32);
+	public final static RSASSAPSSSignature RSA_PSS_PSS_SHA256 = new RSASSAPSSSignature("RSASSA-PSS", 528, "SHA-256", 32);
 
-	public final static RSASSAPSSSignature RSA_PSS_PSS_SHA384 = new RSASSAPSSSignature("RSASSA-PSS", "SHA-384", 48);
+	public final static RSASSAPSSSignature RSA_PSS_PSS_SHA384 = new RSASSAPSSSignature("RSASSA-PSS", 784, "SHA-384", 48);
 	
-	public final static RSASSAPSSSignature RSA_PSS_PSS_SHA512 = new RSASSAPSSSignature("RSASSA-PSS", "SHA-512", 64);
+	public final static RSASSAPSSSignature RSA_PSS_PSS_SHA512 = new RSASSAPSSSignature("RSASSA-PSS", 1040, "SHA-512", 64);
 	
 	private final String hashName;
 	
 	private final String keyAlgorithm;
+	
+	private final int minKeySize;
 	
 	private final int saltLength;
 	
@@ -67,8 +69,9 @@ public class RSASSAPSSSignature implements ISignature {
 		IMPLEMENTED = implemented("RSASSA-PSS");
 	}
 	
-	public RSASSAPSSSignature(String keyAlgorithm, String hashName, int saltLength) {
+	public RSASSAPSSSignature(String keyAlgorithm, int minKeySize, String hashName, int saltLength) {
 		this.keyAlgorithm = keyAlgorithm;
+		this.minKeySize = minKeySize;
 		this.hashName = hashName;
 		this.saltLength = saltLength;
 	}
@@ -91,6 +94,11 @@ public class RSASSAPSSSignature implements ISignature {
 
 	public String keyAlgorithm() {
 		return keyAlgorithm;
+	}
+	
+	@Override
+	public int minKeySize() {
+		return minKeySize;
 	}
 	
 	@Override

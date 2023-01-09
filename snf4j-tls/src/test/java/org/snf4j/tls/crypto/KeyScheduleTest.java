@@ -435,6 +435,132 @@ public class KeyScheduleTest extends CommonTest {
 		assertNotSame(iv2, getSecret(ks, "serverIv"));
 	}
 	
+	@Test
+	public void testComputeServerVerifyData() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		th.update(HandshakeType.CLIENT_HELLO, "CH".getBytes(ASCII));
+		th.update(HandshakeType.SERVER_HELLO, "SH".getBytes(ASCII));
+		ks.deriveHandshakeTrafficSecrets();
+
+		byte[] hts = getSecret(ks, "serverHandshakeTrafficSecret");
+		
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, "EE".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE, "CT".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE_VERIFY, "CV".getBytes(ASCII));
+		th.update(HandshakeType.FINISHED, "F".getBytes(ASCII));
+		byte[] vd = ks.computeServerVerifyData();
+		
+		byte[] key = ks.hkdfExpandLabel(hts, "tls13 finished".getBytes(ASCII), new byte[0], hashLen);
+		Mac mac = Mac.getInstance("HmacSHA256");
+		mac.init(new SecretKeySpec(key, mac.getAlgorithm()));
+		mac.update(md.digest("CHSHEECTCV".getBytes(ASCII)));
+		assertArrayEquals(mac.doFinal(), vd);
+	}
+	
+	@Test
+	public void testComputeClientVerifyData() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		th.update(HandshakeType.CLIENT_HELLO, "CH".getBytes(ASCII));
+		th.update(HandshakeType.SERVER_HELLO, "SH".getBytes(ASCII));
+		ks.deriveHandshakeTrafficSecrets();
+
+		byte[] hts = getSecret(ks, "clientHandshakeTrafficSecret");
+		
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, "EE".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE, "CT".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE_VERIFY, "CV".getBytes(ASCII));
+		th.update(HandshakeType.FINISHED, "F".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE, "ct".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE_VERIFY, "cv".getBytes(ASCII));
+		th.update(HandshakeType.FINISHED, "f".getBytes(ASCII));
+		byte[] vd = ks.computeClientVerifyData();
+		
+		byte[] key = ks.hkdfExpandLabel(hts, "tls13 finished".getBytes(ASCII), new byte[0], hashLen);
+		Mac mac = Mac.getInstance("HmacSHA256");
+		mac.init(new SecretKeySpec(key, mac.getAlgorithm()));
+		mac.update(md.digest("CHSHEECTCVFctcv".getBytes(ASCII)));
+		assertArrayEquals(mac.doFinal(), vd);
+	}
+	
+	@Test
+	public void testApplicationTrafficSecrets() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		th.update(HandshakeType.CLIENT_HELLO, "CH".getBytes(ASCII));
+		th.update(HandshakeType.SERVER_HELLO, "SH".getBytes(ASCII));
+		byte[] hs = getSecret(ks, "handshakeSecret");
+		byte[] d = ks.hkdfExpandLabel(hs, "tls13 derived".getBytes(ASCII), emptyHash, hashLen);
+		byte[] ms = h.extract(d, new byte[hashLen]);
+		ks.deriveMasterSecret();
+		assertArrayEquals(ms, getSecret(ks,"masterSecret"));
+
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, "EE".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE, "CT".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE_VERIFY, "CV".getBytes(ASCII));
+		th.update(HandshakeType.FINISHED, "F".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE, "ct".getBytes(ASCII));
+		ks.deriveApplicationTrafficSecrets();
+		byte[] traffic = ks.hkdfExpandLabel(ms, "tls13 c ap traffic".getBytes(ASCII), md.digest("CHSHEECTCVF".getBytes()), hashLen);
+		assertArrayEquals(traffic, getSecret(ks,"clientApplicationTrafficSecret"));
+		traffic = ks.hkdfExpandLabel(ms, "tls13 s ap traffic".getBytes(ASCII), md.digest("CHSHEECTCVF".getBytes()), hashLen);
+		assertArrayEquals(traffic, getSecret(ks,"serverApplicationTrafficSecret"));
+	}
+	
+	@Test
+	public void testEraseMasterSecret() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		assertNull(getSecret(ks, "masterSecret"));
+		ks.deriveMasterSecret();
+		byte[] b = getSecret(ks, "masterSecret");
+		assertNotErased(b);
+		ks.eraseMasterSecret();
+		assertErased(b);
+		assertNull(getSecret(ks, "masterSecret"));	
+		ks.deriveMasterSecret();
+		b = getSecret(ks, "masterSecret");
+		assertNotErased(b);
+		ks.deriveMasterSecret();
+		assertErased(b);
+		assertNotNull(getSecret(ks, "masterSecret"));			
+	}
+	
+	@Test
+	public void testEraseApplicationTrafficSecrets() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		ks.deriveMasterSecret();
+		assertNull(getSecret(ks, "clientApplicationTrafficSecret"));
+		assertNull(getSecret(ks, "serverApplicationTrafficSecret"));
+		ks.deriveApplicationTrafficSecrets();
+		byte[] cb = getSecret(ks, "clientApplicationTrafficSecret");
+		byte[] sb = getSecret(ks, "serverApplicationTrafficSecret");
+		assertNotErased(cb);
+		assertNotErased(sb);
+		ks.eraseApplicationTrafficSecrets();
+		assertErased(cb);
+		assertErased(sb);
+		assertNull(getSecret(ks, "clientApplicationTrafficSecret"));	
+		assertNull(getSecret(ks, "serverApplicationTrafficSecret"));	
+		ks.deriveApplicationTrafficSecrets();
+		cb = getSecret(ks, "clientApplicationTrafficSecret");
+		sb = getSecret(ks, "serverApplicationTrafficSecret");
+		assertNotErased(cb);
+		assertNotErased(sb);
+		ks.deriveApplicationTrafficSecrets();
+		assertErased(cb);
+		assertErased(sb);
+		assertNotNull(getSecret(ks, "clientApplicationTrafficSecret"));	
+		assertNotNull(getSecret(ks, "serverApplicationTrafficSecret"));	
+	}
+	
 	DestroyFailedException exception;
 	int exceptionCount;
 	int destroyCount;
@@ -540,7 +666,21 @@ public class KeyScheduleTest extends CommonTest {
 		} catch (IllegalStateException e) {
 			assertEquals("Handshake Traffic Secrets not derived", e.getMessage());
 		}
+		try {
+			ks.computeClientVerifyData();
+			fail();
+		} catch (IllegalStateException e) {
+			assertEquals("Handshake Traffic Secrets not derived", e.getMessage());
+		}
+		try {
+			ks.computeServerVerifyData();
+			fail();
+		} catch (IllegalStateException e) {
+			assertEquals("Handshake Traffic Secrets not derived", e.getMessage());
+		}
 		ks.deriveHandshakeTrafficSecrets();
+		ks.computeClientVerifyData();
+		ks.computeServerVerifyData();
 		ks.deriveHandshakeTrafficKeys();
 	}
 	

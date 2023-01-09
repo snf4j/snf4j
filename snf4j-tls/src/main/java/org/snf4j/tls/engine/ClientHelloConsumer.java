@@ -64,17 +64,20 @@ import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.ParsedKey;
 import org.snf4j.tls.extension.ServerNameExtension;
-import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
 import org.snf4j.tls.extension.SupportedVersionsExtension;
+import org.snf4j.tls.handshake.Certificate;
+import org.snf4j.tls.handshake.CertificateType;
+import org.snf4j.tls.handshake.CertificateVerify;
 import org.snf4j.tls.handshake.EncryptedExtensions;
+import org.snf4j.tls.handshake.Finished;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IClientHello;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.record.RecordType;
 
-public class ClientHelloConsumer extends AbstractConsumer {
+public class ClientHelloConsumer implements IHandshakeConsumer {
 
 	@Override
 	public HandshakeType getType() {
@@ -190,11 +193,13 @@ public class ClientHelloConsumer extends AbstractConsumer {
 				
 				state.initialize(new KeySchedule(hkdf, th, cipherSuite.spec()), th, cipherSuite);
 				state.getKeySchedule().deriveEarlySecret();
+				state.getKeySchedule().deriveEarlyTrafficSecret();
+				state.getHandler().onEarlyTrafficSecret(state);
 			} catch (Exception e) {
 				throw new InternalErrorAlertException("Failed to create key schedule", e);
 			}			
 		}
-		updateTranscriptHash(state, handshake.getType(), data);
+		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 		
 		List<IExtension> extensions = new ArrayList<IExtension>();
 
@@ -211,7 +216,7 @@ public class ClientHelloConsumer extends AbstractConsumer {
 					cipherSuite,
 					(byte)0,
 					extensions);
-			produceHRR(state, helloRetryRequest, RecordType.INITIAL);
+			ConsumerUtil.produceHRR(state, helloRetryRequest, RecordType.INITIAL);
 			return;
 		}
 		state.setVersion(negotiatedVersion);
@@ -228,12 +233,16 @@ public class ClientHelloConsumer extends AbstractConsumer {
 		else {
 			task.run(state);
 		}
-
-		task = new Task(
-				state.getHandler().createCertificateSelector(), 
-				state.getHostName(), 
-				signAlgorithms.getSchemes(), 
-				null);
+		
+		ISignatureAlgorithmsExtension signAlgorithmsCert = find(handshake, ExtensionType.SIGNATURE_ALGORITHMS_CERT);
+		task = new CertificateTask(
+				state.getHandler().getCertificateSelector(),
+				new CertificateCriteria(
+					CertificateType.X509,
+					state.getHostName(),
+					signAlgorithms.getSchemes(),
+					signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes()
+				));
 		if (taskMode.certificates()) {
 			state.addDelegatedTask(task);
 		}
@@ -282,6 +291,8 @@ public class ClientHelloConsumer extends AbstractConsumer {
 					state.getVersion()));
 			try {
 				state.getKeySchedule().deriveHandshakeSecret(secret);
+				state.getKeySchedule().deriveHandshakeTrafficSecrets();
+				state.getHandler().onHandshakeTrafficSecrets(state);
 			}
 			catch (Exception e) {
 				throw new InternalErrorAlertException("Failed to derive handshake secret", e);
@@ -302,7 +313,7 @@ public class ClientHelloConsumer extends AbstractConsumer {
 					state.getCipherSuite(),
 					(byte)0,
 					extensions);
-			AbstractConsumer.prepare(state, serverHello, RecordType.INITIAL);
+			ConsumerUtil.prepare(state, serverHello, RecordType.INITIAL);
 			
 			String hostName = state.getHostName();
 			extensions = new ArrayList<IExtension>();
@@ -312,27 +323,21 @@ public class ClientHelloConsumer extends AbstractConsumer {
 			extensions.add(new SupportedGroupsExtension(state.getParameters().getNamedGroups()));
 			
 			EncryptedExtensions encryptedExtensions = new EncryptedExtensions(extensions);
-			AbstractConsumer.prepare(state, encryptedExtensions, RecordType.HANDSHAKE);	
+			ConsumerUtil.prepare(state, encryptedExtensions, RecordType.HANDSHAKE);	
 		}
 	}
 	
-	static class Task extends AbstractEngineTask {
+	static class CertificateTask extends AbstractEngineTask {
 
 		private final ICertificateSelector selector;
 		
-		private final String serverName;
-		
-		private final SignatureScheme[] schemes;
-
-		private final SignatureScheme[] certSchemes;
+		private final CertificateCriteria criteria;
 		
 		private volatile SelectedCertificates certificates;
 		
-		Task(ICertificateSelector selector, String serverName, SignatureScheme[] schemes, SignatureScheme[] certSchemes) {
+		CertificateTask(ICertificateSelector selector, CertificateCriteria criteria) {
 			this.selector = selector;
-			this.serverName = serverName;
-			this.schemes = schemes;
-			this.certSchemes = certSchemes;
+			this.criteria = criteria;
 		}
 
 		@Override
@@ -342,11 +347,31 @@ public class ClientHelloConsumer extends AbstractConsumer {
 
 		@Override
 		void execute() throws Exception {
-			certificates = selector.selectCertificates(serverName, schemes, certSchemes);
+			certificates = selector.selectCertificates(criteria);
 		}
 		
 		@Override
-		public void prepare(EngineState state) {
+		public void prepare(EngineState state) throws AlertException {
+			Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
+			ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
+			
+			byte[] signature = ConsumerUtil.sign(state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false), 
+					certificates.getAlgorithm(), 
+					certificates.getPrivateKey(), 
+					false);
+			CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
+			ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);	
+			
+			try {
+				Finished finished = new Finished(state.getKeySchedule().computeServerVerifyData());
+				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE);
+				state.getKeySchedule().deriveMasterSecret();
+				state.getKeySchedule().deriveApplicationTrafficSecrets();
+				state.getHandler().onApplicationTrafficSecrets(state);
+			} catch (Exception e) {
+				throw new InternalErrorAlertException("Failed to compute server verify data", e);
+			}
+			state.changeState(MachineState.SRV_WAIT_FINISHED);
 		}
 
 	}

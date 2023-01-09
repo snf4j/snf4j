@@ -40,7 +40,7 @@ import org.snf4j.core.session.ssl.SSLEngineBuilder;
 public class TLSEngineTest extends EngineTest {
 	
 	@Test
-	public void test() throws Exception {
+	public void testClientMode() throws Exception {
 		Assume.assumeTrue(JAVA11);
 		SSLContextBuilder builder = SSLContextBuilder.forServer(key("RSA", "rsa"), cert("rsasha256"));
 		
@@ -86,4 +86,33 @@ public class TLSEngineTest extends EngineTest {
 		out.flip();
 	}
 
+	@Test
+	public void testServerMode() throws Exception {
+		Assume.assumeTrue(JAVA11);
+		SSLContextBuilder builder = SSLContextBuilder.forClient();
+		
+		builder.protocol("TLSv1.3");
+		SSLContext ctx = builder.build();
+
+		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forClient(ctx);
+		SSLEngine engine = engineBuilder.build("example.com", 100);
+		
+		engine.beginHandshake();
+
+		HandshakeEngine eh = new HandshakeEngine(false, new EngineParameters(), handler);
+
+		ByteBuffer out = ByteBuffer.allocate(100000);
+		ByteBuffer in = ByteBuffer.allocate(100000);
+		in.flip();
+		
+		engine.wrap(in, out);
+		out.flip();
+		assertEquals(22, out.get());
+		assertEquals(0x0303, out.getShort());
+		int remaining = out.getShort();
+		
+		eh.consume(new ByteBuffer[] {out}, remaining);
+		eh.produce();
+
+	}	
 }

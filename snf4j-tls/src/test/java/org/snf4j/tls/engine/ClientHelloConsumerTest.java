@@ -240,7 +240,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		assertEquals(0, state.getProduced().length);
 		task2.run();
 		ProducedHandshake[] produced = state.getProduced();
-		assertEquals(2, produced.length);
+		assertEquals(5, produced.length);
 		ServerHello sh = (ServerHello) produced[0].getHandshake();
 		assertSame(RecordType.INITIAL, produced[0].getRecordType());
 		assertNotNull(sh);
@@ -261,7 +261,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		state = serverState();
 		consumer.consume(state, ch, data(ch), false);
 		produced = state.getProduced();
-		assertEquals(2, produced.length);
+		assertEquals(5, produced.length);
 		sh = (ServerHello) produced[0].getHandshake();
 		assertNotNull(sh);
 	}
@@ -275,7 +275,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		state.getDelegatedTask().run();
 		state.getDelegatedTask().run();
 		ProducedHandshake[] produced = state.getProduced();
-		assertEquals(2, produced.length);
+		assertEquals(5, produced.length);
 		EncryptedExtensions ee = (EncryptedExtensions) produced[1].getHandshake();
 		assertEquals(2, ee.getExtensioins().size());
 		ServerNameExtension sne = ExtensionsUtil.find(ee, ExtensionType.SERVER_NAME);
@@ -292,7 +292,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		params.delegatedTaskMode = DelegatedTaskMode.NONE;
 		consumer.consume(state, ch, data(ch), false);
 		produced = state.getProduced();
-		assertEquals(2, produced.length);
+		assertEquals(5, produced.length);
 		ee = (EncryptedExtensions) produced[1].getHandshake();
 		assertEquals(1, ee.getExtensioins().size());
 		sge = ExtensionsUtil.find(ee, ExtensionType.SUPPORTED_GROUPS);
@@ -306,7 +306,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		replace(extensions, keyShare());
 		ClientHello ch = clientHello();
 		consumer.consume(state, ch, data(ch), false);
-		assertEquals("VSN(snf4j.org)|", handler.trace());
+		assertEquals("VSN(snf4j.org)|ETS|", handler.trace());
 		
 		state = serverState();
 		remove(extensions, ExtensionType.SERVER_NAME);
@@ -321,7 +321,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		params.serverNameRequired = false;
 		ch = clientHello();
 		consumer.consume(state, ch, data(ch), false);
-		assertEquals("", handler.trace());
+		assertEquals("ETS|", handler.trace());
 		
 		extensions.add(serverName("snf4j.org"));
 		handler.verifyServerName = false;

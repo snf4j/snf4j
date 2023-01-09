@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,6 +53,10 @@ public class KeySchedule {
 	private static final byte[] C_HS_TRAFFIC = label("c hs traffic");
 
 	private static final byte[] S_HS_TRAFFIC = label("s hs traffic");
+
+	private static final byte[] C_AP_TRAFFIC = label("c ap traffic");
+
+	private static final byte[] S_AP_TRAFFIC = label("s ap traffic");
 	
 	private static final byte[] KEY = label("key");
 
@@ -83,6 +87,12 @@ public class KeySchedule {
 	private byte[] clientHandshakeTrafficSecret;
 
 	private byte[] serverHandshakeTrafficSecret;
+
+	private byte[] masterSecret;
+
+	private byte[] clientApplicationTrafficSecret;
+
+	private byte[] serverApplicationTrafficSecret;
 	
 	private SecretKey clientKey;
 	
@@ -239,6 +249,30 @@ public class KeySchedule {
 		this.clientHandshakeTrafficSecret = clientHandshakeTrafficSecret;
 	}
 
+	public byte[] computeServerVerifyData() throws InvalidKeyException {
+		checkDerived(serverHandshakeTrafficSecret, "Handshake Traffic Secrets");
+		byte[] hash = transcriptHash.getHash(HandshakeType.CERTIFICATE_VERIFY, false);
+		byte[] finishedKey = hkdfExpandLabel(serverHandshakeTrafficSecret,
+				FINISHED,
+				EMPTY,
+				hashLength);
+		byte[] hmac = hkdf.extract(finishedKey, hash);
+		Arrays.fill(finishedKey, (byte)0);
+		return hmac;
+	}
+
+	public byte[] computeClientVerifyData() throws InvalidKeyException {
+		checkDerived(clientHandshakeTrafficSecret, "Handshake Traffic Secrets");
+		byte[] hash = transcriptHash.getHash(HandshakeType.CERTIFICATE_VERIFY, true);
+		byte[] finishedKey = hkdfExpandLabel(clientHandshakeTrafficSecret,
+				FINISHED,
+				EMPTY,
+				hashLength);
+		byte[] hmac = hkdf.extract(finishedKey, hash);
+		Arrays.fill(finishedKey, (byte)0);
+		return hmac;
+	}
+	
 	public void eraseHandshakeTrafficSecrets() {
 		if (clientHandshakeTrafficSecret != null) {
 			Arrays.fill(clientHandshakeTrafficSecret, (byte)0);
@@ -271,6 +305,48 @@ public class KeySchedule {
 		clientKey = createKey(ckey);
 		serverIv = siv;
 		serverKey = createKey(skey);
+	}
+
+	public void deriveMasterSecret() throws InvalidKeyException {
+		checkDerived(handshakeSecret, "Handshake Secret");
+		byte[] derived = hkdfExpandLabel(handshakeSecret,
+				DERIVED,
+				emptyHash,
+				hashLength);
+		byte[] masterSecret = hkdf.extract(derived, new byte[hashLength]);
+		Arrays.fill(derived, (byte)0);
+		eraseMasterSecret();
+		this.masterSecret = masterSecret;
+	}
+	
+	public void eraseMasterSecret() {
+		if (masterSecret != null) {
+			Arrays.fill(masterSecret, (byte)0);
+			masterSecret = null;
+		}
+	}
+	
+	public void deriveApplicationTrafficSecrets() throws InvalidKeyException {
+		checkDerived(masterSecret, "Master Secret");
+		eraseApplicationTrafficSecrets();
+		byte[] clientApplicationTrafficSecret = hkdfExpandLabel(masterSecret, 
+				C_AP_TRAFFIC, 
+				transcriptHash.getHash(HandshakeType.FINISHED, false), 
+				hashLength);
+		serverApplicationTrafficSecret = hkdfExpandLabel(masterSecret, 
+				S_AP_TRAFFIC, 
+				transcriptHash.getHash(HandshakeType.FINISHED, false), 
+				hashLength);
+		this.clientApplicationTrafficSecret = clientApplicationTrafficSecret;
+	}
+
+	public void eraseApplicationTrafficSecrets() {
+		if (clientApplicationTrafficSecret != null) {
+			Arrays.fill(clientApplicationTrafficSecret, (byte)0);
+			Arrays.fill(serverApplicationTrafficSecret, (byte)0);
+			serverApplicationTrafficSecret = null;
+			clientApplicationTrafficSecret = null;
+		}
 	}
 	
 	public void eraseTrafficKeys() {

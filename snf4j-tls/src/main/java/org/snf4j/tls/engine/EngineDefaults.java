@@ -75,7 +75,9 @@ class EngineDefaults {
 			SignatureScheme.RSA_PSS_RSAE_SHA512,
 			SignatureScheme.RSA_PKCS1_SHA256,
 			SignatureScheme.RSA_PKCS1_SHA384,
-			SignatureScheme.RSA_PKCS1_SHA512
+			SignatureScheme.RSA_PKCS1_SHA512,
+			SignatureScheme.ECDSA_SHA1,
+			SignatureScheme.RSA_PKCS1_SHA1
 			};
 
 	private final static SignatureScheme[] IMPLEMENTED_SIGNATURE_SCHEMES = implemented(DEFAULT_SIGNATURE_SCHEMES);

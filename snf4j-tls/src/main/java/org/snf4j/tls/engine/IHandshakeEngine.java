@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,26 +23,26 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.extension;
+package org.snf4j.tls.engine;
 
-public class SignatureAlgorithmsCertExtension extends SignatureAlgorithmsExtension {
+import java.nio.ByteBuffer;
 
-	private final static ExtensionType TYPE = ExtensionType.SIGNATURE_ALGORITHMS_CERT;
+import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.AlertException;
 
-	private final static AbstractExtensionParser PARSER = new Parser(TYPE) {
+public interface IHandshakeEngine {
 
-		@Override
-		protected IExtension create(SignatureScheme[] schemes) {
-			return new SignatureAlgorithmsCertExtension(schemes);
-		}
-	};
-
-	public static IExtensionParser getParser() {
-		return PARSER;
-	}
-
-	public SignatureAlgorithmsCertExtension(SignatureScheme... schemes) {
-		super(TYPE, schemes);
-	}
-
+	void consume(ByteBuffer[] srcs, int remaining) throws AlertException;
+	
+	void consume(ByteBufferArray srcs, int remaining) throws AlertException;
+	
+	ProducedHandshake[] produce() throws AlertException;
+	
+	Runnable getDelegatedTask();
+	
+	boolean isStarted();
+	
+	boolean isConnected();
+	
+	void start() throws AlertException;
 }

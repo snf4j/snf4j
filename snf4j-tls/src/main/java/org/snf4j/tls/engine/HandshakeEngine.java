@@ -56,7 +56,7 @@ import org.snf4j.tls.handshake.IHandshakeDecoder;
 import org.snf4j.tls.handshake.IServerHello;
 import org.snf4j.tls.record.RecordType;
 
-public class HandshakeEngine {
+public class HandshakeEngine implements IHandshakeEngine {
 	
 	private final static Random RANDOM = new Random();
 	
@@ -88,10 +88,12 @@ public class HandshakeEngine {
 		extensionValidator = ExtensionValidator.DEFAULT;
 	}
 	
+	@Override
 	public void consume(ByteBuffer[] srcs, int remaining) throws AlertException {
 		consume(ByteBufferArray.wrap(srcs), remaining);
 	}
 
+	@Override
 	public void consume(ByteBufferArray srcs, int remaining) throws AlertException {
 		ByteBuffer[] data = srcs.array().clone();
 		
@@ -170,22 +172,27 @@ public class HandshakeEngine {
 		}
 	}
 	
+	@Override
 	public ProducedHandshake[] produce() throws AlertException {
 		return state.getProduced();
 	}
 	
+	@Override
 	public Runnable getDelegatedTask() {
 		return state.getDelegatedTask();
 	}
 	
+	@Override
 	public boolean isStarted() {
 		return state.getState() != MachineState.CLI_START;
 	}
 	
+	@Override
 	public boolean isConnected() {
 		return state.getState().isConnected();
 	}
 	
+	@Override
 	public void start() throws AlertException {
 		if (isStarted()) {
 			throw new InternalErrorAlertException("Handshake has already started");

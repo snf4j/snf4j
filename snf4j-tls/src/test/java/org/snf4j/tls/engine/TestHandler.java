@@ -33,6 +33,8 @@ public class TestHandler implements IEngineHandler {
 	
 	public boolean verifyServerName = true;
 	
+	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
+	
 	public void trace(String msg) {
 		synchronized (trace) {
 			trace.append(msg).append('|');
@@ -50,7 +52,7 @@ public class TestHandler implements IEngineHandler {
 	}
 	
 	@Override
-	public ICertificateSelector createCertificateSelector() {
+	public ICertificateSelector getCertificateSelector() {
 		return new TestCertificateSelector();
 	}
 
@@ -58,6 +60,21 @@ public class TestHandler implements IEngineHandler {
 	public boolean verify(IServerNameExtension serverName) {
 		trace("VSN(" + serverName.getHostName() +")");
 		return verifyServerName;
+	}
+
+	@Override
+	public void onEarlyTrafficSecret(EngineState state) throws Exception {
+		trace("ETS");
+	}
+
+	@Override
+	public void onHandshakeTrafficSecrets(EngineState state) throws Exception {
+		trace("HTS");
+	}
+
+	@Override
+	public void onApplicationTrafficSecrets(EngineState state) throws Exception {
+		trace("ATS");
 	}
 
 }
