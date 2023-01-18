@@ -23,17 +23,21 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.record;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
+import org.snf4j.tls.crypto.IAeadEncrypt;
 
-public interface IEngineHandler {
+public class Encryptor extends Cryptor {
 
-	boolean verify(IServerNameExtension serverName);
+	private final IAeadEncrypt aead;
 	
-	ICertificateSelector getCertificateSelector();
-	
-	int calculatePadding(ContentType type, int contentLength);
+	public Encryptor(IAeadEncrypt aead, byte[] iv) {
+		super(iv);
+		this.aead = aead;
+	}
+
+	public IAeadEncrypt getAead() {
+		return aead;
+	}
 
 }

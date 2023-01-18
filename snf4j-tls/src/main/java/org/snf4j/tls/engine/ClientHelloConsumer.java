@@ -75,6 +75,7 @@ import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IClientHello;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.ServerHello;
+import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
 
 public class ClientHelloConsumer implements IHandshakeConsumer {
@@ -194,7 +195,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				state.initialize(new KeySchedule(hkdf, th, cipherSuite.spec()), th, cipherSuite);
 				state.getKeySchedule().deriveEarlySecret();
 				state.getKeySchedule().deriveEarlyTrafficSecret();
-				state.getHandler().onEarlyTrafficSecret(state);
+				state.getListener().onEarlyTrafficSecret(state);
 			} catch (Exception e) {
 				throw new InternalErrorAlertException("Failed to create key schedule", e);
 			}			
@@ -228,7 +229,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				keyShareEntry.getParsedKey(), 
 				clientHello.getLegacySessionId()); 
 		if (taskMode.all()) {
-			state.addDelegatedTask(task);
+			state.addTask(task);
 		}
 		else {
 			task.run(state);
@@ -244,7 +245,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes()
 				));
 		if (taskMode.certificates()) {
-			state.addDelegatedTask(task);
+			state.addTask(task);
 		}
 		else {
 			task.run(state);
@@ -270,6 +271,11 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		}
 		
 		@Override
+		public boolean isProducing() {
+			return true;
+		}
+		
+		@Override
 		public String name() {
 			return "Key exchange";
 		}
@@ -283,7 +289,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		}
 
 		@Override
-		public void prepare(EngineState state) throws AlertException {
+		public void finish(EngineState state) throws AlertException {
 			List<IExtension> extensions = new ArrayList<IExtension>();
 			
 			extensions.add(new SupportedVersionsExtension(
@@ -292,7 +298,8 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			try {
 				state.getKeySchedule().deriveHandshakeSecret(secret);
 				state.getKeySchedule().deriveHandshakeTrafficSecrets();
-				state.getHandler().onHandshakeTrafficSecrets(state);
+				state.getListener().onHandshakeTrafficSecrets(state);
+				state.getListener().onReceivingTraficKey(RecordType.HANDSHAKE);
 			}
 			catch (Exception e) {
 				throw new InternalErrorAlertException("Failed to derive handshake secret", e);
@@ -313,7 +320,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					state.getCipherSuite(),
 					(byte)0,
 					extensions);
-			ConsumerUtil.prepare(state, serverHello, RecordType.INITIAL);
+			ConsumerUtil.prepare(state, serverHello, RecordType.INITIAL, RecordType.HANDSHAKE);
 			
 			String hostName = state.getHostName();
 			extensions = new ArrayList<IExtension>();
@@ -339,6 +346,11 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			this.selector = selector;
 			this.criteria = criteria;
 		}
+		
+		@Override
+		public boolean isProducing() {
+			return true;
+		}
 
 		@Override
 		public String name() {
@@ -351,7 +363,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		}
 		
 		@Override
-		public void prepare(EngineState state) throws AlertException {
+		public void finish(EngineState state) throws AlertException {
 			Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
 			ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
 			
@@ -364,10 +376,10 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			
 			try {
 				Finished finished = new Finished(state.getKeySchedule().computeServerVerifyData());
-				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE);
+				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
 				state.getKeySchedule().deriveMasterSecret();
 				state.getKeySchedule().deriveApplicationTrafficSecrets();
-				state.getHandler().onApplicationTrafficSecrets(state);
+				state.getListener().onApplicationTrafficSecrets(state);
 			} catch (Exception e) {
 				throw new InternalErrorAlertException("Failed to compute server verify data", e);
 			}

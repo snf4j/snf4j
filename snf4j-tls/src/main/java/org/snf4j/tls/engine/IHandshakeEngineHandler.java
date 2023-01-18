@@ -25,15 +25,11 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
-
-public interface IEngineHandler {
-
-	boolean verify(IServerNameExtension serverName);
+public interface IHandshakeEngineHandler extends IEngineHandler {
 	
-	ICertificateSelector getCertificateSelector();
+	void onEarlyTrafficSecret(EngineState state) throws Exception;
 	
-	int calculatePadding(ContentType type, int contentLength);
-
+	void onHandshakeTrafficSecrets(EngineState state) throws Exception;
+	
+	void onApplicationTrafficSecrets(EngineState state) throws Exception;
 }

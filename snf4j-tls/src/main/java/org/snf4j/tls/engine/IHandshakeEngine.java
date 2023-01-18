@@ -32,17 +32,29 @@ import org.snf4j.tls.alert.AlertException;
 
 public interface IHandshakeEngine {
 
+	IEngineHandler getHandler();
+	
+	boolean hasPendingTasks() throws AlertException;
+	
 	void consume(ByteBuffer[] srcs, int remaining) throws AlertException;
 	
 	void consume(ByteBufferArray srcs, int remaining) throws AlertException;
 	
+	boolean needProduce();
+	
 	ProducedHandshake[] produce() throws AlertException;
 	
-	Runnable getDelegatedTask();
+	boolean hasProducingTask();
+	
+	boolean hasTask();
+	
+	Runnable getTask();
 	
 	boolean isStarted();
 	
 	boolean isConnected();
 	
 	void start() throws AlertException;
+	
+	int getMaxFragmentLength();
 }

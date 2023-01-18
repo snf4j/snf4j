@@ -23,17 +23,13 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.alert;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
+public class DecryptErrorAlertException extends AlertException {
 
-public interface IEngineHandler {
+	private static final long serialVersionUID = 1L;
 
-	boolean verify(IServerNameExtension serverName);
-	
-	ICertificateSelector getCertificateSelector();
-	
-	int calculatePadding(ContentType type, int contentLength);
-
+	public DecryptErrorAlertException(String message) {
+		super(message, AlertDescription.DECRYPT_ERROR);
+	}
 }

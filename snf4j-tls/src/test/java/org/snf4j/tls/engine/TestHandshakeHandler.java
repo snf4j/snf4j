@@ -27,13 +27,71 @@ package org.snf4j.tls.engine;
 
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
+import org.snf4j.tls.record.RecordType;
 
-public interface IEngineHandler {
+public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineStateListener {
 
-	boolean verify(IServerNameExtension serverName);
+	private StringBuilder trace = new StringBuilder();
 	
-	ICertificateSelector getCertificateSelector();
+	public boolean verifyServerName = true;
 	
-	int calculatePadding(ContentType type, int contentLength);
+	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
+	
+	public void trace(String msg) {
+		synchronized (trace) {
+			trace.append(msg).append('|');
+		}
+	}
+	
+	public String trace() {
+		String s;
+		
+		synchronized (trace) {
+			s = trace.toString();
+			trace.setLength(0);
+		}
+		return s;
+	}
+	
+	@Override
+	public ICertificateSelector getCertificateSelector() {
+		return new TestCertificateSelector();
+	}
 
+	@Override
+	public boolean verify(IServerNameExtension serverName) {
+		trace("VSN(" + serverName.getHostName() +")");
+		return verifyServerName;
+	}
+
+	@Override
+	public void onEarlyTrafficSecret(EngineState state) throws Exception {
+		trace("ETS");
+	}
+
+	@Override
+	public void onHandshakeTrafficSecrets(EngineState state) throws Exception {
+		trace("HTS");
+	}
+
+	@Override
+	public void onApplicationTrafficSecrets(EngineState state) throws Exception {
+		trace("ATS");
+	}
+
+	@Override
+	public 	void onReceivingTraficKey(RecordType recordType) {
+		trace("RTS");
+	}
+	
+	@Override
+	public void onSendingTraficKey(RecordType recordType) {
+		trace("STS");
+	}
+	
+	@Override
+	public int calculatePadding(ContentType type, int contentLength) {
+		return 0;
+	}
+	
 }

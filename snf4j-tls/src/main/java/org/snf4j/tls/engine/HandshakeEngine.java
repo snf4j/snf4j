@@ -54,6 +54,7 @@ import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.IHandshakeDecoder;
 import org.snf4j.tls.handshake.IServerHello;
+import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
 
 public class HandshakeEngine implements IHandshakeEngine {
@@ -67,9 +68,13 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 	
 	static {
-		CONSUMERS = new IHandshakeConsumer[10];
+		CONSUMERS = new IHandshakeConsumer[21];
 		addConsumer(CONSUMERS, new ClientHelloConsumer());	
 		addConsumer(CONSUMERS, new ServerHelloConsumer());	
+		addConsumer(CONSUMERS, new EncryptedExtensionsConsumer());
+		addConsumer(CONSUMERS, new CertificateConsumer());
+		addConsumer(CONSUMERS, new CertificateVerifyConsumer());
+		addConsumer(CONSUMERS, new FinishedConsumer());
 	}
 	
 	private final IHandshakeDecoder decoder;
@@ -78,14 +83,23 @@ public class HandshakeEngine implements IHandshakeEngine {
 	
 	private final EngineState state;
 	
-	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler) {
-		this(clientMode, parameters, handler, HandshakeDecoder.DEFAULT);
+	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener) {
+		this(clientMode, parameters, handler, listener, HandshakeDecoder.DEFAULT);
 	}
 
-	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler, IHandshakeDecoder decoder) {
+	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener, IHandshakeDecoder decoder) {
 		this.decoder = decoder;
-		state = new EngineState(clientMode ? MachineState.CLI_START : MachineState.SRV_START, parameters, handler);
+		state = new EngineState(
+				clientMode ? MachineState.CLI_START : MachineState.SRV_START, 
+				parameters, 
+				handler,
+				listener);
 		extensionValidator = ExtensionValidator.DEFAULT;
+	}
+	
+	@Override
+	public IEngineHandler getHandler() {
+		return state.getHandler();
 	}
 	
 	@Override
@@ -173,13 +187,33 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 	
 	@Override
-	public ProducedHandshake[] produce() throws AlertException {
-		return state.getProduced();
+	public boolean needProduce() {
+		return state.hasProduced();
 	}
 	
 	@Override
-	public Runnable getDelegatedTask() {
-		return state.getDelegatedTask();
+	public ProducedHandshake[] produce() throws AlertException {
+		return state.getProduced();
+	}
+
+	@Override
+	public boolean hasProducingTask() {
+		return state.hasProducingTasks();
+	}
+
+	@Override
+	public boolean hasPendingTasks() throws AlertException {
+		return state.hasPendingTasks();
+	}
+
+	@Override
+	public boolean hasTask() {
+		return state.hasTasks();
+	}
+	
+	@Override
+	public Runnable getTask() {
+		return state.getTask();
 	}
 	
 	@Override
@@ -190,6 +224,11 @@ public class HandshakeEngine implements IHandshakeEngine {
 	@Override
 	public boolean isConnected() {
 		return state.getState().isConnected();
+	}
+	
+	@Override
+	public int getMaxFragmentLength() {
+		return state.getMaxFragmentLength();
 	}
 	
 	@Override

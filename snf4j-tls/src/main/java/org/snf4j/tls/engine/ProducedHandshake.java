@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,17 +34,30 @@ public class ProducedHandshake {
 	
 	private final RecordType recordType;
 
+	private final RecordType nextRecordType;
+	
 	public ProducedHandshake(IHandshake handshake, RecordType recordType) {
 		this.handshake = handshake;
 		this.recordType = recordType;
+		this.nextRecordType = null;
 	}
 
+	public ProducedHandshake(IHandshake handshake, RecordType recordType, RecordType nextRecordType) {
+		this.handshake = handshake;
+		this.recordType = recordType;
+		this.nextRecordType = nextRecordType;
+	}
+	
 	public IHandshake getHandshake() {
 		return handshake;
 	}
 
 	public RecordType getRecordType() {
 		return recordType;
+	}
+
+	public RecordType getNextRecordType() {
+		return nextRecordType;
 	}
 	
 }

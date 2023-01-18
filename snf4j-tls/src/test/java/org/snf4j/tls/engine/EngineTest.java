@@ -48,11 +48,11 @@ import org.snf4j.tls.record.RecordType;
 
 public class EngineTest extends CommonTest {
 
-	TestHandler handler;
+	TestHandshakeHandler handler;
 	
 	@Override
 	public void before() throws Exception {
-		handler = new TestHandler();
+		handler = new TestHandshakeHandler();
 	}
 	
 	protected static void assertProduced(ProducedHandshake h, HandshakeType type, RecordType recordType) {

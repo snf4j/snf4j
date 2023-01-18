@@ -27,11 +27,11 @@ package org.snf4j.tls.crypto;
 
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import javax.security.auth.DestroyFailedException;
-
 import org.snf4j.tls.Args;
 import org.snf4j.tls.cipher.ICipherSuiteSpec;
 import org.snf4j.tls.handshake.HandshakeType;
@@ -203,7 +203,7 @@ public class KeySchedule {
 	
 	public void deriveEarlyTrafficKeys() throws InvalidKeyException {
 		checkDerived(earlyTrafficSecret, "Early Traffic Secret");
-		eraseTrafficKeys();
+		clearTrafficKeys();
 		byte[] iv = hkdfExpandLabel(earlyTrafficSecret,
 				IV,
 				EMPTY,
@@ -284,7 +284,7 @@ public class KeySchedule {
 	
 	public void deriveHandshakeTrafficKeys() throws InvalidKeyException {
 		checkDerived(clientHandshakeTrafficSecret, "Handshake Traffic Secrets");
-		eraseTrafficKeys();
+		clearTrafficKeys();
 		byte[] civ = hkdfExpandLabel(clientHandshakeTrafficSecret,
 				IV,
 				EMPTY,
@@ -349,29 +349,24 @@ public class KeySchedule {
 		}
 	}
 	
-	public void eraseTrafficKeys() {
-		if (clientKey != null) {
-			Arrays.fill(clientIv, (byte)0);
-			clientIv = null;
-			try {
-				clientKey.destroy();
-			} catch (DestroyFailedException ignored) {
-				//Ignore
-			}
-			clientKey = null;
-		}
-		if (serverKey != null) {
-			Arrays.fill(serverIv, (byte)0);
-			serverIv = null;
-			try {
-				serverKey.destroy();
-			} catch (DestroyFailedException ignored) {
-				//Ignore
-			}
-			serverKey = null;
-		}
+	public void clearTrafficKeys() {
+		clientIv = null;
+		clientKey = null;
+		serverIv = null;
+		serverKey = null;
 	}
 	
+	public IAeadDecrypt getAeadDecrypt(boolean client) throws NoSuchAlgorithmException, NoSuchPaddingException {
+		return new AeadDecrypt(client ? clientKey : serverKey, cipherSuiteSpec.getAead());
+	}
+
+	public IAeadEncrypt getAeadEncrypt(boolean client) throws NoSuchAlgorithmException, NoSuchPaddingException {
+		return new AeadEncrypt(client ? clientKey : serverKey, cipherSuiteSpec.getAead());
+	}
+	
+	public byte[] getIv(boolean client) {
+		return client ? clientIv : serverIv;
+	}
 	
 	byte[] hkdfExpandLabel(byte[] secret, String label, byte[] context, int length) throws InvalidKeyException {
 		return hkdfExpandLabel(secret, label(label), context, length);

@@ -61,7 +61,11 @@ public class EngineStateTest {
 	
 	@Test
 	public void testGetProduced() throws Exception {
-		EngineState state = new EngineState(MachineState.SRV_START, new TestParameters(), new TestHandler());
+		EngineState state = new EngineState(
+				MachineState.SRV_START, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
 		
 		assertEquals(0, state.getProduced().length);
 		state.produce(handshake(1));
@@ -94,12 +98,12 @@ public class EngineStateTest {
 		
 		state.produce(handshake(7));
 		state.prepare(handshake(8));
-		state.addDelegatedTask(new Task(9));
+		state.addTask(new Task(9));
 		produced = state.getProduced();
 		assertEquals(1, produced.length);
 		assertEquals(7, id(produced[0]));
 		assertEquals(0, state.getProduced().length);
-		Runnable task = state.getDelegatedTask();
+		Runnable task = state.getTask();
 		assertEquals(0, state.getProduced().length);
 		task.run();
 		produced = state.getProduced();
@@ -107,15 +111,15 @@ public class EngineStateTest {
 		assertEquals(8, id(produced[0]));
 		assertEquals(9, id(produced[1]));
 		assertEquals(0, state.getProduced().length);
-		assertNull(state.getDelegatedTask());
+		assertNull(state.getTask());
 		
 		state.produce(handshake(10));
 		state.prepare(handshake(11));
-		state.addDelegatedTask(new Task(12));
-		state.addDelegatedTask(new Task(13));
-		task = state.getDelegatedTask();
-		Runnable task2 = state.getDelegatedTask();
-		assertNull(state.getDelegatedTask());
+		state.addTask(new Task(12));
+		state.addTask(new Task(13));
+		task = state.getTask();
+		Runnable task2 = state.getTask();
+		assertNull(state.getTask());
 		produced = state.getProduced();
 		assertEquals(1, produced.length);
 		assertEquals(10, id(produced[0]));
@@ -131,9 +135,9 @@ public class EngineStateTest {
 		assertEquals(0, state.getProduced().length);
 
 		Exception e = new Exception();
-		state.addDelegatedTask(new Task(e, 14));
+		state.addTask(new Task(e, 14));
 		assertEquals(0, state.getProduced().length);
-		task = state.getDelegatedTask();
+		task = state.getTask();
 		assertEquals(0, state.getProduced().length);
 		task.run();
 		try {
@@ -164,7 +168,12 @@ public class EngineStateTest {
 		}
 		
 		@Override
-		public void prepare(EngineState state) throws AlertException {
+		public boolean isProducing() {
+			return true;
+		}
+
+		@Override
+		public void finish(EngineState state) throws AlertException {
 			for (int id: ids) {
 				state.prepare(handshake(id));
 			}

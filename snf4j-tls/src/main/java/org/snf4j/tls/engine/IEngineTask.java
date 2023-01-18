@@ -31,11 +31,13 @@ public interface IEngineTask extends Runnable {
 
 	String name();
 	
+	boolean isProducing();
+	
 	boolean isDone();
 	
 	boolean isSuccessful();
 	
 	Throwable cause();
 	
-	void prepare(EngineState state) throws AlertException;
+	void finish(EngineState state) throws AlertException;
 }

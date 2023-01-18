@@ -576,7 +576,7 @@ public class KeyScheduleTest extends CommonTest {
 		exception = null;
 		exceptionCount = 0;
 		destroyCount = 0;
-		ks.eraseTrafficKeys();
+		ks.clearTrafficKeys();
 		assertEquals(0, exceptionCount);
 		assertEquals(0, destroyCount);
 		ks.deriveHandshakeTrafficKeys();
@@ -584,7 +584,7 @@ public class KeyScheduleTest extends CommonTest {
 		byte[] iv2 = getSecret(ks, "serverIv");
 		assertNotErased(iv1);
 		assertNotErased(iv2);
-		ks.eraseTrafficKeys();
+		ks.clearTrafficKeys();
 		assertEquals(0, exceptionCount);
 		assertEquals(2, destroyCount);
 		assertErased(iv1);
@@ -602,7 +602,7 @@ public class KeyScheduleTest extends CommonTest {
 		iv2 = getSecret(ks, "serverIv");
 		assertNotErased(iv1);
 		assertNotErased(iv2);
-		ks.eraseTrafficKeys();
+		ks.clearTrafficKeys();
 		assertEquals(2, exceptionCount);
 		assertEquals(2, destroyCount);
 		assertErased(iv1);

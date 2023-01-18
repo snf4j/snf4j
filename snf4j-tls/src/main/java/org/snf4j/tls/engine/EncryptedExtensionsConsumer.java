@@ -25,15 +25,27 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
+import java.nio.ByteBuffer;
 
-public interface IEngineHandler {
+import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
 
-	boolean verify(IServerNameExtension serverName);
-	
-	ICertificateSelector getCertificateSelector();
-	
-	int calculatePadding(ContentType type, int contentLength);
+public class EncryptedExtensionsConsumer  implements IHandshakeConsumer {
+
+	@Override
+	public HandshakeType getType() {
+		return HandshakeType.ENCRYPTED_EXTENSIONS;
+	}
+
+	@Override
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException {
+		if (state.getState() != MachineState.CLI_WAIT_EE) {
+			throw new UnexpectedMessageAlertException("Unexpected EncryptedExtensions");
+		}
+		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+		state.changeState(MachineState.CLI_WAIT_CERT);
+	}
 
 }

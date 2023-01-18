@@ -28,6 +28,7 @@ package org.snf4j.tls.engine;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Signature;
 import java.util.Arrays;
 
@@ -60,6 +61,11 @@ public class ConsumerUtil {
 		state.getTranscriptHash().updateHelloRetryRequest(message);
 	}
 	
+	static void produce(EngineState state, IHandshake handshake, RecordType recordType, RecordType nextRecordType) {
+		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
+		state.produce(new ProducedHandshake(handshake, recordType, nextRecordType));
+	}
+
 	static void produce(EngineState state, IHandshake handshake, RecordType recordType) {
 		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
 		state.produce(new ProducedHandshake(handshake, recordType));
@@ -69,6 +75,11 @@ public class ConsumerUtil {
 		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
 		state.prepare(new ProducedHandshake(handshake, recordType));
 	}
+	
+	static void prepare(EngineState state, IHandshake handshake, RecordType recordType, RecordType nextRecordType) {
+		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
+		state.prepare(new ProducedHandshake(handshake, recordType, nextRecordType));
+	}
 
 	static void produceHRR(EngineState state, IHandshake handshake, RecordType recordType) {
 		state.getTranscriptHash().updateHelloRetryRequest(handshake.prepare());
@@ -77,24 +88,48 @@ public class ConsumerUtil {
 
 	static byte[] sign(byte[] content, SignatureScheme scheme, PrivateKey privateKey, boolean client) throws AlertException {
 		try {
-			Signature signature = scheme
+			Signature sign = scheme
 					.spec()
 					.getSignature()
 					.createSignature();
 			
-			signature.initSign(privateKey);
-			signature.update(SIGNATURE_64_OCTETS);
+			sign.initSign(privateKey);
+			sign.update(SIGNATURE_64_OCTETS);
 			if (client) {
-				signature.update(SIGNATURE_CLIENT_CONTEXT);
+				sign.update(SIGNATURE_CLIENT_CONTEXT);
 			}
 			else {
-				signature.update(SIGNATURE_SERVER_CONTEXT);
+				sign.update(SIGNATURE_SERVER_CONTEXT);
 			}
-			signature.update((byte) 0);
-			signature.update(content);
-			return signature.sign();
+			sign.update((byte) 0);
+			sign.update(content);
+			return sign.sign();
 		} catch (Exception e) {
 			throw new InternalErrorAlertException("Failed to sign content", e);
 		}
 	}
+	
+	static boolean verify(byte[] signature, byte[] content, SignatureScheme scheme, PublicKey privateKey, boolean client) throws AlertException {
+		try {
+			Signature sign = scheme
+					.spec()
+					.getSignature()
+					.createSignature();
+			
+			sign.initVerify(privateKey);
+			sign.update(SIGNATURE_64_OCTETS);
+			if (client) {
+				sign.update(SIGNATURE_CLIENT_CONTEXT);
+			}
+			else {
+				sign.update(SIGNATURE_SERVER_CONTEXT);
+			}
+			sign.update((byte) 0);
+			sign.update(content);
+			return sign.verify(signature);
+		} catch (Exception e) {
+			throw new InternalErrorAlertException("Failed to verify content", e);
+		}
+	}
+	
 }

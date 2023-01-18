@@ -23,17 +23,11 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.record;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
-
-public interface IEngineHandler {
-
-	boolean verify(IServerNameExtension serverName);
+public interface IEncryptorHolder {
 	
-	ICertificateSelector getCertificateSelector();
-	
-	int calculatePadding(ContentType type, int contentLength);
+	Encryptor getEncryptor(RecordType type);
 
+	Encryptor getEncryptor();
 }

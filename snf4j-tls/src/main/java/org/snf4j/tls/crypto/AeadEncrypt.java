@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.crypto;
 
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 
@@ -47,10 +48,22 @@ public class AeadEncrypt implements IAeadEncrypt {
 	}
 	
 	@Override
+	public IAead getAead() {
+		return aead;
+	}
+
+	@Override
 	public byte[] encrypt(byte[] nonce, byte[] additionalData, byte[] plaintext) throws GeneralSecurityException {
 		aead.initEncrypt(cipher, key, nonce);
 		cipher.updateAAD(additionalData);
 		return cipher.doFinal(plaintext);
 	}
 	
+	@Override
+	public void encrypt(byte[] nonce, byte[] additionalData, ByteBuffer plaintext, ByteBuffer ciphertext) throws GeneralSecurityException {
+		aead.initEncrypt(cipher, key, nonce);
+		cipher.updateAAD(additionalData);
+		cipher.doFinal(plaintext,ciphertext);
+	}
+
 }

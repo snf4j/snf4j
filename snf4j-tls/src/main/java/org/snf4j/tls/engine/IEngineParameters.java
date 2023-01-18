@@ -41,7 +41,7 @@ public interface IEngineParameters {
 	SecureRandom getSecureRandom();
 
 	boolean isCompatibilityMode();
-
+	
 	String getServerName();
 
 	boolean isServerNameRequired();

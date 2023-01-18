@@ -25,7 +25,7 @@
  */
 package org.snf4j.tls.handshake;
 
-public interface ICertificate {
+public interface ICertificate extends IHandshake {
 	
 	byte[] getRequestContext();
 	

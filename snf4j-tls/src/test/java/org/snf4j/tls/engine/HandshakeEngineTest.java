@@ -53,6 +53,7 @@ import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.HandshakeDecoder;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.ServerHello;
+import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.handshake.TestHandshakeParser;
 import org.snf4j.tls.record.RecordType;
 
@@ -61,7 +62,7 @@ public class HandshakeEngineTest extends EngineTest {
 	@Test
 	public void testStart() throws Exception {
 		TestParameters params = new TestParameters();
-		HandshakeEngine he = new HandshakeEngine(true, params, handler);
+		HandshakeEngine he = new HandshakeEngine(true, params, handler, handler);
 		
 		assertFalse(params.isCompatibilityMode());
 		assertArrayEquals(params.getNamedGroups(), new NamedGroup[] {
@@ -100,7 +101,7 @@ public class HandshakeEngineTest extends EngineTest {
 		params.numberOfOfferedSharedKeys = 2;
 		params.serverName = "snf4j.org";
 		params.signatureSchemes = new SignatureScheme[] {SignatureScheme.ECDSA_SECP384R1_SHA384};
-		he = new HandshakeEngine(true, params, handler);
+		he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
 		produced = he.produce();
 		assertEquals(1, produced.length);
@@ -117,7 +118,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertServerName(ch, "snf4j.org");
 		
 		byte[] id1 = ch.getLegacySessionId();
-		he = new HandshakeEngine(true, params, handler);
+		he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
 		produced = he.produce();
 		assertEquals(1, produced.length);
@@ -133,7 +134,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertTrue(count > 0);
 
 		params.namedGroups = new NamedGroup[] {new NamedGroup("XXX", 32, null) {}};
-		he = new HandshakeEngine(true, params, handler);
+		he = new HandshakeEngine(true, params, handler, handler);
 		try {
 			he.start();
 		} catch (InternalErrorAlertException e) {}		
@@ -142,93 +143,93 @@ public class HandshakeEngineTest extends EngineTest {
 	@Test
 	public void testConsume() throws Exception {
 		TestParameters params = new TestParameters();
-		HandshakeEngine he = new HandshakeEngine(true, params, handler);
+		HandshakeEngine he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
 		ClientHello ch = (ClientHello) he.produce()[0].getHandshake();
 		ch.getBytes(buffer);
 		byte[] data = buffer();
 		ByteBuffer[] array;
 		
-		HandshakeEngine he2 = new HandshakeEngine(false, params, handler);
+		HandshakeEngine he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(data, 0);
 		he2.consume(array, data.length);
-		he2.getDelegatedTask().run();
-		he2.getDelegatedTask().run();
+		he2.getTask().run();
+		he2.getTask().run();
 		assertEquals(0, ByteBufferArray.wrap(array).remaining());
 		ProducedHandshake[] produced = he2.produce();
 		assertEquals(5, produced.length);
 		ServerHello sh = (ServerHello) produced[0].getHandshake();
 		assertTrue(sh.isPrepared());
 		
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(data, 0, 10,10);
 		he2.consume(array, data.length);
-		he2.getDelegatedTask().run();
-		he2.getDelegatedTask().run();
+		he2.getTask().run();
+		he2.getTask().run();
 		assertEquals(0, ByteBufferArray.wrap(array).remaining());
 		produced = he2.produce();
 		assertEquals(5, produced.length);
 		assertNotNull((ServerHello) produced[0].getHandshake());
 
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(Arrays.copyOf(data, data.length+1), 0);
 		he2.consume(array, data.length);
-		he2.getDelegatedTask().run();
-		he2.getDelegatedTask().run();
+		he2.getTask().run();
+		he2.getTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
 		assertEquals(5, he2.produce().length);
 		
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(Arrays.copyOf(data, data.length+1), 0, 10, 10);
 		he2.consume(array, data.length);
-		he2.getDelegatedTask().run();
-		he2.getDelegatedTask().run();
+		he2.getTask().run();
+		he2.getTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
 		assertEquals(5, he2.produce().length);
 
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0);
 		array[0].getShort();
 		he2.consume(array, data.length);
-		he2.getDelegatedTask().run();
-		he2.getDelegatedTask().run();
+		he2.getTask().run();
+		he2.getTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
 		assertEquals(5, he2.produce().length);
 		
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0, 10, 10);
 		array[0].getShort();
 		he2.consume(array, data.length);
-		he2.getDelegatedTask().run();
-		he2.getDelegatedTask().run();
+		he2.getTask().run();
+		he2.getTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
 		assertEquals(5, he2.produce().length);
 
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0, 1,1, 10, 10);
 		ByteBufferArray bArray = ByteBufferArray.wrap(array);
 		bArray.getShort();
 		he2.consume(array, data.length);
-		he2.getDelegatedTask().run();
-		he2.getDelegatedTask().run();
+		he2.getTask().run();
+		he2.getTask().run();
 		assertEquals(1, ByteBufferArray.wrap(array).remaining());
 		assertEquals(5, he2.produce().length);
 		
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(data, 0);
 		try {
 			he2.consume(array, data.length+1);
 			fail();
 		} catch(RuntimeException e) {}
 
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		array = array(data, 0, 10);
 		try {
 			he2.consume(array, data.length+1);
 			fail();
 		} catch (RuntimeException e) {}
 		
-		he2 = new HandshakeEngine(false, params, handler);
+		he2 = new HandshakeEngine(false, params, handler, handler);
 		data[0] = 99;
 		array = array(data, 0);
 		try {
@@ -241,7 +242,7 @@ public class HandshakeEngineTest extends EngineTest {
 	@Test
 	public void testConsumeNoConsumer() throws Exception {
 		TestParameters params = new TestParameters();
-		HandshakeEngine he = new HandshakeEngine(true, params, handler);
+		HandshakeEngine he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
 		he.produce()[0].getHandshake().getBytes(buffer);
 		byte[] data = buffer();
@@ -250,12 +251,12 @@ public class HandshakeEngineTest extends EngineTest {
 		decoder.addParser(new TestHandshakeParser(HandshakeType.of(127), true));
 		decoder.addParser(new TestHandshakeParser(HandshakeType.of(255), true));
 		
-		he = new HandshakeEngine(false, params, handler, decoder);
+		he = new HandshakeEngine(false, params, handler, handler, decoder);
 		data[0] = -1;
 		try {
 			he.consume(array(data,0), data.length);
 		} catch (UnexpectedMessageAlertException e) {}
-		he = new HandshakeEngine(false, params, handler, decoder);
+		he = new HandshakeEngine(false, params, handler, handler, decoder);
 		data[0] = 127;
 		try {
 			he.consume(array(data,0), data.length);
@@ -279,7 +280,7 @@ public class HandshakeEngineTest extends EngineTest {
 		buffer.clear();
 		
 		TestParameters params = new TestParameters();
-		HandshakeEngine he = new HandshakeEngine(false, params, handler);
+		HandshakeEngine he = new HandshakeEngine(false, params, handler, handler);
 		try {
 			he.consume(array(data,0), data.length);
 			fail();
@@ -295,8 +296,13 @@ public class HandshakeEngineTest extends EngineTest {
 		data = buffer();
 		buffer.clear();
 
-		he = new HandshakeEngine(false, params, handler);
-		he.consume(array(data,0), data.length);
+		he = new HandshakeEngine(false, params, handler, handler);
+		try {
+			he.consume(array(data,0), data.length);
+			fail();
+		} catch (UnexpectedMessageAlertException e) {
+			assertEquals("Unexpected ServerHello", e.getMessage());
+		}
 		
 		extensions.clear();
 		extensions.add(new ServerNameExtension("rrrr"));
@@ -311,7 +317,7 @@ public class HandshakeEngineTest extends EngineTest {
 		data = buffer();
 		buffer.clear();
 
-		he = new HandshakeEngine(false, params, handler);
+		he = new HandshakeEngine(false, params, handler, handler);
 		try {
 			he.consume(array(data,0), data.length);
 			fail();

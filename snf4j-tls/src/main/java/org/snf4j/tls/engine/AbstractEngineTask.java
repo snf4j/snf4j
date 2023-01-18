@@ -57,7 +57,7 @@ abstract public class AbstractEngineTask implements IEngineTask {
 		} catch (Exception e) {
 			throw new InternalErrorAlertException(name() + " task failed", e);
 		}
-		prepare(state);
+		finish(state);
 	}
 	
 	@Override

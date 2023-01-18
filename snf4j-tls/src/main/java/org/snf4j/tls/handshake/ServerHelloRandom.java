@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,17 +23,38 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.handshake;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
+public class ServerHelloRandom {
 
-public interface IEngineHandler {
-
-	boolean verify(IServerNameExtension serverName);
+	private final static byte[] RANDOM = new byte[] {
+			(byte)0xCF,0x21,(byte)0xAD,0x74,(byte)0xE5,(byte)0x9A,0x61,0x11,
+			(byte)0xBE,0x1D,(byte)0x8C,0x02,0x1E,0x65,(byte)0xB8,(byte)0x91,
+			(byte)0xC2,(byte)0xA2,0x11,0x16,0x7A,(byte)0xBB,(byte)0x8C,0x5E,
+			0x07,(byte)0x9E,0x09,(byte)0xE2,(byte)0xC8,(byte)0xA8,0x33,
+			(byte)0x9C
+	};
 	
-	ICertificateSelector getCertificateSelector();
+	private ServerHelloRandom() {
+	}
 	
-	int calculatePadding(ContentType type, int contentLength);
+	public static byte[] getHelloRetryRequestRandom() {
+		return RANDOM.clone();
+	}
 
+	public static boolean isHelloRetryRequest(byte[] random) {
+		if (random.length != 32 || random[0] != (byte)0xCF) {
+			return false;
+		}
+		for (int i=1; i<32; ++i) {
+			if (RANDOM[i] != random[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public static boolean isHelloRetryRequest(IServerHello serverHello) {
+		return isHelloRetryRequest(serverHello.getRandom());
+	}
 }

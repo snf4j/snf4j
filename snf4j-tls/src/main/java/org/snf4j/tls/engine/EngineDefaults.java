@@ -34,7 +34,7 @@ import org.snf4j.tls.extension.ISignatureSchemeSpec;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.SignatureScheme;
 
-class EngineDefaults {
+public class EngineDefaults {
 
 	private EngineDefaults() {}
 	

@@ -73,6 +73,7 @@ import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.EncryptedExtensions;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.ServerHello;
+import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
 
 public class ClientHelloConsumerTest extends EngineTest {
@@ -103,7 +104,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		extensions.add(keyShare(NamedGroup.SECP256R1));
 		extensions.add(groups(NamedGroup.SECP256R1, NamedGroup.SECP384R1));
 		extensions.add(schemes(SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PSS_RSAE_SHA256));
-		state = new EngineState(MachineState.SRV_START,params, handler);
+		state = new EngineState(MachineState.SRV_START,params, handler, handler);
 		random = new byte[32];
 		legacySessionId = new byte[0];
 	}
@@ -113,7 +114,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 	}
 	
 	EngineState serverState() {
-		return new EngineState(MachineState.SRV_START, params, handler);
+		return new EngineState(MachineState.SRV_START, params, handler, handler);
 	}
 	
 	static ServerNameExtension serverName(String serverName) {
@@ -208,14 +209,14 @@ public class ClientHelloConsumerTest extends EngineTest {
 		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
 		assertSame(TLS_AES_128_GCM_SHA256, sh.getCipherSuite());
 
-		state = new EngineState(MachineState.SRV_START,params, handler);
+		state = new EngineState(MachineState.SRV_START,params, handler, handler);
 		ch = clientHelloCS(TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
 		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
 		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
 
-		state = new EngineState(MachineState.SRV_START,params, handler);
+		state = new EngineState(MachineState.SRV_START,params, handler, handler);
 		ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
@@ -228,13 +229,13 @@ public class ClientHelloConsumerTest extends EngineTest {
 		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		assertEquals(0, state.getProduced().length);
-		Runnable task1 = state.getDelegatedTask();
-		Runnable task2 = state.getDelegatedTask();
+		Runnable task1 = state.getTask();
+		Runnable task2 = state.getTask();
 		assertEquals("Key exchange", ((IEngineTask)task1).name());
 		assertEquals("Certificate", ((IEngineTask)task2).name());
 		assertNotNull(task1);
 		assertNotNull(task2);
-		assertNull(state.getDelegatedTask());
+		assertNull(state.getTask());
 		assertEquals(0, state.getProduced().length);
 		task1.run();
 		assertEquals(0, state.getProduced().length);
@@ -272,8 +273,8 @@ public class ClientHelloConsumerTest extends EngineTest {
 		replace(extensions, groups(NamedGroup.SECP256R1));
 		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
-		state.getDelegatedTask().run();
-		state.getDelegatedTask().run();
+		state.getTask().run();
+		state.getTask().run();
 		ProducedHandshake[] produced = state.getProduced();
 		assertEquals(5, produced.length);
 		EncryptedExtensions ee = (EncryptedExtensions) produced[1].getHandshake();
@@ -412,7 +413,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		
 		replace(extensions, versions(0x0303,0x0304,0x0305));
 		legacySessionId = random(32);
-		state = new EngineState(MachineState.SRV_START,params, handler);
+		state = new EngineState(MachineState.SRV_START,params, handler, handler);
 		ch = clientHelloCS(TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
@@ -429,7 +430,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 
 		replace(extensions, versions(0x0304));
 		replace(extensions, groups(NamedGroup.SECP384R1));
-		state = new EngineState(MachineState.SRV_START,params, handler);
+		state = new EngineState(MachineState.SRV_START,params, handler, handler);
 		ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
@@ -452,9 +453,9 @@ public class ClientHelloConsumerTest extends EngineTest {
 	public void testDeriveHandshakeSecretFailure() throws Exception {
 		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
 		consumer.consume(state, ch, data(ch), false);
-		Runnable task = state.getDelegatedTask();
+		Runnable task = state.getTask();
 		task.run();
-		state.getDelegatedTask().run();
+		state.getTask().run();
 		Field f = EngineState.class.getDeclaredField("keySchedule");
 		f.setAccessible(true);
 		f.set(state, null);
@@ -469,7 +470,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 	@Test(expected=UnexpectedMessageAlertException.class)
 	public void testInvalidMachineSate() throws Exception {
 		ClientHello ch = clientHello(0x0303);
-		consumer.consume(new EngineState(MachineState.SRV_RECVD_CH,params, handler), ch, data(ch), false);
+		consumer.consume(new EngineState(MachineState.SRV_RECVD_CH,params, handler, handler), ch, data(ch), false);
 	}
 	
 	@Test(expected=ProtocolVersionAlertException.class)

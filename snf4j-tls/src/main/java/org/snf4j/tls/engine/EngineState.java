@@ -26,6 +26,7 @@
 package org.snf4j.tls.engine;
 
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -43,26 +44,28 @@ public class EngineState {
 	
 	private final static ProducedHandshake[] NONE_PRODUCED = new ProducedHandshake[0];
 	
+	private final List<ProducedHandshake> produced = new ArrayList<ProducedHandshake>();
+
+	private final List<ProducedHandshake> prepared = new ArrayList<ProducedHandshake>();
+	
+	private final Queue<IEngineTask> tasks = new LinkedList<IEngineTask>();
+	
+	private final Queue<IEngineTask> runningTasks = new LinkedList<IEngineTask>();
+	
+	private List<KeySharePrivateKey> privateKeys = new ArrayList<KeySharePrivateKey>();
+	
 	private final IEngineParameters parameters;
 	
 	private final IEngineHandler handler;
+	
+	private final IEngineStateListener listener;
 	
 	private MachineState state;
 	
 	private ITranscriptHash transcriptHash;
 	
 	private KeySchedule keySchedule;
-	
-	private List<ProducedHandshake> produced = new ArrayList<ProducedHandshake>();
-
-	private List<ProducedHandshake> prepared = new ArrayList<ProducedHandshake>();
-	
-	private Queue<IEngineTask> pendingTasks = new LinkedList<IEngineTask>();
-	
-	private Queue<IEngineTask> runningTasks = new LinkedList<IEngineTask>();
-	
-	private List<KeySharePrivateKey> privateKeys = new ArrayList<KeySharePrivateKey>();
-	
+		
 	private ClientHello clientHello;
 	
 	private CipherSuite cipherSuite;
@@ -73,10 +76,17 @@ public class EngineState {
 	
 	private int version;
 	
-	public EngineState(MachineState state, IEngineParameters parameters, IEngineHandler handler) {
+	private boolean producingTasks;
+	
+	private PublicKey publicKey;
+	
+	private int maxFragmentLength = 16384;
+	
+	public EngineState(MachineState state, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener) {
 		this.state = state;
 		this.parameters = parameters;
 		this.handler = handler;
+		this.listener = listener;
 	}
 	
 	public IEngineParameters getParameters() {
@@ -85,6 +95,10 @@ public class EngineState {
 	
 	public IEngineHandler getHandler() {
 		return handler;
+	}
+
+	public IEngineStateListener getListener() {
+		return listener;
 	}
 
 	public MachineState getState() {
@@ -164,30 +178,12 @@ public class EngineState {
 		prepared.add(handshake);
 	}
 	
+	public boolean hasProduced() {
+		return !produced.isEmpty();
+	}
+	
 	public ProducedHandshake[] getProduced() throws AlertException {
-		if (pendingTasks.isEmpty()) {
-			IEngineTask task;
-			
-			while ((task = runningTasks.peek()) != null) {
-				if (task.isDone()) {
-					runningTasks.poll();
-					if (task.isSuccessful()) {
-						task.prepare(this);
-					}
-					else {
-						throw new InternalErrorAlertException(task.name() + " task failed", task.cause());
-					}
-				}
-				else {
-					break;
-				}
-			}
-
-			if (task == null && !prepared.isEmpty()) {
-				produced.addAll(prepared);
-				prepared.clear();
-			}
-		}
+		hasPendingTasks();
 		
 		int size = produced.size();
 		
@@ -200,22 +196,95 @@ public class EngineState {
 		return NONE_PRODUCED;
 	}
 	
-	public Runnable getDelegatedTask() {
-		if (pendingTasks.isEmpty()) {
+	public boolean hasProducingTasks() {
+		return producingTasks;
+	}
+	
+	public boolean hasPendingTasks() throws AlertException {
+		if (tasks.isEmpty()) {
+			if (runningTasks.isEmpty()) {
+				if (!prepared.isEmpty()) {
+					produced.addAll(prepared);
+					prepared.clear();
+				}
+				return false;
+			}
+			
+			IEngineTask task;
+			
+			while ((task = runningTasks.peek()) != null) {
+				if (task.isDone()) {
+					runningTasks.poll();
+					if (task.isSuccessful()) {
+						task.finish(this);
+					}
+					else {
+						throw new InternalErrorAlertException(task.name() + " task failed", task.cause());
+					}
+				}
+				else {
+					break;
+				}
+			}
+
+			if (task == null) {
+				producingTasks = false;
+				if (!prepared.isEmpty()) {
+					produced.addAll(prepared);
+					prepared.clear();
+				}
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public boolean hasTasks() {
+		return !tasks.isEmpty();
+	}
+	
+	public Runnable getTask() {
+		if (tasks.isEmpty()) {
 			return null;
 		}
 		
-		IEngineTask task = pendingTasks.poll();
+		IEngineTask task = tasks.poll();
 		
 		runningTasks.add(task);
 		return task;
 	}
 	
-	public void addDelegatedTask(IEngineTask task) {
-		pendingTasks.add(task);
+	public void addTask(IEngineTask task) {
+		tasks.add(task);
+		if (task.isProducing()) {
+			producingTasks = true;
+		}
 	}
 	
 	public void storePrivateKey(NamedGroup group, PrivateKey key) {
 		privateKeys.add(new KeySharePrivateKey(group, key));
 	}
+
+	public PrivateKey getPrivateKey(NamedGroup group) {
+		for (KeySharePrivateKey privateKey: privateKeys) {
+			if (privateKey.getGroup().equals(group)) {
+				return privateKey.getKey();
+			}
+		}
+		return null;
+	}
+
+	public void storePublicKey(PublicKey publicKey) {
+		this.publicKey = publicKey;
+	}
+	
+	public PublicKey getPublicKey() {
+		return publicKey;
+	}
+
+	public int getMaxFragmentLength() {
+		return maxFragmentLength;
+	}
+	
+	
 }

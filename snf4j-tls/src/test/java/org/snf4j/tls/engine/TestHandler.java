@@ -26,55 +26,26 @@
 package org.snf4j.tls.engine;
 
 import org.snf4j.tls.extension.IServerNameExtension;
+import org.snf4j.tls.record.ContentType;
 
 public class TestHandler implements IEngineHandler {
 
-	private StringBuilder trace = new StringBuilder();
-	
 	public boolean verifyServerName = true;
 	
 	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
-	
-	public void trace(String msg) {
-		synchronized (trace) {
-			trace.append(msg).append('|');
-		}
-	}
-	
-	public String trace() {
-		String s;
-		
-		synchronized (trace) {
-			s = trace.toString();
-			trace.setLength(0);
-		}
-		return s;
-	}
-	
-	@Override
-	public ICertificateSelector getCertificateSelector() {
-		return new TestCertificateSelector();
-	}
 
 	@Override
 	public boolean verify(IServerNameExtension serverName) {
-		trace("VSN(" + serverName.getHostName() +")");
 		return verifyServerName;
 	}
 
 	@Override
-	public void onEarlyTrafficSecret(EngineState state) throws Exception {
-		trace("ETS");
+	public ICertificateSelector getCertificateSelector() {
+		return certificateSelector;
 	}
 
 	@Override
-	public void onHandshakeTrafficSecrets(EngineState state) throws Exception {
-		trace("HTS");
+	public int calculatePadding(ContentType type, int contentLength) {
+		return 0;
 	}
-
-	@Override
-	public void onApplicationTrafficSecrets(EngineState state) throws Exception {
-		trace("ATS");
-	}
-
 }

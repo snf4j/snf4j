@@ -57,6 +57,11 @@ public class EngineParameters implements IEngineParameters {
 		signatureSchemes = EngineDefaults.getDefaulSignatureSchemes();
 	}
 
+	public EngineParameters(DelegatedTaskMode delegatedTaskMode) {
+		this();
+		this.delegatedTaskMode = delegatedTaskMode; 
+	}
+	
 	@Override
 	public CipherSuite[] getCipherSuites() {
 		return cipherSuites;

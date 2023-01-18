@@ -23,17 +23,35 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.record;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
-
-public interface IEngineHandler {
-
-	boolean verify(IServerNameExtension serverName);
+public class Cryptor {
 	
-	ICertificateSelector getCertificateSelector();
-	
-	int calculatePadding(ContentType type, int contentLength);
+	private final byte[] iv;
 
+	private long sequence;
+
+	protected Cryptor(byte[] iv) {
+		this.iv = iv;
+	}
+	
+	public byte[] nextNonce() {
+		int len = iv.length;
+		byte[] nonce = new byte[len];
+		long nextSequence = sequence++;
+		int i=len-1;
+		
+		for (; i>=len-8; --i) {
+			nonce[i] = (byte) (nextSequence ^ iv[i]);
+			nextSequence >>= 8;
+		}
+		for (; i>=0; --i) {
+			nonce[i] = (byte) (0 ^ iv[i]);
+		}
+		return nonce;
+	}
+	
+	public void rollbackNonce() {
+		--sequence;
+	}
 }

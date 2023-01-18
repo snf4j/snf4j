@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@ public enum MachineState {
 	CLI_WAIT_EE(true), 
 	CLI_WAIT_CERT_CR(true), 
 	CLI_WAIT_CERT(true), 
+	CLI_WAIT_CERT_TASK(true), 
 	CLI_WAIT_CV(true), 
 	CLI_WAIT_FINISHED(true),
 	CLI_CONNECTED(true, true),
