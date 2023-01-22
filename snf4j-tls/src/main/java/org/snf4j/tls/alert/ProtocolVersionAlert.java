@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,37 +25,12 @@
  */
 package org.snf4j.tls.alert;
 
-import org.snf4j.tls.ProtocolException;
-
-public class AlertException extends ProtocolException {
+public class ProtocolVersionAlert extends Alert {
 
 	private static final long serialVersionUID = 1L;
-
-	private final AlertLevel level;
 	
-	private final AlertDescription description;
-	
-	protected AlertException(String message, AlertLevel level, AlertDescription description) {
-		super(message);
-		this.level = level;
-		this.description = description;
+	public ProtocolVersionAlert(String message) {
+		super(message, AlertDescription.PROTOCOL_VERSION);
 	}
 
-	protected AlertException(String message, AlertDescription description) {
-		this(message, AlertLevel.FATAL, description);
-	}
-
-	protected AlertException(String message, AlertLevel level, AlertDescription description, Throwable cause) {
-		super(message, cause);
-		this.level = level;
-		this.description = description;
-	}
-
-	protected AlertException(String message, AlertDescription description, Throwable cause) {
-		this(message, AlertLevel.FATAL, description, cause);
-	}
-	
-	public AlertLevel getLevel() { return level; }
-	
-	public AlertDescription getDescription() { return description; }
 }

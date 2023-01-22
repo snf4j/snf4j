@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,12 +25,12 @@
  */
 package org.snf4j.tls.alert;
 
-public class UnsupportedExtensionAlertException extends AlertException {
-	
+public class DecodeErrorAlert extends Alert {
+
 	private static final long serialVersionUID = 1L;
-	
-	public UnsupportedExtensionAlertException(String message) {
-		super(message, AlertDescription.UNSUPPORTED_EXTENSION);
+
+	public DecodeErrorAlert(String message) {
+		super(message, AlertDescription.DECODE_ERROR);
 	}
 
 }

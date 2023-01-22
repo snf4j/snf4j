@@ -32,8 +32,8 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import org.junit.Test;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.handshake.ServerHello;
@@ -143,7 +143,7 @@ public class EngineStateTest {
 		try {
 			state.getProduced();
 			fail();
-		} catch (InternalErrorAlertException e2) {
+		} catch (InternalErrorAlert e2) {
 			assertSame(e, e2.getCause());
 		}
 		try {
@@ -173,7 +173,7 @@ public class EngineStateTest {
 		}
 
 		@Override
-		public void finish(EngineState state) throws AlertException {
+		public void finish(EngineState state) throws Alert {
 			for (int id: ids) {
 				state.prepare(handshake(id));
 			}

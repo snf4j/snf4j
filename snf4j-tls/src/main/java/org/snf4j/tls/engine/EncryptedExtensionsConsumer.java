@@ -27,8 +27,8 @@ package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
 
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 
@@ -40,9 +40,9 @@ public class EncryptedExtensionsConsumer  implements IHandshakeConsumer {
 	}
 
 	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException {
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
 		if (state.getState() != MachineState.CLI_WAIT_EE) {
-			throw new UnexpectedMessageAlertException("Unexpected EncryptedExtensions");
+			throw new UnexpectedMessageAlert("Unexpected EncryptedExtensions");
 		}
 		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 		state.changeState(MachineState.CLI_WAIT_CERT);

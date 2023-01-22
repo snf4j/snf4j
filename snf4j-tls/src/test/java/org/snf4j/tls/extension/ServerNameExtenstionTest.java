@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ import java.util.Arrays;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class ServerNameExtenstionTest extends ExtensionTest {
@@ -149,7 +149,7 @@ public class ServerNameExtenstionTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = new byte[] {
 				0x00, 0x00, 0x00, 0x18, 0x00, 0x16, 0x00, 0x00, 0x13, 0x65, 0x78, 0x61, 0x6d, 0x70, 
 				0x6c, 0x65, 0x2e, 0x75, 0x6c, 0x66, 0x68, 0x65, 0x69, 0x6d, 0x2e, 0x6e, 0x65, 0x74};
@@ -170,7 +170,7 @@ public class ServerNameExtenstionTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testConsumeBytes() throws AlertException {
+	public void testConsumeBytes() throws Alert {
 		ByteBufferArray array = ByteBufferArray.wrap(array(bytes(0,4,0,0,1,97),0));
 		
 		assertEquals(6, array.remaining());
@@ -184,7 +184,7 @@ public class ServerNameExtenstionTest extends ExtensionTest {
 			ServerNameExtension.getParser().parse(HandshakeType.CLIENT_HELLO, array, remaining);
 			fail();
 		}
-		catch (AlertException e) {
+		catch (Alert e) {
 			assertEquals(message, e.getMessage());
 		}
 	}

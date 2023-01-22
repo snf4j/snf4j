@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,15 +28,15 @@ package org.snf4j.tls.extension;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public interface IExtensionParser {
 	
 	ExtensionType getType();
 	
-	IExtension parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws AlertException;
+	IExtension parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws Alert;
 
-	IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException;
+	IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert;
 	
 }

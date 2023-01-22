@@ -25,7 +25,7 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 
 public interface IEngineTask extends Runnable {
 
@@ -39,5 +39,5 @@ public interface IEngineTask extends Runnable {
 	
 	Throwable cause();
 	
-	void finish(EngineState state) throws AlertException;
+	void finish(EngineState state) throws Alert;
 }

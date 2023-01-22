@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,12 +28,12 @@ package org.snf4j.tls.handshake;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 
 public interface IHandshakeDecoder {
 	
-	IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException;
+	IHandshake decode(ByteBuffer[] srcs, int remaining) throws Alert;
 
-	IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException;
+	IHandshake decode(ByteBufferArray srcs, int remaining) throws Alert;
 
 }

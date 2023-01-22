@@ -27,9 +27,9 @@ package org.snf4j.tls.record;
 
 import java.nio.ByteBuffer;
 
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecryptErrorAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecryptErrorAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.engine.EngineDefaults;
 
 public class Record {
@@ -53,14 +53,14 @@ public class Record {
 				+ encryptor.getExapnsion();
 	}
 	
-	public static int alert(AlertException alert, ByteBuffer dst) {
+	public static int alert(Alert alert, ByteBuffer dst) {
 		header(ContentType.ALERT, ALERT_CONTENT_LENGTH, dst);
 		dst.put((byte) alert.getLevel().value());
 		dst.put((byte) alert.getDescription().value());
 		return HEADER_LENGTH + ALERT_CONTENT_LENGTH;
 	}
 
-	public static int alert(AlertException alert, int padding, Encryptor encryptor, ByteBuffer dst) throws AlertException {
+	public static int alert(Alert alert, int padding, Encryptor encryptor, ByteBuffer dst) throws Alert {
 		ByteBuffer content = ByteBuffer.wrap(new byte[ALERT_CONTENT_LENGTH + 1 + padding]);
 
 		content.put((byte) alert.getLevel().value());
@@ -70,7 +70,7 @@ public class Record {
 		return protect(content, encryptor, dst);
 	}
 
-	public static int appData(ByteBuffer src, int padding, Encryptor encryptor, ByteBuffer dst) throws AlertException {
+	public static int appData(ByteBuffer src, int padding, Encryptor encryptor, ByteBuffer dst) throws Alert {
 		return 0;
 	}
 	
@@ -81,7 +81,7 @@ public class Record {
 		return HEADER_LENGTH;
 	}
 	
-	public static int protect(ByteBuffer content, Encryptor encryptor, ByteBuffer dst) throws AlertException {
+	public static int protect(ByteBuffer content, Encryptor encryptor, ByteBuffer dst) throws Alert {
 		int length = content.remaining() + encryptor.getExapnsion();
 		byte[] additionalData = new byte[HEADER_LENGTH];
 		byte[] nonce = encryptor.nextNonce();
@@ -99,12 +99,12 @@ public class Record {
 		} catch (Exception e) {
 			encryptor.rollbackSequence();
 			dst.reset();
-			throw new InternalErrorAlertException("Failed to encrypt plaintext", e);
+			throw new InternalErrorAlert("Failed to encrypt plaintext", e);
 		}
 		return length + HEADER_LENGTH;
 	}
 
-	public static int protect(ByteBuffer[] content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws AlertException {
+	public static int protect(ByteBuffer[] content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws Alert {
 		int length = contentLength + encryptor.getExapnsion();
 		byte[] additionalData = new byte[HEADER_LENGTH];
 		byte[] nonce = encryptor.nextNonce();
@@ -122,12 +122,12 @@ public class Record {
 		} catch (Exception e) {
 			encryptor.rollbackSequence();
 			dst.reset();
-			throw new InternalErrorAlertException("Failed to encrypt plaintext", e);
+			throw new InternalErrorAlert("Failed to encrypt plaintext", e);
 		}
 		return length + HEADER_LENGTH;
 	}
 
-	public static int unprotect(ByteBuffer record, int contentLength, Decryptor decryptor, ByteBuffer dst) throws AlertException {
+	public static int unprotect(ByteBuffer record, int contentLength, Decryptor decryptor, ByteBuffer dst) throws Alert {
 		byte[] additionalData = new byte[HEADER_LENGTH];
 		byte[] nonce = decryptor.nextNonce();
 		
@@ -144,7 +144,7 @@ public class Record {
 			return dst.position() - pos0;
 		} catch (Exception e) {
 			dst.reset();
-			throw new DecryptErrorAlertException("Failed to decrypt record", e);
+			throw new DecryptErrorAlert("Failed to decrypt record", e);
 		}
 	}	
 }

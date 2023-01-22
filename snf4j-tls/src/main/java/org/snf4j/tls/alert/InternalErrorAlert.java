@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,12 +25,16 @@
  */
 package org.snf4j.tls.alert;
 
-public class HandshakeFailureAlertException extends AlertException {
+public class InternalErrorAlert extends Alert {
 	
 	private static final long serialVersionUID = 1L;
 	
-	public HandshakeFailureAlertException(String message) {
-		super(message, AlertDescription.HANDSHAKE_FAILURE);
+	public InternalErrorAlert(String message) {
+		super(message, AlertDescription.INTERNAL_ERROR);
 	}
 
+	public InternalErrorAlert(String message, Throwable cause) {
+		super(message, AlertDescription.INTERNAL_ERROR, cause);
+	}
+	
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,29 +28,29 @@ package org.snf4j.tls.extension;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
-import org.snf4j.tls.alert.UnsupportedExtensionAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
+import org.snf4j.tls.alert.UnsupportedExtensionAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public abstract class AbstractExtensionParser implements IExtensionParser {
 	
-	protected DecodeErrorAlertException decodeError(String message) {
-		return new DecodeErrorAlertException("Extension '" 
+	protected DecodeErrorAlert decodeError(String message) {
+		return new DecodeErrorAlert("Extension '" 
 				+ getType().name() 
 				+ "' parsing failure: " 
 				+ message);
 	}
 
-	protected UnsupportedExtensionAlertException unsupportedExtension(HandshakeType handshakeType) {
-		return new UnsupportedExtensionAlertException("Extension '" 
+	protected UnsupportedExtensionAlert unsupportedExtension(HandshakeType handshakeType) {
+		return new UnsupportedExtensionAlert("Extension '" 
 				+ getType().name() 
 				+ "' is prohibited in " 
 				+ handshakeType.name());
 	}
 	
 	@Override
-	public IExtension parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws AlertException  {
+	public IExtension parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws Alert  {
 		return parse(handshakeType, ByteBufferArray.wrap(srcs), remaining);
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,12 +25,11 @@
  */
 package org.snf4j.tls.alert;
 
-public class IllegalParameterAlertException extends AlertException {
-	
-	private static final long serialVersionUID = 1L;
-	
-	public IllegalParameterAlertException(String message) {
-		super(message, AlertDescription.ILLEGAL_PARAMETER);
-	}
+public class CloseNotifyAlert extends Alert {
 
+	private static final long serialVersionUID = 1L;
+
+	public CloseNotifyAlert(String message) {
+		super(message, AlertLevel.WARNING, AlertDescription.CLOSE_NOTIFY);
+	}
 }

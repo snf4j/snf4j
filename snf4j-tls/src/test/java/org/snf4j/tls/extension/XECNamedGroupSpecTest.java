@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@ import org.junit.Assume;
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.AlertDescription;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.crypto.IXDHKeyExchange;
 
 public class XECNamedGroupSpecTest extends ExtensionTest {
@@ -189,7 +189,7 @@ public class XECNamedGroupSpecTest extends ExtensionTest {
 			ParsedKey key = spec.parse(ByteBufferArray.wrap(array(data,0)), remaining);
 			spec.generateKey(key);
 			fail();
-		} catch (AlertException e) {
+		} catch (Alert e) {
 			assertSame(desc, e.getDescription());
 			assertEquals(message, e.getMessage());
 		}

@@ -27,8 +27,8 @@ package org.snf4j.tls.engine;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.InternalErrorAlert;
 
 abstract public class AbstractEngineTask implements IEngineTask {
 
@@ -51,11 +51,11 @@ abstract public class AbstractEngineTask implements IEngineTask {
 		done = true;
 	}
 
-	public void run(EngineState state) throws AlertException {
+	public void run(EngineState state) throws Alert {
 		try {
 			execute();
 		} catch (Exception e) {
-			throw new InternalErrorAlertException(name() + " task failed", e);
+			throw new InternalErrorAlert(name() + " task failed", e);
 		}
 		finish(state);
 	}

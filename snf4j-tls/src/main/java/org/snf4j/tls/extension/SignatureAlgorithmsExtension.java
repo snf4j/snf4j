@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class SignatureAlgorithmsExtension extends KnownExtension implements ISignatureAlgorithmsExtension {
@@ -58,7 +58,7 @@ public class SignatureAlgorithmsExtension extends KnownExtension implements ISig
 		}
 		
 		@Override
-		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
 			if (remaining >= 4) {
 				int len = srcs.getUnsignedShort();
 				

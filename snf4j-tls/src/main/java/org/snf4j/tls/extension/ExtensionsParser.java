@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@
 package org.snf4j.tls.extension;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionsParser extends AbstractExtensionsParser {
@@ -39,7 +39,7 @@ public class ExtensionsParser extends AbstractExtensionsParser {
 	}
 
 	@Override
-	protected IExtension parseExtension(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+	protected IExtension parseExtension(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
 		return decoder.decode(handshakeType, srcs, remaining);
 	}
 

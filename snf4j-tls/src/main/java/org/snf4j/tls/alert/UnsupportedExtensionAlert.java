@@ -25,11 +25,12 @@
  */
 package org.snf4j.tls.alert;
 
-public class UnrecognizedNameAlertException extends AlertException {
-
+public class UnsupportedExtensionAlert extends Alert {
+	
 	private static final long serialVersionUID = 1L;
-
-	public UnrecognizedNameAlertException(String message) {
-		super(message, AlertDescription.UNRECOGNIZED_NAME);
+	
+	public UnsupportedExtensionAlert(String message) {
+		super(message, AlertDescription.UNSUPPORTED_EXTENSION);
 	}
+
 }

@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.IExtensionDecoder;
 
@@ -86,12 +86,12 @@ public class HandshakeDecoder implements IHandshakeDecoder {
 	}
 	
 	@Override
-	public IHandshake decode(ByteBuffer[] srcs, int remaining) throws AlertException {
+	public IHandshake decode(ByteBuffer[] srcs, int remaining) throws Alert {
 		return decode(ByteBufferArray.wrap(srcs), remaining);
 	}
 
 	@Override
-	public IHandshake decode(ByteBufferArray srcs, int remaining) throws AlertException {
+	public IHandshake decode(ByteBufferArray srcs, int remaining) throws Alert {
 		if (remaining >= 4) {
 			HandshakeType type = getType(srcs.getUnsigned());
 			int len = srcs.getUnsigned() << 16;
@@ -109,13 +109,13 @@ public class HandshakeDecoder implements IHandshakeDecoder {
 				return new UnknownHandshake(type, data);
 			}
 			else if (len > remaining) {
-				throw new DecodeErrorAlertException("Handshake message '" + type.name() + "' parsing failure: Data underflow");
+				throw new DecodeErrorAlert("Handshake message '" + type.name() + "' parsing failure: Data underflow");
 			}
 			else {
-				throw new DecodeErrorAlertException("Handshake message '" + type.name() + "' parsing failure: Inconsistent length");
+				throw new DecodeErrorAlert("Handshake message '" + type.name() + "' parsing failure: Inconsistent length");
 			}
 		}
-		throw new DecodeErrorAlertException("Handshake message parsing failure: Data underflow");
+		throw new DecodeErrorAlert("Handshake message parsing failure: Data underflow");
 	}
 
 }

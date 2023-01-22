@@ -34,8 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.ExtensionType;
@@ -73,7 +73,7 @@ public class ClientHelloTest extends HandshakeTest {
 	}
 
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = bytes(new int[] {
 				0x01,0x00,0x00,0xf4,
 				0x03,0x03,0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,
@@ -364,7 +364,7 @@ public class ClientHelloTest extends HandshakeTest {
 				if (i != bytes.length-1) {
 					fail();
 				}
-			} catch (DecodeErrorAlertException e) {
+			} catch (DecodeErrorAlert e) {
 				assertEquals("Handshake message 'client_hello' parsing failure: Inconsistent length", e.getMessage());
 			}
 		}
@@ -373,7 +373,7 @@ public class ClientHelloTest extends HandshakeTest {
 		try {
 			ClientHello.getParser().parse(array(bytes, 4), bytes.length-5, decoder);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (DecodeErrorAlert e) {
 			assertEquals("Handshake message 'client_hello' parsing failure: Legacy session id is too big", e.getMessage());
 		}
 		bytes[4+34] = 32;
@@ -385,14 +385,14 @@ public class ClientHelloTest extends HandshakeTest {
 		try {
 			ClientHello.getParser().parse(array(bytes, 4), bytes.length-5, decoder);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (DecodeErrorAlert e) {
 			assertEquals("Handshake message 'client_hello' parsing failure: Cipher suites invalid length", e.getMessage());
 		}
 		bytes[4+34+32+2] = 3;
 		try {
 			ClientHello.getParser().parse(array(bytes, 4), bytes.length-5, decoder);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (DecodeErrorAlert e) {
 			assertEquals("Handshake message 'client_hello' parsing failure: Cipher suites invalid length", e.getMessage());
 		}
 		bytes[4+34+32+2] = 4;
@@ -404,7 +404,7 @@ public class ClientHelloTest extends HandshakeTest {
 		try {
 			ClientHello.getParser().parse(array(bytes, 4), bytes.length-5, decoder);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (DecodeErrorAlert e) {
 			assertEquals("Handshake message 'client_hello' parsing failure: Inconsistent length", e.getMessage());
 		}
 		bytes[4+34+32+7] = 1;

@@ -32,7 +32,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.junit.Test;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionsParserTest extends ExtensionTest {
@@ -50,7 +50,7 @@ public class ExtensionsParserTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = new byte[] {
 				0x00, (byte)0xa3, 0x00, 0x00, 0x00, 0x18, 0x00, 0x16, 0x00, 0x00, 0x13, 0x65, 0x78, 0x61, 
 				0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x75, 0x6c, 0x66, 0x68, 0x65, 0x69, 0x6d, 0x2e, 0x6e, 0x65, 

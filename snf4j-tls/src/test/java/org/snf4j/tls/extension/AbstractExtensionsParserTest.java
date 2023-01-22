@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,13 +32,13 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class AbstractExtensionsParserTest extends ExtensionTest {
 
 	@Test
-	public void testReset() throws AlertException {
+	public void testReset() throws Alert {
 		Parser p = new Parser(0, 0xffff, new TestExtensionParser(ExtensionType.SERVER_NAME));
 		
 		assertFalse(p.isComplete());
@@ -55,7 +55,7 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testIsComplete() throws AlertException {
+	public void testIsComplete() throws Alert {
 		Parser p = new Parser(0, 0xffff, new TestExtensionParser(ExtensionType.SERVER_NAME));
 
 		//Test data: 0,8,0,0,0,0,0,1,0,0
@@ -119,7 +119,7 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testGetConsumedBytes() throws AlertException {
+	public void testGetConsumedBytes() throws Alert {
 		Parser p = new Parser(0, 0xffff, new TestExtensionParser(ExtensionType.SERVER_NAME));
 		
 		ByteBufferArray array = ByteBufferArray.wrap(array(bytes(0,4,0,0,0,0),0));
@@ -168,7 +168,7 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 				fail();
 			}
 		}
-		catch (AlertException e) {
+		catch (Alert e) {
 			if (message != null) {
 				assertEquals(message, e.getMessage());
 			}
@@ -208,7 +208,7 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 		}
 
 		@Override
-		protected IExtension parseExtension(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+		protected IExtension parseExtension(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
 			return decoder.decode(handshakeType, srcs, remaining);
 		}
 		

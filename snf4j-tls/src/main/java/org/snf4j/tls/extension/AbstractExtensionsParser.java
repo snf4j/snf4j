@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public abstract class AbstractExtensionsParser implements IExtensionsParser {
@@ -74,12 +74,12 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 	}
 
 	@Override
-	public void parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remainig) throws AlertException {
+	public void parse(HandshakeType handshakeType, ByteBuffer[] srcs, int remainig) throws Alert {
 		parse(handshakeType, ByteBufferArray.wrap(srcs), remainig);
 	}
 	
 	@Override
-	public void parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+	public void parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
 		if (this.remaining == -1) {
 			if (remaining < 2) {
 				return;
@@ -90,10 +90,10 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 			remaining -= 2;
 			consumed += 2;
 			if (len < minLength) {
-				throw new DecodeErrorAlertException("Extensions data too small");
+				throw new DecodeErrorAlert("Extensions data too small");
 			}
 			if (len > maxLength) {
-				throw new DecodeErrorAlertException("Extensions data too big");
+				throw new DecodeErrorAlert("Extensions data too big");
 			}
 			this.remaining = len;
 		}
@@ -115,5 +115,5 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 		}
 	}
 
-	protected abstract IExtension parseExtension(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException;
+	protected abstract IExtension parseExtension(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert;
 }

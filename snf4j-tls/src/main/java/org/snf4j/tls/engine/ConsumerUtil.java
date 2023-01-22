@@ -32,8 +32,8 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.util.Arrays;
 
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
@@ -86,7 +86,7 @@ public class ConsumerUtil {
 		state.produce(new ProducedHandshake(handshake, recordType));
 	}
 
-	static byte[] sign(byte[] content, SignatureScheme scheme, PrivateKey privateKey, boolean client) throws AlertException {
+	static byte[] sign(byte[] content, SignatureScheme scheme, PrivateKey privateKey, boolean client) throws Alert {
 		try {
 			Signature sign = scheme
 					.spec()
@@ -105,11 +105,11 @@ public class ConsumerUtil {
 			sign.update(content);
 			return sign.sign();
 		} catch (Exception e) {
-			throw new InternalErrorAlertException("Failed to sign content", e);
+			throw new InternalErrorAlert("Failed to sign content", e);
 		}
 	}
 	
-	static boolean verify(byte[] signature, byte[] content, SignatureScheme scheme, PublicKey privateKey, boolean client) throws AlertException {
+	static boolean verify(byte[] signature, byte[] content, SignatureScheme scheme, PublicKey privateKey, boolean client) throws Alert {
 		try {
 			Signature sign = scheme
 					.spec()
@@ -128,7 +128,7 @@ public class ConsumerUtil {
 			sign.update(content);
 			return sign.verify(signature);
 		} catch (Exception e) {
-			throw new InternalErrorAlertException("Failed to verify content", e);
+			throw new InternalErrorAlert("Failed to verify content", e);
 		}
 	}
 	

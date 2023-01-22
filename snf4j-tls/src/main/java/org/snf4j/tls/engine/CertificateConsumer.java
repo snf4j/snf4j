@@ -31,8 +31,8 @@ import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.ICertificate;
 import org.snf4j.tls.handshake.ICertificateEntry;
@@ -46,9 +46,9 @@ public class CertificateConsumer implements IHandshakeConsumer {
 	}
 
 	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException {
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
 		if (state.getState() != MachineState.CLI_WAIT_CERT) {
-			throw new UnexpectedMessageAlertException("Unexpected Certificate");
+			throw new UnexpectedMessageAlert("Unexpected Certificate");
 		}
 		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 		
@@ -83,7 +83,7 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		}
 
 		@Override
-		public void finish(EngineState state) throws AlertException {
+		public void finish(EngineState state) throws Alert {
 			state.storePublicKey(publicKey);
 			state.changeState(MachineState.CLI_WAIT_CV);
 		}

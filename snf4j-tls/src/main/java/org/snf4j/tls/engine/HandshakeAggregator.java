@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 
 public class HandshakeAggregator {
 	
@@ -62,9 +62,9 @@ public class HandshakeAggregator {
 	 * 
 	 * @return {@code true} if unwrapping should be continued, or {@code false} if
 	 *         new handshake messages are ready to be wrapped
-	 * @throws AlertException if an alert has occurred
+	 * @throws Alert if an alert has occurred
 	 */
-	boolean unwrapPending() throws AlertException {
+	boolean unwrapPending() throws Alert {
 		boolean statusChanged = true;
 		
 		if (pending != null) {
@@ -84,9 +84,9 @@ public class HandshakeAggregator {
 	 * @param remaining the length of incoming data (the content from one record)
 	 * @return {@code true} if unwrapping should be continued, or {@code false} if
 	 *         new handshake messages are ready to be wrapped
-	 * @throws AlertException if an alert has occurred
+	 * @throws Alert if an alert has occurred
 	 */
-	boolean unwrap(ByteBuffer src, int remaining) throws AlertException {
+	boolean unwrap(ByteBuffer src, int remaining) throws Alert {
 		ByteBuffer[] srcs;
 		int aggregated;
 		

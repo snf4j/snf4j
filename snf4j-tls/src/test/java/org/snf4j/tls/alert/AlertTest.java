@@ -33,36 +33,54 @@ import java.lang.reflect.Field;
 
 import org.junit.Test;
 
-public class AlertExceptionTest {
+public class AlertTest {
 
 	@Test
 	public void testAll() {
-		AlertException e = new AlertException("Message1", AlertLevel.WARNING, AlertDescription.ACCESS_DENIED);
+		Alert e = new Alert("Message1", AlertLevel.WARNING, AlertDescription.ACCESS_DENIED);
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.WARNING, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
 
-		e = new AlertException("Message1", AlertDescription.ACCESS_DENIED);
+		e = new Alert("Message1", AlertDescription.ACCESS_DENIED);
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.FATAL, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
 
 		Exception cause = new Exception();
-		e = new AlertException("Message1", AlertLevel.WARNING, AlertDescription.ACCESS_DENIED, cause);
+		e = new Alert("Message1", AlertLevel.WARNING, AlertDescription.ACCESS_DENIED, cause);
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.WARNING, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
 		assertSame(cause, e.getCause());
 		
-		e = new AlertException("Message1", AlertDescription.ACCESS_DENIED, cause);
+		e = new Alert("Message1", AlertDescription.ACCESS_DENIED, cause);
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.FATAL, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
 		assertSame(cause, e.getCause());
 	}
 	
-	static void assertAlert(AlertException e, String msg, Throwable cause) throws Exception {
+	static void assertErrorAlert(Alert e, String msg, Throwable cause) throws Exception {
 		assertSame(AlertLevel.FATAL, e.getLevel());
+		assertEquals(msg, e.getMessage());
+		assertEquals(cause, e.getCause());
+		
+		String name = e.getClass().getSimpleName().toUpperCase();
+		
+		for (Field field: AlertDescription.class.getDeclaredFields()) {
+			String fname = field.getName().replace("_", "");
+			
+			if (name.startsWith(fname + "ALERT")) {
+				assertSame(field.get(null), e.getDescription());
+				return;
+			}
+		}
+		fail();
+	}
+
+	static void assertClosureAlert(Alert e, String msg, Throwable cause) throws Exception {
+		assertSame(AlertLevel.WARNING, e.getLevel());
 		assertEquals(msg, e.getMessage());
 		assertEquals(cause, e.getCause());
 		
@@ -82,26 +100,36 @@ public class AlertExceptionTest {
 	@Test
 	public void testImplementations() throws Exception {
 		Exception cause = new Exception();
-		AlertException[] alerts = new AlertException[] {
-				new InternalErrorAlertException("Text1",cause)
+		Alert[] alerts = new Alert[] {
+				new InternalErrorAlert("Text1",cause),
+				new DecryptErrorAlert("Text1", cause)
 		};
-		for (AlertException alert: alerts) {
-			assertAlert(alert, "Text1", cause);
+		for (Alert alert: alerts) {
+			assertErrorAlert(alert, "Text1", cause);
 		}
 		
-		alerts = new AlertException[] {
-				new InternalErrorAlertException("Text1"),
-				new DecodeErrorAlertException("Text1"),
-				new UnsupportedExtensionAlertException("Text1"),
-				new HandshakeFailureAlertException("Text1"),
-				new IllegalParameterAlertException("Text1"),
-				new MissingExtensionAlertException("Text1"),
-				new ProtocolVersionAlertException("Text1"),
-				new UnexpectedMessageAlertException("Text1"),
-				new UnrecognizedNameAlertException("Text1")
+		alerts = new Alert[] {
+				new InternalErrorAlert("Text1"),
+				new DecodeErrorAlert("Text1"),
+				new UnsupportedExtensionAlert("Text1"),
+				new HandshakeFailureAlert("Text1"),
+				new IllegalParameterAlert("Text1"),
+				new MissingExtensionAlert("Text1"),
+				new ProtocolVersionAlert("Text1"),
+				new UnexpectedMessageAlert("Text1"),
+				new UnrecognizedNameAlert("Text1"),
+				new DecryptErrorAlert("Text1"),
+				new RecordOverflowAlert("Text1")
 		};
-		for (AlertException alert: alerts) {
-			assertAlert(alert, "Text1", null);
+		for (Alert alert: alerts) {
+			assertErrorAlert(alert, "Text1", null);
+		}
+		
+		alerts = new Alert[] {
+				new CloseNotifyAlert("Text1")
+		};
+		for (Alert alert: alerts) {
+			assertClosureAlert(alert, "Text1", null);
 		}
 	}
 }

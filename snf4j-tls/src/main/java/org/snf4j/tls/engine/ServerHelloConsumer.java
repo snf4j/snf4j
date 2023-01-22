@@ -33,12 +33,12 @@ import java.security.PublicKey;
 import java.util.Arrays;
 
 import org.snf4j.tls.IntConstant;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.IllegalParameterAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
-import org.snf4j.tls.alert.MissingExtensionAlertException;
-import org.snf4j.tls.alert.ProtocolVersionAlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.MissingExtensionAlert;
+import org.snf4j.tls.alert.ProtocolVersionAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.crypto.Hkdf;
 import org.snf4j.tls.crypto.IHash;
@@ -68,44 +68,44 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 	}
 	
 	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException {
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
 		if (state.getState() != MachineState.CLI_WAIT_SH) {
-			throw new UnexpectedMessageAlertException("Unexpected ServerHello");
+			throw new UnexpectedMessageAlert("Unexpected ServerHello");
 		}
 		
 		IServerHello serverHello = (IServerHello) handshake;
 
 		if (serverHello.getLegacyVersion() != EngineDefaults.LEGACY_VERSION) {
-			throw new ProtocolVersionAlertException("Invalid legacy version");
+			throw new ProtocolVersionAlert("Invalid legacy version");
 		}
 		
 		if (!Arrays.equals(serverHello.getLegacySessionId(), state.getClientHello().getLegacySessionId())) {
-			throw new IllegalParameterAlertException("Unexpexted value of legacy session id");
+			throw new IllegalParameterAlert("Unexpexted value of legacy session id");
 		}
 		
 		CipherSuite cipherSuite = IntConstant.find(
 				state.getClientHello().getCipherSuites(), 
 				serverHello.getCipherSuite());
 		if (cipherSuite == null) {
-			throw new IllegalParameterAlertException("Not offered cipher suite");	
+			throw new IllegalParameterAlert("Not offered cipher suite");	
 		}
 		
 		if (serverHello.getLegacyCompressionMethod() != 0) {
-			throw new IllegalParameterAlertException("Invalid compression method");	
+			throw new IllegalParameterAlert("Invalid compression method");	
 		}
 		
 		ISupportedVersionsExtension versions = find(handshake, ExtensionType.SUPPORTED_VERSIONS);
 		if (versions == null) {
-			throw new ProtocolVersionAlertException("Missing supported_version extension in ServerHello");
+			throw new ProtocolVersionAlert("Missing supported_version extension in ServerHello");
 		}
 		int negotiatedVersion = versions.getVersions()[0]; 
 		if (negotiatedVersion != 0x0304) {
-			throw new IllegalParameterAlertException("Invalid TLS version");	
+			throw new IllegalParameterAlert("Invalid TLS version");	
 		}
 		
 		IKeyShareExtension keyShare = find(handshake, ExtensionType.KEY_SHARE);
 		if (keyShare == null) {
-			throw new MissingExtensionAlertException("Missing key_share extension in ServerHello");
+			throw new MissingExtensionAlert("Missing key_share extension in ServerHello");
 		}
 		
 		if (!state.isInitialized()) {
@@ -120,7 +120,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 				state.getKeySchedule().deriveEarlyTrafficSecret();
 				state.getListener().onEarlyTrafficSecret(state);
 			} catch (Exception e) {
-				throw new InternalErrorAlertException("Failed to create key schedule", e);
+				throw new InternalErrorAlert("Failed to create key schedule", e);
 			}			
 		}
 		
@@ -134,7 +134,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		NamedGroup namedGroup = keyShare.getEntries()[0].getNamedGroup();
 		PrivateKey privateKey = state.getPrivateKey(namedGroup);
 		if (privateKey == null) {
-			throw new IllegalParameterAlertException("Unexpected supported group in ServerHello");
+			throw new IllegalParameterAlert("Unexpected supported group in ServerHello");
 		}
 		try {
 			IKeyExchange keyExchange = namedGroup.spec().getKeyExchange();
@@ -147,7 +147,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			state.getListener().onReceivingTraficKey(RecordType.HANDSHAKE);
 		} 
 		catch (Exception e) {
-			throw new InternalErrorAlertException("Failed to derive handshake secret", e);
+			throw new InternalErrorAlert("Failed to derive handshake secret", e);
 		}
 		state.changeState(MachineState.CLI_WAIT_EE);
 	}

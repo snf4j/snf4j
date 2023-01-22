@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +48,7 @@ import java.security.spec.ECGenParameterSpec;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class KeyShareExtensionTest extends ExtensionTest {
@@ -174,7 +174,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 	}	
 	
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = new byte[] {
 				0x00, 0x33, 0x00, 0x26, 0x00, 0x24, 0x00, 0x1d, 0x00, 0x20, 0x35, (byte)0x80, 0x72, (byte)0xd6, 
 				0x36, 0x58, (byte)0x80, (byte)0xd1, (byte)0xae, (byte)0xea, 0x32, (byte)0x9a, (byte)0xdf, (byte)0x91, 
@@ -368,7 +368,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 			KeyShareExtension.getParser().parse(ht, array, remaining);
 			fail();
 		}
-		catch (AlertException e) {
+		catch (Alert e) {
 			assertEquals(message, e.getMessage());
 		}
 	}
@@ -402,7 +402,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 				KeyShareExtension.getParser().parse(HandshakeType.CLIENT_HELLO, array(data, 4), i);
 				fail();
 			}
-			catch (AlertException ex) {
+			catch (Alert ex) {
 			}
 		}
 		buffer.clear();
@@ -419,7 +419,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 					fail();
 				}
 			}
-			catch (AlertException ex) {
+			catch (Alert ex) {
 			}
 		}
 		buffer.clear();
@@ -434,7 +434,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 				KeyShareExtension.getParser().parse(HandshakeType.SERVER_HELLO, array(data, 4), i);
 				fail();
 			}
-			catch (AlertException ex) {
+			catch (Alert ex) {
 			}
 		}
 		buffer.clear();
@@ -458,7 +458,7 @@ public class KeyShareExtensionTest extends ExtensionTest {
 				e = (KeyShareExtension) KeyShareExtension.getParser().parse(HandshakeType.SERVER_HELLO, array(data, 0), data.length);
 				fail();
 			}
-			catch (AlertException ex) {
+			catch (Alert ex) {
 				
 			}
 			data = new byte[] {0,0x1D,0,32,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2};

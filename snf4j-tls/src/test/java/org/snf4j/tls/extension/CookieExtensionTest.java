@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class CookieExtensionTest extends ExtensionTest {
@@ -77,7 +77,7 @@ public class CookieExtensionTest extends ExtensionTest {
 	}
 
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = new byte[] {
 				0x00, 0x2c, 0x00, 0x05, 0x00, 0x03, 0x01, 0x02, 0x03};
 		
@@ -92,7 +92,7 @@ public class CookieExtensionTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testConsumeBytes() throws AlertException {
+	public void testConsumeBytes() throws Alert {
 		ByteBufferArray array = ByteBufferArray.wrap(array(bytes(0,3,1,2,3),0));
 		
 		assertEquals(5, array.remaining());
@@ -106,7 +106,7 @@ public class CookieExtensionTest extends ExtensionTest {
 			CookieExtension.getParser().parse(HandshakeType.CLIENT_HELLO, array, remaining);
 			fail();
 		}
-		catch (AlertException e) {
+		catch (Alert e) {
 			assertEquals(message, e.getMessage());
 		}
 	}

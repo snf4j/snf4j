@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,22 +28,22 @@ package org.snf4j.tls.handshake;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.extension.IExtensionDecoder;
 
 public abstract class AbstractHandshakeParser implements IHandshakeParser {
 	
 	
-	protected DecodeErrorAlertException decodeError(String message) {
-		return new DecodeErrorAlertException("Handshake message '" 
+	protected DecodeErrorAlert decodeError(String message) {
+		return new DecodeErrorAlert("Handshake message '" 
 				+ getType().name() 
 				+ "' parsing failure: " 
 				+ message);
 	}
 	
 	@Override
-	public IHandshake parse(ByteBuffer[] srcs, int remaining, IExtensionDecoder decoder) throws AlertException  {
+	public IHandshake parse(ByteBuffer[] srcs, int remaining, IExtensionDecoder decoder) throws Alert  {
 		return parse(ByteBufferArray.wrap(srcs), remaining, decoder);
 	}
 

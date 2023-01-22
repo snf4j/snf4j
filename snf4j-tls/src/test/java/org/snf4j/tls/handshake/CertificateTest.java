@@ -34,8 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.extension.CookieExtension;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.ExtensionType;
@@ -47,7 +47,7 @@ import org.snf4j.tls.extension.SupportedGroupsExtension;
 public class CertificateTest extends HandshakeTest {
 	
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = bytes(new int[] {
 				0x0b,0x00,0x00,0x0f,
 				0x04,0x01,0x02,0x03,0x04,
@@ -260,7 +260,7 @@ public class CertificateTest extends HandshakeTest {
 				if (i != bytes.length-1) {
 					fail();
 				}
-			} catch (DecodeErrorAlertException e) {
+			} catch (DecodeErrorAlert e) {
 				assertEquals("Handshake message 'certificate' parsing failure: Inconsistent length", e.getMessage());
 			}
 		}		
@@ -268,7 +268,7 @@ public class CertificateTest extends HandshakeTest {
 		try {
 			Certificate.getParser().parse(array(bytes, 4), bytes.length-5, ExtensionDecoder.DEFAULT);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (DecodeErrorAlert e) {
 			assertEquals("Handshake message 'certificate' parsing failure: Inconsistent length", e.getMessage());
 		}
 		bytes[37+4] -= 15;
@@ -277,7 +277,7 @@ public class CertificateTest extends HandshakeTest {
 		try {
 			Certificate.getParser().parse(array(bytes, 4), bytes.length-5, ExtensionDecoder.DEFAULT);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (DecodeErrorAlert e) {
 			assertEquals("Handshake message 'certificate' parsing failure: Inconsistent length", e.getMessage());
 		}
 	}

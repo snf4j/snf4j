@@ -28,21 +28,21 @@ package org.snf4j.tls.engine;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 
 public interface IHandshakeEngine {
 
 	IEngineHandler getHandler();
 	
-	boolean hasPendingTasks() throws AlertException;
+	boolean hasPendingTasks() throws Alert;
 	
-	void consume(ByteBuffer[] srcs, int remaining) throws AlertException;
+	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
 	
-	void consume(ByteBufferArray srcs, int remaining) throws AlertException;
+	void consume(ByteBufferArray srcs, int remaining) throws Alert;
 	
 	boolean needProduce();
 	
-	ProducedHandshake[] produce() throws AlertException;
+	ProducedHandshake[] produce() throws Alert;
 	
 	boolean hasProducingTask();
 	
@@ -56,7 +56,7 @@ public interface IHandshakeEngine {
 	
 	boolean isClientMode();
 	
-	void start() throws AlertException;
+	void start() throws Alert;
 	
 	int getMaxFragmentLength();
 }

@@ -31,13 +31,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.extension.ExtensionDecoder;
 
 public class FinishedTest extends HandshakeTest {
 	
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = bytes(new int[] {
 				0x14,0x00,0x00,0x04,
 				0x01,0x02,0x03,0x04

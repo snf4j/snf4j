@@ -25,11 +25,37 @@
  */
 package org.snf4j.tls.alert;
 
-public class CloseNotifyAlertException extends AlertException {
+import org.snf4j.tls.ProtocolException;
+
+public class Alert extends ProtocolException {
 
 	private static final long serialVersionUID = 1L;
 
-	public CloseNotifyAlertException(String message) {
-		super(message, AlertLevel.WARNING, AlertDescription.CLOSE_NOTIFY);
+	private final AlertLevel level;
+	
+	private final AlertDescription description;
+	
+	protected Alert(String message, AlertLevel level, AlertDescription description) {
+		super(message);
+		this.level = level;
+		this.description = description;
 	}
+
+	protected Alert(String message, AlertDescription description) {
+		this(message, AlertLevel.FATAL, description);
+	}
+
+	protected Alert(String message, AlertLevel level, AlertDescription description, Throwable cause) {
+		super(message, cause);
+		this.level = level;
+		this.description = description;
+	}
+
+	protected Alert(String message, AlertDescription description, Throwable cause) {
+		this(message, AlertLevel.FATAL, description, cause);
+	}
+	
+	public AlertLevel getLevel() { return level; }
+	
+	public AlertDescription getDescription() { return description; }
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@ import static org.snf4j.tls.handshake.HandshakeType.CLIENT_HELLO;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class SupportedVersionsExtension extends KnownExtension implements ISupportedVersionsExtension {
@@ -50,7 +50,7 @@ public class SupportedVersionsExtension extends KnownExtension implements ISuppo
 		}
 
 		@Override
-		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
 			if (remaining >= 2) {
 				if (handshakeType.value() == CLIENT_HELLO.value()) {
 					int len = srcs.getUnsigned();

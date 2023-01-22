@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class CookieExtension extends KnownExtension implements ICookieExtension {
@@ -46,7 +46,7 @@ public class CookieExtension extends KnownExtension implements ICookieExtension 
 		}
 
 		@Override
-		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
 			if (remaining >= 2) {
 				int len = srcs.getUnsignedShort();
 				

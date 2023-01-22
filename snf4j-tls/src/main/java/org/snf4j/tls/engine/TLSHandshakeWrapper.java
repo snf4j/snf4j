@@ -26,7 +26,7 @@
 package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IEncryptorHolder;
@@ -62,7 +62,7 @@ public class TLSHandshakeWrapper extends AbstractHandshakeWrapper {
 	}
 	
 	@Override
-	protected int wrap(ByteBuffer content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws AlertException {
+	protected int wrap(ByteBuffer content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws Alert {
 		if (encryptor == null) {
 			return contentLength + Record.HEADER_LENGTH;
 		}

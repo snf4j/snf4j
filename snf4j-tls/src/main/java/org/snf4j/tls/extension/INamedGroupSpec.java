@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,14 +29,14 @@ import java.nio.ByteBuffer;
 import java.security.PublicKey;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.crypto.IKeyExchange;
 
 public interface INamedGroupSpec {
 
 	boolean isImplemented();
 	
-	ParsedKey parse(ByteBufferArray srcs, int remaining) throws AlertException;
+	ParsedKey parse(ByteBufferArray srcs, int remaining) throws Alert;
 
 	int getDataLength();
 	
@@ -46,5 +46,5 @@ public interface INamedGroupSpec {
 	
 	IKeyExchange getKeyExchange();
 	
-	PublicKey generateKey(ParsedKey key) throws AlertException;
+	PublicKey generateKey(ParsedKey key) throws Alert;
 }

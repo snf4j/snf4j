@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,17 +27,17 @@ package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
 
-import org.snf4j.tls.alert.DecodeErrorAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
+import org.snf4j.tls.alert.DecodeErrorAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
 
 abstract public class AbstractNamedGroupSpec implements INamedGroupSpec {
 
-	protected DecodeErrorAlertException decodeError(String message) {
-		return new DecodeErrorAlertException("Extension 'key_share' parsing failure: " + message);
+	protected DecodeErrorAlert decodeError(String message) {
+		return new DecodeErrorAlert("Extension 'key_share' parsing failure: " + message);
 	}
 
-	protected InternalErrorAlertException internalError(String message, Throwable cause) {
-		return new InternalErrorAlertException("Extension 'key_share' internal failure: " + message, cause);
+	protected InternalErrorAlert internalError(String message, Throwable cause) {
+		return new InternalErrorAlert("Extension 'key_share' internal failure: " + message, cause);
 	}
 	
 	static protected void getDataWithLeftPadding(ByteBuffer buffer, byte[] data, int length) {

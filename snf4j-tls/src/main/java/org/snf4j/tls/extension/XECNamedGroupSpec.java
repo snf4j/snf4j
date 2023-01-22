@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.crypto.IKeyExchange;
 import org.snf4j.tls.crypto.IXDHKeyExchange;
 import org.snf4j.tls.crypto.XDHKeyExchange;
@@ -57,7 +57,7 @@ public class XECNamedGroupSpec extends AbstractNamedGroupSpec {
 	}
 
 	@Override
-	public ParsedKey parse(ByteBufferArray srcs, int remaining) throws AlertException {
+	public ParsedKey parse(ByteBufferArray srcs, int remaining) throws Alert {
 		if (remaining != getDataLength()) {
 			throw decodeError("XEC key exchange unexpected size");
 		}
@@ -69,7 +69,7 @@ public class XECNamedGroupSpec extends AbstractNamedGroupSpec {
 	}
 
 	@Override
-	public PublicKey generateKey(ParsedKey key) throws AlertException {
+	public PublicKey generateKey(ParsedKey key) throws Alert {
 		byte[] u = ((XECParsedKey)key).getU().clone();
 		
 		reverse(u);

@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionDecoder implements IExtensionDecoder {
@@ -80,12 +80,12 @@ public class ExtensionDecoder implements IExtensionDecoder {
 	}
 	
 	@Override
-	public IExtension decode(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws AlertException {
+	public IExtension decode(HandshakeType handshakeType, ByteBuffer[] srcs, int remaining) throws Alert {
 		return decode(handshakeType, ByteBufferArray.wrap(srcs), remaining);
 	}
 	
 	@Override
-	public IExtension decode(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+	public IExtension decode(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
 		if (remaining >= 4) {
 			ExtensionType type = getType(srcs.getUnsignedShort());
 			int len = srcs.getUnsignedShort();
@@ -101,9 +101,9 @@ public class ExtensionDecoder implements IExtensionDecoder {
 				srcs.get(data);
 				return new UnknownExtension(type, data);
 			}
-			throw new DecodeErrorAlertException("Extension '" + type.name() + "' parsing failure: Data underflow");
+			throw new DecodeErrorAlert("Extension '" + type.name() + "' parsing failure: Data underflow");
 		}
-		throw new DecodeErrorAlertException("Extension parsing failure: Data underflow");
+		throw new DecodeErrorAlert("Extension parsing failure: Data underflow");
 	}
 
 }

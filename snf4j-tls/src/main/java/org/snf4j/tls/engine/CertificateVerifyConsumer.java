@@ -26,9 +26,9 @@
 package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecryptErrorAlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecryptErrorAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.ICertificateVerify;
 import org.snf4j.tls.handshake.IHandshake;
@@ -41,9 +41,9 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 	}
 
 	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws AlertException {
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws Alert {
 		if (state.getState() != MachineState.CLI_WAIT_CV) {
-			throw new UnexpectedMessageAlertException("Unexpected CertificateVerify");
+			throw new UnexpectedMessageAlert("Unexpected CertificateVerify");
 		}
 		
 		ICertificateVerify certificateVerify = (ICertificateVerify) handshake;
@@ -54,7 +54,7 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 				state.getPublicKey(), 
 				false);
 		if (!verified) {
-			throw new DecryptErrorAlertException("Failed to verify certificate");
+			throw new DecryptErrorAlert("Failed to verify certificate");
 		}
 		
 		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);

@@ -25,11 +25,11 @@
  */
 package org.snf4j.tls.alert;
 
-public class RecordOverflowAlertException  extends AlertException {
+public class UnrecognizedNameAlert extends Alert {
 
 	private static final long serialVersionUID = 1L;
 
-	public RecordOverflowAlertException(String message) {
-		super(message, AlertDescription.RECORD_OVERFLOW);
+	public UnrecognizedNameAlert(String message) {
+		super(message, AlertDescription.UNRECOGNIZED_NAME);
 	}
 }

@@ -27,7 +27,7 @@ package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
 
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 
@@ -35,5 +35,5 @@ public interface IHandshakeConsumer {
 	
 	HandshakeType getType();
 	
-	void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException;
+	void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert;
 }

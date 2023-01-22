@@ -39,9 +39,9 @@ import java.util.List;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.IllegalParameterAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.IllegalParameterAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.CookieExtension;
 import org.snf4j.tls.extension.ExtensionDecoder;
@@ -78,7 +78,7 @@ public class HandshakeEngineTest extends EngineTest {
 		try {
 			he.start();
 			fail();
-		} catch (InternalErrorAlertException e) {}
+		} catch (InternalErrorAlert e) {}
 		ProducedHandshake[] produced = he.produce();
 		assertEquals(1, produced.length);
 		assertProduced(produced[0], HandshakeType.CLIENT_HELLO, RecordType.INITIAL);
@@ -137,7 +137,7 @@ public class HandshakeEngineTest extends EngineTest {
 		he = new HandshakeEngine(true, params, handler, handler);
 		try {
 			he.start();
-		} catch (InternalErrorAlertException e) {}		
+		} catch (InternalErrorAlert e) {}		
 	}
 	
 	@Test
@@ -245,7 +245,7 @@ public class HandshakeEngineTest extends EngineTest {
 		try {
 			he2.consume(array, data.length);
 			fail();
-		} catch (UnexpectedMessageAlertException e) {}
+		} catch (UnexpectedMessageAlert e) {}
 		data[0] = 1;
 	}
 	
@@ -265,12 +265,12 @@ public class HandshakeEngineTest extends EngineTest {
 		data[0] = -1;
 		try {
 			he.consume(array(data,0), data.length);
-		} catch (UnexpectedMessageAlertException e) {}
+		} catch (UnexpectedMessageAlert e) {}
 		he = new HandshakeEngine(false, params, handler, handler, decoder);
 		data[0] = 127;
 		try {
 			he.consume(array(data,0), data.length);
-		} catch (UnexpectedMessageAlertException e) {}
+		} catch (UnexpectedMessageAlert e) {}
 	}
 	
 	@Test
@@ -294,7 +294,7 @@ public class HandshakeEngineTest extends EngineTest {
 		try {
 			he.consume(array(data,0), data.length);
 			fail();
-		} catch (IllegalParameterAlertException e) {}
+		} catch (IllegalParameterAlert e) {}
 		
 		sh = new ServerHello(
 				0x0303,  
@@ -310,7 +310,7 @@ public class HandshakeEngineTest extends EngineTest {
 		try {
 			he.consume(array(data,0), data.length);
 			fail();
-		} catch (UnexpectedMessageAlertException e) {
+		} catch (UnexpectedMessageAlert e) {
 			assertEquals("Unexpected ServerHello", e.getMessage());
 		}
 		
@@ -331,7 +331,7 @@ public class HandshakeEngineTest extends EngineTest {
 		try {
 			he.consume(array(data,0), data.length);
 			fail();
-		} catch (IllegalParameterAlertException e) {}
+		} catch (IllegalParameterAlert e) {}
 		
 	}
 }

@@ -28,10 +28,10 @@ package org.snf4j.tls.engine;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecryptErrorAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecryptErrorAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.handshake.Finished;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IFinished;
@@ -46,9 +46,9 @@ public class FinishedConsumer implements IHandshakeConsumer {
 	}
 
 	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws AlertException {
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws Alert {
 		if (state.getState() != MachineState.CLI_WAIT_FINISHED) {
-			throw new UnexpectedMessageAlertException("Unexpected Finished");
+			throw new UnexpectedMessageAlert("Unexpected Finished");
 		}
 		state.getListener().onSendingTraficKey(RecordType.HANDSHAKE);
 		
@@ -58,10 +58,10 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		try {
 			verifyData = state.getKeySchedule().computeServerVerifyData();
 		} catch (Exception e) {
-			throw new InternalErrorAlertException("Failed to compute server verify data", e);
+			throw new InternalErrorAlert("Failed to compute server verify data", e);
 		}
 		if (!Arrays.equals(finished.getVerifyData(), verifyData)) {
-			throw new DecryptErrorAlertException("Failed to verify server verify data");
+			throw new DecryptErrorAlert("Failed to verify server verify data");
 		}
 				
 		try {
@@ -73,7 +73,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			finished = new Finished(state.getKeySchedule().computeClientVerifyData());
 			ConsumerUtil.produce(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
 		} catch (Exception e) {
-			throw new InternalErrorAlertException("Failed to compute server verify data", e);
+			throw new InternalErrorAlert("Failed to compute server verify data", e);
 		}
 		state.changeState(MachineState.CLI_CONNECTED);
 	}

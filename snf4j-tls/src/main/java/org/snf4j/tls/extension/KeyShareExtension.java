@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ import static org.snf4j.tls.handshake.HandshakeType.SERVER_HELLO;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class KeyShareExtension extends KnownExtension implements IKeyShareExtension {
@@ -55,7 +55,7 @@ public class KeyShareExtension extends KnownExtension implements IKeyShareExtens
 		}
 
 		@Override
-		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws AlertException {
+		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
 			boolean serverHello = handshakeType.value() == SERVER_HELLO.value();
 			boolean clientHello = handshakeType.value() == CLIENT_HELLO.value();
 			
@@ -116,7 +116,7 @@ public class KeyShareExtension extends KnownExtension implements IKeyShareExtens
 			throw decodeError("Inconsistent length");
 		}		
 		
-		private KeyShareEntry parseEntry(ByteBufferArray srcs, NamedGroup namedGrp, int keyLen) throws AlertException {
+		private KeyShareEntry parseEntry(ByteBufferArray srcs, NamedGroup namedGrp, int keyLen) throws Alert {
 			INamedGroupSpec spec = namedGrp.spec();
 
 			if (spec != null) {

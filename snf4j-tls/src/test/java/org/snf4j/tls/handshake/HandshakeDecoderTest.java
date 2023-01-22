@@ -38,8 +38,8 @@ import java.util.List;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.IExtension;
@@ -61,7 +61,7 @@ public class HandshakeDecoderTest extends HandshakeTest {
 	}
 	
 	@Test
-	public void testDecode() throws AlertException {
+	public void testDecode() throws Alert {
 		CipherSuite[] ciphers = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
 		List<IExtension> extensions = Arrays.asList(new IExtension[0]);
 		ClientHello ch = new ClientHello(0x303, new byte[32], new byte[0], ciphers, new byte[1], extensions);
@@ -77,13 +77,13 @@ public class HandshakeDecoderTest extends HandshakeTest {
 		try {
 			decoder.decode(array(data,0), ch.getLength()-1);
 			fail();
-		} catch (AlertException e) {
+		} catch (Alert e) {
 			assertEquals("Handshake message 'client_hello' parsing failure: Data underflow", e.getMessage());
 		}
 		try {
 			decoder.decode(array(Arrays.copyOf(data, data.length+1),0), ch.getLength()+1);
 			fail();
-		} catch (AlertException e) {
+		} catch (Alert e) {
 			assertEquals("Handshake message 'client_hello' parsing failure: Inconsistent length", e.getMessage());
 		}
 		
@@ -113,13 +113,13 @@ public class HandshakeDecoderTest extends HandshakeTest {
 		try {
 			decoder.decode(array, remaining);
 			fail();
-		} catch (AlertException e) {
+		} catch (Alert e) {
 			assertEquals(message, e.getMessage());
 		}
 	}
 	
 	@Test
-	public void testDecodeFailure() throws DecodeErrorAlertException {
+	public void testDecodeFailure() throws DecodeErrorAlert {
 		assertFailure(array(bytes(0,0,0,0), 0), 0, "Handshake message parsing failure: Data underflow");
 		assertFailure(array(bytes(0,0,0,0), 0), 1, "Handshake message parsing failure: Data underflow");
 		assertFailure(array(bytes(0,0,0,0), 0), 2, "Handshake message parsing failure: Data underflow");
@@ -130,7 +130,7 @@ public class HandshakeDecoderTest extends HandshakeTest {
 	}	
 	
 	@Test
-	public void testParserManagement() throws AlertException {
+	public void testParserManagement() throws Alert {
 		decoder.clearParsers();
 		assertEquals(0, decoder.getParsers().size());
 		

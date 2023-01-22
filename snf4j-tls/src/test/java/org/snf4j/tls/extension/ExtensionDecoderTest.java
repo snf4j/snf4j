@@ -36,8 +36,8 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class ExtensionDecoderTest extends ExtensionTest {
@@ -52,7 +52,7 @@ public class ExtensionDecoderTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testDecode() throws AlertException {
+	public void testDecode() throws Alert {
 		new ServerNameExtension("abc").getBytes(buffer);
 		IExtension e = decoder.decode(HandshakeType.CLIENT_HELLO, array(buffer(),0), 100);
 		assertSame(ServerNameExtension.class, e.getClass());
@@ -81,13 +81,13 @@ public class ExtensionDecoderTest extends ExtensionTest {
 		try {
 			decoder.decode(HandshakeType.CLIENT_HELLO, array, remaining);
 			fail();
-		} catch (AlertException e) {
+		} catch (Alert e) {
 			assertEquals(message, e.getMessage());
 		}
 	}
 	
 	@Test
-	public void testDecodeFailure() throws DecodeErrorAlertException {
+	public void testDecodeFailure() throws DecodeErrorAlert {
 		assertFailure(array(bytes(0,0,0,0), 0), 0, "Extension parsing failure: Data underflow");
 		assertFailure(array(bytes(0,0,0,0), 0), 1, "Extension parsing failure: Data underflow");
 		assertFailure(array(bytes(0,0,0,0), 0), 2, "Extension parsing failure: Data underflow");
@@ -102,7 +102,7 @@ public class ExtensionDecoderTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testParserManagement() throws AlertException {
+	public void testParserManagement() throws Alert {
 		decoder.clearParsers();
 		assertEquals(0, decoder.getParsers().size());
 		

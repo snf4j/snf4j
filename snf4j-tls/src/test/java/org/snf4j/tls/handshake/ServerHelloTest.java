@@ -34,8 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.ExtensionType;
@@ -68,7 +68,7 @@ public class ServerHelloTest extends HandshakeTest {
 	}
 
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = bytes(new int[] {
 				0x02,0x00,0x00,0x76,
 				0x03,0x03,0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77,0x78,0x79,0x7a,0x7b,
@@ -282,7 +282,7 @@ public class ServerHelloTest extends HandshakeTest {
 				if (i != bytes.length-1) {
 					fail();
 				}
-			} catch (DecodeErrorAlertException e) {
+			} catch (DecodeErrorAlert e) {
 				assertEquals("Handshake message 'server_hello' parsing failure: Inconsistent length", e.getMessage());
 			}
 		}
@@ -291,7 +291,7 @@ public class ServerHelloTest extends HandshakeTest {
 		try {
 			ServerHello.getParser().parse(array(bytes, 4), bytes.length-5, decoder);
 			fail();
-		} catch (DecodeErrorAlertException e) {
+		} catch (DecodeErrorAlert e) {
 			assertEquals("Handshake message 'server_hello' parsing failure: Legacy session id is too big", e.getMessage());
 		}
 		

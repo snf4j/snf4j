@@ -36,14 +36,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.HandshakeFailureAlertException;
-import org.snf4j.tls.alert.IllegalParameterAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
-import org.snf4j.tls.alert.MissingExtensionAlertException;
-import org.snf4j.tls.alert.ProtocolVersionAlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
-import org.snf4j.tls.alert.UnrecognizedNameAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.HandshakeFailureAlert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.MissingExtensionAlert;
+import org.snf4j.tls.alert.ProtocolVersionAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.alert.UnrecognizedNameAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.crypto.Hkdf;
 import org.snf4j.tls.crypto.IHash;
@@ -86,20 +86,20 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 	}
 	
 	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws AlertException {
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
 		if (state.getState() != MachineState.SRV_START) {
-			throw new UnexpectedMessageAlertException("Unexpected ClientHello");
+			throw new UnexpectedMessageAlert("Unexpected ClientHello");
 		}
 		
 		IClientHello clientHello = (IClientHello) handshake;
 		
 		if (clientHello.getLegacyVersion() != EngineDefaults.LEGACY_VERSION) {
-			throw new ProtocolVersionAlertException("Invalid legacy version");
+			throw new ProtocolVersionAlert("Invalid legacy version");
 		}
 		
 		ISupportedVersionsExtension versions = find(handshake, ExtensionType.SUPPORTED_VERSIONS);
 		if (versions == null) {
-			throw new ProtocolVersionAlertException("No support for TLS 1.2 or prior");
+			throw new ProtocolVersionAlert("No support for TLS 1.2 or prior");
 		}
 		
 		int negotiatedVersion = -1;
@@ -109,37 +109,37 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			}
 		}
 		if (negotiatedVersion == -1) {
-			throw new ProtocolVersionAlertException("No support for TLS 1.3 by peer");
+			throw new ProtocolVersionAlert("No support for TLS 1.3 by peer");
 		}
 		
 		byte[] compressions = clientHello.getLegacyCompressionMethods();
 		if (compressions.length != 1 || compressions[0] != 0) {
-			throw new IllegalParameterAlertException("Invalid compression methods");
+			throw new IllegalParameterAlert("Invalid compression methods");
 		}
 		
 		CipherSuite cipherSuite = findMatch(
 				state.getParameters().getCipherSuites(), 
 				clientHello.getCipherSuites());
 		if (cipherSuite == null) {
-			throw new HandshakeFailureAlertException("Failed to negotiate cipher suite");
+			throw new HandshakeFailureAlert("Failed to negotiate cipher suite");
 		}
 		else if (state.getCipherSuite() != null && !state.getCipherSuite().equals(cipherSuite)) {
-			throw new IllegalParameterAlertException("Negotiated cipher suite mismatch");
+			throw new IllegalParameterAlert("Negotiated cipher suite mismatch");
 		}
 		
 		IKeyShareExtension keyShare = find(handshake, ExtensionType.KEY_SHARE);
 		if (keyShare == null) {
-			throw new MissingExtensionAlertException("Missing key_share extension in ClientHello");
+			throw new MissingExtensionAlert("Missing key_share extension in ClientHello");
 		}
 		
 		ISupportedGroupsExtension supportedGroups = find(handshake, ExtensionType.SUPPORTED_GROUPS);
 		if (supportedGroups == null) {
-			throw new MissingExtensionAlertException("Missing supported_groups extension in ClientHello");
+			throw new MissingExtensionAlert("Missing supported_groups extension in ClientHello");
 		}
 
 		ISignatureAlgorithmsExtension signAlgorithms = find(handshake, ExtensionType.SIGNATURE_ALGORITHMS);
 		if (signAlgorithms == null) {
-			throw new MissingExtensionAlertException("Missing signature_algorithms extension in ClientHello");
+			throw new MissingExtensionAlert("Missing signature_algorithms extension in ClientHello");
 		}
 		
 		KeyShareEntry keyShareEntry;
@@ -147,7 +147,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			KeyShareEntry[] entries = keyShare.getEntries();
 			
 			if (entries.length != 1 || !state.getNamedGroup().equals(entries[0].getNamedGroup())) {
-				throw new IllegalParameterAlertException("Negotiated key share group mismatch");
+				throw new IllegalParameterAlert("Negotiated key share group mismatch");
 			}
 			keyShareEntry = entries[0];
 		}
@@ -161,7 +161,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		if (keyShareEntry != null) {
 			namedGroup = find(supportedGroups.getGroups(), keyShareEntry.getNamedGroup());
 			if (namedGroup == null) {
-				throw new IllegalParameterAlertException("KeyShareEntry not correspond with supported_groups extension");
+				throw new IllegalParameterAlert("KeyShareEntry not correspond with supported_groups extension");
 			}
 		}
 		if (namedGroup == null) {
@@ -169,18 +169,18 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					state.getParameters().getNamedGroups(), 
 					supportedGroups.getGroups());
 			if (namedGroup == null) {
-				throw new HandshakeFailureAlertException("Failed to negotiate supported group");
+				throw new HandshakeFailureAlert("Failed to negotiate supported group");
 			}
 		}
 		
 		IServerNameExtension serverName = find(handshake, ExtensionType.SERVER_NAME);
 		if (serverName == null) {
 			if (state.getParameters().isServerNameRequired()) {
-				throw new MissingExtensionAlertException("Missing server_name extension in ClientHello");
+				throw new MissingExtensionAlert("Missing server_name extension in ClientHello");
 			}
 		}
 		else if	(!state.getHandler().verify(serverName)) {
-			throw new UnrecognizedNameAlertException("Host name '" + serverName.getHostName() + "' is unrecognized");
+			throw new UnrecognizedNameAlert("Host name '" + serverName.getHostName() + "' is unrecognized");
 		}
 		else {
 			state.setHostName(serverName.getHostName());
@@ -197,7 +197,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				state.getKeySchedule().deriveEarlyTrafficSecret();
 				state.getListener().onEarlyTrafficSecret(state);
 			} catch (Exception e) {
-				throw new InternalErrorAlertException("Failed to create key schedule", e);
+				throw new InternalErrorAlert("Failed to create key schedule", e);
 			}			
 		}
 		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
@@ -289,7 +289,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		}
 
 		@Override
-		public void finish(EngineState state) throws AlertException {
+		public void finish(EngineState state) throws Alert {
 			List<IExtension> extensions = new ArrayList<IExtension>();
 			
 			extensions.add(new SupportedVersionsExtension(
@@ -302,7 +302,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				state.getListener().onReceivingTraficKey(RecordType.HANDSHAKE);
 			}
 			catch (Exception e) {
-				throw new InternalErrorAlertException("Failed to derive handshake secret", e);
+				throw new InternalErrorAlert("Failed to derive handshake secret", e);
 			}
 			Arrays.fill(secret, (byte)0);
 			extensions.add(new KeyShareExtension(
@@ -363,7 +363,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		}
 		
 		@Override
-		public void finish(EngineState state) throws AlertException {
+		public void finish(EngineState state) throws Alert {
 			Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
 			ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
 			
@@ -381,7 +381,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				state.getKeySchedule().deriveApplicationTrafficSecrets();
 				state.getListener().onApplicationTrafficSecrets(state);
 			} catch (Exception e) {
-				throw new InternalErrorAlertException("Failed to compute server verify data", e);
+				throw new InternalErrorAlert("Failed to compute server verify data", e);
 			}
 			state.changeState(MachineState.SRV_WAIT_FINISHED);
 		}

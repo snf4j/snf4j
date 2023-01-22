@@ -25,16 +25,11 @@
  */
 package org.snf4j.tls.alert;
 
-public class DecryptErrorAlertException extends AlertException {
+public class UnexpectedMessageAlert extends Alert {
 
 	private static final long serialVersionUID = 1L;
 
-	public DecryptErrorAlertException(String message) {
-		super(message, AlertDescription.DECRYPT_ERROR);
+	public UnexpectedMessageAlert(String message) {
+		super(message, AlertDescription.UNEXPECTED_MESSAGE);
 	}
-	
-	public DecryptErrorAlertException(String message, Throwable cause) {
-		super(message, AlertDescription.DECRYPT_ERROR, cause);
-	}
-	
 }

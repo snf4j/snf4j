@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IEncryptorHolder;
@@ -67,11 +67,11 @@ abstract public class AbstractHandshakeWrapper {
 		return !produced.isEmpty() || pending != null;
 	}
 	
-	int wrap(ByteBuffer dst) throws AlertException {
+	int wrap(ByteBuffer dst) throws Alert {
 		return wrap(dst, handshaker.getMaxFragmentLength());
 	}
 	
-	int wrap(ByteBuffer dst, int maxFragmentLength) throws AlertException {
+	int wrap(ByteBuffer dst, int maxFragmentLength) throws Alert {
 		for (ProducedHandshake handshake: handshaker.produce()) {
 			produced.add(handshake);
 		}
@@ -90,7 +90,7 @@ abstract public class AbstractHandshakeWrapper {
 				encryptor);
 	}
 	
-	int wrap(ByteBuffer dst, int maxFragmentLength, int expansion, RecordType type, Encryptor encryptor) throws AlertException {
+	int wrap(ByteBuffer dst, int maxFragmentLength, int expansion, RecordType type, Encryptor encryptor) throws Alert {
 		if (dst.remaining() < maxFragmentLength + expansion) {
 			return -1;
 		}
@@ -153,6 +153,6 @@ abstract public class AbstractHandshakeWrapper {
 	
 	abstract protected ByteBuffer prepareForContent(ByteBuffer dst, int contentLength, int maxFragmentLength, Encryptor encryptor);
 	
-	abstract protected int wrap(ByteBuffer content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws AlertException;
+	abstract protected int wrap(ByteBuffer content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws Alert;
 
 }

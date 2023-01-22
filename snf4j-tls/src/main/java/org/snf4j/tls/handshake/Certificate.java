@@ -31,7 +31,7 @@ import java.util.List;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.extension.ExtensionsParser;
 import org.snf4j.tls.extension.ExtensionsUtil;
 import org.snf4j.tls.extension.IExtension;
@@ -55,7 +55,7 @@ public class Certificate extends KnownHandshake implements ICertificate {
 		}
 
 		@Override
-		public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder) throws AlertException {
+		public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder) throws Alert {
 			if (remaining >= 1) {
 				int len = srcs.getUnsigned();
 				

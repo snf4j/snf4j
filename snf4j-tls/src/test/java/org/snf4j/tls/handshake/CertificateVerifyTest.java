@@ -32,15 +32,15 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.SignatureScheme;
 
 public class CertificateVerifyTest extends HandshakeTest {
 	
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = bytes(new int[] {
 				0x0f,0x00,0x00,0x08,
 				0x04,0x03,
@@ -133,7 +133,7 @@ public class CertificateVerifyTest extends HandshakeTest {
 				if (i != bytes.length-1) {
 					fail();
 				}
-			} catch (DecodeErrorAlertException e) {
+			} catch (DecodeErrorAlert e) {
 				assertEquals("Handshake message 'certificate_verify' parsing failure: Inconsistent length", e.getMessage());
 			}
 		}		

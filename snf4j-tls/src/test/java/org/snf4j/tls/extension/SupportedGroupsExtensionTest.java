@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class SupportedGroupsExtensionTest extends ExtensionTest {
@@ -80,7 +80,7 @@ public class SupportedGroupsExtensionTest extends ExtensionTest {
 	}
 	
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = new byte[] {
 				0x00, 0x0a, 0x00, 0x16, 0x00, 0x14, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x1e, 0x00, 0x19, 
 				0x00, 0x18, 0x01, 0x00, 0x01, 0x01, 0x01, 0x02, 0x01, 0x03, 0x01, 0x04};
@@ -104,7 +104,7 @@ public class SupportedGroupsExtensionTest extends ExtensionTest {
 	}	
 	
 	@Test
-	public void testConsumeBytes() throws AlertException {
+	public void testConsumeBytes() throws Alert {
 		ByteBufferArray array = ByteBufferArray.wrap(array(bytes(0,4,0,0x17,0,0x18),0));
 		
 		assertEquals(6, array.remaining());
@@ -118,7 +118,7 @@ public class SupportedGroupsExtensionTest extends ExtensionTest {
 			SupportedGroupsExtension.getParser().parse(HandshakeType.CLIENT_HELLO, array, remaining);
 			fail();
 		}
-		catch (AlertException e) {
+		catch (Alert e) {
 			assertEquals(message, e.getMessage());
 		}
 	}

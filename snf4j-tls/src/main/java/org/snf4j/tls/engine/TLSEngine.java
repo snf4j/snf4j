@@ -42,12 +42,12 @@ import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.tls.alert.AlertDescription;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.CloseNotifyAlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
-import org.snf4j.tls.alert.RecordOverflowAlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.CloseNotifyAlert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.RecordOverflowAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Decryptor;
 import org.snf4j.tls.record.Encryptor;
@@ -71,7 +71,7 @@ public class TLSEngine implements IEngine {
 	
 	private boolean inboundDone;
 	
-	private AlertException alert;
+	private Alert alert;
 		
 	public TLSEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler) {
 		listener = new TLSEngineStateListener();
@@ -333,11 +333,11 @@ public class TLSEngine implements IEngine {
 		catch (Exception e) {
 			dst.reset();
 			if (alert == null) {
-				if (e instanceof AlertException) {
-					alert = (AlertException) e;
+				if (e instanceof Alert) {
+					alert = (Alert) e;
 				}
 				else {
-					alert = new InternalErrorAlertException("General failure", e);
+					alert = new InternalErrorAlert("General failure", e);
 				}
 				inboundDone = true;
 				if (outboundDone) {
@@ -391,7 +391,7 @@ public class TLSEngine implements IEngine {
 				ByteBuffer.wrap(plaintext)) - 1;
 
 		if (remaining > handshaker.getMaxFragmentLength()) {
-			throw new RecordOverflowAlertException("Encrypted record is too big");
+			throw new RecordOverflowAlert("Encrypted record is too big");
 		}
 		
 		int type = 0;
@@ -404,7 +404,7 @@ public class TLSEngine implements IEngine {
 		}
 
 		if (type == 0) {
-			throw new UnexpectedMessageAlertException("Non-zero octet in cleartext");
+			throw new UnexpectedMessageAlert("Non-zero octet in cleartext");
 		}
 		
 		if (type == ContentType.HANDSHAKE.value()) {
@@ -421,7 +421,7 @@ public class TLSEngine implements IEngine {
 					remaining, 
 					length + Record.HEADER_LENGTH);
 		}
-		throw new UnexpectedMessageAlertException("Received unexpected record content type (" + type + ")");
+		throw new UnexpectedMessageAlert("Received unexpected record content type (" + type + ")");
 	}
 
 	private IEngineResult unwrapAppData(ByteBuffer src, ByteBuffer dst) throws Exception {
@@ -431,13 +431,13 @@ public class TLSEngine implements IEngine {
 			int type = src.get(0);
 			
 			if (type != ContentType.APPLICATION_DATA.value()) {
-				throw new UnexpectedMessageAlertException("Unexpected encrypted record content type (" + type + ")");
+				throw new UnexpectedMessageAlert("Unexpected encrypted record content type (" + type + ")");
 			}
 			
 			int length = src.getShort(3);
 		
 			if (length > handshaker.getMaxFragmentLength() + 256) {
-				throw new RecordOverflowAlertException("Encrypted record is too big");
+				throw new RecordOverflowAlert("Encrypted record is too big");
 			}
 			
 			if (length <= remaining) {
@@ -458,7 +458,7 @@ public class TLSEngine implements IEngine {
 						dst) - 1;
 				
 				if (produced > handshaker.getMaxFragmentLength()) {
-					throw new RecordOverflowAlertException("Encrypted record is too big");
+					throw new RecordOverflowAlert("Encrypted record is too big");
 				}
 
 				int padding = 0;
@@ -495,7 +495,7 @@ public class TLSEngine implements IEngine {
 				}
 				
 				if (type == 0) {
-					throw new UnexpectedMessageAlertException("Non-zero octet in cleartext");
+					throw new UnexpectedMessageAlert("Non-zero octet in cleartext");
 				}
 				
 				dst.position(dst.position() - padding - 1);
@@ -520,7 +520,7 @@ public class TLSEngine implements IEngine {
 							produced, 
 							length + Record.HEADER_LENGTH);
 				}
-				throw new UnexpectedMessageAlertException("Received unexpected record content type (" + type + ")");
+				throw new UnexpectedMessageAlert("Received unexpected record content type (" + type + ")");
 				
 			}
 		}
@@ -545,7 +545,7 @@ public class TLSEngine implements IEngine {
 							0);
 				}
 				else {
-					throw new UnexpectedMessageAlertException("Received unexpected data after finished handshake");
+					throw new UnexpectedMessageAlert("Received unexpected data after finished handshake");
 				}
 			}
 		}
@@ -562,12 +562,12 @@ public class TLSEngine implements IEngine {
 
 	private IEngineResult unwrapAlert(ByteBuffer src, int off, int length, int consumed) throws Exception {
 		if (length != 2) {
-			throw new DecodeErrorAlertException("Invalid length of alert content");
+			throw new DecodeErrorAlert("Invalid length of alert content");
 		}
 		src.get();
 		AlertDescription desc = AlertDescription.of(src.get());
 		if (desc.equals(AlertDescription.CLOSE_NOTIFY)) {
-			alert = new CloseNotifyAlertException("Closing by peer");
+			alert = new CloseNotifyAlert("Closing by peer");
 			inboundDone = true;
 			status = NEED_WRAP;
 			return new EngineResult(
@@ -594,12 +594,12 @@ public class TLSEngine implements IEngine {
 				
 				if (type == ContentType.APPLICATION_DATA.value()) {
 					if (len > handshaker.getMaxFragmentLength() + 256) {
-						throw new RecordOverflowAlertException("Encrypted record is too big");
+						throw new RecordOverflowAlert("Encrypted record is too big");
 					}
 					return unwrapAppData(src, len);
 				}
 				if (len > handshaker.getMaxFragmentLength()) {
-					throw new RecordOverflowAlertException("Record fragment is too big");
+					throw new RecordOverflowAlert("Record fragment is too big");
 				}
 				if (type == ContentType.HANDSHAKE.value()) {
 					return unwrapHandshake(
@@ -622,7 +622,7 @@ public class TLSEngine implements IEngine {
 							len,
 							Record.HEADER_LENGTH + len);
 				}
-				throw new UnexpectedMessageAlertException("Received unexpected record content type (" + type + ")");
+				throw new UnexpectedMessageAlert("Received unexpected record content type (" + type + ")");
 			}
 		}
 		return new EngineResult(
@@ -682,7 +682,7 @@ public class TLSEngine implements IEngine {
 									0);
 						}
 						else {
-							throw new UnexpectedMessageAlertException("Received unexpected data after finished handshake");
+							throw new UnexpectedMessageAlert("Received unexpected data after finished handshake");
 						}
 					}
 				}
@@ -709,11 +709,11 @@ public class TLSEngine implements IEngine {
 		catch (Exception e) {
 			dst.reset();
 			if (alert == null) {
-				if (e instanceof AlertException) {
-					alert = (AlertException) e;
+				if (e instanceof Alert) {
+					alert = (Alert) e;
 				}
 				else {
-					alert = new InternalErrorAlertException("General failure", e);
+					alert = new InternalErrorAlert("General failure", e);
 				}
 				inboundDone = true;
 				this.status = NEED_WRAP;

@@ -32,10 +32,10 @@ import java.util.List;
 import java.util.Random;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.IllegalParameterAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.extension.ExtensionValidator;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionValidator;
@@ -103,12 +103,12 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 	
 	@Override
-	public void consume(ByteBuffer[] srcs, int remaining) throws AlertException {
+	public void consume(ByteBuffer[] srcs, int remaining) throws Alert {
 		consume(ByteBufferArray.wrap(srcs), remaining);
 	}
 
 	@Override
-	public void consume(ByteBufferArray srcs, int remaining) throws AlertException {
+	public void consume(ByteBufferArray srcs, int remaining) throws Alert {
 		ByteBuffer[] data = srcs.array().clone();
 		
 		if (data.length == 1) {
@@ -142,7 +142,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 		int value = type.value();
 		
 		if (!handshake.isKnown()) {
-			throw new UnexpectedMessageAlertException("Unknown handshake type: " + value);
+			throw new UnexpectedMessageAlert("Unknown handshake type: " + value);
 		}
 		
 		IHandshakeConsumer consumer = value < CONSUMERS.length ? CONSUMERS[value] : null;
@@ -160,7 +160,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 				if (isHRR) {
 					for (IExtension extension: extensions) {
 						if (!extensionValidator.isAllowedInHelloRetryRequest(extension.getType())) {
-							throw new IllegalParameterAlertException(
+							throw new IllegalParameterAlert(
 									"Extension " + 
 									extension.getType().name() + 
 									" not allowed in hello_retry_request");
@@ -170,7 +170,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 				else {
 					for (IExtension extension: extensions) {
 						if (!extensionValidator.isAllowed(extension.getType(), type)) {
-							throw new IllegalParameterAlertException(
+							throw new IllegalParameterAlert(
 									"Extension " + 
 									extension.getType().name() + 
 									" not allowed in " + 
@@ -182,7 +182,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 			consumer.consume(state, handshake, data, isHRR);
 		}
 		else {
-			throw new UnexpectedMessageAlertException("Unexpected handshake type: " + value);
+			throw new UnexpectedMessageAlert("Unexpected handshake type: " + value);
 		}
 	}
 	
@@ -192,7 +192,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 	
 	@Override
-	public ProducedHandshake[] produce() throws AlertException {
+	public ProducedHandshake[] produce() throws Alert {
 		return state.getProduced();
 	}
 
@@ -202,7 +202,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 
 	@Override
-	public boolean hasPendingTasks() throws AlertException {
+	public boolean hasPendingTasks() throws Alert {
 		return state.hasPendingTasks();
 	}
 
@@ -237,9 +237,9 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 	
 	@Override
-	public void start() throws AlertException {
+	public void start() throws Alert {
 		if (isStarted()) {
-			throw new InternalErrorAlertException("Handshake has already started");
+			throw new InternalErrorAlert("Handshake has already started");
 		}
 		if (state.isClientMode()) {
 			state.changeState(MachineState.CLI_START);
@@ -287,7 +287,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 			}
 			extensions.add(new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries));
 		} catch (Exception e) {
-			throw new InternalErrorAlertException("Failed to generate exchange key", e);
+			throw new InternalErrorAlert("Failed to generate exchange key", e);
 		}
 		
 		ClientHello clientHello = new ClientHello(

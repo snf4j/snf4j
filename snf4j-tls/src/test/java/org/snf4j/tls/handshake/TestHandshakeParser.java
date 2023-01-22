@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionDecoder;
 
@@ -56,7 +56,7 @@ public class TestHandshakeParser extends AbstractHandshakeParser {
 
 	@Override
 	public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder)
-			throws DecodeErrorAlertException {
+			throws DecodeErrorAlert {
 		byte[] data = new byte[remaining];
 		
 		srcs.get(data);

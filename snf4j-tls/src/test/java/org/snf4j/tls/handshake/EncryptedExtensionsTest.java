@@ -34,8 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.DecodeErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.IExtension;
@@ -46,7 +46,7 @@ import org.snf4j.tls.extension.SupportedGroupsExtension;
 public class EncryptedExtensionsTest extends HandshakeTest {
 
 	@Test
-	public void testParseRealData() throws AlertException {
+	public void testParseRealData() throws Alert {
 		byte[] data = bytes(new int[] {
 				0x08,0x00,0x00,0x0c,
 				0x00,0x0a,0x00,0x2b,0x00,0x02,0x03,0x04,
@@ -126,7 +126,7 @@ public class EncryptedExtensionsTest extends HandshakeTest {
 				if (i != bytes.length-1) {
 					fail();
 				}
-			} catch (DecodeErrorAlertException e) {
+			} catch (DecodeErrorAlert e) {
 				assertEquals("Handshake message 'encrypted_extensions' parsing failure: Inconsistent length", e.getMessage());
 			}
 		}		

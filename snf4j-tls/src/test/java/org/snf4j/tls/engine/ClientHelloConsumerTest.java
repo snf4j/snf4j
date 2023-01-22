@@ -46,13 +46,13 @@ import java.util.List;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.HandshakeFailureAlertException;
-import org.snf4j.tls.alert.IllegalParameterAlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
-import org.snf4j.tls.alert.MissingExtensionAlertException;
-import org.snf4j.tls.alert.ProtocolVersionAlertException;
-import org.snf4j.tls.alert.UnexpectedMessageAlertException;
-import org.snf4j.tls.alert.UnrecognizedNameAlertException;
+import org.snf4j.tls.alert.HandshakeFailureAlert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.MissingExtensionAlert;
+import org.snf4j.tls.alert.ProtocolVersionAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.alert.UnrecognizedNameAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.ExtensionsUtil;
@@ -315,7 +315,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		try {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
-		} catch (MissingExtensionAlertException e) {}
+		} catch (MissingExtensionAlert e) {}
 		assertEquals("", handler.trace());
 		
 		state = serverState();
@@ -332,7 +332,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		try {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
-		} catch (UnrecognizedNameAlertException e) {}
+		} catch (UnrecognizedNameAlert e) {}
 		assertEquals("VSN(snf4j.org)|", handler.trace());
 	}
 	
@@ -352,7 +352,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		try {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
-		} catch (IllegalParameterAlertException e) {}
+		} catch (IllegalParameterAlert e) {}
 
 		ch = clientHelloCS(TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
@@ -372,21 +372,21 @@ public class ClientHelloConsumerTest extends EngineTest {
 		try {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
-		} catch (IllegalParameterAlertException e) {}
+		} catch (IllegalParameterAlert e) {}
 
 		replace(extensions, keyShare(NamedGroup.SECP384R1));
 		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
 		try {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
-		} catch (IllegalParameterAlertException e) {}
+		} catch (IllegalParameterAlert e) {}
 
 		replace(extensions, keyShare(NamedGroup.SECP256R1, NamedGroup.SECP384R1));
 		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
 		try {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
-		} catch (IllegalParameterAlertException e) {}
+		} catch (IllegalParameterAlert e) {}
 
 		replace(extensions, keyShare(NamedGroup.SECP256R1));
 		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
@@ -462,66 +462,66 @@ public class ClientHelloConsumerTest extends EngineTest {
 		try {
 			state.getProduced();
 			fail();
-		} catch (InternalErrorAlertException e) {
+		} catch (InternalErrorAlert e) {
 			assertEquals("Failed to derive handshake secret", e.getMessage());
 		}
 	}
 	
-	@Test(expected=UnexpectedMessageAlertException.class)
+	@Test(expected=UnexpectedMessageAlert.class)
 	public void testInvalidMachineSate() throws Exception {
 		ClientHello ch = clientHello(0x0303);
 		consumer.consume(new EngineState(MachineState.SRV_RECVD_CH,params, handler, handler), ch, data(ch), false);
 	}
 	
-	@Test(expected=ProtocolVersionAlertException.class)
+	@Test(expected=ProtocolVersionAlert.class)
 	public void testInvalidLegacyVersion() throws Exception {
 		ClientHello ch = clientHello(0x0302);
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=ProtocolVersionAlertException.class)
+	@Test(expected=ProtocolVersionAlert.class)
 	public void testConsumeNoSupportedVersions1() throws Exception {
 		ClientHello ch = clientHelloEx();
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=ProtocolVersionAlertException.class)
+	@Test(expected=ProtocolVersionAlert.class)
 	public void testConsumeNoSupportedVersions2() throws Exception {
 		ClientHello ch = clientHelloEx(versions(0x0303));
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=ProtocolVersionAlertException.class)
+	@Test(expected=ProtocolVersionAlert.class)
 	public void testConsumeNoSupportedVersions3() throws Exception {
 		ClientHello ch = clientHelloEx(versions(0x0303,0x0305));
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=HandshakeFailureAlertException.class)
+	@Test(expected=HandshakeFailureAlert.class)
 	public void testConsumeNoCipherSuite1() throws Exception {
 		ClientHello ch = clientHelloCS();
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=HandshakeFailureAlertException.class)
+	@Test(expected=HandshakeFailureAlert.class)
 	public void testConsumeNoCipherSuite2() throws Exception {
 		ClientHello ch = clientHelloCS(TLS_AES_128_CCM_8_SHA256);
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=MissingExtensionAlertException.class)
+	@Test(expected=MissingExtensionAlert.class)
 	public void testConsumeNoKeyShare() throws Exception {
 		ClientHello ch = clientHelloEx(versions(0x0304));
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=MissingExtensionAlertException.class)
+	@Test(expected=MissingExtensionAlert.class)
 	public void testConsumeNoSupportedGroups() throws Exception {
 		ClientHello ch = clientHelloEx(versions(0x0304), keyShare(NamedGroup.SECP256R1));
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=IllegalParameterAlertException.class)
+	@Test(expected=IllegalParameterAlert.class)
 	public void testConsumeKeyShareFromNoSupportedGroup() throws Exception {
 		ClientHello ch = clientHelloEx(
 				versions(0x0304), 
@@ -531,7 +531,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=HandshakeFailureAlertException.class)
+	@Test(expected=HandshakeFailureAlert.class)
 	public void testConsumeEmptyKeyShareAndNoSupportedGroup() throws Exception {
 		ClientHello ch = clientHelloEx(
 				versions(0x0304), 
@@ -541,7 +541,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=MissingExtensionAlertException.class)
+	@Test(expected=MissingExtensionAlert.class)
 	public void testConsumeEmptyKeyShareAndNoSignatureAlgos() throws Exception {
 		ClientHello ch = clientHelloEx(
 				versions(0x0304), 
@@ -550,25 +550,25 @@ public class ClientHelloConsumerTest extends EngineTest {
 		consumer.consume(state, ch, data(ch), false);
 	}
 	
-	@Test(expected=IllegalParameterAlertException.class)
+	@Test(expected=IllegalParameterAlert.class)
 	public void testConsumeNoCompressions() throws Exception {
 		ClientHello ch = clientHelloCompress(new byte[0]);
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=IllegalParameterAlertException.class)
+	@Test(expected=IllegalParameterAlert.class)
 	public void testConsumeToManyCompressions() throws Exception {
 		ClientHello ch = clientHelloCompress(new byte[2]);
 		consumer.consume(state, ch, data(ch), false);
 	}
 
-	@Test(expected=IllegalParameterAlertException.class)
+	@Test(expected=IllegalParameterAlert.class)
 	public void testConsumeWrongCompressions() throws Exception {
 		ClientHello ch = clientHelloCompress(new byte[] {1});
 		consumer.consume(state, ch, data(ch), false);
 	}
 	
-	@Test(expected=InternalErrorAlertException.class)
+	@Test(expected=InternalErrorAlert.class)
 	public void testConsumeKeyScheduleFailure() throws Exception {
 		params.cipherSuites[0] = new CipherSuite("xxx", 6666, null) {};
 		ClientHello ch = clientHelloCS(new CipherSuite("xxx", 6666, null) {});

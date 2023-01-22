@@ -32,8 +32,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-import org.snf4j.tls.alert.AlertException;
-import org.snf4j.tls.alert.InternalErrorAlertException;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
@@ -105,9 +105,9 @@ public class EngineState {
 		return state;
 	}
 	
-	public void changeState(MachineState machineState) throws AlertException {
+	public void changeState(MachineState machineState) throws Alert {
 		if (this.state.clientMode() != machineState.clientMode()) {
-			throw new InternalErrorAlertException("Invalid new machine state");
+			throw new InternalErrorAlert("Invalid new machine state");
 		}
 		this.state = machineState;
 	}
@@ -182,7 +182,7 @@ public class EngineState {
 		return !produced.isEmpty();
 	}
 	
-	public ProducedHandshake[] getProduced() throws AlertException {
+	public ProducedHandshake[] getProduced() throws Alert {
 		hasPendingTasks();
 		
 		int size = produced.size();
@@ -200,7 +200,7 @@ public class EngineState {
 		return producingTasks;
 	}
 	
-	public boolean hasPendingTasks() throws AlertException {
+	public boolean hasPendingTasks() throws Alert {
 		if (tasks.isEmpty()) {
 			if (runningTasks.isEmpty()) {
 				if (!prepared.isEmpty()) {
@@ -219,7 +219,7 @@ public class EngineState {
 						task.finish(this);
 					}
 					else {
-						throw new InternalErrorAlertException(task.name() + " task failed", task.cause());
+						throw new InternalErrorAlert(task.name() + " task failed", task.cause());
 					}
 				}
 				else {
