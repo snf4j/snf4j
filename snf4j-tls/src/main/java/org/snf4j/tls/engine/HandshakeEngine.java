@@ -90,7 +90,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener, IHandshakeDecoder decoder) {
 		this.decoder = decoder;
 		state = new EngineState(
-				clientMode ? MachineState.CLI_START : MachineState.SRV_START, 
+				clientMode ? MachineState.CLI_INIT : MachineState.SRV_INIT, 
 				parameters, 
 				handler,
 				listener);
@@ -218,12 +218,17 @@ public class HandshakeEngine implements IHandshakeEngine {
 	
 	@Override
 	public boolean isStarted() {
-		return state.getState() != MachineState.CLI_START;
+		return state.getState().isStarted();
 	}
 	
 	@Override
 	public boolean isConnected() {
 		return state.getState().isConnected();
+	}
+	
+	@Override
+	public boolean isClientMode() {
+		return state.isClientMode();
 	}
 	
 	@Override
@@ -235,6 +240,13 @@ public class HandshakeEngine implements IHandshakeEngine {
 	public void start() throws AlertException {
 		if (isStarted()) {
 			throw new InternalErrorAlertException("Handshake has already started");
+		}
+		if (state.isClientMode()) {
+			state.changeState(MachineState.CLI_START);
+		}
+		else {
+			state.changeState(MachineState.SRV_START);
+			return;
 		}
 		
 		byte[] random = new byte[32];

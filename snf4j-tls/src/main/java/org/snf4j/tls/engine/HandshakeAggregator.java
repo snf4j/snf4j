@@ -29,7 +29,6 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.tls.alert.AlertException;
 
 public class HandshakeAggregator {
@@ -48,20 +47,46 @@ public class HandshakeAggregator {
 		this.handshaker = handshaker;
 	}
 	
-	HandshakeStatus unwrapPending() throws AlertException {
-		HandshakeStatus status = HandshakeStatus.NEED_UNWRAP;
+	boolean isEmpty() {
+		return neededBytes == 0 && pending == null;
+	}
+	
+	boolean isPending() {
+		return pending != null;
+	}
+	
+	/**
+	 * Tries to unwrap (aggregate) complete handshake messages from existing pending
+	 * data. And then, if available, consumes them by the associated handshake
+	 * engine.
+	 * 
+	 * @return {@code true} if unwrapping should be continued, or {@code false} if
+	 *         new handshake messages are ready to be wrapped
+	 * @throws AlertException if an alert has occurred
+	 */
+	boolean unwrapPending() throws AlertException {
+		boolean statusChanged = true;
 		
 		if (pending != null) {
-			status = unwrap(pending, pending.remaining());
+			statusChanged = unwrap(pending, pending.remaining());
 			if (!pending.hasRemaining()) {
 				pending = null;
 			}
 		}
-		return status;
+		return statusChanged;
 	}
 	
-	HandshakeStatus unwrap(ByteBuffer src, int remaining) throws AlertException {
-		HandshakeStatus status = HandshakeStatus.NEED_UNWRAP;
+	/**
+	 * Tries to unwrap (aggregate) complete handshake messages from incoming data.
+	 * And then, if available, consumes them by the associated handshake engine.
+	 * 
+	 * @param src the unprotected incoming data
+	 * @param remaining the length of incoming data (the content from one record)
+	 * @return {@code true} if unwrapping should be continued, or {@code false} if
+	 *         new handshake messages are ready to be wrapped
+	 * @throws AlertException if an alert has occurred
+	 */
+	boolean unwrap(ByteBuffer src, int remaining) throws AlertException {
 		ByteBuffer[] srcs;
 		int aggregated;
 		
@@ -72,7 +97,7 @@ public class HandshakeAggregator {
 				src.get(fragment);
 				fragments.add(ByteBuffer.wrap(fragment));
 				neededBytes -= remaining;
-				return status;
+				return true;
 			}
 			else {
 				srcs = fragments.toArray(new ByteBuffer[fragments.size()+1]);
@@ -93,7 +118,7 @@ public class HandshakeAggregator {
 				fragments.add(ByteBuffer.wrap(fragment));
 				expectedBytes = len;
 				neededBytes = len - remaining;
-				return status;
+				return true;
 			}
 			else {
 				srcs = new ByteBuffer[] {src};
@@ -102,12 +127,14 @@ public class HandshakeAggregator {
 			}
 		}
 		
+		boolean continueUnwrap = true;
+
 		for(;;) {
 			handshaker.consume(srcs, aggregated);
 			
 			if (handshaker.hasTask()) {
 				if (handshaker.hasProducingTask()) {
-					status = HandshakeStatus.NEED_WRAP;
+					continueUnwrap = false;
 				}
 				break;
 			}
@@ -141,6 +168,10 @@ public class HandshakeAggregator {
 				break;
 			}
 		}
+
+		if (handshaker.needProduce()) {
+			continueUnwrap = false;
+		}
 		
 		if (remaining > 0 && pending != src) {
 			byte[] pending = new byte[remaining];
@@ -149,7 +180,7 @@ public class HandshakeAggregator {
 			this.pending = ByteBuffer.wrap(pending);
 		}
 		
-		return status;
+		return continueUnwrap;
 	}
 
 }

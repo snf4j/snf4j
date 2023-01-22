@@ -52,6 +52,7 @@ public class EngineTest extends CommonTest {
 	
 	@Override
 	public void before() throws Exception {
+		super.before();
 		handler = new TestHandshakeHandler();
 	}
 	

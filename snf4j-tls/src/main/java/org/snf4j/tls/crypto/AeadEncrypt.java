@@ -66,4 +66,16 @@ public class AeadEncrypt implements IAeadEncrypt {
 		cipher.doFinal(plaintext,ciphertext);
 	}
 
+	@Override
+	public void encrypt(byte[] nonce, byte[] additionalData, ByteBuffer[] plaintext, ByteBuffer ciphertext)	throws GeneralSecurityException {
+		aead.initEncrypt(cipher, key, nonce);
+		cipher.updateAAD(additionalData);
+		
+		int i=0; 
+		for (; i<plaintext.length-1; ++i) {
+			cipher.update(plaintext[i], ciphertext);
+		}
+		cipher.doFinal(plaintext[i], ciphertext);
+	}
+
 }

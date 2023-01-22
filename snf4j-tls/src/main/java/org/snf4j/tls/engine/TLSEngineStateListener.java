@@ -101,6 +101,26 @@ public class TLSEngineStateListener implements IEngineStateListener, IEncryptorH
 
 	@Override
 	public void onApplicationTrafficSecrets(EngineState state) throws Exception {
+		KeySchedule keySchedule = state.getKeySchedule();
+		int index = RecordType.APPLICATION.ordinal();
+		
+		keySchedule.deriveApplicationTrafficKeys();
+		if (state.isClientMode()) {
+			encryptors[index] = new Encryptor(
+					keySchedule.getAeadEncrypt(true),
+					keySchedule.getIv(true));
+			decryptors[index] = new Decryptor(
+					keySchedule.getAeadDecrypt(false),
+					keySchedule.getIv(false));
+		}
+		else {
+			encryptors[index] = new Encryptor(
+					keySchedule.getAeadEncrypt(false),
+					keySchedule.getIv(false));
+			decryptors[index] = new Decryptor(
+					keySchedule.getAeadDecrypt(true),
+					keySchedule.getIv(true));
+		}
 	}
 
 	@Override

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.ByteBuffer;
+
 import javax.crypto.SecretKey;
 
 import org.junit.Test;
@@ -54,6 +56,15 @@ public class AESAeadTest extends CommonTest {
 				tag);
 		assertArrayEquals(expected, encrypted);
 
+		enc = new AeadEncrypt(key, aead);
+		enc.encrypt(nonce, additionalData, ByteBuffer.wrap(plaintext), buffer);
+		assertArrayEquals(expected, buffer());
+		buffer.clear();
+		
+		enc = new AeadEncrypt(key, aead);
+		enc.encrypt(nonce, additionalData, array(plaintext,0,4), buffer);
+		assertArrayEquals(expected, buffer());
+		
 		byte[] decrypted = dec.decrypt(nonce, additionalData, encrypted);
 		assertArrayEquals(plaintext, decrypted);
 		

@@ -32,7 +32,7 @@ public class Decryptor extends Cryptor {
 	private final IAeadDecrypt aead;
 	
 	public Decryptor(IAeadDecrypt aead, byte[] iv) {
-		super(iv);
+		super(iv, aead.getAead().getTagLength());
 		this.aead = aead;
 	}
 

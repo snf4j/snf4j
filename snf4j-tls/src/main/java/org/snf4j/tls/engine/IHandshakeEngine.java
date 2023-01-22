@@ -54,6 +54,8 @@ public interface IHandshakeEngine {
 	
 	boolean isConnected();
 	
+	boolean isClientMode();
+	
 	void start() throws AlertException;
 	
 	int getMaxFragmentLength();

@@ -42,7 +42,7 @@ public class TLSHandshakeWrapper extends AbstractHandshakeWrapper {
 	protected int calculateExpansionLength(Encryptor encryptor) {
 		return encryptor == null 
 				? Record.HEADER_LENGTH 
-				: Record.HEADER_LENGTH + 1 + encryptor.getAead().getAead().getTagLength();
+				: Record.HEADER_LENGTH + 1 + encryptor.getExapnsion();
 	}
 	
 	@Override

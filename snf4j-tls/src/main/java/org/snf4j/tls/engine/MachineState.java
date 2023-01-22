@@ -26,6 +26,7 @@
 package org.snf4j.tls.engine;
 
 public enum MachineState {
+	CLI_INIT(true, false, false),
 	CLI_START(true), 
 	CLI_WAIT_SH(true), 
 	CLI_WAIT_EE(true), 
@@ -36,6 +37,7 @@ public enum MachineState {
 	CLI_WAIT_FINISHED(true),
 	CLI_CONNECTED(true, true),
 	
+	SRV_INIT(false, false, false),
 	SRV_START(false),
 	SRV_RECVD_CH(false),
 	SRV_NEGOTIATED(false),
@@ -50,9 +52,18 @@ public enum MachineState {
 	
 	private final boolean connected;
 	
+	private final boolean started;
+
+	MachineState(boolean clientMode, boolean connected, boolean started) {
+		this.clientMode = clientMode;
+		this.connected = connected;
+		this.started = started;
+	}
+	
 	MachineState(boolean clientMode, boolean connected) {
 		this.clientMode = clientMode;
 		this.connected = connected;
+		started = true;
 	}
 
 	MachineState(boolean clientMode) {
@@ -67,4 +78,7 @@ public enum MachineState {
 		return connected;
 	}
 	
+	public boolean isStarted() {
+		return started;
+	}
 }

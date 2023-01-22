@@ -59,7 +59,7 @@ abstract public class AbstractHandshakeWrapper {
 		produced.clear();
 	}
 	
-	boolean needPendingWrap() {
+	boolean isPending() {
 		return pending != null;
 	}
 	

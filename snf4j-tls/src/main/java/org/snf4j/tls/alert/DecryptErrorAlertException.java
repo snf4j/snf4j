@@ -32,4 +32,9 @@ public class DecryptErrorAlertException extends AlertException {
 	public DecryptErrorAlertException(String message) {
 		super(message, AlertDescription.DECRYPT_ERROR);
 	}
+	
+	public DecryptErrorAlertException(String message, Throwable cause) {
+		super(message, AlertDescription.DECRYPT_ERROR, cause);
+	}
+	
 }

@@ -25,19 +25,29 @@
  */
 package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import static org.snf4j.core.engine.HandshakeStatus.FINISHED;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_TASK;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
+import static org.snf4j.core.engine.HandshakeStatus.NOT_HANDSHAKING;
+import static org.snf4j.core.engine.Status.BUFFER_OVERFLOW;
+import static org.snf4j.core.engine.Status.BUFFER_UNDERFLOW;
+import static org.snf4j.core.engine.Status.CLOSED;
+import static org.snf4j.core.engine.Status.OK;
 
-import org.snf4j.core.ByteBufferArray;
+import java.nio.ByteBuffer;
 import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
-import org.snf4j.core.engine.Status;
 import org.snf4j.core.handler.SessionIncidentException;
+import org.snf4j.tls.alert.AlertDescription;
 import org.snf4j.tls.alert.AlertException;
+import org.snf4j.tls.alert.CloseNotifyAlertException;
+import org.snf4j.tls.alert.DecodeErrorAlertException;
 import org.snf4j.tls.alert.InternalErrorAlertException;
-import org.snf4j.tls.crypto.IAeadDecrypt;
+import org.snf4j.tls.alert.RecordOverflowAlertException;
+import org.snf4j.tls.alert.UnexpectedMessageAlertException;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Decryptor;
 import org.snf4j.tls.record.Encryptor;
@@ -55,7 +65,7 @@ public class TLSEngine implements IEngine {
 	
 	private final TLSHandshakeWrapper handshakeWrapper;
 	
-	private HandshakeStatus status;
+	private HandshakeStatus status = NOT_HANDSHAKING;
 	
 	private boolean outboundDone;
 	
@@ -73,7 +83,6 @@ public class TLSEngine implements IEngine {
 				listener);
 		aggregator = new HandshakeAggregator(handshaker);
 		handshakeWrapper = new TLSHandshakeWrapper(handshaker, listener, listener);
-		status = clientMode ? HandshakeStatus.NEED_WRAP : HandshakeStatus.NEED_UNWRAP;
 	}
 
 	@Override
@@ -87,6 +96,7 @@ public class TLSEngine implements IEngine {
 	@Override
 	public void beginHandshake() throws Exception {
 		if (!handshaker.isStarted()) {
+			status = handshaker.isClientMode() ? NEED_WRAP : NEED_UNWRAP;
 			handshaker.start();
 		}
 	}
@@ -116,7 +126,10 @@ public class TLSEngine implements IEngine {
 
 	@Override
 	public int getMinNetworkBufferSize() {
-		return 5 + handshaker.getMaxFragmentLength() + 1 + 255;
+		return Record.HEADER_LENGTH 
+				+ handshaker.getMaxFragmentLength() 
+				+ 1 
+				+ 255;
 	}
 
 	@Override
@@ -131,8 +144,8 @@ public class TLSEngine implements IEngine {
 
 	@Override
 	public HandshakeStatus getHandshakeStatus() {
-		if (status != HandshakeStatus.NOT_HANDSHAKING && handshaker.hasTask()) {
-			return HandshakeStatus.NEED_TASK;
+		if (status != NOT_HANDSHAKING && handshaker.hasTask()) {
+			return NEED_TASK;
 		}
 		return status;
 	}
@@ -147,30 +160,62 @@ public class TLSEngine implements IEngine {
 		return handshaker.getTask();
 	}
 
-	IEngineResult wrap(List<ProducedHandshake> handshakes, int length, Encryptor encryptor, ByteBuffer dst) {
-		return new EngineResult(Status.OK, HandshakeStatus.NEED_UNWRAP, 0, 0);
-	}
-	
-	IEngineResult wrapAppData(ByteBufferArray src, ByteBuffer dst) throws Exception {
-		return new EngineResult(Status.OK, status, 0, 0);
+	private IEngineResult wrapAppData(ByteBuffer[] srcs, ByteBuffer dst) throws Exception {
+		return new EngineResult(OK, status, 0, 0);
 	}
 
-	IEngineResult wrapAlert(ByteBuffer dst, HandshakeStatus status) throws Exception {
-		if (handshakeWrapper.needPendingWrap()) {
+	private IEngineResult wrapAppData(ByteBuffer src, ByteBuffer dst) throws Exception {
+		Encryptor encryptor = listener.getEncryptor();
+		int maxFragmentLen = handshaker.getMaxFragmentLength();
+		int consumed = (int) Math.min(
+				src.remaining(), 
+				dst.remaining() - Record.HEADER_LENGTH - 1 - encryptor.getExapnsion());
+		int padding;
+		
+		if (consumed > maxFragmentLen) {
+			consumed = maxFragmentLen;
+			padding = 0;
+		}
+		else {
+			padding = handshaker.getHandler().calculatePadding(ContentType.APPLICATION_DATA, consumed);
+			if (padding > 0 ) {
+				if (padding > 0) {
+					padding = Math.min(padding, maxFragmentLen-consumed);
+				}
+			}
+		}
+
+		byte[] tail = new byte[1 + padding];
+		ByteBuffer dup = src.duplicate();
+		int produced;
+		
+		tail[0] = (byte) ContentType.APPLICATION_DATA.value();
+		dup.limit(dup.position() + consumed);
+		produced = Record.protect(
+				new ByteBuffer[] {dup, ByteBuffer.wrap(tail)}, 
+				consumed + tail.length,
+				encryptor,
+				dst);
+		src.position(dup.position());
+		return new EngineResult(OK, status, consumed, produced);
+	}
+
+	private IEngineResult wrapAlert(ByteBuffer dst, HandshakeStatus status) throws Exception {
+		if (handshakeWrapper.isPending()) {
 			handshakeWrapper.clear();
 
 			int produced = handshakeWrapper.wrap(dst);
 			if (produced < 0) {
 				return new EngineResult(
-						Status.BUFFER_OVERFLOW, 
+						BUFFER_OVERFLOW, 
 						status, 
 						0, 
 						0);
 			}
 			else if (produced > 0) {
-				if (handshakeWrapper.needPendingWrap()) {
+				if (handshakeWrapper.isPending()) {
 					return new EngineResult(
-							Status.OK, 
+							OK, 
 							status, 
 							0, 
 							produced);
@@ -187,7 +232,7 @@ public class TLSEngine implements IEngine {
 			}
 			else {
 				return new EngineResult(
-						Status.BUFFER_OVERFLOW, 
+						BUFFER_OVERFLOW, 
 						status, 
 						0, 
 						0);
@@ -206,7 +251,7 @@ public class TLSEngine implements IEngine {
 			}
 			else {
 				return new EngineResult(
-						Status.BUFFER_OVERFLOW, 
+						BUFFER_OVERFLOW, 
 						status, 
 						0, 
 						0);
@@ -214,9 +259,9 @@ public class TLSEngine implements IEngine {
 		}
 		
 		outboundDone = true;
-		this.status = HandshakeStatus.NOT_HANDSHAKING;
+		this.status = NOT_HANDSHAKING;
 		return new EngineResult(
-				Status.CLOSED, 
+				CLOSED, 
 				getHandshakeStatus(), 
 				0, 
 				produced);
@@ -233,7 +278,7 @@ public class TLSEngine implements IEngine {
 			
 			if (outboundDone) {
 				return new EngineResult(
-						Status.CLOSED, 
+						CLOSED, 
 						status, 
 						0, 
 						0);
@@ -246,7 +291,7 @@ public class TLSEngine implements IEngine {
 				}
 				if (handshaker.hasPendingTasks()) {
 					return new EngineResult(
-							Status.OK, 
+							OK, 
 							status, 
 							0, 
 							0);
@@ -255,13 +300,13 @@ public class TLSEngine implements IEngine {
 
 			case NOT_HANDSHAKING:
 				if (srcs != null) {
-					return wrapAppData(ByteBufferArray.wrap(srcs), dst);
+					return wrapAppData(srcs, dst);
 				}
-				return wrapAppData(ByteBufferArray.wrap(new ByteBuffer[] {src}), dst);
+				return wrapAppData(src, dst);
 
 			default:
 				return new EngineResult(
-						Status.OK, 
+						OK, 
 						status, 
 						0, 
 						0);
@@ -270,7 +315,7 @@ public class TLSEngine implements IEngine {
 			produced = handshakeWrapper.wrap(dst);
 			if (produced < 0) {
 				return new EngineResult(
-						Status.BUFFER_OVERFLOW, 
+						BUFFER_OVERFLOW, 
 						status, 
 						0, 
 						0);
@@ -278,7 +323,7 @@ public class TLSEngine implements IEngine {
 			else if (produced > 0) {
 				if (handshakeWrapper.needWrap()) {
 					return new EngineResult(
-							Status.OK, 
+							OK, 
 							status, 
 							0, 
 							produced);
@@ -295,31 +340,31 @@ public class TLSEngine implements IEngine {
 					alert = new InternalErrorAlertException("General failure", e);
 				}
 				inboundDone = true;
-				if (!outboundDone) {
-					this.status = HandshakeStatus.NEED_WRAP;
+				if (outboundDone) {
+					this.status = NOT_HANDSHAKING;
 				}
 				else {
-					this.status = HandshakeStatus.NOT_HANDSHAKING;
+					this.status = NEED_WRAP;
 				}
 			}
 			else {
 				outboundDone = true;
-				this.status = HandshakeStatus.NOT_HANDSHAKING;
+				this.status = NOT_HANDSHAKING;
 			}
 			throw e;
 		}
 		
 		if (handshaker.isConnected()) {
-			this.status = HandshakeStatus.NOT_HANDSHAKING;
+			this.status = NOT_HANDSHAKING;
 			return new EngineResult(
-					Status.OK, 
-					HandshakeStatus.FINISHED, 
+					OK, 
+					FINISHED, 
 					0, 
 					produced);
 		}
-		this.status = HandshakeStatus.NEED_UNWRAP;
+		this.status = NEED_UNWRAP;
 		return new EngineResult(
-				Status.OK, 
+				OK, 
 				getHandshakeStatus(), 
 				0, 
 				produced);
@@ -335,115 +380,346 @@ public class TLSEngine implements IEngine {
 		return wrap(src, null, dst);
 	}
 
-	HandshakeStatus unwrapAppData(ByteBuffer src, byte[] additionalData, int remaining, ByteBuffer dst) throws Exception {
+	private IEngineResult unwrapAppData(ByteBuffer src, int length) throws Exception {
 		Decryptor decryptor = listener.getDecryptor();
-		byte[] nonce = decryptor.nextNonce();
-		IAeadDecrypt aead = decryptor.getAead();
-		byte[] plaintext;
+		byte[] plaintext = new byte[length - decryptor.getExapnsion()];		
 		
-		plaintext = new byte[remaining - aead.getAead().getTagLength()];
-		ByteBuffer out = ByteBuffer.wrap(plaintext);
-		ByteBuffer in = src.duplicate();
+		int remaining = Record.unprotect(
+				src, 
+				length, 
+				decryptor, 
+				ByteBuffer.wrap(plaintext)) - 1;
+
+		if (remaining > handshaker.getMaxFragmentLength()) {
+			throw new RecordOverflowAlertException("Encrypted record is too big");
+		}
 		
-		in.limit(in.position() + remaining);
-		aead.decrypt(nonce, additionalData, in, out);
-		src.position(in.position());
-		ContentType type = null;
+		int type = 0;
 		
-		for (remaining = plaintext.length-1;remaining>=0; --remaining) {
+		for (;remaining >= 0; --remaining) {
 			if (plaintext[remaining] != 0) {
-				type = ContentType.of(plaintext[remaining]);
+				type = plaintext[remaining];
 				break;
 			}
 		}
-		out.flip();
-		if (dst == null) {
-			if (type.equals(ContentType.HANDSHAKE)) {
-				return aggregator.unwrap(out, remaining);
-			}
-			throw new Exception();
+
+		if (type == 0) {
+			throw new UnexpectedMessageAlertException("Non-zero octet in cleartext");
 		}
 		
-		if (type.equals(ContentType.APPLICATION_DATA)) {
-			if (dst.remaining() >= out.remaining()) {
-				dst.put(out);
-				return HandshakeStatus.NOT_HANDSHAKING;
-			}
+		if (type == ContentType.HANDSHAKE.value()) {
+			return unwrapHandshake(
+					ByteBuffer.wrap(plaintext, 0, remaining), 
+					0, 
+					remaining, 
+					length + Record.HEADER_LENGTH);
 		}
-		throw new Exception();
+		if (type == ContentType.ALERT.value()) {
+			return unwrapAlert(
+					ByteBuffer.wrap(plaintext, 0, remaining), 
+					0, 
+					remaining, 
+					length + Record.HEADER_LENGTH);
+		}
+		throw new UnexpectedMessageAlertException("Received unexpected record content type (" + type + ")");
 	}
-	
-	IEngineResult unwrap(ByteBuffer src) throws Exception {
+
+	private IEngineResult unwrapAppData(ByteBuffer src, ByteBuffer dst) throws Exception {
 		int remaining = src.remaining();
 		
-		if (remaining >= 5) {
-			int len = src.getShort(3);
+		if (remaining >= Record.HEADER_LENGTH) {
+			int type = src.get(0);
 			
-			remaining -= 5;
-			if (len <= remaining) {
-				ContentType type = ContentType.of(src.get(0));
-				int pos0 = src.position();
+			if (type != ContentType.APPLICATION_DATA.value()) {
+				throw new UnexpectedMessageAlertException("Unexpected encrypted record content type (" + type + ")");
+			}
+			
+			int length = src.getShort(3);
+		
+			if (length > handshaker.getMaxFragmentLength() + 256) {
+				throw new RecordOverflowAlertException("Encrypted record is too big");
+			}
+			
+			if (length <= remaining) {
+				Decryptor decryptor = listener.getDecryptor();
 				
-				if (type.equals(ContentType.HANDSHAKE)) {
-					src.position(src.position() + 5);
-					status = aggregator.unwrap(src, len);
+				if (dst.remaining() < length - decryptor.getExapnsion()) {
+					return new EngineResult(
+							BUFFER_OVERFLOW, 
+							getHandshakeStatus(), 
+							0, 
+							0);					
 				}
-				else if (type.equals(ContentType.APPLICATION_DATA)) {
-					byte[] additionalData = new byte[5];
+				
+				int produced = Record.unprotect(
+						src, 
+						length, 
+						decryptor, 
+						dst) - 1;
+				
+				if (produced > handshaker.getMaxFragmentLength()) {
+					throw new RecordOverflowAlertException("Encrypted record is too big");
+				}
+
+				int padding = 0;
+				
+				type = 0;
+				if (dst.hasArray()) {
+					byte[] array = dst.array();
+					int i = dst.arrayOffset() + dst.position() - 1;
+					int j = i - produced;
 					
-					src.get(additionalData);
-					status = unwrapAppData(src, additionalData, len, null);
+					for (; i >= j; --i) {
+						byte b = array[i];
+						
+						if (b != 0) {
+							type = b;
+							break;
+						}
+						++padding;
+					}					
 				}
 				else {
-					throw new Exception();
+					int i = dst.position() - 1;
+					int j = i - produced;
+					
+					for (; i >= j; --i) {
+						byte b = dst.get(i);
+						
+						if (b != 0) {
+							type = b;
+							break;
+						}
+						++padding;
+					}
 				}
-				return new EngineResult(Status.OK, getHandshakeStatus(), src.position()-pos0, 0);
+				
+				if (type == 0) {
+					throw new UnexpectedMessageAlertException("Non-zero octet in cleartext");
+				}
+				
+				dst.position(dst.position() - padding - 1);
+				produced -= padding;
+				
+				if (type == ContentType.APPLICATION_DATA.value()) {
+					return new EngineResult(
+							OK,
+							NOT_HANDSHAKING,
+							length + Record.HEADER_LENGTH,
+							produced);
+				}
+				if (type == ContentType.ALERT.value()) {
+					dst.position(dst.position()-produced);
+					byte[] data = new byte[produced];
+					ByteBuffer dup = dst.duplicate();
+					
+					dup.get(data);
+					return unwrapAlert(
+							ByteBuffer.wrap(data), 
+							0, 
+							produced, 
+							length + Record.HEADER_LENGTH);
+				}
+				throw new UnexpectedMessageAlertException("Received unexpected record content type (" + type + ")");
+				
 			}
 		}
-		return new EngineResult(Status.BUFFER_UNDERFLOW, getHandshakeStatus(), 0, 0);
+		return new EngineResult(
+				BUFFER_UNDERFLOW, 
+				getHandshakeStatus(), 
+				0, 
+				0);		
 	}
+	
+	private IEngineResult unwrapHandshake(ByteBuffer src, int off, int length, int consumed) throws Exception {
+		src.position(src.position() + off);
+		
+		if (aggregator.unwrap(src, length)) {
+			if (handshaker.isConnected()) {
+				if (aggregator.isEmpty()) {
+					this.status = NOT_HANDSHAKING;
+					return new EngineResult(
+							OK, 
+							FINISHED, 
+							consumed, 
+							0);
+				}
+				else {
+					throw new UnexpectedMessageAlertException("Received unexpected data after finished handshake");
+				}
+			}
+		}
+		else {
+			this.status = NEED_WRAP;
+		}
+		
+		return new EngineResult(
+				OK,
+				this.getHandshakeStatus(),
+				consumed,
+				0);
+	}
+
+	private IEngineResult unwrapAlert(ByteBuffer src, int off, int length, int consumed) throws Exception {
+		if (length != 2) {
+			throw new DecodeErrorAlertException("Invalid length of alert content");
+		}
+		src.get();
+		AlertDescription desc = AlertDescription.of(src.get());
+		if (desc.equals(AlertDescription.CLOSE_NOTIFY)) {
+			alert = new CloseNotifyAlertException("Closing by peer");
+			inboundDone = true;
+			status = NEED_WRAP;
+			return new EngineResult(
+					OK, 
+					getHandshakeStatus(), 
+					consumed, 
+					0);
+		}
+		return null;
+	}
+
+	private IEngineResult unwrapChangeCipherSpec(ByteBuffer src, int off, int length, int consumed) throws Exception {
+		return null;
+	}
+	
+	private IEngineResult unwrap(ByteBuffer src) throws Exception {
+		int remaining = src.remaining();
+		
+		if (remaining >= Record.HEADER_LENGTH) {
+			int len = src.getShort(3);
+			
+			if (len <= remaining) {
+				int type = ContentType.of(src.get(0)).value();
+				
+				if (type == ContentType.APPLICATION_DATA.value()) {
+					if (len > handshaker.getMaxFragmentLength() + 256) {
+						throw new RecordOverflowAlertException("Encrypted record is too big");
+					}
+					return unwrapAppData(src, len);
+				}
+				if (len > handshaker.getMaxFragmentLength()) {
+					throw new RecordOverflowAlertException("Record fragment is too big");
+				}
+				if (type == ContentType.HANDSHAKE.value()) {
+					return unwrapHandshake(
+							src, 
+							Record.HEADER_LENGTH, 
+							len, 
+							Record.HEADER_LENGTH + len);
+				}
+				if (type == ContentType.ALERT.value()) {
+					return unwrapAlert(
+							src, 
+							Record.HEADER_LENGTH, 
+							len, 
+							Record.HEADER_LENGTH + len);
+				}
+				if (type == ContentType.CHANGE_CIPHER_SPEC.value()) {
+					return unwrapChangeCipherSpec(
+							src,
+							Record.HEADER_LENGTH,
+							len,
+							Record.HEADER_LENGTH + len);
+				}
+				throw new UnexpectedMessageAlertException("Received unexpected record content type (" + type + ")");
+			}
+		}
+		return new EngineResult(
+				BUFFER_UNDERFLOW, 
+				getHandshakeStatus(), 
+				0, 
+				0);
+	}	
 	
 	@Override
 	public IEngineResult unwrap(ByteBuffer src, ByteBuffer dst) throws Exception {
-		beginHandshake();
-		
-		HandshakeStatus status = getHandshakeStatus();
-		
-		switch(status) {
-		case NEED_WRAP:
-		case NEED_TASK:
-			return new EngineResult(Status.OK, status, 0, 0);
-			
-		default:
-		}
-		
-		if (!handshaker.isConnected()) {
-			
-			if (handshaker.hasPendingTasks()) {
-				return new EngineResult(Status.OK, status, 0, 0);
+		dst.mark();
+		try {
+			beginHandshake();
+
+			HandshakeStatus status = getHandshakeStatus();
+
+			if (inboundDone) {
+				return new EngineResult(
+						CLOSED, 
+						status, 
+						0, 
+						0);
 			}
-			
-			this.status = aggregator.unwrapPending();
-			
-			if (handshaker.needProduce()) {
-				this.status = HandshakeStatus.NEED_WRAP;
-			}
-			else if (handshaker.isConnected()) {
-				this.status = HandshakeStatus.NOT_HANDSHAKING;
-				return new EngineResult(Status.OK, HandshakeStatus.FINISHED, 0, 0);
-			}
-			
-			status = getHandshakeStatus();
-			
+
 			switch(status) {
 			case NEED_WRAP:
 			case NEED_TASK:
-				return new EngineResult(Status.OK, status, 0, 0);
-				
+				return new EngineResult(
+						OK, 
+						status, 
+						0, 
+						0);
+
+			case NOT_HANDSHAKING:
+				return unwrapAppData(src, dst);
+
 			default:
-				return unwrap(src);
+				if (handshaker.hasPendingTasks()) {
+					return new EngineResult(
+							OK, 
+							status, 
+							0, 
+							0);
+				}
 			}
+
+			if (aggregator.isPending()) {
+				if (aggregator.unwrapPending()) {
+					if (handshaker.isConnected()) {
+						if (aggregator.isEmpty()) {
+							this.status = NOT_HANDSHAKING;
+							return new EngineResult(
+									OK, 
+									FINISHED, 
+									0, 
+									0);
+						}
+						else {
+							throw new UnexpectedMessageAlertException("Received unexpected data after finished handshake");
+						}
+					}
+				}
+				else {
+					this.status = NEED_WRAP;
+				}
+
+				status = getHandshakeStatus();
+
+				switch(status) {
+				case NEED_WRAP:
+				case NEED_TASK:
+					return new EngineResult(
+							OK, 
+							status, 
+							0, 
+							0);
+
+				default:
+				}
+			}
+			return unwrap(src);
 		}
-		return new EngineResult(Status.OK, status, 0, 0);
+		catch (Exception e) {
+			dst.reset();
+			if (alert == null) {
+				if (e instanceof AlertException) {
+					alert = (AlertException) e;
+				}
+				else {
+					alert = new InternalErrorAlertException("General failure", e);
+				}
+				inboundDone = true;
+				this.status = NEED_WRAP;
+			}
+			throw e;
+		}
 	}
+	
 }

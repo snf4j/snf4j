@@ -29,10 +29,13 @@ public class Cryptor {
 	
 	private final byte[] iv;
 
-	private long sequence;
+	private final int expansion;
 
-	protected Cryptor(byte[] iv) {
+	private long sequence;
+	
+	protected Cryptor(byte[] iv, int expansion) {
 		this.iv = iv;
+		this.expansion = expansion;
 	}
 	
 	public byte[] nextNonce() {
@@ -51,7 +54,16 @@ public class Cryptor {
 		return nonce;
 	}
 	
-	public void rollbackNonce() {
+	public long getSequence() {
+		return sequence;
+	}
+	
+	public void rollbackSequence() {
 		--sequence;
 	}
+	
+	public int getExapnsion() {
+		return expansion;
+	}
+
 }

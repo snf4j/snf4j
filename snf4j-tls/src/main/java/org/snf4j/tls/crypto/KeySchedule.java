@@ -349,6 +349,31 @@ public class KeySchedule {
 		}
 	}
 	
+	public void deriveApplicationTrafficKeys() throws InvalidKeyException {
+		checkDerived(clientApplicationTrafficSecret, "Application Traffic Secrets");
+		clearTrafficKeys();
+		byte[] civ = hkdfExpandLabel(clientApplicationTrafficSecret,
+				IV,
+				EMPTY,
+				cipherSuiteSpec.getAead().getIvLength());
+		byte[] ckey = hkdfExpandLabel(clientApplicationTrafficSecret,
+				KEY,
+				EMPTY,
+				cipherSuiteSpec.getAead().getKeyLength());
+		byte[] siv = hkdfExpandLabel(serverApplicationTrafficSecret,
+				IV,
+				EMPTY,
+				cipherSuiteSpec.getAead().getIvLength());
+		byte[] skey = hkdfExpandLabel(serverApplicationTrafficSecret,
+				KEY,
+				EMPTY,
+				cipherSuiteSpec.getAead().getKeyLength());
+		clientIv = civ;
+		clientKey = createKey(ckey);
+		serverIv = siv;
+		serverKey = createKey(skey);
+	}
+	
 	public void clearTrafficKeys() {
 		clientIv = null;
 		clientKey = null;

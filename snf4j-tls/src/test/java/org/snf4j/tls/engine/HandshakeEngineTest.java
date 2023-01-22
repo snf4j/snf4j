@@ -151,6 +151,7 @@ public class HandshakeEngineTest extends EngineTest {
 		ByteBuffer[] array;
 		
 		HandshakeEngine he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(data, 0);
 		he2.consume(array, data.length);
 		he2.getTask().run();
@@ -162,6 +163,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertTrue(sh.isPrepared());
 		
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(data, 0, 10,10);
 		he2.consume(array, data.length);
 		he2.getTask().run();
@@ -172,6 +174,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertNotNull((ServerHello) produced[0].getHandshake());
 
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(Arrays.copyOf(data, data.length+1), 0);
 		he2.consume(array, data.length);
 		he2.getTask().run();
@@ -180,6 +183,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertEquals(5, he2.produce().length);
 		
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(Arrays.copyOf(data, data.length+1), 0, 10, 10);
 		he2.consume(array, data.length);
 		he2.getTask().run();
@@ -188,6 +192,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertEquals(5, he2.produce().length);
 
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0);
 		array[0].getShort();
 		he2.consume(array, data.length);
@@ -197,6 +202,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertEquals(5, he2.produce().length);
 		
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0, 10, 10);
 		array[0].getShort();
 		he2.consume(array, data.length);
@@ -206,6 +212,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertEquals(5, he2.produce().length);
 
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(Arrays.copyOf(cat(bytes(0,0),data), data.length+3), 0, 1,1, 10, 10);
 		ByteBufferArray bArray = ByteBufferArray.wrap(array);
 		bArray.getShort();
@@ -216,6 +223,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertEquals(5, he2.produce().length);
 		
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(data, 0);
 		try {
 			he2.consume(array, data.length+1);
@@ -223,6 +231,7 @@ public class HandshakeEngineTest extends EngineTest {
 		} catch(RuntimeException e) {}
 
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		array = array(data, 0, 10);
 		try {
 			he2.consume(array, data.length+1);
@@ -230,6 +239,7 @@ public class HandshakeEngineTest extends EngineTest {
 		} catch (RuntimeException e) {}
 		
 		he2 = new HandshakeEngine(false, params, handler, handler);
+		he2.start();
 		data[0] = 99;
 		array = array(data, 0);
 		try {
