@@ -26,7 +26,9 @@
 package org.snf4j.tls.alert;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
@@ -41,30 +43,42 @@ public class AlertTest {
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.WARNING, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
-
+		assertFalse(e.isClosure());
+		
 		e = new Alert("Message1", AlertDescription.ACCESS_DENIED);
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.FATAL, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
+		assertFalse(e.isClosure());
 
 		Exception cause = new Exception();
-		e = new Alert("Message1", AlertLevel.WARNING, AlertDescription.ACCESS_DENIED, cause);
+		e = new Alert("Message1", AlertLevel.WARNING, AlertDescription.ACCESS_DENIED, cause, false);
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.WARNING, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
 		assertSame(cause, e.getCause());
+		assertFalse(e.isClosure());
+
+		e = new Alert("Message1", AlertLevel.WARNING, AlertDescription.ACCESS_DENIED, cause, true);
+		assertEquals("Message1", e.getMessage());
+		assertSame(AlertLevel.WARNING, e.getLevel());
+		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
+		assertSame(cause, e.getCause());
+		assertTrue(e.isClosure());
 		
 		e = new Alert("Message1", AlertDescription.ACCESS_DENIED, cause);
 		assertEquals("Message1", e.getMessage());
 		assertSame(AlertLevel.FATAL, e.getLevel());
 		assertSame(AlertDescription.ACCESS_DENIED, e.getDescription());
 		assertSame(cause, e.getCause());
+		assertFalse(e.isClosure());
 	}
 	
 	static void assertErrorAlert(Alert e, String msg, Throwable cause) throws Exception {
 		assertSame(AlertLevel.FATAL, e.getLevel());
 		assertEquals(msg, e.getMessage());
 		assertEquals(cause, e.getCause());
+		assertFalse(e.isClosure());
 		
 		String name = e.getClass().getSimpleName().toUpperCase();
 		
@@ -83,6 +97,7 @@ public class AlertTest {
 		assertSame(AlertLevel.WARNING, e.getLevel());
 		assertEquals(msg, e.getMessage());
 		assertEquals(cause, e.getCause());
+		assertTrue(e.isClosure());
 		
 		String name = e.getClass().getSimpleName().toUpperCase();
 		

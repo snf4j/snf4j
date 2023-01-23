@@ -36,6 +36,9 @@ import static org.snf4j.core.engine.Status.CLOSED;
 import static org.snf4j.core.engine.Status.OK;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+
+import org.snf4j.core.ByteBufferArray;
 import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
@@ -113,6 +116,10 @@ public class TLSEngine implements IEngine {
 
 	@Override
 	public void closeOutbound() {
+		if (alert == null) {
+			alert = new CloseNotifyAlert("Closed");
+			status = NEED_WRAP;
+		}
 	}
 
 	@Override
@@ -160,8 +167,72 @@ public class TLSEngine implements IEngine {
 		return handshaker.getTask();
 	}
 
+	private int[] consumedAndPadding(int srcRemaining, int dstRemaining, Encryptor encryptor) {
+		int maxFragmentLen = handshaker.getMaxFragmentLength();
+		int consumed = (int) Math.min(
+				srcRemaining, 
+				dstRemaining - Record.HEADER_LENGTH - 1 - encryptor.getExapnsion());
+		int padding;
+		
+		if (consumed > maxFragmentLen) {
+			consumed = maxFragmentLen;
+			padding = 0;
+		}
+		else {
+			padding = handshaker.getHandler().calculatePadding(ContentType.APPLICATION_DATA, consumed);
+			if (padding > 0 ) {
+				if (padding > 0) {
+					padding = Math.min(padding, maxFragmentLen-consumed);
+				}
+			}
+		}
+		return new int[] {consumed, padding};
+	}
+
 	private IEngineResult wrapAppData(ByteBuffer[] srcs, ByteBuffer dst) throws Exception {
-		return new EngineResult(OK, status, 0, 0);
+		if (srcs.length == 1) {
+			return wrapAppData(srcs[0], dst);
+		}
+		
+		Encryptor encryptor = listener.getEncryptor();
+		ByteBufferArray srcArray = ByteBufferArray.wrap(srcs);
+		
+		int[] consPad = consumedAndPadding((int) srcArray.remaining(), dst.remaining(), encryptor);
+		
+		byte[] tail = new byte[1 + consPad[1]];
+		ByteBufferArray dup = srcArray.duplicate();
+		int consumed = consPad[0];
+		int produced;
+		
+		tail[0] = (byte) ContentType.APPLICATION_DATA.value();
+
+		ByteBuffer[] dupSrcs = dup.array();
+		
+		int remaining = consumed;
+		ByteBuffer src;
+		for (int i=0; i<srcs.length; ++i) {
+			src = srcs[i];
+			if (src.remaining() < remaining) {
+				remaining -= src.remaining();
+			}
+			else {
+				src.limit(src.position()+remaining);
+				dupSrcs = Arrays.copyOf(dupSrcs, i + 2);
+				break;
+			}
+		}
+		dupSrcs[dupSrcs.length-1] = ByteBuffer.wrap(tail);
+		
+		produced = Record.protect(
+				dupSrcs, 
+				consumed + tail.length,
+				encryptor,
+				dst);
+		
+		for (int i=0; i<dupSrcs.length-1; ++i) {
+			srcs[i].position(dupSrcs[i].position());
+		}
+		return new EngineResult(OK, status, consumed, produced);
 	}
 
 	private IEngineResult wrapAppData(ByteBuffer src, ByteBuffer dst) throws Exception {
@@ -259,7 +330,17 @@ public class TLSEngine implements IEngine {
 		}
 		
 		outboundDone = true;
-		this.status = NOT_HANDSHAKING;
+		
+		if (inboundDone) {
+			this.status = NOT_HANDSHAKING;
+		}
+		else if (alert.isClosure()) {
+			this.status = NEED_UNWRAP;
+		}
+		else {
+			this.status = NOT_HANDSHAKING;
+			inboundDone = true;
+		}
 		return new EngineResult(
 				CLOSED, 
 				getHandshakeStatus(), 
@@ -428,13 +509,13 @@ public class TLSEngine implements IEngine {
 		int remaining = src.remaining();
 		
 		if (remaining >= Record.HEADER_LENGTH) {
-			int type = src.get(0);
+			int type = src.get(src.position());
 			
 			if (type != ContentType.APPLICATION_DATA.value()) {
 				throw new UnexpectedMessageAlert("Unexpected encrypted record content type (" + type + ")");
 			}
 			
-			int length = src.getShort(3);
+			int length = src.getShort(src.position() + 3);
 		
 			if (length > handshaker.getMaxFragmentLength() + 256) {
 				throw new RecordOverflowAlert("Encrypted record is too big");
@@ -564,14 +645,20 @@ public class TLSEngine implements IEngine {
 		if (length != 2) {
 			throw new DecodeErrorAlert("Invalid length of alert content");
 		}
+		src.position(src.position() + off);
 		src.get();
 		AlertDescription desc = AlertDescription.of(src.get());
 		if (desc.equals(AlertDescription.CLOSE_NOTIFY)) {
 			alert = new CloseNotifyAlert("Closing by peer");
 			inboundDone = true;
-			status = NEED_WRAP;
+			if (outboundDone) {
+				status = NOT_HANDSHAKING;
+			}
+			else {
+				status = NEED_WRAP;
+			}
 			return new EngineResult(
-					OK, 
+					CLOSED, 
 					getHandshakeStatus(), 
 					consumed, 
 					0);
@@ -580,17 +667,27 @@ public class TLSEngine implements IEngine {
 	}
 
 	private IEngineResult unwrapChangeCipherSpec(ByteBuffer src, int off, int length, int consumed) throws Exception {
-		return null;
+		if (length == 1) {
+			src.position(src.position() + off);
+			if (src.get() == 1) {
+				return new EngineResult(
+						OK, 
+						getHandshakeStatus(), 
+						consumed, 
+						0);
+			}
+		}
+		throw new UnexpectedMessageAlert("Invalid change_cipher_spec message");
 	}
 	
 	private IEngineResult unwrap(ByteBuffer src) throws Exception {
 		int remaining = src.remaining();
 		
 		if (remaining >= Record.HEADER_LENGTH) {
-			int len = src.getShort(3);
+			int len = src.getShort(src.position() + 3);
 			
 			if (len <= remaining) {
-				int type = ContentType.of(src.get(0)).value();
+				int type = ContentType.of(src.get(src.position())).value();
 				
 				if (type == ContentType.APPLICATION_DATA.value()) {
 					if (len > handshaker.getMaxFragmentLength() + 256) {

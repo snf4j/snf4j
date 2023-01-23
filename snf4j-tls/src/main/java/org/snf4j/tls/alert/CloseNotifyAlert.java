@@ -30,6 +30,6 @@ public class CloseNotifyAlert extends Alert {
 	private static final long serialVersionUID = 1L;
 
 	public CloseNotifyAlert(String message) {
-		super(message, AlertLevel.WARNING, AlertDescription.CLOSE_NOTIFY);
+		super(message, AlertLevel.WARNING, AlertDescription.CLOSE_NOTIFY, null, true);
 	}
 }

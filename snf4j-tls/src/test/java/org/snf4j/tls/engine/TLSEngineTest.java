@@ -31,14 +31,24 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.snf4j.core.engine.HandshakeStatus.FINISHED;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_TASK;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
+import static org.snf4j.core.engine.HandshakeStatus.NOT_HANDSHAKING;
+import static org.snf4j.core.engine.Status.CLOSED;
+import static org.snf4j.core.engine.Status.OK;
 
 import java.nio.ByteBuffer;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult;
+
 import org.junit.Assume;
 import org.junit.Test;
 import org.snf4j.core.engine.HandshakeStatus;
+import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.engine.Status;
 import org.snf4j.core.session.ssl.SSLContextBuilder;
@@ -104,6 +114,15 @@ public class TLSEngineTest extends EngineTest {
 		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forServer(ctx);
 		return engineBuilder.build();
 	}
+
+	SSLEngine sslClient() throws Exception {
+		SSLContextBuilder builder = SSLContextBuilder.forClient();
+		builder.protocol("TLSv1.3");
+		builder.trustManager(cert("rsasha256"));
+		SSLContext ctx = builder.build();
+		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forClient(ctx);
+		return engineBuilder.build("snf4j.org", 100);
+	}
 	
 	void assertInOut(int inChange, int outChange) {
 		if (inChange == 0) {
@@ -151,31 +170,69 @@ public class TLSEngineTest extends EngineTest {
 		}
 	}
 
+	static void assertResult(SSLEngineResult result, Status s, HandshakeStatus hs) {
+		assertEquals(s.name(), result.getStatus().name());
+		assertEquals(hs.name(), result.getHandshakeStatus().name());
+	}
+
+	static void assertEngine(IEngine engine, HandshakeStatus hs) {
+		assertSame(hs, engine.getHandshakeStatus());
+		assertFalse(engine.isInboundDone());
+		assertFalse(engine.isOutboundDone());
+	}
+	
+	static void assertEngine(SSLEngine engine, HandshakeStatus hs) {
+		assertEquals(hs.name(), engine.getHandshakeStatus().name());
+		assertFalse(engine.isInboundDone());
+		assertFalse(engine.isOutboundDone());
+	}
+
+	static void assertEngine(SSLEngine engine, HandshakeStatus hs, boolean inDone, boolean outDone) {
+		assertEquals(hs.name(), engine.getHandshakeStatus().name());
+		assertEquals(inDone, engine.isInboundDone());
+		assertEquals(outDone, engine.isOutboundDone());
+	}
+
+	static void assertEngine(IEngine engine, HandshakeStatus hs, boolean inDone, boolean outDone) {
+		assertSame(hs, engine.getHandshakeStatus());
+		assertEquals(inDone, engine.isInboundDone());
+		assertEquals(outDone, engine.isOutboundDone());
+	}
+	
+	static void runTasks(SSLEngine engine) {
+		for(;;) {
+			Runnable task = engine.getDelegatedTask();
+			if (task == null) {
+				break;
+			}
+			task.run();
+		}
+	}
+	
 	@Test
 	public void testClient() throws Exception {
 		Assume.assumeTrue(JAVA11);
 
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
 		SSLEngine ssl = sslServer();
 		ssl.beginHandshake();
 		
 		TLSEngine tls = new TLSEngine(true, new EngineParameters(DelegatedTaskMode.CERTIFICATES), handler);
-		assertEquals(HandshakeStatus.NOT_HANDSHAKING, tls.getHandshakeStatus());
+		assertEngine(tls, NOT_HANDSHAKING);
 		tls.beginHandshake();
-		assertEquals(HandshakeStatus.NEED_WRAP, tls.getHandshakeStatus());
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
 
 		//ClientHello ->
 		clear();
-		assertEquals(HandshakeStatus.NEED_WRAP, tls.getHandshakeStatus());
-		IEngineResult r = tls.wrap(in, out);
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		assertEngine(tls, NEED_UNWRAP);
 		assertInOut(0, -1);
-		assertResult(r, Status.OK, HandshakeStatus.NEED_UNWRAP, 0, out.position());
-		assertEquals(HandshakeStatus.NEED_UNWRAP, tls.getHandshakeStatus());
 
 		//ClientHello <-
 		flip();
 		ssl.unwrap(in, out);
-		ssl.getDelegatedTask().run();
-		assertNull(ssl.getDelegatedTask());
+		runTasks(ssl);
 
 		//ServerHello ->
 		clear();
@@ -183,57 +240,50 @@ public class TLSEngineTest extends EngineTest {
 
 		//ServerHello <-
 		flip();
-		r = tls.unwrap(in, out);
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		assertEngine(tls, NEED_UNWRAP);
 		assertInOut(in.limit(), 0);
-		assertResult(r, Status.OK, HandshakeStatus.NEED_UNWRAP, in.position(), 0);
-		assertEquals(HandshakeStatus.NEED_UNWRAP, tls.getHandshakeStatus());
 		
 		//EncryptedExtensions... ->
 		clear();
 		ssl.wrap(in, out);
 		
 		flip();
-		r = tls.unwrap(in, out);
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(in.limit(), 0);
-		assertResult(r, Status.OK, HandshakeStatus.NEED_TASK, in.position(), 0);
-		assertEquals(HandshakeStatus.NEED_TASK, tls.getHandshakeStatus());
-		assertEquals(0, in.remaining());
 		
 		Runnable task = tls.getDelegatedTask();
-		assertEquals(HandshakeStatus.NEED_UNWRAP, tls.getHandshakeStatus());
+		assertEngine(tls, HandshakeStatus.NEED_UNWRAP);
 		assertNull(tls.getDelegatedTask());
 
 		clear();
-		r = tls.unwrap(in, out);
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, 0, 0);
+		assertEngine(tls, NEED_UNWRAP);
 		assertInOut(0, 0);
-		assertResult(r, Status.OK, HandshakeStatus.NEED_UNWRAP, 0, 0);
-		assertEquals(HandshakeStatus.NEED_UNWRAP, tls.getHandshakeStatus());
-		r = tls.wrap(in, out);
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, 0);
+		assertEngine(tls, NEED_UNWRAP);
 		assertInOut(0, 0);
-		assertResult(r, Status.OK, HandshakeStatus.NEED_UNWRAP, 0, 0);
-		assertEquals(HandshakeStatus.NEED_UNWRAP, tls.getHandshakeStatus());
 		
 		task.run();
-		r = tls.unwrap(in, out);
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
+		assertEngine(tls, NEED_WRAP);
 		assertInOut(0, 0);
-		assertResult(r, Status.OK, HandshakeStatus.NEED_WRAP, 0, 0);
-		assertEquals(HandshakeStatus.NEED_WRAP, tls.getHandshakeStatus());
 		
 		clear();
-		r = tls.wrap(in, out);
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
 		assertInOut(0, out.position());
-		assertResult(r, Status.OK, HandshakeStatus.FINISHED, 0, out.position());
-		assertEquals(HandshakeStatus.NOT_HANDSHAKING, tls.getHandshakeStatus());
 		
 		flip();
-		assertEquals("FINISHED", ssl.unwrap(in, out).getHandshakeStatus().name());
+		assertResult(ssl.unwrap(in, out), OK, FINISHED);
 		
+		//application data
 		byte[] data = bytes(1,2,3,4,5,6,7,8,9,0);
 		clear(data);
-		r = tls.wrap(in, out);
+		assertResult(tls.wrap(in, out), OK, NOT_HANDSHAKING, 10, 32);
+		assertEngine(tls, NOT_HANDSHAKING);
 		assertInOut(10, 32);
-		assertResult(r, Status.OK, HandshakeStatus.NOT_HANDSHAKING, 10, 32);
-		assertEquals(HandshakeStatus.NOT_HANDSHAKING, tls.getHandshakeStatus());
 		
 		flip();
 		ssl.unwrap(in, out);
@@ -242,71 +292,159 @@ public class TLSEngineTest extends EngineTest {
 		ssl.wrap(in, out);
 		
 		flip();
-		r = tls.unwrap(in, out);
+		assertResult(tls.unwrap(in, out), Status.OK, HandshakeStatus.NOT_HANDSHAKING, in.position(), 10);
+		assertEngine(tls, NOT_HANDSHAKING);
 		assertInOut(in.limit(), 10);
-		assertResult(r, Status.OK, HandshakeStatus.NOT_HANDSHAKING, in.position(), 10);
-		assertEquals(HandshakeStatus.NOT_HANDSHAKING, tls.getHandshakeStatus());
 		assertArrayEquals(data, out());
 		
+		//closing
 		ssl.closeOutbound();
-		assertFalse(ssl.isOutboundDone());
-		assertFalse(ssl.isInboundDone());
+		assertEngine(ssl, NEED_WRAP, false, false);
 		clear();
-		assertEquals("NOT_HANDSHAKING", ssl.wrap(in, out).getHandshakeStatus().name());
-		assertTrue(ssl.isOutboundDone());
-		assertFalse(ssl.isInboundDone());
+		assertResult(ssl.wrap(in, out), CLOSED, NOT_HANDSHAKING);
+		assertEngine(ssl, NOT_HANDSHAKING, false, true);
 		
-		assertFalse(tls.isOutboundDone());
-		assertFalse(tls.isInboundDone());
+		assertEngine(tls, NOT_HANDSHAKING, false, false);
 		flip();
-		r = tls.unwrap(in, out);
+		assertResult(tls.unwrap(in, out), CLOSED, NEED_WRAP, in.position(), 0);
+		assertEngine(tls, NEED_WRAP, true, false);
 		assertInOut(in.limit(), 0);
-		assertResult(r, Status.OK, HandshakeStatus.NEED_WRAP, in.position(), 0);
-		assertFalse(tls.isOutboundDone());
-		assertTrue(tls.isInboundDone());
 		
 		clear();
-		r = tls.wrap(in, out);
+		assertResult(tls.wrap(in, out), CLOSED, NOT_HANDSHAKING, 0, out.position());
+		assertEngine(tls, NOT_HANDSHAKING, true, true);
 		assertInOut(0, out.position());
-		assertResult(r, Status.CLOSED, HandshakeStatus.NOT_HANDSHAKING, 0, out.position());
-		assertTrue(tls.isOutboundDone());
-		assertTrue(tls.isInboundDone());
-		
+
 		flip();
-		assertEquals("NOT_HANDSHAKING", ssl.unwrap(in, out).getHandshakeStatus().name());
-		assertTrue(ssl.isOutboundDone());
-		assertTrue(ssl.isInboundDone());
+		assertResult(ssl.unwrap(in, out), CLOSED, NOT_HANDSHAKING);
+		assertEngine(ssl, NOT_HANDSHAKING, true, true);
 	}
 
 	@Test
-	public void testServerMode() throws Exception {
+	public void testServer() throws Exception {
 		Assume.assumeTrue(JAVA11);
-		SSLContextBuilder builder = SSLContextBuilder.forClient();
 		
-		builder.protocol("TLSv1.3");
-		SSLContext ctx = builder.build();
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslClient();
+		ssl.beginHandshake();
 
-		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forClient(ctx);
-		SSLEngine engine = engineBuilder.build("example.com", 100);
+		TLSEngine tls = new TLSEngine(false, new EngineParameters(DelegatedTaskMode.CERTIFICATES), handler);
+		assertEngine(tls, NOT_HANDSHAKING);
+		tls.beginHandshake();
+		assertEngine(tls, NEED_UNWRAP);
 		
-		engine.getHandshakeStatus();
-		engine.beginHandshake();
+		//ClientHello ->
+		clear();
+		ssl.wrap(in, out);
+		
+		//ClientHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.limit(), 0);
+		assertEngine(tls, NEED_TASK);
+		assertInOut(in.limit(), 0);
+		
+		Runnable task = tls.getDelegatedTask();
+		assertEngine(tls, NEED_WRAP);
+		assertNull(tls.getDelegatedTask());
 
-		HandshakeEngine eh = new HandshakeEngine(false, new EngineParameters(), handler, handler);
-		eh.start();
+		clear();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, 0);
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 0);
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, 0);
 		
-		ByteBuffer out = ByteBuffer.allocate(100000);
-		ByteBuffer in = ByteBuffer.allocate(100000);
-		in.flip();
+		//ServerHello ->
+		task.run();
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, out.position());
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, out.position());
 		
-		engine.wrap(in, out);
-		out.flip();
-		assertEquals(22, out.get());
-		assertEquals(0x0303, out.getShort());
-		int remaining = out.getShort();
+		//EncryptedExtension... ->
+		int pos0 = out.position();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position()-pos0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(0, out.position());
 		
-		eh.consume(new ByteBuffer[] {out}, remaining);
-		eh.produce();
+		//ServerHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		assertEngine(ssl, NOT_HANDSHAKING);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, 6, 0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(6, 0);
+		assertResult(tls.unwrap(in, out), OK, FINISHED, in.position()-6, 0);
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(in.position(), 0);
+		
+		//application data
+		byte[] data = bytes(1,2,3,4,5,6,7,8,9,0);
+		clear(data);
+		assertResult(tls.wrap(in, out), OK, NOT_HANDSHAKING, 10, 32);
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(10, 32);
+		
+		flip();
+		ssl.unwrap(in, out);
+		assertArrayEquals(data, out());
+		clear(data);
+		ssl.wrap(in, out);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 10);
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(in.limit(), 10);
+		assertArrayEquals(data, out());
+		
+		clear();
+		assertResult(tls.wrap(array(data,0,4,2), out), OK, NOT_HANDSHAKING, 10, 32);
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(0, 32);
 
+		flip();
+		ssl.unwrap(in, out);
+		assertArrayEquals(data, out());
+		clear(data);
+		ssl.wrap(in, out);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 10);
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(in.limit(), 10);
+		assertArrayEquals(data, out());
+		
+		//closing
+		tls.closeOutbound();
+		assertEngine(tls, NEED_WRAP, false, false);
+		
+		clear();
+		assertResult(tls.wrap(in, out), CLOSED, NEED_UNWRAP, 0, out.position());
+		assertEngine(tls, NEED_UNWRAP, false, true);
+		assertInOut(0, out.position());
+		
+		flip();
+		assertResult(ssl.unwrap(in, out), CLOSED, NEED_WRAP);
+		assertEngine(ssl, NEED_WRAP, true, false);
+		
+		clear();
+		assertResult(ssl.wrap(in, out), CLOSED, NOT_HANDSHAKING);
+		assertEngine(ssl, NOT_HANDSHAKING, true, true);
+
+		flip();
+		assertResult(tls.unwrap(in, out), CLOSED, NOT_HANDSHAKING, in.limit(), 0);
+		assertEngine(tls, NOT_HANDSHAKING, true, true);
+		assertInOut(in.limit(), 0);
 	}	
 }

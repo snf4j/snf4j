@@ -193,6 +193,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				IHkdf hkdf = new Hkdf(hash.createMac());
 				
 				state.initialize(new KeySchedule(hkdf, th, cipherSuite.spec()), th, cipherSuite);
+				ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 				state.getKeySchedule().deriveEarlySecret();
 				state.getKeySchedule().deriveEarlyTrafficSecret();
 				state.getListener().onEarlyTrafficSecret(state);
@@ -200,7 +201,9 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				throw new InternalErrorAlert("Failed to create key schedule", e);
 			}			
 		}
-		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+		else {
+			ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+		}
 		
 		List<IExtension> extensions = new ArrayList<IExtension>();
 
@@ -284,8 +287,10 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		void execute() throws Exception {
 			IKeyExchange keyExchange = namedGroup.spec().getKeyExchange();
 			KeyPair pair = keyExchange.generateKeyPair();
-			publicKey = namedGroup.spec().generateKey(parsedKey);
-			secret = keyExchange.generateSecret(pair.getPrivate(), publicKey);
+			publicKey = pair.getPublic();
+			secret = keyExchange.generateSecret(
+					pair.getPrivate(), 
+					namedGroup.spec().generateKey(parsedKey));
 		}
 
 		@Override
@@ -295,16 +300,6 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			extensions.add(new SupportedVersionsExtension(
 					ISupportedVersionsExtension.Mode.SERVER_HELLO, 
 					state.getVersion()));
-			try {
-				state.getKeySchedule().deriveHandshakeSecret(secret);
-				state.getKeySchedule().deriveHandshakeTrafficSecrets();
-				state.getListener().onHandshakeTrafficSecrets(state);
-				state.getListener().onReceivingTraficKey(RecordType.HANDSHAKE);
-			}
-			catch (Exception e) {
-				throw new InternalErrorAlert("Failed to derive handshake secret", e);
-			}
-			Arrays.fill(secret, (byte)0);
 			extensions.add(new KeyShareExtension(
 					IKeyShareExtension.Mode.SERVER_HELLO, 
 					new KeyShareEntry(namedGroup, publicKey)));
@@ -321,6 +316,17 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					(byte)0,
 					extensions);
 			ConsumerUtil.prepare(state, serverHello, RecordType.INITIAL, RecordType.HANDSHAKE);
+
+			try {
+				state.getKeySchedule().deriveHandshakeSecret(secret);
+				state.getKeySchedule().deriveHandshakeTrafficSecrets();
+				state.getListener().onHandshakeTrafficSecrets(state);
+				state.getListener().onReceivingTraficKey(RecordType.HANDSHAKE);
+			}
+			catch (Exception e) {
+				throw new InternalErrorAlert("Failed to derive handshake secret", e);
+			}
+			Arrays.fill(secret, (byte)0);
 			
 			String hostName = state.getHostName();
 			extensions = new ArrayList<IExtension>();

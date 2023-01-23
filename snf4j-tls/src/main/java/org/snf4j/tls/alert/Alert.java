@@ -35,27 +35,36 @@ public class Alert extends ProtocolException {
 	
 	private final AlertDescription description;
 	
+	private final boolean closure;
+	
 	protected Alert(String message, AlertLevel level, AlertDescription description) {
 		super(message);
 		this.level = level;
 		this.description = description;
+		closure = false;
 	}
 
 	protected Alert(String message, AlertDescription description) {
 		this(message, AlertLevel.FATAL, description);
 	}
 
-	protected Alert(String message, AlertLevel level, AlertDescription description, Throwable cause) {
+	protected Alert(String message, AlertLevel level, AlertDescription description, Throwable cause, boolean closure) {
 		super(message, cause);
 		this.level = level;
 		this.description = description;
+		this.closure = closure;
 	}
 
 	protected Alert(String message, AlertDescription description, Throwable cause) {
-		this(message, AlertLevel.FATAL, description, cause);
+		this(message, AlertLevel.FATAL, description, cause, false);
 	}
 	
 	public AlertLevel getLevel() { return level; }
 	
 	public AlertDescription getDescription() { return description; }
+
+	public boolean isClosure() {
+		return closure;
+	}
+	
 }

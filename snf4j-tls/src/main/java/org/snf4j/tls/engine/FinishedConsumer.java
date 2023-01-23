@@ -45,14 +45,25 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		return HandshakeType.FINISHED;
 	}
 
-	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws Alert {
-		if (state.getState() != MachineState.CLI_WAIT_FINISHED) {
-			throw new UnexpectedMessageAlert("Unexpected Finished");
+	private void consumeServer(EngineState state, IFinished finished, ByteBuffer[] data) throws Alert {
+		state.getListener().onReceivingTraficKey(RecordType.APPLICATION);
+		
+		byte[] verifyData;
+		
+		try {
+			verifyData = state.getKeySchedule().computeClientVerifyData();
+		} catch (Exception e) {
+			throw new InternalErrorAlert("Failed to compute server verify data", e);
 		}
+		if (!Arrays.equals(finished.getVerifyData(), verifyData)) {
+			throw new DecryptErrorAlert("Failed to verify server verify data");
+		}
+		state.changeState(MachineState.SRV_CONNECTED);
+	}
+
+	private void consumeClient(EngineState state, IFinished finished, ByteBuffer[] data) throws Alert {
 		state.getListener().onSendingTraficKey(RecordType.HANDSHAKE);
 		
-		IFinished finished = (IFinished) handshake;
 		byte[] verifyData;
 		
 		try {
@@ -76,5 +87,18 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			throw new InternalErrorAlert("Failed to compute server verify data", e);
 		}
 		state.changeState(MachineState.CLI_CONNECTED);
+	}
+	
+	@Override
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws Alert {
+		if (state.getState() == MachineState.CLI_WAIT_FINISHED) {
+			consumeClient(state, (IFinished) handshake, data);
+		}
+		else if (state.getState() == MachineState.SRV_WAIT_FINISHED) {
+			consumeServer(state, (IFinished) handshake, data);
+		}
+		else {
+			throw new UnexpectedMessageAlert("Unexpected Finished");
+		}
 	}
 }

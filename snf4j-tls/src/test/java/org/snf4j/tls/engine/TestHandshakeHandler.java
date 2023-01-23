@@ -55,7 +55,7 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	
 	@Override
 	public ICertificateSelector getCertificateSelector() {
-		return new TestCertificateSelector();
+		return certificateSelector;
 	}
 
 	@Override
