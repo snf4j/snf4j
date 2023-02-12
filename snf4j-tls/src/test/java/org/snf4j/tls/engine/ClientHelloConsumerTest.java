@@ -39,13 +39,11 @@ import static org.snf4j.tls.cipher.CipherSuite.TLS_AES_128_CCM_8_SHA256;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
-import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
-import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.HandshakeFailureAlert;
 import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
@@ -57,45 +55,35 @@ import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.ExtensionsUtil;
 import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.extension.IKeyShareExtension;
-import org.snf4j.tls.extension.ISupportedVersionsExtension;
-import org.snf4j.tls.extension.KeyShareEntry;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
-import org.snf4j.tls.extension.ParsedKey;
 import org.snf4j.tls.extension.ServerNameExtension;
-import org.snf4j.tls.extension.SignatureAlgorithmsCertExtension;
-import org.snf4j.tls.extension.SignatureAlgorithmsExtension;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
 import org.snf4j.tls.extension.SupportedVersionsExtension;
+import org.snf4j.tls.handshake.CertificateType;
 import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.EncryptedExtensions;
 import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.ICertificate;
+import org.snf4j.tls.handshake.ICertificateEntry;
+import org.snf4j.tls.handshake.ICertificateVerify;
+import org.snf4j.tls.handshake.IFinished;
 import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
 
 public class ClientHelloConsumerTest extends EngineTest {
 
-	TestParameters params;
-	
 	ClientHelloConsumer consumer;
 	
 	List<IExtension> extensions;
 	
-	List<KeyShareEntry> entries;
-	
 	EngineState state;
-	
-	byte[] random;
-	
-	byte[] legacySessionId;
 	
 	@Override
 	public void before() throws Exception {
 		super.before();
-		params = new TestParameters();
 		consumer = new ClientHelloConsumer();
 		
 		extensions = new ArrayList<IExtension>();
@@ -105,72 +93,6 @@ public class ClientHelloConsumerTest extends EngineTest {
 		extensions.add(groups(NamedGroup.SECP256R1, NamedGroup.SECP384R1));
 		extensions.add(schemes(SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PSS_RSAE_SHA256));
 		state = new EngineState(MachineState.SRV_START,params, handler, handler);
-		random = new byte[32];
-		legacySessionId = new byte[0];
-	}
-
-	static CipherSuite[] suites(CipherSuite... suites) {
-		return suites;
-	}
-	
-	EngineState serverState() {
-		return new EngineState(MachineState.SRV_START, params, handler, handler);
-	}
-	
-	static ServerNameExtension serverName(String serverName) {
-		return new ServerNameExtension(serverName);
-	}
-	
-	static SupportedVersionsExtension versions(int... versions) {
-		return new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, versions);
-	}
-	
-	KeyShareExtension keyShare(NamedGroup... groups) throws Exception {
-		entries = new ArrayList<KeyShareEntry>();
-		
-		for (NamedGroup group: groups) {
-			KeyPair pair = group.spec().getKeyExchange().generateKeyPair();
-			
-			ByteBuffer buffer = ByteBuffer.allocate(1000);
-			group.spec().getData(buffer, pair.getPublic());
-			buffer.flip();
-			ParsedKey parsedKey = group.spec().parse(ByteBufferArray.wrap(new ByteBuffer[] {buffer}), buffer.remaining());
-			
-			entries.add(new KeyShareEntry(group, parsedKey));
-		}
-		return new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries.toArray(new KeyShareEntry[entries.size()]));
-	}
-	
-	static SupportedGroupsExtension groups(NamedGroup... groups) {
-		return new SupportedGroupsExtension(groups);
-	}
-	
-	static SignatureAlgorithmsExtension schemes(SignatureScheme... schemes) {
-		return new SignatureAlgorithmsExtension(schemes);
-	}
-
-	static SignatureAlgorithmsExtension certSchemes(SignatureScheme... schemes) {
-		return new SignatureAlgorithmsCertExtension(schemes);
-	}
-	
-	static void replace(List<IExtension> extensions, IExtension extension) {
-		for (int i=0; i<extensions.size(); ++i) {
-			IExtension e = extensions.get(i);
-			
-			if (e.getType().equals(extension.getType())) {
-				extensions.set(i, extension);
-			}
-		}
-	}
-
-	static void remove(List<IExtension> extensions, ExtensionType type) {
-		for (int i=0; i<extensions.size(); ++i) {
-			IExtension e = extensions.get(i);
-			
-			if (e.getType().equals(type)) {
-				extensions.remove(i);
-			}
-		}
 	}
 	
 	ByteBuffer[] data(ClientHello ch, int... sizes) {
@@ -299,6 +221,74 @@ public class ClientHelloConsumerTest extends EngineTest {
 		sge = ExtensionsUtil.find(ee, ExtensionType.SUPPORTED_GROUPS);
 		assertEquals(1, sge.getGroups().length);
 		assertSame(NamedGroup.SECP256R1, sge.getGroups()[0]);
+	}
+
+	@Test
+	public void testProducedFinished() throws Exception {
+		params.namedGroups = new NamedGroup[] {NamedGroup.SECP256R1, NamedGroup.SECP521R1};
+		replace(extensions, groups(NamedGroup.SECP256R1));
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
+		consumer.consume(state, ch, data(ch), false);
+		state.getTask().run();
+		state.getTask().run();
+		ProducedHandshake[] produced = state.getProduced();
+		assertEquals("VSN(snf4j.org)|ETS|CS|HTS|RTS(HANDSHAKE)|ATS|", handler.trace());
+		CertificateCriteria criteria = handler.certificateSelector.criteria;
+		assertEquals("snf4j.org", criteria.getHostName());
+		assertSame(CertificateType.X509, criteria.getType());
+		assertNull(criteria.getCertSchemes());
+		assertEquals(2, criteria.getSchemes().length);
+		assertSame(SignatureScheme.RSA_PKCS1_SHA256, criteria.getSchemes()[0]);
+		assertSame(SignatureScheme.RSA_PSS_RSAE_SHA256, criteria.getSchemes()[1]);
+		
+		ICertificate cert = (ICertificate) produced[2].getHandshake();
+		assertEquals(0, cert.getRequestContext().length);
+		assertEquals(1, cert.getEntries().length);
+		ICertificateEntry entry = cert.getEntries()[0];
+		assertEquals(entry.getDataLength(), entry.getData().length);
+		assertEquals(0, entry.getExtensioins().size());
+		assertArrayEquals(cert("rsasha256").getEncoded(), entry.getData());
+		
+		ICertificateVerify certv = (ICertificateVerify) produced[3].getHandshake();
+		assertSame(SignatureScheme.RSA_PKCS1_SHA256, certv.getAlgorithm());
+		byte[] signature = ConsumerUtil.sign(state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false), 
+				SignatureScheme.RSA_PKCS1_SHA256, 
+				key("RSA", "rsa"), 
+				false);
+		assertArrayEquals(signature, certv.getSignature());
+		assertNull(certv.getExtensioins());
+		
+		IFinished finished = (IFinished) produced[4].getHandshake();
+		assertArrayEquals(state.getKeySchedule().computeServerVerifyData(), finished.getVerifyData());
+
+		extensions.add(certSchemes(SignatureScheme.ECDSA_SHA1));
+		ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
+		handler.certificateSelector.certNames = new String[] {"rsasha256","rsasha384"};
+		state = serverState();
+		consumer.consume(state, ch, data(ch), false);
+		state.getTask().run();
+		state.getTask().run();
+		produced = state.getProduced();
+		criteria = handler.certificateSelector.criteria;
+		assertEquals(2, criteria.getSchemes().length);
+		assertSame(SignatureScheme.RSA_PKCS1_SHA256, criteria.getSchemes()[0]);
+		assertSame(SignatureScheme.RSA_PSS_RSAE_SHA256, criteria.getSchemes()[1]);
+		assertEquals(1, criteria.getCertSchemes().length);
+		assertSame(SignatureScheme.ECDSA_SHA1, criteria.getCertSchemes()[0]);
+		cert = (ICertificate) produced[2].getHandshake();
+		assertEquals(2, cert.getEntries().length);
+		assertArrayEquals(cert("rsasha256").getEncoded(), cert.getEntries()[0].getData());
+		assertArrayEquals(cert("rsasha384").getEncoded(), cert.getEntries()[1].getData());
+
+		state = serverState();
+		consumer.consume(state, ch, data(ch), false);
+		handler.onATSException = new NullPointerException();
+		state.getTask().run();
+		state.getTask().run();
+		try {
+			state.getProduced();
+			fail();
+		} catch (InternalErrorAlert e) {}
 	}
 	
 	@Test

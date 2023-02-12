@@ -183,7 +183,7 @@ public class EngineState {
 	}
 	
 	public ProducedHandshake[] getProduced() throws Alert {
-		hasPendingTasks();
+		updateTasks();
 		
 		int size = produced.size();
 		
@@ -196,11 +196,7 @@ public class EngineState {
 		return NONE_PRODUCED;
 	}
 	
-	public boolean hasProducingTasks() {
-		return producingTasks;
-	}
-	
-	public boolean hasPendingTasks() throws Alert {
+	public boolean updateTasks() throws Alert {
 		if (tasks.isEmpty()) {
 			if (runningTasks.isEmpty()) {
 				if (!prepared.isEmpty()) {
@@ -239,8 +235,16 @@ public class EngineState {
 		return true;
 	}
 
+	public boolean hasProducingTasks() {
+		return producingTasks;
+	}
+	
 	public boolean hasTasks() {
 		return !tasks.isEmpty();
+	}
+	
+	public boolean hasRunningTasks() {
+		return !runningTasks.isEmpty();
 	}
 	
 	public Runnable getTask() {

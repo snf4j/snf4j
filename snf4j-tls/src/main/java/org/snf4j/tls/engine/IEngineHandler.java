@@ -34,6 +34,8 @@ public interface IEngineHandler {
 	
 	ICertificateSelector getCertificateSelector();
 	
+	ICertificateValidator getCertificateValidator();
+	
 	int calculatePadding(ContentType type, int contentLength);
 
 }

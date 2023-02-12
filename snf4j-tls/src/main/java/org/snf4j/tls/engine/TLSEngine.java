@@ -151,8 +151,10 @@ public class TLSEngine implements IEngine {
 
 	@Override
 	public HandshakeStatus getHandshakeStatus() {
-		if (status != NOT_HANDSHAKING && handshaker.hasTask()) {
-			return NEED_TASK;
+		if (status != NOT_HANDSHAKING) {
+			if (handshaker.hasTask()) {
+				return NEED_TASK;
+			}
 		}
 		return status;
 	}
@@ -370,7 +372,7 @@ public class TLSEngine implements IEngine {
 				if (alert != null) {
 					return wrapAlert(dst, status);
 				}
-				if (handshaker.hasPendingTasks()) {
+				if (handshaker.updateTasks()) {
 					return new EngineResult(
 							OK, 
 							status, 
@@ -461,7 +463,7 @@ public class TLSEngine implements IEngine {
 		return wrap(src, null, dst);
 	}
 
-	private IEngineResult unwrapAppData(ByteBuffer src, int length) throws Exception {
+	private IEngineResult unwrapAppData(ByteBuffer src, int length) throws Alert {
 		Decryptor decryptor = listener.getDecryptor();
 		byte[] plaintext = new byte[length - decryptor.getExapnsion()];		
 		
@@ -505,7 +507,7 @@ public class TLSEngine implements IEngine {
 		throw new UnexpectedMessageAlert("Received unexpected record content type (" + type + ")");
 	}
 
-	private IEngineResult unwrapAppData(ByteBuffer src, ByteBuffer dst) throws Exception {
+	private IEngineResult unwrapAppData(ByteBuffer src, ByteBuffer dst) throws Alert {
 		int remaining = src.remaining();
 		
 		if (remaining >= Record.HEADER_LENGTH) {
@@ -612,7 +614,7 @@ public class TLSEngine implements IEngine {
 				0);		
 	}
 	
-	private IEngineResult unwrapHandshake(ByteBuffer src, int off, int length, int consumed) throws Exception {
+	private IEngineResult unwrapHandshake(ByteBuffer src, int off, int length, int consumed) throws Alert {
 		src.position(src.position() + off);
 		
 		if (aggregator.unwrap(src, length)) {
@@ -641,7 +643,7 @@ public class TLSEngine implements IEngine {
 				0);
 	}
 
-	private IEngineResult unwrapAlert(ByteBuffer src, int off, int length, int consumed) throws Exception {
+	private IEngineResult unwrapAlert(ByteBuffer src, int off, int length, int consumed) throws Alert {
 		if (length != 2) {
 			throw new DecodeErrorAlert("Invalid length of alert content");
 		}
@@ -666,7 +668,7 @@ public class TLSEngine implements IEngine {
 		return null;
 	}
 
-	private IEngineResult unwrapChangeCipherSpec(ByteBuffer src, int off, int length, int consumed) throws Exception {
+	private IEngineResult unwrapChangeCipherSpec(ByteBuffer src, int off, int length, int consumed) throws Alert {
 		if (length == 1) {
 			src.position(src.position() + off);
 			if (src.get() == 1) {
@@ -680,7 +682,7 @@ public class TLSEngine implements IEngine {
 		throw new UnexpectedMessageAlert("Invalid change_cipher_spec message");
 	}
 	
-	private IEngineResult unwrap(ByteBuffer src) throws Exception {
+	private IEngineResult unwrap(ByteBuffer src) throws Alert {
 		int remaining = src.remaining();
 		
 		if (remaining >= Record.HEADER_LENGTH) {
@@ -758,7 +760,7 @@ public class TLSEngine implements IEngine {
 				return unwrapAppData(src, dst);
 
 			default:
-				if (handshaker.hasPendingTasks()) {
+				if (handshaker.updateTasks()) {
 					return new EngineResult(
 							OK, 
 							status, 

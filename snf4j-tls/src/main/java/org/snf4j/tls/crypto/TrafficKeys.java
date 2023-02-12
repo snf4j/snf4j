@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,61 +25,57 @@
  */
 package org.snf4j.tls.crypto;
 
-import java.nio.ByteBuffer;
-import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 
-import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 
-import org.snf4j.tls.Args;
-
-public class AeadEncrypt implements IAeadEncrypt {
-	
-	private final SecretKey key;
-	
-	private final Cipher cipher;
+public class TrafficKeys {
 	
 	private final IAead aead;
 	
-	public AeadEncrypt(SecretKey key, IAead aead) throws NoSuchAlgorithmException, NoSuchPaddingException {
-		Args.checkNull(key, "key");
-		Args.checkNull(aead, "aead");
-		this.key = key;
+	private SecretKey clientKey;
+	
+	private SecretKey serverKey;
+	
+	private byte[] clientIv;
+
+	private byte[] serverIv;
+
+	public TrafficKeys(IAead aead, SecretKey clientKey, byte[] clientIv, SecretKey serverKey, byte[] serverIv) {
 		this.aead = aead;
-		cipher = aead.createCipher();
+		this.clientKey = clientKey;
+		this.clientIv = clientIv;
+		this.serverKey = serverKey;
+		this.serverIv = serverIv;
+	}
+
+	public TrafficKeys(IAead aead, SecretKey clientKey, byte[] clientIv) {
+		this.aead = aead;
+		this.clientKey = clientKey;
+		this.clientIv = clientIv;
 	}
 	
-	@Override
-	public IAead getAead() {
-		return aead;
+	public IAeadDecrypt getAeadDecrypt(boolean client) throws NoSuchAlgorithmException, NoSuchPaddingException {
+		return new AeadDecrypt(getKey(client), aead);
 	}
 
-	@Override
-	public byte[] encrypt(byte[] nonce, byte[] additionalData, byte[] plaintext) throws GeneralSecurityException {
-		aead.initEncrypt(cipher, key, nonce);
-		cipher.updateAAD(additionalData);
-		return cipher.doFinal(plaintext);
+	public IAeadEncrypt getAeadEncrypt(boolean client) throws NoSuchAlgorithmException, NoSuchPaddingException {
+		return new AeadEncrypt(getKey(client), aead);
 	}
 	
-	@Override
-	public void encrypt(byte[] nonce, byte[] additionalData, ByteBuffer plaintext, ByteBuffer ciphertext) throws GeneralSecurityException {
-		aead.initEncrypt(cipher, key, nonce);
-		cipher.updateAAD(additionalData);
-		cipher.doFinal(plaintext,ciphertext);
+	public SecretKey getKey(boolean client) {
+		return client ? clientKey : serverKey;
 	}
-
-	@Override
-	public void encrypt(byte[] nonce, byte[] additionalData, ByteBuffer[] plaintext, ByteBuffer ciphertext)	throws GeneralSecurityException {
-		aead.initEncrypt(cipher, key, nonce);
-		cipher.updateAAD(additionalData);
-		
-		int i=0; 
-		for (; i<plaintext.length-1; ++i) {
-			cipher.update(plaintext[i], ciphertext);
-		}
-		cipher.doFinal(plaintext[i], ciphertext);
+	
+	public byte[] getIv(boolean client) {
+		return client ? clientIv : serverIv;
 	}
-
+	
+	public void clear() {
+		clientKey = null;
+		serverKey = null;
+		clientIv = null;
+		serverIv = null;
+	}
 }

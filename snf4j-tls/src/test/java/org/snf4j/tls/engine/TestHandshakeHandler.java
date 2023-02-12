@@ -37,6 +37,10 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	
 	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
 	
+	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
+
+	public RuntimeException onATSException;
+	
 	public void trace(String msg) {
 		synchronized (trace) {
 			trace.append(msg).append('|');
@@ -55,9 +59,16 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	
 	@Override
 	public ICertificateSelector getCertificateSelector() {
+		trace("CS");
 		return certificateSelector;
 	}
 
+	@Override
+	public ICertificateValidator getCertificateValidator() {
+		trace("CV");
+		return certificateValidator;
+	}
+	
 	@Override
 	public boolean verify(IServerNameExtension serverName) {
 		trace("VSN(" + serverName.getHostName() +")");
@@ -77,16 +88,19 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	@Override
 	public void onApplicationTrafficSecrets(EngineState state) throws Exception {
 		trace("ATS");
+		if (onATSException != null) {
+			throw onATSException;
+		}
 	}
 
 	@Override
 	public 	void onReceivingTraficKey(RecordType recordType) {
-		trace("RTS");
+		trace("RTS(" + recordType.name() + ")");
 	}
 	
 	@Override
 	public void onSendingTraficKey(RecordType recordType) {
-		trace("STS");
+		trace("STS(" + recordType.name() + ")");
 	}
 	
 	@Override

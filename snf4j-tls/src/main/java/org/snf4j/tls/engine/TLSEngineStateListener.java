@@ -25,7 +25,7 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.crypto.KeySchedule;
+import org.snf4j.tls.crypto.TrafficKeys;
 import org.snf4j.tls.record.Decryptor;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IDecryptorHolder;
@@ -59,68 +59,68 @@ public class TLSEngineStateListener implements IEngineStateListener, IEncryptorH
 	
 	@Override
 	public void onEarlyTrafficSecret(EngineState state) throws Exception {
-		KeySchedule keySchedule = state.getKeySchedule();
+		TrafficKeys keys = state.getKeySchedule().deriveEarlyTrafficKeys();
 		int index = RecordType.ZERO_RTT.ordinal();
 		
-		keySchedule.deriveEarlyTrafficKeys();
 		if (state.isClientMode()) {
 			encryptors[index] = new Encryptor(
-					keySchedule.getAeadEncrypt(true),
-					keySchedule.getIv(true));
+					keys.getAeadEncrypt(true),
+					keys.getIv(true));
 		}
 		else {
 			decryptors[index] = new Decryptor(
-					keySchedule.getAeadDecrypt(true),
-					keySchedule.getIv(true));
+					keys.getAeadDecrypt(true),
+					keys.getIv(true));
 		}
+		keys.clear();
 	}
 
 	@Override
 	public void onHandshakeTrafficSecrets(EngineState state) throws Exception {
-		KeySchedule keySchedule = state.getKeySchedule();
+		TrafficKeys keys = state.getKeySchedule().deriveHandshakeTrafficKeys();
 		int index = RecordType.HANDSHAKE.ordinal();
-		
-		keySchedule.deriveHandshakeTrafficKeys();
+
 		if (state.isClientMode()) {
 			encryptors[index] = new Encryptor(
-					keySchedule.getAeadEncrypt(true),
-					keySchedule.getIv(true));
+					keys.getAeadEncrypt(true),
+					keys.getIv(true));
 			decryptors[index] = new Decryptor(
-					keySchedule.getAeadDecrypt(false),
-					keySchedule.getIv(false));
+					keys.getAeadDecrypt(false),
+					keys.getIv(false));
 		}
 		else {
 			encryptors[index] = new Encryptor(
-					keySchedule.getAeadEncrypt(false),
-					keySchedule.getIv(false));
+					keys.getAeadEncrypt(false),
+					keys.getIv(false));
 			decryptors[index] = new Decryptor(
-					keySchedule.getAeadDecrypt(true),
-					keySchedule.getIv(true));
+					keys.getAeadDecrypt(true),
+					keys.getIv(true));
 		}
+		keys.clear();
 	}
 
 	@Override
 	public void onApplicationTrafficSecrets(EngineState state) throws Exception {
-		KeySchedule keySchedule = state.getKeySchedule();
+		TrafficKeys keys = state.getKeySchedule().deriveApplicationTrafficKeys();
 		int index = RecordType.APPLICATION.ordinal();
 		
-		keySchedule.deriveApplicationTrafficKeys();
 		if (state.isClientMode()) {
 			encryptors[index] = new Encryptor(
-					keySchedule.getAeadEncrypt(true),
-					keySchedule.getIv(true));
+					keys.getAeadEncrypt(true),
+					keys.getIv(true));
 			decryptors[index] = new Decryptor(
-					keySchedule.getAeadDecrypt(false),
-					keySchedule.getIv(false));
+					keys.getAeadDecrypt(false),
+					keys.getIv(false));
 		}
 		else {
 			encryptors[index] = new Encryptor(
-					keySchedule.getAeadEncrypt(false),
-					keySchedule.getIv(false));
+					keys.getAeadEncrypt(false),
+					keys.getIv(false));
 			decryptors[index] = new Decryptor(
-					keySchedule.getAeadDecrypt(true),
-					keySchedule.getIv(true));
+					keys.getAeadDecrypt(true),
+					keys.getIv(true));
 		}
+		keys.clear();
 	}
 
 	@Override

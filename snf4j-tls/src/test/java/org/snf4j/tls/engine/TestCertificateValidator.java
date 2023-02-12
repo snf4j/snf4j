@@ -25,35 +25,21 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
+import java.security.PublicKey;
+import java.security.cert.X509Certificate;
 
-public class TestHandler implements IEngineHandler {
+import org.snf4j.tls.alert.Alert;
 
-	public boolean verifyServerName = true;
-	
-	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
+public class TestCertificateValidator implements ICertificateValidator {
 
-	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
-	
 	@Override
-	public boolean verify(IServerNameExtension serverName) {
-		return verifyServerName;
+	public Alert validateCertificates(X509Certificate[] certs) throws Exception {
+		return null;
 	}
 
 	@Override
-	public ICertificateSelector getCertificateSelector() {
-		return certificateSelector;
-	}
-
-	@Override
-	public ICertificateValidator getCertificateValidator() {
-		return certificateValidator;
-	}
-
-	@Override
-	public int calculatePadding(ContentType type, int contentLength) {
-		return 0;
+	public Alert validateRawKey(PublicKey key) throws Exception {
+		return null;
 	}
 
 }

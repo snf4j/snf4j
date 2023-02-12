@@ -25,35 +25,6 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
-
-public class TestHandler implements IEngineHandler {
-
-	public boolean verifyServerName = true;
-	
-	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
-
-	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
-	
-	@Override
-	public boolean verify(IServerNameExtension serverName) {
-		return verifyServerName;
-	}
-
-	@Override
-	public ICertificateSelector getCertificateSelector() {
-		return certificateSelector;
-	}
-
-	@Override
-	public ICertificateValidator getCertificateValidator() {
-		return certificateValidator;
-	}
-
-	@Override
-	public int calculatePadding(ContentType type, int contentLength) {
-		return 0;
-	}
+public class ServerHelloConsumerTest extends EngineTest {
 
 }

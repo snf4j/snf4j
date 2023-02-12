@@ -28,7 +28,6 @@ package org.snf4j.tls.crypto;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
@@ -314,22 +313,28 @@ public class KeyScheduleTest extends CommonTest {
 	public void testDeriveEarlyTrafficKeys() throws Exception {
 		ks.deriveEarlySecret();
 		ks.deriveEarlyTrafficSecret();
-		ks.deriveEarlyTrafficKeys();
+		TrafficKeys keys = ks.deriveEarlyTrafficKeys();
 		byte[] ets = getSecret(ks, "earlyTrafficSecret");
 		byte[] iv = ks.hkdfExpandLabel(ets, "tls13 iv".getBytes(ASCII), new byte[0], 12);
-		assertArrayEquals(iv, getSecret(ks, "clientIv"));
+		assertArrayEquals(iv, keys.getIv(true));
 		byte[] k = ks.hkdfExpandLabel(ets, "tls13 key".getBytes(ASCII), new byte[0], 16);
-		SecretKeySpec key = getSecretKey(ks, "clientKey");
+		SecretKey key = keys.getKey(true);
 		assertArrayEquals(k, key.getEncoded());
 		assertEquals("AES", key.getAlgorithm());
-		assertNull(getSecret(ks, "serverIv"));
-		assertNull(getSecretKey(ks, "serverKey"));
-		iv = getSecret(ks, "clientIv");
-		assertNotErased(iv);
-		ks.deriveEarlyTrafficKeys();
-		assertErased(iv);
-		assertNotNull(getSecret(ks, "clientIv"));
-		assertNotSame(iv, getSecret(ks, "clientIv"));
+		assertNull(keys.getIv(false));
+		assertNull(keys.getKey(false));
+
+		assertNotNull(keys.getAeadDecrypt(true));
+		assertNotNull(keys.getAeadEncrypt(true));
+		try {
+			keys.getAeadDecrypt(false);
+			fail();
+		} catch (IllegalArgumentException e) {}
+		
+		try {
+			keys.getAeadEncrypt(false);	
+			fail();
+		} catch (IllegalArgumentException e) {}
 	}
 	
 	@Test
@@ -406,33 +411,36 @@ public class KeyScheduleTest extends CommonTest {
 		ks.deriveEarlySecret();
 		ks.deriveHandshakeSecret(secret);
 		ks.deriveHandshakeTrafficSecrets();
-		ks.deriveHandshakeTrafficKeys();		
+		TrafficKeys keys = ks.deriveHandshakeTrafficKeys();		
 		byte[] hts = getSecret(ks, "clientHandshakeTrafficSecret");
 		byte[] iv = ks.hkdfExpandLabel(hts, "tls13 iv".getBytes(ASCII), new byte[0], 12);
-		assertArrayEquals(iv, getSecret(ks, "clientIv"));
+		assertArrayEquals(iv, keys.getIv(true));
 		byte[] k = ks.hkdfExpandLabel(hts, "tls13 key".getBytes(ASCII), new byte[0], 16);
-		SecretKeySpec key = getSecretKey(ks, "clientKey");
+		SecretKey key = keys.getKey(true);
 		assertArrayEquals(k, key.getEncoded());
 		
 		hts = getSecret(ks, "serverHandshakeTrafficSecret");
 		iv = ks.hkdfExpandLabel(hts, "tls13 iv".getBytes(ASCII), new byte[0], 12);
-		assertArrayEquals(iv, getSecret(ks, "serverIv"));
+		assertArrayEquals(iv, keys.getIv(false));
 		k = ks.hkdfExpandLabel(hts, "tls13 key".getBytes(ASCII), new byte[0], 16);
-		key = getSecretKey(ks, "serverKey");
+		key = keys.getKey(false);
 		assertArrayEquals(k, key.getEncoded());
-		assertEquals("AES", key.getAlgorithm());
+		assertEquals("AES", key.getAlgorithm());		
+
+		assertNotNull(keys.getAeadDecrypt(true));
+		assertNotNull(keys.getAeadDecrypt(false));
+		assertNotNull(keys.getAeadEncrypt(true));
+		assertNotNull(keys.getAeadEncrypt(false));
 		
-		iv = getSecret(ks, "clientIv");
-		byte[] iv2 = getSecret(ks, "serverIv");
-		assertNotErased(iv);
+		byte[] iv1 = keys.getIv(true);
+		byte[] iv2 = keys.getIv(false);
+		keys.clear();
+		assertNull(keys.getKey(true));
+		assertNull(keys.getKey(false));
+		assertNull(keys.getIv(true));
+		assertNull(keys.getIv(false));
+		assertNotErased(iv1);
 		assertNotErased(iv2);
-		ks.deriveHandshakeTrafficKeys();
-		assertErased(iv);
-		assertErased(iv2);
-		assertNotNull(getSecret(ks, "clientIv"));
-		assertNotNull(getSecret(ks, "serverIv"));
-		assertNotSame(iv, getSecret(ks, "clientIv"));
-		assertNotSame(iv2, getSecret(ks, "serverIv"));
 	}
 	
 	@Test
@@ -560,59 +568,40 @@ public class KeyScheduleTest extends CommonTest {
 		assertNotNull(getSecret(ks, "clientApplicationTrafficSecret"));	
 		assertNotNull(getSecret(ks, "serverApplicationTrafficSecret"));	
 	}
+
+	@Test
+	public void testDeriveApplicationTrafficKeys() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		ks.deriveMasterSecret();
+		ks.deriveApplicationTrafficSecrets();;
+		TrafficKeys keys = ks.deriveApplicationTrafficKeys();		
+		byte[] hts = getSecret(ks, "clientApplicationTrafficSecret");
+		byte[] iv = ks.hkdfExpandLabel(hts, "tls13 iv".getBytes(ASCII), new byte[0], 12);
+		assertArrayEquals(iv, keys.getIv(true));
+		byte[] k = ks.hkdfExpandLabel(hts, "tls13 key".getBytes(ASCII), new byte[0], 16);
+		SecretKey key = keys.getKey(true);
+		assertArrayEquals(k, key.getEncoded());
+		
+		hts = getSecret(ks, "serverApplicationTrafficSecret");
+		iv = ks.hkdfExpandLabel(hts, "tls13 iv".getBytes(ASCII), new byte[0], 12);
+		assertArrayEquals(iv, keys.getIv(false));
+		k = ks.hkdfExpandLabel(hts, "tls13 key".getBytes(ASCII), new byte[0], 16);
+		key = keys.getKey(false);
+		assertArrayEquals(k, key.getEncoded());
+		assertEquals("AES", key.getAlgorithm());	
+		
+		assertNotNull(keys.getAeadDecrypt(true));
+		assertNotNull(keys.getAeadDecrypt(false));
+		assertNotNull(keys.getAeadEncrypt(true));
+		assertNotNull(keys.getAeadEncrypt(false));
+	}
 	
 	DestroyFailedException exception;
 	int exceptionCount;
 	int destroyCount;
-	
-	@Test
-	public void testEraseTrafficKeys() throws Exception {
-		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
-		ks = new TestKeySchedule(h, th, CipherSuiteSpec.TLS_AES_256_GCM_SHA384);
-		ks.deriveEarlySecret();
-		ks.deriveHandshakeSecret(secret);
-		ks.deriveHandshakeTrafficSecrets();
-
-		exception = null;
-		exceptionCount = 0;
-		destroyCount = 0;
-		ks.clearTrafficKeys();
-		assertEquals(0, exceptionCount);
-		assertEquals(0, destroyCount);
-		ks.deriveHandshakeTrafficKeys();
-		byte[] iv1 = getSecret(ks, "clientIv");
-		byte[] iv2 = getSecret(ks, "serverIv");
-		assertNotErased(iv1);
-		assertNotErased(iv2);
-		ks.clearTrafficKeys();
-		assertEquals(0, exceptionCount);
-		assertEquals(2, destroyCount);
-		assertErased(iv1);
-		assertErased(iv2);
-		assertNull(getSecret(ks, "clientIv"));
-		assertNull(getSecret(ks, "serverIv"));
-		assertNull(getSecretKey(ks, "clientKey"));
-		assertNull(getSecretKey(ks, "serverKey"));
-
-		exception = new DestroyFailedException();
-		exceptionCount = 0;
-		destroyCount = 0;
-		ks.deriveHandshakeTrafficKeys();
-		iv1 = getSecret(ks, "clientIv");
-		iv2 = getSecret(ks, "serverIv");
-		assertNotErased(iv1);
-		assertNotErased(iv2);
-		ks.clearTrafficKeys();
-		assertEquals(2, exceptionCount);
-		assertEquals(2, destroyCount);
-		assertErased(iv1);
-		assertErased(iv2);
-		assertNull(getSecret(ks, "clientIv"));
-		assertNull(getSecret(ks, "serverIv"));
-		assertNull(getSecretKey(ks, "clientKey"));
-		assertNull(getSecretKey(ks, "serverKey"));
-	}
-	
+		
 	@Test
 	public void testCheckDerived() throws Exception {
 		try {

@@ -27,10 +27,8 @@ package org.snf4j.tls.crypto;
 
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import org.snf4j.tls.Args;
 import org.snf4j.tls.cipher.ICipherSuiteSpec;
@@ -93,15 +91,7 @@ public class KeySchedule {
 	private byte[] clientApplicationTrafficSecret;
 
 	private byte[] serverApplicationTrafficSecret;
-	
-	private SecretKey clientKey;
-	
-	private SecretKey serverKey;
-	
-	private byte[] clientIv;
-
-	private byte[] serverIv;
-	
+		
 	private static byte[] label(String label) {
 		return (LABEL_PREFIX + label).getBytes(StandardCharsets.US_ASCII);
 	}
@@ -201,9 +191,8 @@ public class KeySchedule {
 		return secretKey;
 	}
 	
-	public void deriveEarlyTrafficKeys() throws InvalidKeyException {
+	public TrafficKeys deriveEarlyTrafficKeys() throws InvalidKeyException {
 		checkDerived(earlyTrafficSecret, "Early Traffic Secret");
-		clearTrafficKeys();
 		byte[] iv = hkdfExpandLabel(earlyTrafficSecret,
 				IV,
 				EMPTY,
@@ -212,8 +201,7 @@ public class KeySchedule {
 				KEY,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
-		clientIv = iv;
-		clientKey = createKey(key);
+		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(key), iv);
 	}
 	
 	public void deriveHandshakeSecret(byte[] sharedSecret) throws InvalidKeyException {
@@ -282,9 +270,8 @@ public class KeySchedule {
 		}
 	}
 	
-	public void deriveHandshakeTrafficKeys() throws InvalidKeyException {
+	public TrafficKeys deriveHandshakeTrafficKeys() throws InvalidKeyException {
 		checkDerived(clientHandshakeTrafficSecret, "Handshake Traffic Secrets");
-		clearTrafficKeys();
 		byte[] civ = hkdfExpandLabel(clientHandshakeTrafficSecret,
 				IV,
 				EMPTY,
@@ -301,10 +288,7 @@ public class KeySchedule {
 				KEY,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
-		clientIv = civ;
-		clientKey = createKey(ckey);
-		serverIv = siv;
-		serverKey = createKey(skey);
+		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(ckey), civ, createKey(skey), siv);
 	}
 
 	public void deriveMasterSecret() throws InvalidKeyException {
@@ -349,9 +333,8 @@ public class KeySchedule {
 		}
 	}
 	
-	public void deriveApplicationTrafficKeys() throws InvalidKeyException {
+	public TrafficKeys deriveApplicationTrafficKeys() throws InvalidKeyException {
 		checkDerived(clientApplicationTrafficSecret, "Application Traffic Secrets");
-		clearTrafficKeys();
 		byte[] civ = hkdfExpandLabel(clientApplicationTrafficSecret,
 				IV,
 				EMPTY,
@@ -368,31 +351,9 @@ public class KeySchedule {
 				KEY,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
-		clientIv = civ;
-		clientKey = createKey(ckey);
-		serverIv = siv;
-		serverKey = createKey(skey);
+		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(ckey), civ, createKey(skey), siv);
 	}
-	
-	public void clearTrafficKeys() {
-		clientIv = null;
-		clientKey = null;
-		serverIv = null;
-		serverKey = null;
-	}
-	
-	public IAeadDecrypt getAeadDecrypt(boolean client) throws NoSuchAlgorithmException, NoSuchPaddingException {
-		return new AeadDecrypt(client ? clientKey : serverKey, cipherSuiteSpec.getAead());
-	}
-
-	public IAeadEncrypt getAeadEncrypt(boolean client) throws NoSuchAlgorithmException, NoSuchPaddingException {
-		return new AeadEncrypt(client ? clientKey : serverKey, cipherSuiteSpec.getAead());
-	}
-	
-	public byte[] getIv(boolean client) {
-		return client ? clientIv : serverIv;
-	}
-	
+			
 	byte[] hkdfExpandLabel(byte[] secret, String label, byte[] context, int length) throws InvalidKeyException {
 		return hkdfExpandLabel(secret, label(label), context, length);
 	}

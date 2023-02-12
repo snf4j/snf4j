@@ -53,7 +53,7 @@ public class ExtensionDecoder implements IExtensionDecoder {
 		DEFAULT = decoder;
 	}
 	
-	private final Map<ExtensionType,IExtensionParser> parsers = new HashMap<>();
+	private final Map<ExtensionType,IExtensionParser> parsers = new HashMap<ExtensionType,IExtensionParser>();
 	
 	protected ExtensionType getType(int type) {
 		return ExtensionType.of(type);

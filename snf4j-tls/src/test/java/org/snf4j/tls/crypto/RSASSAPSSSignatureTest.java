@@ -52,6 +52,16 @@ import org.junit.Test;
 public class RSASSAPSSSignatureTest extends SignatureTest {
 
 	@Test
+	public void testMinKeySize() {
+		assertEquals(528, RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.minKeySize());
+		assertEquals(528, RSASSAPSSSignature.RSA_PSS_PSS_SHA256.minKeySize());
+		assertEquals(784, RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.minKeySize());
+		assertEquals(784, RSASSAPSSSignature.RSA_PSS_PSS_SHA384.minKeySize());
+		assertEquals(1040, RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.minKeySize());
+		assertEquals(1040, RSASSAPSSSignature.RSA_PSS_PSS_SHA512.minKeySize());
+	}
+	
+	@Test
 	public void testIsImplemented() {
 		assertEquals(JAVA11, RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.isImplemented());
 		assertEquals(JAVA11, RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.isImplemented());

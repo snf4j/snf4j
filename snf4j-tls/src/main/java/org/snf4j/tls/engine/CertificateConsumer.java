@@ -52,7 +52,9 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		}
 		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 		
-		AbstractEngineTask task = new CertificateTask(((ICertificate)handshake).getEntries());
+		AbstractEngineTask task = new CertificateTask(
+				state.getHandler().getCertificateValidator(),
+				((ICertificate)handshake).getEntries());
 		if (state.getParameters().getDelegatedTaskMode().certificates()) {
 			state.changeState(MachineState.CLI_WAIT_CERT_TASK);
 			state.addTask(task);
@@ -64,11 +66,16 @@ public class CertificateConsumer implements IHandshakeConsumer {
 
 	static class CertificateTask extends AbstractEngineTask {
 
+		private final ICertificateValidator validator;
+		
 		private final ICertificateEntry[] entries;
 		
 		private volatile PublicKey publicKey;
 		
-		CertificateTask(ICertificateEntry[] entries) {
+		private volatile Alert alert;
+		
+		CertificateTask(ICertificateValidator validator, ICertificateEntry[] entries) {
+			this.validator = validator;
 			this.entries = entries;
 		}
 		
@@ -84,6 +91,9 @@ public class CertificateConsumer implements IHandshakeConsumer {
 
 		@Override
 		public void finish(EngineState state) throws Alert {
+			if (alert != null) {
+				throw alert;
+			}
 			state.storePublicKey(publicKey);
 			state.changeState(MachineState.CLI_WAIT_CV);
 		}
@@ -92,11 +102,18 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		void execute() throws Exception {
 			CertificateFactory factory = CertificateFactory.getInstance("X.509");
 			X509Certificate[] certs = new X509Certificate[entries.length];
+			Alert alert;
 			
 			for (int i=0; i<certs.length; ++i) {
 				certs[i] = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(entries[i].getData()));
 			}
-			publicKey = certs[0].getPublicKey();
+			alert = validator.validateCertificates(certs);
+			if (alert == null) {
+				publicKey = certs[0].getPublicKey();
+			}
+			else {
+				this.alert = alert;
+			}
 		}
 	}
 }

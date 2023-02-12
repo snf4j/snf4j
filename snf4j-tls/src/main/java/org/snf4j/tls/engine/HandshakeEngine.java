@@ -197,15 +197,20 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 
 	@Override
+	public boolean updateTasks() throws Alert {
+		return state.updateTasks();
+	}
+
+	@Override
 	public boolean hasProducingTask() {
 		return state.hasProducingTasks();
 	}
 
 	@Override
-	public boolean hasPendingTasks() throws Alert {
-		return state.hasPendingTasks();
+	public boolean hasRunningTask() {
+		return state.hasRunningTasks();
 	}
-
+	
 	@Override
 	public boolean hasTask() {
 		return state.hasTasks();

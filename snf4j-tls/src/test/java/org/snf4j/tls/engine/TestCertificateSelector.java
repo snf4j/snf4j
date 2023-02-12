@@ -43,8 +43,11 @@ public class TestCertificateSelector implements ICertificateSelector {
 	
 	volatile SignatureScheme signatureScheme = SignatureScheme.RSA_PKCS1_SHA256;
 	
+	volatile CertificateCriteria criteria;
+	
 	@Override
 	public SelectedCertificates selectCertificates(CertificateCriteria criteria)  throws Exception {
+		this.criteria = criteria;
 		PrivateKey key = CommonTest.key(keyAlgorithm, keyName);
 		CertificateEntry[] certs = new CertificateEntry[certNames.length];
 		

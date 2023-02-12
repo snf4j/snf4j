@@ -29,14 +29,24 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import java.nio.ByteBuffer;
+import java.security.KeyPair;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.CommonTest;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IKeyShareExtension;
+import org.snf4j.tls.extension.ISupportedVersionsExtension;
+import org.snf4j.tls.extension.KeyShareEntry;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.ParsedKey;
 import org.snf4j.tls.extension.ServerNameExtension;
+import org.snf4j.tls.extension.SignatureAlgorithmsCertExtension;
 import org.snf4j.tls.extension.SignatureAlgorithmsExtension;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
@@ -50,10 +60,83 @@ public class EngineTest extends CommonTest {
 
 	TestHandshakeHandler handler;
 	
+	TestParameters params;
+
+	byte[] random;
+	
+	byte[] legacySessionId;
+
 	@Override
 	public void before() throws Exception {
 		super.before();
 		handler = new TestHandshakeHandler();
+		params = new TestParameters();
+		random = new byte[32];
+		legacySessionId = new byte[0];
+	}
+	
+	EngineState serverState() {
+		return new EngineState(MachineState.SRV_START, params, handler, handler);
+	}
+	
+	static CipherSuite[] suites(CipherSuite... suites) {
+		return suites;
+	}
+
+	static ServerNameExtension serverName(String serverName) {
+		return new ServerNameExtension(serverName);
+	}
+	
+	static SupportedVersionsExtension versions(int... versions) {
+		return new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, versions);
+	}
+	
+	static KeyShareExtension keyShare(NamedGroup... groups) throws Exception {
+		ArrayList<KeyShareEntry> entries = new ArrayList<KeyShareEntry>();
+		
+		for (NamedGroup group: groups) {
+			KeyPair pair = group.spec().getKeyExchange().generateKeyPair();
+			
+			ByteBuffer buffer = ByteBuffer.allocate(1000);
+			group.spec().getData(buffer, pair.getPublic());
+			buffer.flip();
+			ParsedKey parsedKey = group.spec().parse(ByteBufferArray.wrap(new ByteBuffer[] {buffer}), buffer.remaining());
+			
+			entries.add(new KeyShareEntry(group, parsedKey));
+		}
+		return new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries.toArray(new KeyShareEntry[entries.size()]));
+	}
+	
+	static SupportedGroupsExtension groups(NamedGroup... groups) {
+		return new SupportedGroupsExtension(groups);
+	}
+	
+	static SignatureAlgorithmsExtension schemes(SignatureScheme... schemes) {
+		return new SignatureAlgorithmsExtension(schemes);
+	}
+
+	static SignatureAlgorithmsExtension certSchemes(SignatureScheme... schemes) {
+		return new SignatureAlgorithmsCertExtension(schemes);
+	}
+	
+	static void replace(List<IExtension> extensions, IExtension extension) {
+		for (int i=0; i<extensions.size(); ++i) {
+			IExtension e = extensions.get(i);
+			
+			if (e.getType().equals(extension.getType())) {
+				extensions.set(i, extension);
+			}
+		}
+	}
+
+	static void remove(List<IExtension> extensions, ExtensionType type) {
+		for (int i=0; i<extensions.size(); ++i) {
+			IExtension e = extensions.get(i);
+			
+			if (e.getType().equals(type)) {
+				extensions.remove(i);
+			}
+		}
 	}
 	
 	protected static void assertProduced(ProducedHandshake h, HandshakeType type, RecordType recordType) {

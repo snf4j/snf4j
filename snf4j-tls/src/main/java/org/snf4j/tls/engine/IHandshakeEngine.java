@@ -34,8 +34,6 @@ public interface IHandshakeEngine {
 
 	IEngineHandler getHandler();
 	
-	boolean hasPendingTasks() throws Alert;
-	
 	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
 	
 	void consume(ByteBufferArray srcs, int remaining) throws Alert;
@@ -44,7 +42,11 @@ public interface IHandshakeEngine {
 	
 	ProducedHandshake[] produce() throws Alert;
 	
+	boolean updateTasks() throws Alert;
+
 	boolean hasProducingTask();
+
+	boolean hasRunningTask();
 	
 	boolean hasTask();
 	

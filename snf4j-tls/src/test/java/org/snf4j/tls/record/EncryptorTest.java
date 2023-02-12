@@ -23,37 +23,29 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.record;
 
-import org.snf4j.tls.extension.IServerNameExtension;
-import org.snf4j.tls.record.ContentType;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
-public class TestHandler implements IEngineHandler {
+import org.junit.Test;
+import org.snf4j.tls.CommonTest;
+import org.snf4j.tls.crypto.AESAead;
+import org.snf4j.tls.crypto.AeadEncrypt;
 
-	public boolean verifyServerName = true;
+public class EncryptorTest extends CommonTest {
+
+	final byte[] IV = bytes(1,2,3,4,5,6,7,8,9,10,11,12);
 	
-	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
-
-	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
-	
-	@Override
-	public boolean verify(IServerNameExtension serverName) {
-		return verifyServerName;
+	@Test
+	public void testAll() throws Exception {
+		AESAead aead = AESAead.AEAD_AES_256_GCM;
+		Encryptor d = new Encryptor(new AeadEncrypt(aead.createKey(new byte[32]),aead), IV);
+		
+		assertEquals(IV.length, aead.getIvLength());
+		assertSame(aead, d.getAead().getAead());
+		assertEquals(16, d.getExapnsion());
+		assertArrayEquals(IV, d.nextNonce());
 	}
-
-	@Override
-	public ICertificateSelector getCertificateSelector() {
-		return certificateSelector;
-	}
-
-	@Override
-	public ICertificateValidator getCertificateValidator() {
-		return certificateValidator;
-	}
-
-	@Override
-	public int calculatePadding(ContentType type, int contentLength) {
-		return 0;
-	}
-
 }

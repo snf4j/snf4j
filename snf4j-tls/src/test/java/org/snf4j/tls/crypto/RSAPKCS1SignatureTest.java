@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,14 @@ import org.junit.Test;
 
 public class RSAPKCS1SignatureTest extends SignatureTest {
 
+	@Test
+	public void testMinKeySize() {
+		assertEquals(511, RSAPKCS1Signature.RSA_PKCS1_SHA1.minKeySize());
+		assertEquals(511, RSAPKCS1Signature.RSA_PKCS1_SHA256.minKeySize());
+		assertEquals(768, RSAPKCS1Signature.RSA_PKCS1_SHA384.minKeySize());
+		assertEquals(768, RSAPKCS1Signature.RSA_PKCS1_SHA512.minKeySize());
+	}
+	
 	@Test
 	public void testRsaPkcs1Sha256() throws Exception {
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");

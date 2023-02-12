@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,13 +37,18 @@ import org.junit.Test;
 public class ECDSASignatureTest extends SignatureTest {
 
 	@Test
+	public void testMinKeySize() {
+		assertEquals(-1, ECDSASignature.ECDSA_SECP256R1_SHA256.minKeySize());
+	}
+	
+	@Test
 	public void testEcdsaSecp256r1Sha256() throws Exception {
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
 		keyGen.initialize(256);
 		KeyPair pair = keyGen.generateKeyPair();
 		assertTrue(ECDSASignature.ECDSA_SECP256R1_SHA256.isImplemented());
 		assertVerify(ECDSASignature.ECDSA_SECP256R1_SHA256, pair.getPrivate(), pair.getPublic());
-
+		
 		X509Certificate cert = cert("secp256r1");
 		assertNotNull(cert);
 		assertEquals("SHA256withECDSA", cert.getSigAlgName());

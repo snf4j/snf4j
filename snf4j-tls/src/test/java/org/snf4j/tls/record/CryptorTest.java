@@ -25,42 +25,59 @@
  */
 package org.snf4j.tls.record;
 
-public class Cryptor {
-	
-	private final byte[] iv;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
-	private final int expansion;
+import java.nio.ByteBuffer;
 
-	private long sequence;
+import org.junit.Test;
+import org.snf4j.tls.CommonTest;
+
+public class CryptorTest extends CommonTest {
+
+	final byte[] IV = bytes(1,2,3,4,5,6,7,8,9,10,11,12);
 	
-	protected Cryptor(byte[] iv, int expansion) {
-		this.iv = iv;
-		this.expansion = expansion;
-	}
-	
-	public byte[] nextNonce() {
-		int len = iv.length;
-		byte[] nonce = iv.clone();
-		long nextSequence = sequence++;
-		int i=len-1;
+	byte[] nonce(long sequence) {
+		byte[] nonce = new byte[IV.length];
+		ByteBuffer buf = ByteBuffer.wrap(nonce);
 		
-		for (; i>=len-8; --i) {
-			nonce[i] ^= (byte) nextSequence;
-			nextSequence >>= 8;
+		buf.position(IV.length-8);
+		buf.putLong(sequence);
+		for (int i=0; i<nonce.length; i++) {
+			nonce[i] = (byte) (nonce[i] ^ IV[i]);
 		}
 		return nonce;
 	}
 	
-	public long getSequence() {
-		return sequence;
+	@Test
+	public void testNextNonce() {
+		Cryptor c = new Cryptor(IV.clone(), 16) {};
+		
+		assertEquals(0, c.getSequence());
+		byte[] nonce = c.nextNonce();
+		assertEquals(1, c.getSequence());
+		c.rollbackSequence();
+		assertEquals(0, c.getSequence());
+		assertArrayEquals(nonce, c.nextNonce());
+		assertEquals(1, c.getSequence());
+		assertArrayEquals(IV, nonce);
+		assertArrayEquals(nonce(1), c.nextNonce());
+		c.rollbackSequence();
+		c.rollbackSequence();
+		c.rollbackSequence();
+		assertArrayEquals(nonce(-1), c.nextNonce());
+		
+		for (int i=0; i<10000; ++i) {
+			assertArrayEquals(nonce(i), c.nextNonce());
+		}
 	}
 	
-	public void rollbackSequence() {
-		--sequence;
+	@Test
+	public void testGetExapnsion() {
+		Cryptor c = new Cryptor(IV.clone(), 16) {};
+		
+		assertEquals(16, c.getExapnsion());
+		c = new Cryptor(IV.clone(), 17) {};
+		assertEquals(17, c.getExapnsion());
 	}
-	
-	public int getExapnsion() {
-		return expansion;
-	}
-
 }

@@ -70,12 +70,8 @@ public class Record {
 		return protect(content, encryptor, dst);
 	}
 
-	public static int appData(ByteBuffer src, int padding, Encryptor encryptor, ByteBuffer dst) throws Alert {
-		return 0;
-	}
-	
 	public static int header(ContentType type, int contentLength, ByteBuffer dst) {
-		dst.put((byte) ContentType.HANDSHAKE.value());
+		dst.put((byte) type.value());
 		dst.putShort((short) EngineDefaults.LEGACY_VERSION);
 		dst.putShort((short) contentLength);
 		return HEADER_LENGTH;

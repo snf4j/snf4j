@@ -53,7 +53,7 @@ public class HandshakeDecoder implements IHandshakeDecoder {
 		DEFAULT = decoder;
 	}
 	
-	private final Map<HandshakeType,IHandshakeParser> parsers = new HashMap<>();
+	private final Map<HandshakeType,IHandshakeParser> parsers = new HashMap<HandshakeType,IHandshakeParser>();
 	
 	private IExtensionDecoder extensionDecoder;
 	

@@ -231,12 +231,12 @@ public class TLSEngineTest extends EngineTest {
 
 		//ClientHello <-
 		flip();
-		ssl.unwrap(in, out);
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
 		runTasks(ssl);
 
 		//ServerHello ->
 		clear();
-		ssl.wrap(in, out);
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
 
 		//ServerHello <-
 		flip();
@@ -246,7 +246,7 @@ public class TLSEngineTest extends EngineTest {
 		
 		//EncryptedExtensions... ->
 		clear();
-		ssl.wrap(in, out);
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
 		
 		flip();
 		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
