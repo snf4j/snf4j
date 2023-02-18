@@ -28,6 +28,7 @@ package org.snf4j.tls.engine;
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -246,65 +247,108 @@ public class HandshakeEngine implements IHandshakeEngine {
 		if (isStarted()) {
 			throw new InternalErrorAlert("Handshake has already started");
 		}
-		if (state.isClientMode()) {
-			state.changeState(MachineState.CLI_START);
-		}
-		else {
-			state.changeState(MachineState.SRV_START);
+		if (!state.isClientMode()) {
+			state.changeState(MachineState.SRV_WAIT_1_CH);
 			return;
 		}
 		
-		byte[] random = new byte[32];
-		byte[] legacySessionId;
 		IEngineParameters params = state.getParameters();
+		NamedGroup[] groups = params.getNamedGroups();
+		groups = Arrays.copyOf(groups, Math.min(groups.length, params.getNumberOfOfferedSharedKeys()));
 		
-		params.getSecureRandom().nextBytes(random);
-		if (params.isCompatibilityMode()) {
-			legacySessionId = new byte[32];
-			RANDOM.nextBytes(legacySessionId);
+		KeyExchangeTask task = new KeyExchangeTask(groups);
+		if (groups.length > 0 && params.getDelegatedTaskMode().all()) {
+			state.changeState(MachineState.CLI_WAIT_TASK);
+			state.addTask(task);
 		}
 		else {
-			legacySessionId = new byte[0];
+			task.run(state);
+		}
+	}
+	
+	static class KeyExchangeTask extends AbstractEngineTask {
+
+		private final NamedGroup[] namedGroups;
+		
+		private volatile KeyPair[] pairs;
+		
+		KeyExchangeTask(NamedGroup[] namedGroups) {
+			this.namedGroups = namedGroups;
 		}
 		
-		List<IExtension> extensions = new ArrayList<IExtension>();
-		
-		String serverName = params.getServerName();
-		NamedGroup[] groups = params.getNamedGroups();
-		
-		if (serverName != null) {
-			extensions.add(new ServerNameExtension(serverName));
+		@Override
+		public String name() {
+			return "Key exchange";
 		}
-		extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, 0x0304));
-		extensions.add(new SupportedGroupsExtension(groups));
-		extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
-		
-		try {
-			int offered = Math.min(groups.length, params.getNumberOfOfferedSharedKeys());
-			KeyShareEntry[] entries = new KeyShareEntry[offered];
+
+		@Override
+		public boolean isProducing() {
+			return true;
+		}
+
+		@Override
+		public void finish(EngineState state) throws Alert {
+			byte[] random = new byte[32];
+			byte[] legacySessionId;
+			IEngineParameters params = state.getParameters();
 			
-			for (int i=0; i<offered; ++i) {
-				NamedGroup group = groups[i];
-				KeyPair pair = group.spec().getKeyExchange().generateKeyPair();
-				
-				entries[i] = new KeyShareEntry(group, pair.getPublic());
-				state.storePrivateKey(group, pair.getPrivate());
+			params.getSecureRandom().nextBytes(random);
+			if (params.isCompatibilityMode()) {
+				legacySessionId = new byte[32];
+				RANDOM.nextBytes(legacySessionId);
 			}
-			extensions.add(new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries));
-		} catch (Exception e) {
-			throw new InternalErrorAlert("Failed to generate exchange key", e);
+			else {
+				legacySessionId = new byte[0];
+			}
+			
+			List<IExtension> extensions = new ArrayList<IExtension>();
+			
+			String serverName = params.getServerName();
+			NamedGroup[] groups = params.getNamedGroups();
+			
+			if (serverName != null) {
+				extensions.add(new ServerNameExtension(serverName));
+			}
+			extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, 0x0304));
+			extensions.add(new SupportedGroupsExtension(groups));
+			extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
+			
+			try {
+				int offered = pairs.length;
+				KeyShareEntry[] entries = new KeyShareEntry[offered];
+				
+				for (int i=0; i<offered; ++i) {
+					entries[i] = new KeyShareEntry(namedGroups[i], pairs[i].getPublic());
+					state.storePrivateKey(namedGroups[i], pairs[i].getPrivate());
+				}
+				extensions.add(new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries));
+			} catch (Exception e) {
+				throw new InternalErrorAlert("Failed to generate exchange key", e);
+			}
+			
+			ClientHello clientHello = new ClientHello(
+					EngineDefaults.LEGACY_VERSION, 
+					random, 
+					legacySessionId, 
+					state.getParameters().getCipherSuites(), 
+					new byte[1], 
+					extensions);
+			
+			state.setClientHello(clientHello);
+			state.produce(new ProducedHandshake(clientHello, RecordType.INITIAL));
+			state.changeState(MachineState.CLI_WAIT_1_SH);
 		}
-		
-		ClientHello clientHello = new ClientHello(
-				EngineDefaults.LEGACY_VERSION, 
-				random, 
-				legacySessionId, 
-				state.getParameters().getCipherSuites(), 
-				new byte[1], 
-				extensions);
-		
-		state.setClientHello(clientHello);
-		state.produce(new ProducedHandshake(clientHello, RecordType.INITIAL));
-		state.changeState(MachineState.CLI_WAIT_SH);
+
+		@Override
+		void execute() throws Exception {
+			int len = namedGroups.length;
+			KeyPair[] pairs = new KeyPair[len];
+			
+			for (int i=0; i<namedGroups.length; ++i) {
+				NamedGroup group = namedGroups[i];
+				pairs[i] = group.spec().getKeyExchange().generateKeyPair();
+			}
+			this.pairs = pairs;
+		}
 	}
 }

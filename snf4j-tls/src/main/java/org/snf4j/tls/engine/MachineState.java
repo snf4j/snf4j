@@ -26,21 +26,38 @@
 package org.snf4j.tls.engine;
 
 public enum MachineState {
+	
+	/** Client handshake engine is created but has not been started yet */
 	CLI_INIT(true, false, false),
-	CLI_START(true), 
-	CLI_WAIT_SH(true), 
+
+	/** Client handshake engine is waiting for the first ServerHello message */
+	CLI_WAIT_1_SH(true),
+	
+	/** Client handshake engine is waiting for execution of task(s) */
+	CLI_WAIT_TASK(true), 
+
+	/** Client handshake engine is waiting for the second ServerHello message */
+	CLI_WAIT_2_SH(true),
+	
 	CLI_WAIT_EE(true), 
 	CLI_WAIT_CERT_CR(true), 
 	CLI_WAIT_CERT(true), 
-	CLI_WAIT_CERT_TASK(true), 
 	CLI_WAIT_CV(true), 
 	CLI_WAIT_FINISHED(true),
 	CLI_CONNECTED(true, true),
 	
+	/** Server handshake engine is created but has not been started yet */
 	SRV_INIT(false, false, false),
-	SRV_START(false),
-	SRV_RECVD_CH(false),
-	SRV_NEGOTIATED(false),
+
+	/** Server handshake engine is waiting for the first ClientHello message */
+	SRV_WAIT_1_CH(false),
+
+	/** Server handshake engine is waiting for the second ClientHello message */
+	SRV_WAIT_2_CH(false),
+	
+	/** Server handshake engine is waiting for execution of task(s) */
+	SRV_WAIT_TASK(false),
+
 	SRV_WAIT_EOED(false),
 	SRV_WAIT_FLIGHT2(false),
 	SRV_WAIT_CERT(false),
@@ -54,16 +71,20 @@ public enum MachineState {
 	
 	private final boolean started;
 
+	private final int bitMask;
+	
 	MachineState(boolean clientMode, boolean connected, boolean started) {
 		this.clientMode = clientMode;
 		this.connected = connected;
 		this.started = started;
+		bitMask = 1 << ordinal();
 	}
 	
 	MachineState(boolean clientMode, boolean connected) {
 		this.clientMode = clientMode;
 		this.connected = connected;
 		started = true;
+		bitMask = 1 << ordinal();
 	}
 
 	MachineState(boolean clientMode) {
@@ -80,5 +101,9 @@ public enum MachineState {
 	
 	public boolean isStarted() {
 		return started;
+	}
+	
+	public int bitMask() {
+		return bitMask;
 	}
 }

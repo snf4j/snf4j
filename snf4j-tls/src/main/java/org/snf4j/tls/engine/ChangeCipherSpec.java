@@ -25,21 +25,62 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.record.RecordType;
+import java.nio.ByteBuffer;
+import java.util.List;
 
-public interface IEngineStateListener {
+import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.record.ContentType;
+import org.snf4j.tls.record.Record;
 
-	void onEarlyTrafficSecret(EngineState state) throws Exception;
-	
-	void onHandshakeTrafficSecrets(EngineState state) throws Exception;
-	
-	void onApplicationTrafficSecrets(EngineState state) throws Exception;
-	
-	void onReceivingTraficKey(RecordType recordType);
+public class ChangeCipherSpec implements IHandshake {
 
-	void onSendingTraficKey(RecordType recordType);
+	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
 	
-	void produceChangeCipherSpec(EngineState state);
 	
-	void prepareChangeCipherSpec(EngineState state);
+	@Override
+	public HandshakeType getType() {
+		return null;
+	}
+
+	@Override
+	public void getBytes(ByteBuffer buffer) {
+		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
+		buffer.put((byte)1);
+	}
+
+	@Override
+	public int getLength() {
+		return Record.HEADER_LENGTH + 1;
+	}
+
+	@Override
+	public int getDataLength() {
+		return 1;
+	}
+
+	@Override
+	public boolean isKnown() {
+		return true;
+	}
+
+	@Override
+	public boolean isPrepared() {
+		return true;
+	}
+
+	@Override
+	public byte[] prepare() {
+		byte[] prepared = new byte[getLength()];
+		
+		getBytes(ByteBuffer.wrap(prepared));
+		return prepared;
+	}
+
+	@Override
+	public List<IExtension> getExtensioins() {
+		return null;
+	}
+
 }

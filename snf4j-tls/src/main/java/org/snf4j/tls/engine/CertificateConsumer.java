@@ -56,7 +56,7 @@ public class CertificateConsumer implements IHandshakeConsumer {
 				state.getHandler().getCertificateValidator(),
 				((ICertificate)handshake).getEntries());
 		if (state.getParameters().getDelegatedTaskMode().certificates()) {
-			state.changeState(MachineState.CLI_WAIT_CERT_TASK);
+			state.changeState(MachineState.CLI_WAIT_TASK);
 			state.addTask(task);
 		}
 		else {

@@ -33,9 +33,12 @@ public class MachineStateTest {
 	
 	@Test
 	public void testAll() {
+		int i=0;
+		
 		for (MachineState state: MachineState.values()) {
 			assertEquals(state.name().startsWith("CLI_"), state.clientMode());
 			assertEquals(state.name().endsWith("_CONNECTED"), state.isConnected());
+			assertEquals(1 << i++, state.bitMask());
 		}
 	}
 }

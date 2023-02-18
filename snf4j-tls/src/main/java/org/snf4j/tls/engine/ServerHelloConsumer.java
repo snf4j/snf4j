@@ -28,9 +28,11 @@ package org.snf4j.tls.engine;
 import static org.snf4j.tls.extension.ExtensionsUtil.find;
 
 import java.nio.ByteBuffer;
+import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
+import java.util.List;
 
 import org.snf4j.tls.IntConstant;
 import org.snf4j.tls.alert.Alert;
@@ -48,10 +50,17 @@ import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.crypto.TranscriptHash;
 import org.snf4j.tls.extension.ExtensionType;
+import org.snf4j.tls.extension.ExtensionsUtil;
+import org.snf4j.tls.extension.ICookieExtension;
+import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IKeyShareExtension;
+import org.snf4j.tls.extension.ISupportedGroupsExtension;
 import org.snf4j.tls.extension.ISupportedVersionsExtension;
+import org.snf4j.tls.extension.KeyShareEntry;
+import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IClientHello;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.IServerHello;
 import org.snf4j.tls.record.RecordType;
@@ -63,13 +72,96 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		return HandshakeType.SERVER_HELLO;
 	}
 
-	private void consumeHRR(EngineState state, IHandshake handshake, ByteBuffer[] data) {
+	private void consumeHRR(EngineState state, IServerHello serverHello, ByteBuffer[] data, IKeyShareExtension keyShare) throws Alert {
 		ConsumerUtil.updateHRRTranscriptHash(state, data);
+		
+		IClientHello clientHello = state.getClientHello();
+		List<IExtension> extensions = clientHello.getExtensioins();
+		NamedGroup namedGroup = null;
+		boolean changed = false;
+		
+		if (keyShare != null) {
+			int size = extensions.size();
+			NamedGroup group = keyShare.getNamedGroup();
+			
+			for (int i=0; i<size; ++i) {
+				IExtension extension = extensions.get(i);
+				
+				if (extension.getType().equals(ExtensionType.KEY_SHARE)) {
+					PrivateKey key = state.getPrivateKey(group);
+					
+					state.clearPrivateKeys();
+					if (key == null) {
+						ISupportedGroupsExtension suppGroups = ExtensionsUtil.find(clientHello, ExtensionType.SUPPORTED_GROUPS);
+						
+						if (IntConstant.find(suppGroups.getGroups(), group) == null) {
+							throw new IllegalParameterAlert("Unexpected supported group in HelloRetryRequest");
+						}
+						namedGroup = group;
+						break;
+					}
+					else {
+						KeyShareEntry[] entries = ((IKeyShareExtension)extension).getEntries();
+
+						if (entries.length > 1) {
+							int j = 0;
+							
+							for (;;) {
+								KeyShareEntry entry = entries[j++];
+								
+								if (entry.getNamedGroup().equals(group)) {
+									extensions.set(i, new KeyShareExtension(
+											IKeyShareExtension.Mode.CLIENT_HELLO, 
+											entry));
+									break;
+								}
+							}
+							state.storePrivateKey(group, key);
+							changed = true;
+						}
+					}
+				}
+			}
+		}
+
+		ICookieExtension cookie = find(serverHello, ExtensionType.COOKIE);
+		
+		if (namedGroup == null) {
+			if (cookie != null) {
+				extensions.add(0, cookie);
+				changed = true;
+			}
+			
+			if (!changed) {
+				throw new IllegalParameterAlert("No change after HelloRetryRequest");
+			}
+			
+			//TODO: skip if early data is offered
+			if (state.getParameters().isCompatibilityMode()) {
+				state.getListener().produceChangeCipherSpec(state);
+			}
+			ConsumerUtil.produce(state, clientHello, RecordType.INITIAL, RecordType.HANDSHAKE);
+		}
+		else {
+			KeyExchangeTask task = new KeyExchangeTask(cookie, namedGroup);
+			if (state.getParameters().getDelegatedTaskMode().all()) {
+				state.changeState(MachineState.CLI_WAIT_TASK);
+				state.addTask(task);
+			}
+			else {
+				task.run(state);
+			}
+		}
 	}
 	
 	@Override
 	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
-		if (state.getState() != MachineState.CLI_WAIT_SH) {
+		if (state.getState() == MachineState.CLI_WAIT_2_SH) {
+			if (isHRR) {
+				throw new UnexpectedMessageAlert("Unexpected HelloRetryRequest");
+			}
+		}
+		else if (state.getState() != MachineState.CLI_WAIT_1_SH) {
 			throw new UnexpectedMessageAlert("Unexpected ServerHello");
 		}
 		
@@ -104,7 +196,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		}
 		
 		IKeyShareExtension keyShare = find(handshake, ExtensionType.KEY_SHARE);
-		if (keyShare == null) {
+		if (keyShare == null && !isHRR) {
 			throw new MissingExtensionAlert("Missing key_share extension in ServerHello");
 		}
 		
@@ -125,7 +217,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		}
 		
 		if (isHRR) {
-			consumeHRR(state, handshake, data);
+			consumeHRR(state, serverHello, data, keyShare);
 			return;
 		}
 		
@@ -149,7 +241,59 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		catch (Exception e) {
 			throw new InternalErrorAlert("Failed to derive handshake secret", e);
 		}
+		state.setVersion(negotiatedVersion);
 		state.changeState(MachineState.CLI_WAIT_EE);
 	}
 
+	static class KeyExchangeTask extends AbstractEngineTask {
+
+		private final ICookieExtension cookie;
+		
+		private final NamedGroup namedGroup;
+		
+		private volatile KeyPair pair;
+		
+		KeyExchangeTask(ICookieExtension cookie, NamedGroup namedGroup) {
+			this.cookie = cookie;
+			this.namedGroup = namedGroup;
+		}
+		
+		@Override
+		public String name() {
+			return "Key exchange";
+		}
+
+		@Override
+		public boolean isProducing() {
+			return true;
+		}
+
+		@Override
+		public void finish(EngineState state) throws Alert {
+			IClientHello clientHello = state.getClientHello();
+			List<IExtension> extensions = clientHello.getExtensioins();
+			int size = extensions.size();
+			KeyShareEntry entry = new KeyShareEntry(namedGroup, pair.getPublic());
+
+			state.storePrivateKey(namedGroup, pair.getPrivate());
+			for (int i=0; i<size; ++i) {
+				IExtension extension = extensions.get(i);
+				
+				if (extension.getType().equals(ExtensionType.KEY_SHARE)) {
+					
+					extensions.set(i, new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entry));
+				}
+			}
+			if (cookie != null) {
+				extensions.add(0, cookie);
+			}
+			ConsumerUtil.produce(state, clientHello, RecordType.INITIAL, RecordType.HANDSHAKE);
+			state.changeState(MachineState.CLI_WAIT_2_SH);
+		}
+
+		@Override
+		void execute() throws Exception {
+			pair = namedGroup.spec().getKeyExchange().generateKeyPair();
+		}
+	}
 }

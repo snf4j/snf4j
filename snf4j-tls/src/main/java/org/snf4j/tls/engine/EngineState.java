@@ -39,6 +39,7 @@ import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.handshake.ClientHello;
+import org.snf4j.tls.handshake.IClientHello;
 
 public class EngineState {
 	
@@ -62,11 +63,13 @@ public class EngineState {
 	
 	private MachineState state;
 	
+	private int stateBits;
+	
 	private ITranscriptHash transcriptHash;
 	
 	private KeySchedule keySchedule;
 		
-	private ClientHello clientHello;
+	private IClientHello clientHello;
 	
 	private CipherSuite cipherSuite;
 	
@@ -84,6 +87,7 @@ public class EngineState {
 	
 	public EngineState(MachineState state, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener) {
 		this.state = state;
+		this.stateBits = state.bitMask();
 		this.parameters = parameters;
 		this.handler = handler;
 		this.listener = listener;
@@ -105,11 +109,16 @@ public class EngineState {
 		return state;
 	}
 	
-	public void changeState(MachineState machineState) throws Alert {
-		if (this.state.clientMode() != machineState.clientMode()) {
+	public void changeState(MachineState newState) throws Alert {
+		if (this.state.clientMode() != newState.clientMode()) {
 			throw new InternalErrorAlert("Invalid new machine state");
 		}
-		this.state = machineState;
+		this.state = newState;
+		this.stateBits |= newState.bitMask();
+	}
+	
+	public boolean hadState(MachineState state) {
+		return (stateBits & state.bitMask()) != 0;
 	}
 	
 	public boolean isClientMode() {
@@ -162,7 +171,7 @@ public class EngineState {
 		this.version = version;
 	}
 
-	public ClientHello getClientHello() {
+	public IClientHello getClientHello() {
 		return clientHello;
 	}
 
@@ -278,6 +287,10 @@ public class EngineState {
 		return null;
 	}
 
+	public void clearPrivateKeys() {
+		privateKeys.clear();
+	}
+	
 	public void storePublicKey(PublicKey publicKey) {
 		this.publicKey = publicKey;
 	}
@@ -286,6 +299,10 @@ public class EngineState {
 		return publicKey;
 	}
 
+	public void clearPublicKeys() {
+		publicKey = null;
+	}
+	
 	public int getMaxFragmentLength() {
 		return maxFragmentLength;
 	}

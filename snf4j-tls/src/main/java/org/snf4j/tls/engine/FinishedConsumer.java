@@ -75,6 +75,11 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			throw new DecryptErrorAlert("Failed to verify server verify data");
 		}
 				
+		//TODO: skip if early data is offered
+		if (state.getParameters().isCompatibilityMode() && !state.hadState(MachineState.CLI_WAIT_2_SH)) {
+			state.getListener().produceChangeCipherSpec(state);
+		}
+		
 		try {
 			ConsumerUtil.updateTranscriptHash(state, finished.getType(), data);
 			state.getKeySchedule().deriveMasterSecret();

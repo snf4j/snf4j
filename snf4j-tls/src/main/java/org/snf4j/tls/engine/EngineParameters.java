@@ -39,29 +39,33 @@ public class EngineParameters implements IEngineParameters {
 	
 	private final SignatureScheme[] signatureSchemes;
 	
-	private boolean compatibilityMode;
+	private final boolean compatibilityMode;
 	
-	private int numberOfOfferedSharedKeys = 1;
+	private final int numberOfOfferedSharedKeys;// = 1;
 	
-	private SecureRandom secureRandom = new SecureRandom();
+	private final SecureRandom secureRandom;// = new SecureRandom();
 	
-	private String serverName;
+	private final String serverName;
 	
-	private boolean serverNameRequired;
+	private final boolean serverNameRequired;
 	
-	DelegatedTaskMode delegatedTaskMode = DelegatedTaskMode.NONE;
+	private final DelegatedTaskMode delegatedTaskMode;// = DelegatedTaskMode.NONE;
 	
-	public EngineParameters() {
-		cipherSuites = EngineDefaults.getDefaultCipherSuites();
-		namedGroups = EngineDefaults.getDefaultNamedGroups();
-		signatureSchemes = EngineDefaults.getDefaulSignatureSchemes();
+	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
+			boolean compatibilityMode, int numberOfOfferedSharedKeys, SecureRandom secureRandom, String serverName,
+			boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode) {
+		super();
+		this.cipherSuites = cipherSuites;
+		this.namedGroups = namedGroups;
+		this.signatureSchemes = signatureSchemes;
+		this.compatibilityMode = compatibilityMode;
+		this.numberOfOfferedSharedKeys = numberOfOfferedSharedKeys;
+		this.secureRandom = secureRandom;
+		this.serverName = serverName;
+		this.serverNameRequired = serverNameRequired;
+		this.delegatedTaskMode = delegatedTaskMode;
 	}
 
-	public EngineParameters(DelegatedTaskMode delegatedTaskMode) {
-		this();
-		this.delegatedTaskMode = delegatedTaskMode; 
-	}
-	
 	@Override
 	public CipherSuite[] getCipherSuites() {
 		return cipherSuites;

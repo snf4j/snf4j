@@ -66,7 +66,7 @@ public class TLSEngine implements IEngine {
 
 	private final HandshakeAggregator aggregator; 
 	
-	private final TLSHandshakeWrapper handshakeWrapper;
+	private final TLSHandshakeFragmenter fragmenter;
 	
 	private HandshakeStatus status = NOT_HANDSHAKING;
 	
@@ -85,7 +85,7 @@ public class TLSEngine implements IEngine {
 				this.handler,
 				listener);
 		aggregator = new HandshakeAggregator(handshaker);
-		handshakeWrapper = new TLSHandshakeWrapper(handshaker, listener, listener);
+		fragmenter = new TLSHandshakeFragmenter(handshaker, listener, listener);
 	}
 
 	@Override
@@ -274,10 +274,10 @@ public class TLSEngine implements IEngine {
 	}
 
 	private IEngineResult wrapAlert(ByteBuffer dst, HandshakeStatus status) throws Exception {
-		if (handshakeWrapper.isPending()) {
-			handshakeWrapper.clear();
+		if (fragmenter.isPending()) {
+			fragmenter.clear();
 
-			int produced = handshakeWrapper.wrap(dst);
+			int produced = fragmenter.wrap(dst);
 			if (produced < 0) {
 				return new EngineResult(
 						BUFFER_OVERFLOW, 
@@ -286,7 +286,7 @@ public class TLSEngine implements IEngine {
 						0);
 			}
 			else if (produced > 0) {
-				if (handshakeWrapper.isPending()) {
+				if (fragmenter.isPending()) {
 					return new EngineResult(
 							OK, 
 							status, 
@@ -395,7 +395,7 @@ public class TLSEngine implements IEngine {
 						0);
 			}
 
-			produced = handshakeWrapper.wrap(dst);
+			produced = fragmenter.wrap(dst);
 			if (produced < 0) {
 				return new EngineResult(
 						BUFFER_OVERFLOW, 
@@ -404,7 +404,7 @@ public class TLSEngine implements IEngine {
 						0);
 			}
 			else if (produced > 0) {
-				if (handshakeWrapper.needWrap()) {
+				if (fragmenter.needWrap()) {
 					return new EngineResult(
 							OK, 
 							status, 

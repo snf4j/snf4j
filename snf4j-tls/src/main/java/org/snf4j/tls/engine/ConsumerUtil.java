@@ -66,11 +66,6 @@ public class ConsumerUtil {
 		state.produce(new ProducedHandshake(handshake, recordType, nextRecordType));
 	}
 
-	static void produce(EngineState state, IHandshake handshake, RecordType recordType) {
-		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
-		state.produce(new ProducedHandshake(handshake, recordType));
-	}
-
 	static void prepare(EngineState state, IHandshake handshake, RecordType recordType) {
 		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
 		state.prepare(new ProducedHandshake(handshake, recordType));
@@ -109,14 +104,14 @@ public class ConsumerUtil {
 		}
 	}
 	
-	static boolean verify(byte[] signature, byte[] content, SignatureScheme scheme, PublicKey privateKey, boolean client) throws Alert {
+	static boolean verify(byte[] signature, byte[] content, SignatureScheme scheme, PublicKey publicKey, boolean client) throws Alert {
 		try {
 			Signature sign = scheme
 					.spec()
 					.getSignature()
 					.createSignature();
 			
-			sign.initVerify(privateKey);
+			sign.initVerify(publicKey);
 			sign.update(SIGNATURE_64_OCTETS);
 			if (client) {
 				sign.update(SIGNATURE_CLIENT_CONTEXT);

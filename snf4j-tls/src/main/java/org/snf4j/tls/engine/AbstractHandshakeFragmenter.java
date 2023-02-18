@@ -30,12 +30,11 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import org.snf4j.tls.alert.Alert;
-import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IEncryptorHolder;
 import org.snf4j.tls.record.RecordType;
 
-abstract public class AbstractHandshakeWrapper {
+abstract public class AbstractHandshakeFragmenter {
 	
 	private final Queue<ProducedHandshake> produced = new LinkedList<ProducedHandshake>();
 	
@@ -49,29 +48,32 @@ abstract public class AbstractHandshakeWrapper {
 	
 	private Encryptor pendingEncryptor;
 	
-	public AbstractHandshakeWrapper(IHandshakeEngine handshaker, IEncryptorHolder encryptors, IEngineStateListener listener) {
+	public AbstractHandshakeFragmenter(IHandshakeEngine handshaker, IEncryptorHolder encryptors, IEngineStateListener listener) {
 		this.handshaker = handshaker;
 		this.encryptors = encryptors;
 		this.listener = listener;
 	}
 
-	void clear() {
+	public void clear() {
 		produced.clear();
 	}
 	
-	boolean isPending() {
+	public boolean isPending() {
 		return pending != null;
 	}
 	
-	boolean needWrap() {
-		return !produced.isEmpty() || pending != null;
+	public boolean needWrap() {
+		return !produced.isEmpty() || isPending();
 	}
 	
-	int wrap(ByteBuffer dst) throws Alert {
+	public int wrap(ByteBuffer dst) throws Alert {
+		if (pending != null) {
+			return wrapPending(dst, handshaker.getMaxFragmentLength());
+		}
 		return wrap(dst, handshaker.getMaxFragmentLength());
 	}
 	
-	int wrap(ByteBuffer dst, int maxFragmentLength) throws Alert {
+	private int wrap(ByteBuffer dst, int maxFragmentLength) throws Alert {
 		for (ProducedHandshake handshake: handshaker.produce()) {
 			produced.add(handshake);
 		}
@@ -80,8 +82,20 @@ abstract public class AbstractHandshakeWrapper {
 			return 0;
 		}
 
-		RecordType type = produced.peek().getRecordType();
-		Encryptor encryptor = encryptors.getEncryptor(produced.peek().getRecordType());
+		ProducedHandshake handshake = produced.peek();
+		RecordType type = handshake.getRecordType();
+		
+		if (type == null) {
+			int length = handshake.getHandshake().getLength();
+			
+			if (dst.remaining() < length) {
+				return -1;
+			}
+			produced.poll().getHandshake().getBytes(dst);
+			return length;
+		}
+		
+		Encryptor encryptor = encryptors.getEncryptor(type);
 
 		return wrap(dst, 
 				maxFragmentLength, 
@@ -89,8 +103,45 @@ abstract public class AbstractHandshakeWrapper {
 				type, 
 				encryptor);
 	}
+
+	private int wrapPending(ByteBuffer dst, int maxFragmentLength) throws Alert {
+		Encryptor encryptor = pendingEncryptor;
+		int expansion = calculateExpansionLength(pendingEncryptor);
+		int remaining = dst.remaining();
+
+		if (remaining < maxFragmentLength + expansion) {
+			return -1;
+		}
+		
+		int length = pending.remaining();
+		boolean keepPending;
+		
+		if (remaining < length + expansion) {
+			length = remaining - expansion;
+			keepPending = true;
+		}
+		else {
+			keepPending = false;
+		}
+		
+		ByteBuffer content = prepareForContent(dst, length, maxFragmentLength, encryptor);
+		
+		if (keepPending) {
+			ByteBuffer dup = pending.duplicate();
+
+			dup.limit(dup.position() + length);
+			content.put(dup);
+			pending.position(dup.position());
+		}
+		else {
+			content.put(pending);
+			pending = null;
+			pendingEncryptor = null;
+		}
+		return wrap(content, length, encryptor, dst);
+	}
 	
-	int wrap(ByteBuffer dst, int maxFragmentLength, int expansion, RecordType type, Encryptor encryptor) throws Alert {
+	private int wrap(ByteBuffer dst, int maxFragmentLength, int expansion, RecordType type, Encryptor encryptor) throws Alert {
 		if (dst.remaining() < maxFragmentLength + expansion) {
 			return -1;
 		}
@@ -114,6 +165,9 @@ abstract public class AbstractHandshakeWrapper {
 				lastLength = remaining;
 				len = remaining;		
 			}
+			else {
+				++count;
+			}
 			remaining -= len;
 			length += len;
 			if (handshake.getNextRecordType() != null) {
@@ -122,7 +176,6 @@ abstract public class AbstractHandshakeWrapper {
 			if (remaining == 0) {
 				break;
 			}
-			++count;
 		}
 		
 		ByteBuffer content = prepareForContent(dst, length, maxFragmentLength, encryptor);
@@ -133,11 +186,12 @@ abstract public class AbstractHandshakeWrapper {
 		if (pendingLength != -1) {
 			pending = ByteBuffer.allocate(pendingLength);
 			produced.poll().getHandshake().getBytes(pending);
-
+			pending.flip();
+			
 			ByteBuffer dup = pending.duplicate();
 
-			dup.limit(dup.position()+lastLength);
-			pending.put(content);
+			dup.limit(lastLength);
+			content.put(dup);
 			pending.position(dup.position());
 			pendingEncryptor = encryptor;
 		}

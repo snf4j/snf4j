@@ -132,4 +132,14 @@ public class TLSEngineStateListener implements IEngineStateListener, IEncryptorH
 	public void onSendingTraficKey(RecordType recordType) {
 		encryptor = recordType.ordinal();
 	}
+
+	@Override
+	public void produceChangeCipherSpec(EngineState state) {
+		state.produce(new ProducedHandshake(ChangeCipherSpec.INSTANCE, null));
+	}
+
+	@Override
+	public void prepareChangeCipherSpec(EngineState state) {
+		state.prepare(new ProducedHandshake(ChangeCipherSpec.INSTANCE, null));
+	}
 }

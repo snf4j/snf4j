@@ -92,7 +92,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		extensions.add(keyShare(NamedGroup.SECP256R1));
 		extensions.add(groups(NamedGroup.SECP256R1, NamedGroup.SECP384R1));
 		extensions.add(schemes(SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PSS_RSAE_SHA256));
-		state = new EngineState(MachineState.SRV_START,params, handler, handler);
+		state = new EngineState(MachineState.SRV_WAIT_1_CH,params, handler, handler);
 	}
 	
 	ByteBuffer[] data(ClientHello ch, int... sizes) {
@@ -131,14 +131,14 @@ public class ClientHelloConsumerTest extends EngineTest {
 		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
 		assertSame(TLS_AES_128_GCM_SHA256, sh.getCipherSuite());
 
-		state = new EngineState(MachineState.SRV_START,params, handler, handler);
+		state = new EngineState(MachineState.SRV_WAIT_1_CH,params, handler, handler);
 		ch = clientHelloCS(TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
 		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
 		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
 
-		state = new EngineState(MachineState.SRV_START,params, handler, handler);
+		state = new EngineState(MachineState.SRV_WAIT_1_CH,params, handler, handler);
 		ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
@@ -403,7 +403,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		
 		replace(extensions, versions(0x0303,0x0304,0x0305));
 		legacySessionId = random(32);
-		state = new EngineState(MachineState.SRV_START,params, handler, handler);
+		state = new EngineState(MachineState.SRV_WAIT_1_CH,params, handler, handler);
 		ch = clientHelloCS(TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
@@ -420,7 +420,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 
 		replace(extensions, versions(0x0304));
 		replace(extensions, groups(NamedGroup.SECP384R1));
-		state = new EngineState(MachineState.SRV_START,params, handler, handler);
+		state = new EngineState(MachineState.SRV_WAIT_1_CH,params, handler, handler);
 		ch = clientHelloCS(TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384);
 		consumer.consume(state, ch, data(ch), false);
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
@@ -460,7 +460,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 	@Test(expected=UnexpectedMessageAlert.class)
 	public void testInvalidMachineSate() throws Exception {
 		ClientHello ch = clientHello(0x0303);
-		consumer.consume(new EngineState(MachineState.SRV_RECVD_CH,params, handler, handler), ch, data(ch), false);
+		consumer.consume(new EngineState(MachineState.SRV_WAIT_FINISHED,params, handler, handler), ch, data(ch), false);
 	}
 	
 	@Test(expected=ProtocolVersionAlert.class)

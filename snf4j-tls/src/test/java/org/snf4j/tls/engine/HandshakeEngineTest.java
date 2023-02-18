@@ -80,6 +80,9 @@ public class HandshakeEngineTest extends EngineTest {
 			fail();
 		} catch (InternalErrorAlert e) {}
 		ProducedHandshake[] produced = he.produce();
+		assertEquals(0, produced.length);
+		he.getTask().run();
+		produced = he.produce();
 		assertEquals(1, produced.length);
 		assertProduced(produced[0], HandshakeType.CLIENT_HELLO, RecordType.INITIAL);
 		
@@ -104,6 +107,9 @@ public class HandshakeEngineTest extends EngineTest {
 		he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
 		produced = he.produce();
+		assertEquals(0, produced.length);
+		he.getTask().run();
+		produced = he.produce();
 		assertEquals(1, produced.length);
 
 		ch = (ClientHello) produced[0].getHandshake();
@@ -120,6 +126,9 @@ public class HandshakeEngineTest extends EngineTest {
 		byte[] id1 = ch.getLegacySessionId();
 		he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
+		produced = he.produce();
+		assertEquals(0, produced.length);
+		he.getTask().run();
 		produced = he.produce();
 		assertEquals(1, produced.length);
 		ch = (ClientHello) produced[0].getHandshake();
@@ -145,6 +154,7 @@ public class HandshakeEngineTest extends EngineTest {
 		TestParameters params = new TestParameters();
 		HandshakeEngine he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
+		he.getTask().run();
 		ClientHello ch = (ClientHello) he.produce()[0].getHandshake();
 		ch.getBytes(buffer);
 		byte[] data = buffer();
@@ -252,6 +262,7 @@ public class HandshakeEngineTest extends EngineTest {
 	@Test
 	public void testConsumeNoConsumer() throws Exception {
 		TestParameters params = new TestParameters();
+		params.delegatedTaskMode = DelegatedTaskMode.CERTIFICATES;
 		HandshakeEngine he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
 		he.produce()[0].getHandshake().getBytes(buffer);

@@ -76,7 +76,7 @@ public class EngineTest extends CommonTest {
 	}
 	
 	EngineState serverState() {
-		return new EngineState(MachineState.SRV_START, params, handler, handler);
+		return new EngineState(MachineState.SRV_WAIT_1_CH, params, handler, handler);
 	}
 	
 	static CipherSuite[] suites(CipherSuite... suites) {

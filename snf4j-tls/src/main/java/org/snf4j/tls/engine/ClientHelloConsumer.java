@@ -87,7 +87,12 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 	
 	@Override
 	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
-		if (state.getState() != MachineState.SRV_START) {
+		switch (state.getState()) {
+		case SRV_WAIT_1_CH:
+		case SRV_WAIT_2_CH:
+			break;
+			
+		default:
 			throw new UnexpectedMessageAlert("Unexpected ClientHello");
 		}
 		
@@ -211,6 +216,9 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				ISupportedVersionsExtension.Mode.SERVER_HELLO, 
 				negotiatedVersion));
 		if (keyShareEntry == null) {
+			if (state.getState() == MachineState.SRV_WAIT_2_CH) {
+				throw new UnexpectedMessageAlert("Unexpected third ClientHello");
+			}
 			state.setNamedGroup(namedGroup);
 			extensions.add(new KeyShareExtension(namedGroup));
 			ServerHello helloRetryRequest = new ServerHello(
@@ -221,10 +229,14 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					(byte)0,
 					extensions);
 			ConsumerUtil.produceHRR(state, helloRetryRequest, RecordType.INITIAL);
+			
+			if (clientHello.getLegacySessionId().length > 0) {
+				state.getListener().produceChangeCipherSpec(state);
+			}
+			state.changeState(MachineState.SRV_WAIT_2_CH);
 			return;
 		}
 		state.setVersion(negotiatedVersion);
-		state.changeState(MachineState.SRV_NEGOTIATED);
 		
 		DelegatedTaskMode taskMode = state.getParameters().getDelegatedTaskMode();
 		AbstractEngineTask task = new KeyExchangeTask(
@@ -248,6 +260,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes()
 				));
 		if (taskMode.certificates()) {
+			state.changeState(MachineState.SRV_WAIT_TASK);
 			state.addTask(task);
 		}
 		else {
@@ -317,6 +330,10 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					extensions);
 			ConsumerUtil.prepare(state, serverHello, RecordType.INITIAL, RecordType.HANDSHAKE);
 
+			if (legacySessionId.length > 0 && !state.hadState(MachineState.SRV_WAIT_2_CH)) {
+				state.getListener().prepareChangeCipherSpec(state);
+			}
+			
 			try {
 				state.getKeySchedule().deriveHandshakeSecret(secret);
 				state.getKeySchedule().deriveHandshakeTrafficSecrets();

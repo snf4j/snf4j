@@ -25,21 +25,29 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.record.RecordType;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-public interface IEngineStateListener {
+import org.junit.Test;
+import org.snf4j.tls.CommonTest;
 
-	void onEarlyTrafficSecret(EngineState state) throws Exception;
-	
-	void onHandshakeTrafficSecrets(EngineState state) throws Exception;
-	
-	void onApplicationTrafficSecrets(EngineState state) throws Exception;
-	
-	void onReceivingTraficKey(RecordType recordType);
+public class ChangeCipherSpecTest extends CommonTest {
 
-	void onSendingTraficKey(RecordType recordType);
-	
-	void produceChangeCipherSpec(EngineState state);
-	
-	void prepareChangeCipherSpec(EngineState state);
+	@Test
+	public void testAll() {
+		ChangeCipherSpec ccs = ChangeCipherSpec.INSTANCE;
+		
+		assertNull(ccs.getType());
+		assertEquals(6, ccs.getLength());
+		assertEquals(1, ccs.getDataLength());
+		assertTrue(ccs.isKnown());
+		assertNull(ccs.getExtensioins());
+		assertTrue(ccs.isPrepared());
+		
+		ccs.getBytes(buffer);
+		assertArrayEquals(bytes(20,3,3,0,1,1), buffer());
+		assertArrayEquals(bytes(20,3,3,0,1,1), ccs.prepare());	
+	}
 }

@@ -25,7 +25,7 @@
  */
 package org.snf4j.tls.extension;
 
-public interface ICookieExtension {
+public interface ICookieExtension extends IExtension {
 
 	byte[] getCookie();
 }

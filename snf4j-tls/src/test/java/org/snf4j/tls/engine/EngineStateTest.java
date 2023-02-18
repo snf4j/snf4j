@@ -26,10 +26,13 @@
 package org.snf4j.tls.engine;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.security.PublicKey;
 import java.util.ArrayList;
 import org.junit.Test;
 import org.snf4j.tls.alert.Alert;
@@ -60,16 +63,88 @@ public class EngineStateTest {
 	}
 	
 	@Test
+	public void testChangeState() throws Exception {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+		
+		assertTrue(state.hadState(MachineState.CLI_INIT));
+		assertFalse(state.hadState(MachineState.CLI_WAIT_1_SH));
+		state.changeState(MachineState.CLI_WAIT_1_SH);
+		assertTrue(state.hadState(MachineState.CLI_WAIT_1_SH));
+		assertFalse(state.hadState(MachineState.CLI_WAIT_2_SH));
+		state.changeState(MachineState.CLI_WAIT_2_SH);
+		assertTrue(state.hadState(MachineState.CLI_WAIT_2_SH));
+		assertTrue(state.hadState(MachineState.CLI_INIT));
+		assertTrue(state.hadState(MachineState.CLI_WAIT_1_SH));
+		assertFalse(state.hadState(MachineState.CLI_WAIT_EE));
+		try {
+			state.changeState(MachineState.SRV_INIT);
+			fail();
+		} catch (InternalErrorAlert e) {}
+	}
+	
+	@Test
+	public void testGetMaxFragmentLength() {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+		assertEquals(16384, state.getMaxFragmentLength());
+	}
+	
+	@Test
+	public void testStorePublicKey() {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+
+		PublicKey key = new PublicKey() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public String getAlgorithm() {
+				return null;
+			}
+
+			@Override
+			public String getFormat() {
+				return null;
+			}
+
+			@Override
+			public byte[] getEncoded() {
+				return null;
+			}
+		};
+		
+		assertNull(state.getPublicKey());
+		state.storePublicKey(key);
+		assertSame(key, state.getPublicKey());
+		state.clearPublicKeys();
+		assertNull(state.getPublicKey());
+	}
+	
+	@Test
 	public void testGetProduced() throws Exception {
 		EngineState state = new EngineState(
-				MachineState.SRV_START, 
+				MachineState.SRV_WAIT_1_CH, 
 				new TestParameters(), 
 				new TestHandshakeHandler(),
 				new TestHandshakeHandler());
 		
 		assertEquals(0, state.getProduced().length);
+		assertFalse(state.hasProduced());
 		state.produce(handshake(1));
+		assertTrue(state.hasProduced());
 		ProducedHandshake[] produced = state.getProduced();
+		assertFalse(state.hasProduced());
 		assertEquals(1, produced.length);
 		assertEquals(1, id(produced[0]));
 		assertEquals(0, state.getProduced().length);
@@ -98,15 +173,30 @@ public class EngineStateTest {
 		
 		state.produce(handshake(7));
 		state.prepare(handshake(8));
+		assertFalse(state.hasTasks());
+		assertFalse(state.hasRunningTasks());
+		assertFalse(state.hasProducingTasks());
 		state.addTask(new Task(9));
+		assertTrue(state.hasTasks());
+		assertFalse(state.hasRunningTasks());
+		assertTrue(state.hasProducingTasks());
 		produced = state.getProduced();
 		assertEquals(1, produced.length);
 		assertEquals(7, id(produced[0]));
 		assertEquals(0, state.getProduced().length);
 		Runnable task = state.getTask();
+		assertFalse(state.hasTasks());
+		assertTrue(state.hasRunningTasks());
+		assertTrue(state.hasProducingTasks());
 		assertEquals(0, state.getProduced().length);
 		task.run();
+		assertFalse(state.hasTasks());
+		assertTrue(state.hasRunningTasks());
+		assertTrue(state.hasProducingTasks());
 		produced = state.getProduced();
+		assertFalse(state.hasTasks());
+		assertFalse(state.hasRunningTasks());
+		assertFalse(state.hasProducingTasks());
 		assertEquals(2, produced.length);
 		assertEquals(8, id(produced[0]));
 		assertEquals(9, id(produced[1]));
@@ -115,7 +205,10 @@ public class EngineStateTest {
 		
 		state.produce(handshake(10));
 		state.prepare(handshake(11));
-		state.addTask(new Task(12));
+		state.addTask(new Task(false,12));
+		assertTrue(state.hasTasks());
+		assertFalse(state.hasRunningTasks());
+		assertFalse(state.hasProducingTasks());
 		state.addTask(new Task(13));
 		task = state.getTask();
 		Runnable task2 = state.getTask();
@@ -158,10 +251,17 @@ public class EngineStateTest {
 		
 		Exception e;
 		
+		boolean producing = true;
+		
 		Task(int... ids) {
 			this.ids = ids;
 		}
 
+		Task(boolean producing, int... ids) {
+			this.producing = producing;
+			this.ids = ids;
+		}
+		
 		Task(Exception e, int... ids) {
 			this.e = e;
 			this.ids = ids;
@@ -169,7 +269,7 @@ public class EngineStateTest {
 		
 		@Override
 		public boolean isProducing() {
-			return true;
+			return producing;
 		}
 
 		@Override

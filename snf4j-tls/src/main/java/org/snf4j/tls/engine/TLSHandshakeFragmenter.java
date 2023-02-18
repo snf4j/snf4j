@@ -32,9 +32,9 @@ import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IEncryptorHolder;
 import org.snf4j.tls.record.Record;
 
-public class TLSHandshakeWrapper extends AbstractHandshakeWrapper {
+public class TLSHandshakeFragmenter extends AbstractHandshakeFragmenter {
 	
-	public TLSHandshakeWrapper(IHandshakeEngine handshaker, IEncryptorHolder encryptors, IEngineStateListener listener) {
+	public TLSHandshakeFragmenter(IHandshakeEngine handshaker, IEncryptorHolder encryptors, IEngineStateListener listener) {
 		super(handshaker, encryptors, listener);
 	}
 	

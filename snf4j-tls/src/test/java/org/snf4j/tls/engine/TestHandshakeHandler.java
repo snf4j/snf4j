@@ -39,7 +39,13 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	
 	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
 
+	public RuntimeException onETSException;
+
+	public RuntimeException onHTSException;
+	
 	public RuntimeException onATSException;
+	
+	public int padding;
 	
 	public void trace(String msg) {
 		synchronized (trace) {
@@ -78,11 +84,17 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	@Override
 	public void onEarlyTrafficSecret(EngineState state) throws Exception {
 		trace("ETS");
+		if (onETSException != null) {
+			throw onETSException;
+		}
 	}
 
 	@Override
 	public void onHandshakeTrafficSecrets(EngineState state) throws Exception {
 		trace("HTS");
+		if (onHTSException != null) {
+			throw onHTSException;
+		}
 	}
 
 	@Override
@@ -105,7 +117,17 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	
 	@Override
 	public int calculatePadding(ContentType type, int contentLength) {
-		return 0;
+		return padding;
+	}
+
+	@Override
+	public void produceChangeCipherSpec(EngineState state) {
+		trace("prodCCS");
+	}
+
+	@Override
+	public void prepareChangeCipherSpec(EngineState state) {
+		trace("prepCCS");
 	}
 	
 }

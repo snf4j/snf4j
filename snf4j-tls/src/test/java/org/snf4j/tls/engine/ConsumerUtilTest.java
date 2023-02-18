@@ -26,13 +26,21 @@
 package org.snf4j.tls.engine;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.Signature;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.util.Arrays;
 
 import org.junit.Test;
 import org.snf4j.tls.CommonTest;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.extension.ISignatureSchemeSpec;
+import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.CertificateType;
 
 public class ConsumerUtilTest extends CommonTest {
@@ -48,11 +56,32 @@ public class ConsumerUtilTest extends CommonTest {
 		byte[] client = "TLS 1.3, client CertificateVerify".getBytes(StandardCharsets.US_ASCII);
 		s.initSign(certs.getPrivateKey());
 		s.update(cat(octets,server,bytes(0),bytes(1,2,3,4)));
-		assertArrayEquals(s.sign(), ConsumerUtil.sign(bytes(1,2,3,4), certs.getAlgorithm(), certs.getPrivateKey(), false));
+		byte[] signature = s.sign();
+		assertArrayEquals(signature, ConsumerUtil.sign(bytes(1,2,3,4), certs.getAlgorithm(), certs.getPrivateKey(), false));
 
+		CertificateFactory cf = CertificateFactory.getInstance("X.509");
+		Certificate cert = cf.generateCertificate(new ByteArrayInputStream(certs.getEntries()[0].getData()));
+		assertTrue(ConsumerUtil.verify(signature, bytes(1,2,3,4), certs.getAlgorithm(), cert.getPublicKey(), false));
+		
 		s = certs.getAlgorithm().spec().getSignature().createSignature();
 		s.initSign(certs.getPrivateKey());
 		s.update(cat(octets,client,bytes(0),bytes(1,2,3,4,5)));
-		assertArrayEquals(s.sign(), ConsumerUtil.sign(bytes(1,2,3,4,5), certs.getAlgorithm(), certs.getPrivateKey(), true));
+		signature = s.sign();
+		assertArrayEquals(signature, ConsumerUtil.sign(bytes(1,2,3,4,5), certs.getAlgorithm(), certs.getPrivateKey(), true));
+		assertTrue(ConsumerUtil.verify(signature, bytes(1,2,3,4,5), certs.getAlgorithm(), cert.getPublicKey(), true));
+		
+		SignatureScheme scheme = new SignatureScheme(100) {
+			public ISignatureSchemeSpec spec() {
+				throw new RuntimeException();
+			}
+		};
+		try {
+			ConsumerUtil.sign(bytes(1,2,3,4,5), scheme, certs.getPrivateKey(), true);
+			fail();
+		} catch (InternalErrorAlert e) {}
+		try {
+			ConsumerUtil.verify(signature, bytes(1,2,3,4,5), scheme, cert.getPublicKey(), true);
+			fail();
+		} catch (InternalErrorAlert e) {}
 	}
 }
