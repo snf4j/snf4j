@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,42 +23,28 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.extension;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
-import org.snf4j.tls.extension.IExtension;
+import org.junit.Test;
 
-public class UnknownHandshake extends AbstractHandshake {
+public class PskKeyExchangeModeTest {
 
-	private final byte[] data;
-	
-	public UnknownHandshake(HandshakeType type, byte[] data) {
-		super(type);
-		this.data = data;
-	}
-
-	@Override
-	public int getDataLength() {
-		return data.length;
-	}
-
-	public byte[] getData() {
-		return data;
-	}
-	
-	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
-	}
-
-	@Override
-	public final boolean isKnown() { return false; }
-
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
+	@Test
+	public void testAll() {
+		assertEquals(0, PskKeyExchangeMode.PSK_KE.value());
+		assertEquals(1, PskKeyExchangeMode.PSK_DHE_KE.value());
+		assertTrue(PskKeyExchangeMode.PSK_KE.isKnown());
+		assertTrue(PskKeyExchangeMode.PSK_DHE_KE.isKnown());
+		
+		assertSame(PskKeyExchangeMode.PSK_KE, PskKeyExchangeMode.of(0));
+		assertSame(PskKeyExchangeMode.PSK_DHE_KE, PskKeyExchangeMode.of(1));
+		assertFalse(PskKeyExchangeMode.of(2).isKnown());
+		assertFalse(PskKeyExchangeMode.of(255).isKnown());
 	}
 
 }

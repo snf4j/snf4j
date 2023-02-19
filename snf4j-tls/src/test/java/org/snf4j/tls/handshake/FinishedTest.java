@@ -48,7 +48,7 @@ public class FinishedTest extends HandshakeTest {
 
 		Finished f = (Finished) h;
 		assertArrayEquals(bytes(1,2,3,4), f.getVerifyData());
-		assertNull(f.getExtensioins());
+		assertNull(f.getExtensions());
 		
 		assertEquals(data.length-4, f.getDataLength());
 		f.getBytes(buffer);

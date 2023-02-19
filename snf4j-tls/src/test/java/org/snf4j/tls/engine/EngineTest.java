@@ -45,6 +45,8 @@ import org.snf4j.tls.extension.KeyShareEntry;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.ParsedKey;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
+import org.snf4j.tls.extension.PskKeyExchangeModesExtension;
 import org.snf4j.tls.extension.ServerNameExtension;
 import org.snf4j.tls.extension.SignatureAlgorithmsCertExtension;
 import org.snf4j.tls.extension.SignatureAlgorithmsExtension;
@@ -146,7 +148,7 @@ public class EngineTest extends CommonTest {
 	
 	@SuppressWarnings("unchecked")
 	static <T extends IExtension> T findExtension(IHandshake handshake, ExtensionType type) {
-		for (IExtension e: handshake.getExtensioins()) {
+		for (IExtension e: handshake.getExtensions()) {
 			if (e.getType().value() == type.value()) {
 				return (T) e;
 			}
@@ -227,4 +229,16 @@ public class EngineTest extends CommonTest {
 			assertNull(e);
 		}
 	}
+
+	protected static void assertPskModes(IHandshake handshake, PskKeyExchangeMode... modes) {
+		PskKeyExchangeModesExtension e = findExtension(handshake, ExtensionType.PSK_KEY_EXCHANGE_MODES);
+
+		if (modes != null) {
+			assertArrayEquals(modes, e.getModes());
+		}
+		else {
+			assertNull(e);
+		}
+	}
+
 }

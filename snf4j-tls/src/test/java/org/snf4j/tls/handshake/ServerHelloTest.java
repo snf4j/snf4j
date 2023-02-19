@@ -93,8 +93,8 @@ public class ServerHelloTest extends HandshakeTest {
 				0xf7,0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xfe,0xff), sh.getLegacySessionId());
 		assertEquals(0, sh.getLegacyCompressionMethod());
 		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
-		assertEquals(2, sh.getExtensioins().size());
-		assertSame(ExtensionType.KEY_SHARE, sh.getExtensioins().get(1).getType());	
+		assertEquals(2, sh.getExtensions().size());
+		assertSame(ExtensionType.KEY_SHARE, sh.getExtensions().get(1).getType());	
 		
 		assertEquals(data.length-4, sh.getDataLength());
 		sh.getBytes(buffer);
@@ -111,7 +111,7 @@ public class ServerHelloTest extends HandshakeTest {
 		sh = (ServerHello) ServerHello.getParser().parse(array(bytes, 4), bytes.length-4, decoder);
 		assertEquals(0, sh.getLegacySessionId().length);
 		assertEquals(1, sh.getLegacyCompressionMethod());
-		assertEquals(0, sh.getExtensioins().size());
+		assertEquals(0, sh.getExtensions().size());
 		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
 	}
 
@@ -123,7 +123,7 @@ public class ServerHelloTest extends HandshakeTest {
 		sh = (ServerHello) ServerHello.getParser().parse(array(bytes, 4), bytes.length-4, decoder);
 		assertEquals(32, sh.getLegacySessionId().length);
 		assertEquals(-1, sh.getLegacyCompressionMethod());
-		assertEquals(1, sh.getExtensioins().size());
+		assertEquals(1, sh.getExtensions().size());
 	}
 	
 	void assertIllegalArguments(int legacyVersion, byte[] random, byte[] legacySessionId, 
@@ -250,7 +250,7 @@ public class ServerHelloTest extends HandshakeTest {
 		assertArrayEquals(bytes(0,0), buffer(42,2));
 		assertEquals(44, buffer().length);
 		sh = (ServerHello) ServerHello.getParser().parse(array(buffer(), 4), 40, decoder);
-		assertEquals(0, sh.getExtensioins().size());	
+		assertEquals(0, sh.getExtensions().size());	
 		
 		buffer.clear();
 		extensions.add(new ServerNameExtension("A"));
@@ -265,8 +265,8 @@ public class ServerHelloTest extends HandshakeTest {
 		assertArrayEquals(bytes(0,10), buffer(42,2));
 		assertEquals(54, buffer().length);
 		sh = (ServerHello) ServerHello.getParser().parse(array(buffer(), 4), 50, decoder);
-		assertEquals(1, sh.getExtensioins().size());
-		assertEquals("A", ((ServerNameExtension)sh.getExtensioins().get(0)).getHostName());
+		assertEquals(1, sh.getExtensions().size());
+		assertEquals("A", ((ServerNameExtension)sh.getExtensions().get(0)).getHostName());
 	}
 
 	@Test

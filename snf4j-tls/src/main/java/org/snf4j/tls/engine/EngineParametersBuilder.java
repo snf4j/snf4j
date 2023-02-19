@@ -29,6 +29,7 @@ import java.security.SecureRandom;
 
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.SignatureScheme;
 
 public class EngineParametersBuilder {
@@ -38,6 +39,8 @@ public class EngineParametersBuilder {
 	private NamedGroup[] namedGroups = EngineDefaults.getDefaultNamedGroups();
 	
 	private SignatureScheme[] signatureSchemes = EngineDefaults.getDefaulSignatureSchemes();
+	
+	private PskKeyExchangeMode[] pskKeyExchangeModes = EngineDefaults.getDefaultPskKeyExchangeModes();
 	
 	private SecureRandom secureRandom = new SecureRandom();
 	
@@ -63,6 +66,11 @@ public class EngineParametersBuilder {
 
 	public EngineParametersBuilder signatureSchemes(SignatureScheme... signatureSchemes) {
 		this.signatureSchemes = signatureSchemes.clone();
+		return this;
+	}
+	
+	public EngineParametersBuilder pskKeyExchangeModes(PskKeyExchangeMode... pskKeyExchangeModes) {
+		this.pskKeyExchangeModes = pskKeyExchangeModes;
 		return this;
 	}
 	
@@ -101,6 +109,7 @@ public class EngineParametersBuilder {
 				cipherSuites.clone(),
 				namedGroups.clone(),
 				signatureSchemes.clone(),
+				pskKeyExchangeModes.clone(),
 				compatibilityMode,
 				numberOfOfferedSharedKeys,
 				secureRandom,

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,42 +23,39 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
-import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.Args;
 
-public class UnknownHandshake extends AbstractHandshake {
-
-	private final byte[] data;
+public class PskIdentity {
 	
-	public UnknownHandshake(HandshakeType type, byte[] data) {
-		super(type);
-		this.data = data;
+    private final byte[] identity;
+    
+    private final long obfuscatedTicketAge;
+
+	public PskIdentity(byte[] identity, long obfuscatedTicketAge) {
+		Args.checkNull(identity, "identity");
+		this.identity = identity;
+		this.obfuscatedTicketAge = obfuscatedTicketAge;
 	}
 
-	@Override
+	public byte[] getIdentity() {
+		return identity;
+	}
+
+	public long getObfuscatedTicketAge() {
+		return obfuscatedTicketAge;
+	}
+	
 	public int getDataLength() {
-		return data.length;
-	}
-
-	public byte[] getData() {
-		return data;
+		return 2 + 4 + identity.length;
 	}
 	
-	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
+	public void getData(ByteBuffer buffer) {
+		buffer.putShort((short) identity.length);
+		buffer.put(identity);
+		buffer.putInt((int) obfuscatedTicketAge);
 	}
-
-	@Override
-	public final boolean isKnown() { return false; }
-
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
-	}
-
 }

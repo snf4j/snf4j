@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,42 +23,35 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.extension;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.snf4j.tls.IntConstant;
 
-import org.snf4j.tls.extension.IExtension;
+public class PskKeyExchangeMode extends IntConstant {
 
-public class UnknownHandshake extends AbstractHandshake {
+	public static final PskKeyExchangeMode PSK_KE = new PskKeyExchangeMode("psk_ke", 0);
 
-	private final byte[] data;
+	public static final PskKeyExchangeMode PSK_DHE_KE = new PskKeyExchangeMode("psk_dhe_ke", 1);
 	
-	public UnknownHandshake(HandshakeType type, byte[] data) {
-		super(type);
-		this.data = data;
+	protected PskKeyExchangeMode(String name, int value) {
+		super(name, value);
 	}
 
-	@Override
-	public int getDataLength() {
-		return data.length;
+	protected PskKeyExchangeMode(int value) {
+		super(value);
 	}
 
-	public byte[] getData() {
-		return data;
-	}
-	
-	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
-	}
-
-	@Override
-	public final boolean isKnown() { return false; }
-
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
+	public static PskKeyExchangeMode of(int value) {
+		switch (value) {
+		case 0:
+			return PSK_KE;
+			
+		case 1:
+			return PSK_DHE_KE;
+			
+		default:
+			return new PskKeyExchangeMode(value);
+		}
 	}
 
 }

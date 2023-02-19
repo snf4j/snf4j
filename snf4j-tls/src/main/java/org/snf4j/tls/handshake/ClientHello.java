@@ -148,7 +148,7 @@ public class ClientHello extends AbstractHello implements IClientHello {
 	}
 
 	@Override
-	public List<IExtension> getExtensioins() {
+	public List<IExtension> getExtensions() {
 		return extensions;
 	}
 

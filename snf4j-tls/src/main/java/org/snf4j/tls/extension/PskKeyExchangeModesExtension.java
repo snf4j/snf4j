@@ -23,66 +23,73 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.Alert;
-import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.extension.IExtensionDecoder;
+import org.snf4j.tls.handshake.HandshakeType;
 
-public class Finished extends KnownHandshake implements IFinished {
+public class PskKeyExchangeModesExtension extends KnownExtension implements IPskKeyExchangeModesExtension {
 
-	private final static HandshakeType TYPE = HandshakeType.FINISHED;
+	private final static ExtensionType TYPE = ExtensionType.PSK_KEY_EXCHANGE_MODES;
 	
-	private final byte[] verifyData;
+	private final PskKeyExchangeMode[] modes;
 	
-	private final static AbstractHandshakeParser PARSER = new AbstractHandshakeParser() {
+	private final static AbstractExtensionParser PARSER = new AbstractExtensionParser() {
 
 		@Override
-		public HandshakeType getType() {
+		public ExtensionType getType() {
 			return TYPE;
 		}
 
 		@Override
-		public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder) throws Alert {
-			byte[] verifyData = new byte[remaining];
-			
-			srcs.get(verifyData);
-			return new Finished(verifyData);
-		}
-		
+		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
+			if (remaining > 1) {
+				int len = srcs.getUnsigned();
+				
+				--remaining;
+				if (len == remaining) {
+					PskKeyExchangeMode[] modes = new PskKeyExchangeMode[len];
+					
+					for (int i=0; i<len; ++i) {
+						modes[i] = PskKeyExchangeMode.of(srcs.getUnsigned());
+					}
+					return new PskKeyExchangeModesExtension(modes);
+				}
+			}
+			throw decodeError("Inconsistent length");
+		}	
 	};
-	public Finished(byte[] verifyData) {
+	
+	public PskKeyExchangeModesExtension(PskKeyExchangeMode... modes) {
 		super(TYPE);
-		Args.checkNull(verifyData, "verifyData");
-		this.verifyData = verifyData;
+		Args.checkMin(modes, 1, "modes");
+		this.modes = modes;
+	}
+
+	@Override
+	public PskKeyExchangeMode[] getModes() {
+		return modes;
 	}
 
 	@Override
 	public int getDataLength() {
-		return verifyData.length;
-	}
-
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
-	}
-
-	public static IHandshakeParser getParser() {
-		return PARSER;
-	}
-	
-	@Override
-	public byte[] getVerifyData() {
-		return verifyData;
+		return 1 + modes.length;
 	}
 
 	@Override
 	protected void getData(ByteBuffer buffer) {
-		buffer.put(verifyData);
+		buffer.put((byte) modes.length);
+		for (PskKeyExchangeMode mode: modes) {
+			buffer.put((byte) mode.value());
+		}
 	}
+
+	public static IExtensionParser getParser() {
+		return PARSER;
+	}
+
 }

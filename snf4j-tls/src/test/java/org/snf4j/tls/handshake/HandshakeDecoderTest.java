@@ -72,7 +72,7 @@ public class HandshakeDecoderTest extends HandshakeTest {
 		assertTrue(h.isKnown());
 		ch = (ClientHello) h;
 		assertEquals(0x303, ch.getLegacyVersion());
-		assertEquals(0, ch.getExtensioins().size());
+		assertEquals(0, ch.getExtensions().size());
 
 		try {
 			decoder.decode(array(data,0), ch.getLength()-1);

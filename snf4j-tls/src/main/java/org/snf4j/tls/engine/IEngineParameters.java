@@ -28,6 +28,7 @@ package org.snf4j.tls.engine;
 import java.security.SecureRandom;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.SignatureScheme;
 
 public interface IEngineParameters {
@@ -38,6 +39,8 @@ public interface IEngineParameters {
 
 	SignatureScheme[] getSignatureSchemes();
 
+	PskKeyExchangeMode[] getPskKeyExchangeModes();
+	
 	SecureRandom getSecureRandom();
 
 	boolean isCompatibilityMode();

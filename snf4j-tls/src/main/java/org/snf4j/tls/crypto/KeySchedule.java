@@ -40,7 +40,11 @@ public class KeySchedule {
 	
 	private static final byte[] DERIVED = label("derived");
 	
+	private static final byte[] RESUMPTION = label("resumption");
+	
 	private static final byte[] RES_BINDER = label("res binder");
+	
+	private static final byte[] RES_MASTER = label("res master");
 
 	private static final byte[] EXT_BINDER = label("ext binder");
 	
@@ -91,7 +95,9 @@ public class KeySchedule {
 	private byte[] clientApplicationTrafficSecret;
 
 	private byte[] serverApplicationTrafficSecret;
-		
+	
+	private byte[] resumptionMasterSecret;
+	
 	private static byte[] label(String label) {
 		return (LABEL_PREFIX + label).getBytes(StandardCharsets.US_ASCII);
 	}
@@ -178,6 +184,14 @@ public class KeySchedule {
 		byte[] hmac = hkdf.extract(finishedKey, hash);
 		Arrays.fill(finishedKey, (byte)0);
 		return hmac;
+	}
+	
+	public byte[] computePsk(byte[] ticketNonce) throws InvalidKeyException {
+		checkDerived(resumptionMasterSecret, "Resumption Master Secret");
+		return hkdfExpandLabel(resumptionMasterSecret,
+				RESUMPTION,
+				ticketNonce,
+				hashLength);
 	}
 	
 	protected SecretKey createKey(byte[] key, ICipherSuiteSpec cipherSuiteSpec) {
@@ -330,6 +344,22 @@ public class KeySchedule {
 			Arrays.fill(serverApplicationTrafficSecret, (byte)0);
 			serverApplicationTrafficSecret = null;
 			clientApplicationTrafficSecret = null;
+		}
+	}
+	
+	public void deriveResumptionMasterSecret() throws InvalidKeyException {
+		checkDerived(masterSecret, "Master Secret");
+		eraseResumptionMasterSecret();
+		resumptionMasterSecret = hkdfExpandLabel(masterSecret, 
+				RES_MASTER, 
+				transcriptHash.getHash(HandshakeType.FINISHED, true), 
+				hashLength);
+	}
+
+	public void eraseResumptionMasterSecret() {
+		if (resumptionMasterSecret != null) {
+			Arrays.fill(resumptionMasterSecret, (byte)0);
+			resumptionMasterSecret = null;
 		}
 	}
 	

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,15 +29,15 @@ import java.util.List;
 
 import org.snf4j.tls.extension.IExtension;
 
-public interface INewSessionTicket {
+public interface INewSessionTicket extends IHandshake {
 	
-	long getTicketLifetime();
+	long getLifetime();
 	
-	long getTicketAgeAdd();
+	long getAgeAdd();
 	
-	byte[] getTicketNonce();
+	byte[] getNonce();
 	
 	byte[] getTicket();
 	
-	List<IExtension> getExtensioins();
+	List<IExtension> getExtensions();
 }

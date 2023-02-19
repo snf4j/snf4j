@@ -29,6 +29,7 @@ import java.security.SecureRandom;
 
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.SignatureScheme;
 
 public class EngineParameters implements IEngineParameters {
@@ -38,6 +39,8 @@ public class EngineParameters implements IEngineParameters {
 	private final NamedGroup[] namedGroups;
 	
 	private final SignatureScheme[] signatureSchemes;
+	
+	private final PskKeyExchangeMode[] pskKeyExchangeModes;
 	
 	private final boolean compatibilityMode;
 	
@@ -52,12 +55,14 @@ public class EngineParameters implements IEngineParameters {
 	private final DelegatedTaskMode delegatedTaskMode;// = DelegatedTaskMode.NONE;
 	
 	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
+			PskKeyExchangeMode[] pskKeyExchangeModes,
 			boolean compatibilityMode, int numberOfOfferedSharedKeys, SecureRandom secureRandom, String serverName,
 			boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode) {
 		super();
 		this.cipherSuites = cipherSuites;
 		this.namedGroups = namedGroups;
 		this.signatureSchemes = signatureSchemes;
+		this.pskKeyExchangeModes = pskKeyExchangeModes;
 		this.compatibilityMode = compatibilityMode;
 		this.numberOfOfferedSharedKeys = numberOfOfferedSharedKeys;
 		this.secureRandom = secureRandom;
@@ -81,6 +86,11 @@ public class EngineParameters implements IEngineParameters {
 		return signatureSchemes;
 	}
 
+	@Override
+	public PskKeyExchangeMode[] getPskKeyExchangeModes() {
+		return pskKeyExchangeModes;
+	}
+	
 	@Override
 	public boolean isCompatibilityMode() {
 		return compatibilityMode;

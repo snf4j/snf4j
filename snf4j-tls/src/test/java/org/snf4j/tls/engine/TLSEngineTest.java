@@ -289,9 +289,17 @@ public class TLSEngineTest extends EngineTest {
 		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
 		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
 		assertInOut(0, out.position());
-		
+
 		flip();
-		assertResult(ssl.unwrap(in, out), OK, FINISHED);
+		assertResult(ssl.unwrap(in, out), OK, NEED_WRAP);
+		
+		//new session ticket ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		
+		//new session ticket <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
 		
 		//application data
 		byte[] data = bytes(1,2,3,4,5,6,7,8,9,0);
@@ -484,6 +492,7 @@ public class TLSEngineTest extends EngineTest {
 				.numberOfOfferedSharedKeys(0)
 				.delegatedTaskMode(DelegatedTaskMode.ALL)
 				.compatibilityMode(true)
+				.pskKeyExchangeModes()
 				.build(), 
 				handler);
 		assertEngine(tls, NOT_HANDSHAKING);

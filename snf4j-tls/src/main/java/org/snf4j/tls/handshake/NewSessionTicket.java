@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,22 +31,25 @@ import java.util.List;
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.Alert;
-import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.ExtensionsParser;
 import org.snf4j.tls.extension.ExtensionsUtil;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionDecoder;
 
-public class ServerHello extends AbstractHello implements IServerHello {
-	
-	private final static HandshakeType TYPE = HandshakeType.SERVER_HELLO;
+public class NewSessionTicket extends KnownHandshake implements INewSessionTicket {
 
-	private final CipherSuite cipherSuite;
+	private final static HandshakeType TYPE = HandshakeType.NEW_SESSION_TICKET;
 	
-	private final byte legacyCompressionMethod;
+	private final long lifetime;
+	
+	private final long ageAdd;
+	
+	private final byte[] nonce;
+	
+	private final byte[] ticket;
 	
 	private final List<IExtension> extensions;
-	
+
 	private final static AbstractHandshakeParser PARSER = new AbstractHandshakeParser() {
 
 		@Override
@@ -56,61 +59,73 @@ public class ServerHello extends AbstractHello implements IServerHello {
 
 		@Override
 		public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder) throws Alert {
-			if (remaining > COMMON_PART_MIN_LENGTH) {
-				int legacyVersion = srcs.getUnsignedShort();
-				byte[] random = new byte[RANDOM_LENGTH]; 
-				int len;
+			if (remaining > 9) {
+				long lifetime = srcs.getUnsignedInt();
+				long ageAdd = srcs.getUnsignedInt();
+				int len = srcs.getUnsigned();
 				
-				srcs.get(random);
-				len = srcs.getUnsigned();
-				remaining -= COMMON_PART_MIN_LENGTH;
-				if (len <= SESSION_ID_MAX_LENGTH) {
-					if (remaining >= len) {
-						byte[] legacySessionId = new byte[len];
+				remaining -= 9;
+				if (remaining > len + 2) {
+					byte[] nonce = new byte[len];
+					
+					srcs.get(nonce);
+					remaining -= len + 2;
+					len = srcs.getUnsignedShort();
+					if (len > 0) {
+						if (remaining >= len + 2) {
+							byte[] ticket = new byte[len];
 
-						if (len > 0) {
-							srcs.get(legacySessionId);
+							srcs.get(ticket);
 							remaining -= len;
-						}
-						if (remaining >= 3) {
-							CipherSuite cipherSuite = CipherSuite.of(srcs.getUnsignedShort());
-							byte legacyCompressionMethod = srcs.get();
-							
-							remaining -= 3;
-							if (remaining >= 2) {
-								ExtensionsParser parser = new ExtensionsParser(0, 0xffff, decoder);
 
-								parser.parse(TYPE, srcs, remaining);
-								if (parser.isComplete() && remaining == parser.getConsumedBytes()) {
-									return new ServerHello(
-											legacyVersion,
-											random,
-											legacySessionId,
-											cipherSuite,
-											legacyCompressionMethod,
-											parser.getExtensions()
-											);
-								}
+							ExtensionsParser parser = new ExtensionsParser(0, 0xffff, decoder);
+
+							parser.parse(TYPE, srcs, remaining);
+							if (parser.isComplete() && remaining == parser.getConsumedBytes()) {
+								return new NewSessionTicket(ticket, nonce, lifetime, ageAdd, parser.getExtensions());
 							}
-							
 						}
 					}
-				}
-				else {
-					throw decodeError("Legacy session id is too big");
+					else {
+						throw decodeError("Empty ticket");
+					}
 				}
 			}
 			throw decodeError("Inconsistent length");
 		}
+		
 	};
 	
-	public ServerHello(int legacyVersion, byte[] random, byte[] legacySessionId, CipherSuite cipherSuite, byte legacyCompressionMethod, List<IExtension> extensions) {
-		super(TYPE, legacyVersion, random, legacySessionId);
-		Args.checkNull(cipherSuite, "cipherSuite");
+	protected NewSessionTicket(byte[] ticket, byte[] nonce, long lifetime, long ageAdd, List<IExtension> extensions) {
+		super(TYPE);
+		Args.checkMin(ticket, 1, "ticket");
+		Args.checkNull(nonce, "nonce");
 		Args.checkNull(extensions, "extensions");
-		this.cipherSuite = cipherSuite;
-		this.legacyCompressionMethod = legacyCompressionMethod;
+		this.ticket = ticket;
+		this.nonce = nonce;
+		this.lifetime = lifetime;
+		this.ageAdd = ageAdd;
 		this.extensions = extensions;
+	}
+
+	@Override
+	public long getLifetime() {
+		return lifetime;
+	}
+
+	@Override
+	public long getAgeAdd() {
+		return ageAdd;
+	}
+
+	@Override
+	public byte[] getNonce() {
+		return nonce;
+	}
+
+	@Override
+	public byte[] getTicket() {
+		return ticket;
 	}
 
 	@Override
@@ -118,34 +133,29 @@ public class ServerHello extends AbstractHello implements IServerHello {
 		return extensions;
 	}
 
-	@Override
-	public CipherSuite getCipherSuite() {
-		return cipherSuite;
-	}
-
-	@Override
-	public byte getLegacyCompressionMethod() {
-		return legacyCompressionMethod;
-	}
-
 	public static IHandshakeParser getParser() {
 		return PARSER;
 	}
-
+	
 	@Override
 	public int getDataLength() {
-		return super.getDataLength() 
-				+ 2 
+		return 4 + 4 
 				+ 1 
-				+ 2
+				+ nonce.length 
+				+ 2 
+				+ ticket.length 
+				+ 2 
 				+ ExtensionsUtil.calculateLength(extensions);
 	}
 
 	@Override
 	protected void getData(ByteBuffer buffer) {
-		super.getData(buffer);
-		buffer.putShort((short) cipherSuite.value());
-		buffer.put(legacyCompressionMethod);
+		buffer.putInt((int) lifetime);
+		buffer.putInt((int) ageAdd);
+		buffer.put((byte) nonce.length);
+		buffer.put(nonce);
+		buffer.putShort((short) ticket.length);
+		buffer.put(ticket);
 		buffer.putShort((short) ExtensionsUtil.calculateLength(extensions));
 		for (IExtension e: extensions) {
 			e.getBytes(buffer);

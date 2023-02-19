@@ -50,6 +50,7 @@ public class HandshakeDecoder implements IHandshakeDecoder {
 		decoder.addParser(Certificate.getParser());
 		decoder.addParser(CertificateVerify.getParser());
 		decoder.addParser(Finished.getParser());
+		decoder.addParser(NewSessionTicket.getParser());
 		DEFAULT = decoder;
 	}
 	

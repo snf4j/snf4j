@@ -31,5 +31,5 @@ import org.snf4j.tls.extension.IExtension;
 
 public interface IEncryptedExtensions extends IHandshake {
 	
-	List<IExtension> getExtensioins();
+	List<IExtension> getExtensions();
 }

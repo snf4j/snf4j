@@ -172,7 +172,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		assertEquals(0, sh.getLegacyCompressionMethod());
 		assertArrayEquals(ch.getLegacySessionId(), sh.getLegacySessionId());
 		assertFalse(ServerHelloRandom.isHelloRetryRequest(sh.getRandom()));
-		assertEquals(2, sh.getExtensioins().size());
+		assertEquals(2, sh.getExtensions().size());
 		KeyShareExtension kse = ExtensionsUtil.find(sh, ExtensionType.KEY_SHARE);
 		assertEquals(1, kse.getEntries().length);
 		assertSame(NamedGroup.SECP256R1, kse.getEntries()[0].getNamedGroup());
@@ -200,7 +200,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		ProducedHandshake[] produced = state.getProduced();
 		assertEquals(5, produced.length);
 		EncryptedExtensions ee = (EncryptedExtensions) produced[1].getHandshake();
-		assertEquals(2, ee.getExtensioins().size());
+		assertEquals(2, ee.getExtensions().size());
 		ServerNameExtension sne = ExtensionsUtil.find(ee, ExtensionType.SERVER_NAME);
 		assertEquals("", sne.getHostName());
 		SupportedGroupsExtension sge = ExtensionsUtil.find(ee, ExtensionType.SUPPORTED_GROUPS);
@@ -217,7 +217,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		produced = state.getProduced();
 		assertEquals(5, produced.length);
 		ee = (EncryptedExtensions) produced[1].getHandshake();
-		assertEquals(1, ee.getExtensioins().size());
+		assertEquals(1, ee.getExtensions().size());
 		sge = ExtensionsUtil.find(ee, ExtensionType.SUPPORTED_GROUPS);
 		assertEquals(1, sge.getGroups().length);
 		assertSame(NamedGroup.SECP256R1, sge.getGroups()[0]);
@@ -256,7 +256,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 				key("RSA", "rsa"), 
 				false);
 		assertArrayEquals(signature, certv.getSignature());
-		assertNull(certv.getExtensioins());
+		assertNull(certv.getExtensions());
 		
 		IFinished finished = (IFinished) produced[4].getHandshake();
 		assertArrayEquals(state.getKeySchedule().computeServerVerifyData(), finished.getVerifyData());
@@ -391,7 +391,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		ServerHello sh = (ServerHello) state.getProduced()[0].getHandshake();
 		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
 		assertSame(TLS_AES_128_GCM_SHA256, sh.getCipherSuite());
-		assertEquals(2,sh.getExtensioins().size());
+		assertEquals(2,sh.getExtensions().size());
 		SupportedVersionsExtension sve = ExtensionsUtil.find(sh, ExtensionType.SUPPORTED_VERSIONS);
 		assertEquals(1, sve.getVersions().length);
 		assertEquals(0x0304, sve.getVersions()[0]);
@@ -409,7 +409,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
 		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
 		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
-		assertEquals(2,sh.getExtensioins().size());
+		assertEquals(2,sh.getExtensions().size());
 		sve = ExtensionsUtil.find(sh, ExtensionType.SUPPORTED_VERSIONS);
 		assertEquals(1, sve.getVersions().length);
 		assertEquals(0x0304, sve.getVersions()[0]);
@@ -426,7 +426,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		sh = (ServerHello) state.getProduced()[0].getHandshake();
 		assertTrue(ServerHelloRandom.isHelloRetryRequest(sh));
 		assertSame(TLS_AES_256_GCM_SHA384, sh.getCipherSuite());
-		assertEquals(2,sh.getExtensioins().size());
+		assertEquals(2,sh.getExtensions().size());
 		sve = ExtensionsUtil.find(sh, ExtensionType.SUPPORTED_VERSIONS);
 		assertEquals(1, sve.getVersions().length);
 		assertEquals(0x0304, sve.getVersions()[0]);

@@ -54,7 +54,7 @@ public class CertificateVerifyTest extends HandshakeTest {
 		CertificateVerify cv = (CertificateVerify) h;
 		assertArrayEquals(bytes(1,2,3,4), cv.getSignature());
 		assertSame(SignatureScheme.ECDSA_SECP256R1_SHA256, cv.getAlgorithm());
-		assertNull(cv.getExtensioins());
+		assertNull(cv.getExtensions());
 		
 		assertEquals(data.length-4, cv.getDataLength());
 		cv.getBytes(buffer);

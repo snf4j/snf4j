@@ -76,7 +76,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		ConsumerUtil.updateHRRTranscriptHash(state, data);
 		
 		IClientHello clientHello = state.getClientHello();
-		List<IExtension> extensions = clientHello.getExtensioins();
+		List<IExtension> extensions = clientHello.getExtensions();
 		NamedGroup namedGroup = null;
 		boolean changed = false;
 		
@@ -271,7 +271,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		@Override
 		public void finish(EngineState state) throws Alert {
 			IClientHello clientHello = state.getClientHello();
-			List<IExtension> extensions = clientHello.getExtensioins();
+			List<IExtension> extensions = clientHello.getExtensions();
 			int size = extensions.size();
 			KeyShareEntry entry = new KeyShareEntry(namedGroup, pair.getPublic());
 

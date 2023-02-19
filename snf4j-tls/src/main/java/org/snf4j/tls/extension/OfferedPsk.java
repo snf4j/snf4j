@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,42 +23,30 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.extension;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.snf4j.tls.Args;
 
-import org.snf4j.tls.extension.IExtension;
-
-public class UnknownHandshake extends AbstractHandshake {
-
-	private final byte[] data;
+public class OfferedPsk {
 	
-	public UnknownHandshake(HandshakeType type, byte[] data) {
-		super(type);
-		this.data = data;
+	private final PskIdentity identity;
+	
+	private final byte[] binder;
+
+	public OfferedPsk(PskIdentity identity, byte[] binder) {
+		Args.checkNull(identity, "identity");
+		Args.checkNull(binder, "binder");
+		this.identity = identity;
+		this.binder = binder;
 	}
 
-	@Override
-	public int getDataLength() {
-		return data.length;
+	public PskIdentity getIdentity() {
+		return identity;
 	}
 
-	public byte[] getData() {
-		return data;
+	public byte[] getBinder() {
+		return binder;
 	}
 	
-	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
-	}
-
-	@Override
-	public final boolean isKnown() { return false; }
-
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
-	}
-
+	
 }

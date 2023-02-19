@@ -29,6 +29,7 @@ import java.security.SecureRandom;
 
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.SignatureScheme;
 
 public class TestParameters implements IEngineParameters {
@@ -50,6 +51,10 @@ public class TestParameters implements IEngineParameters {
 			SignatureScheme.ECDSA_SECP384R1_SHA384
 			};
 	
+	PskKeyExchangeMode[] pskKeyExchangeModes = new PskKeyExchangeMode[] {
+			PskKeyExchangeMode.PSK_DHE_KE
+			};
+
 	boolean compatibilityMode;
 	
 	int numberOfOfferedSharedKeys = 1;
@@ -103,6 +108,11 @@ public class TestParameters implements IEngineParameters {
 	@Override
 	public DelegatedTaskMode getDelegatedTaskMode() {
 		return delegatedTaskMode;
+	}
+
+	@Override
+	public PskKeyExchangeMode[] getPskKeyExchangeModes() {
+		return pskKeyExchangeModes;
 	}
 
 }

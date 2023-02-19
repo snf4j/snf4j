@@ -51,6 +51,8 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		byte[] verifyData;
 		
 		try {
+			ConsumerUtil.updateTranscriptHash(state, finished.getType(), data);
+			state.getKeySchedule().deriveResumptionMasterSecret();
 			verifyData = state.getKeySchedule().computeClientVerifyData();
 		} catch (Exception e) {
 			throw new InternalErrorAlert("Failed to compute server verify data", e);
@@ -88,6 +90,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			state.getListener().onReceivingTraficKey(RecordType.APPLICATION);
 			finished = new Finished(state.getKeySchedule().computeClientVerifyData());
 			ConsumerUtil.produce(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
+			state.getKeySchedule().deriveResumptionMasterSecret();
 		} catch (Exception e) {
 			throw new InternalErrorAlert("Failed to compute server verify data", e);
 		}

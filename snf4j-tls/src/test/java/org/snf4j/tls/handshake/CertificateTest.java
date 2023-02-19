@@ -203,7 +203,7 @@ public class CertificateTest extends HandshakeTest {
 		assertEquals(0, ct.getEntries()[0].getExtensioins().size());
 		assertArrayEquals(bytes(2,3), ct.getEntries()[1].getData());
 		assertEquals(0, ct.getEntries()[1].getExtensioins().size());
-		assertEquals(0, ct.getExtensioins().size());
+		assertEquals(0, ct.getExtensions().size());
 		buffer.clear();
 	
 		extensions.add(new ServerNameExtension("abc"));
@@ -217,9 +217,9 @@ public class CertificateTest extends HandshakeTest {
 		assertEquals(2, ct.getEntries()[0].getExtensioins().size());
 		assertSame(ExtensionType.SERVER_NAME, ct.getEntries()[0].getExtensioins().get(0).getType());
 		assertSame(ExtensionType.COOKIE, ct.getEntries()[0].getExtensioins().get(1).getType());
-		assertEquals(2,ct.getExtensioins().size());
-		assertSame(ExtensionType.SERVER_NAME, ct.getExtensioins().get(0).getType());
-		assertSame(ExtensionType.COOKIE, ct.getExtensioins().get(1).getType());
+		assertEquals(2,ct.getExtensions().size());
+		assertSame(ExtensionType.SERVER_NAME, ct.getExtensions().get(0).getType());
+		assertSame(ExtensionType.COOKIE, ct.getExtensions().get(1).getType());
 		buffer.clear();
 
 		ct = new Certificate(bytes(), entries(extensions, bytes(1),bytes(2)));
@@ -235,11 +235,11 @@ public class CertificateTest extends HandshakeTest {
 		assertSame(ExtensionType.COOKIE, ct.getEntries()[0].getExtensioins().get(1).getType());
 		assertSame(ExtensionType.SERVER_NAME, ct.getEntries()[1].getExtensioins().get(0).getType());
 		assertSame(ExtensionType.COOKIE, ct.getEntries()[1].getExtensioins().get(1).getType());
-		assertEquals(4,ct.getExtensioins().size());
-		assertSame(ExtensionType.SERVER_NAME, ct.getExtensioins().get(0).getType());
-		assertSame(ExtensionType.COOKIE, ct.getExtensioins().get(1).getType());
-		assertSame(ExtensionType.SERVER_NAME, ct.getExtensioins().get(2).getType());
-		assertSame(ExtensionType.COOKIE, ct.getExtensioins().get(3).getType());
+		assertEquals(4,ct.getExtensions().size());
+		assertSame(ExtensionType.SERVER_NAME, ct.getExtensions().get(0).getType());
+		assertSame(ExtensionType.COOKIE, ct.getExtensions().get(1).getType());
+		assertSame(ExtensionType.SERVER_NAME, ct.getExtensions().get(2).getType());
+		assertSame(ExtensionType.COOKIE, ct.getExtensions().get(3).getType());
 		buffer.clear();
 	}
 	

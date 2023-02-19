@@ -119,7 +119,7 @@ public class AbstractHandshakeTest extends HandshakeTest {
 		}
 
 		@Override
-		public List<IExtension> getExtensioins() {
+		public List<IExtension> getExtensions() {
 			return null;
 		}
 	}

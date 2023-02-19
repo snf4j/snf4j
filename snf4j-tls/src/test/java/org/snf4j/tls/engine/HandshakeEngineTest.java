@@ -47,6 +47,7 @@ import org.snf4j.tls.extension.CookieExtension;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.ServerNameExtension;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.ClientHello;
@@ -93,17 +94,19 @@ public class HandshakeEngineTest extends EngineTest {
 		assertEquals(0, ch.getLegacySessionId().length);
 		assertCipherSuites(ch, CipherSuite.TLS_AES_256_GCM_SHA384, CipherSuite.TLS_AES_128_GCM_SHA256);
 		assertArrayEquals(bytes(0), ch.getLegacyCompressionMethods());
-		assertEquals(4, ch.getExtensioins().size());
+		assertEquals(5, ch.getExtensions().size());
 		assertSupportedVersions(ch, 0x0304);
 		assertSupportedGroups(ch, NamedGroup.SECP256R1, NamedGroup.SECP384R1);
 		assertSignatureAlgorithms(ch, SignatureScheme.ECDSA_SECP256R1_SHA256, SignatureScheme.ECDSA_SECP384R1_SHA384);
 		assertKeyShare(ch, false, NamedGroup.SECP256R1);
+		assertPskModes(ch, PskKeyExchangeMode.PSK_DHE_KE);
 		
 		params.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
 		params.compatibilityMode = true;
 		params.numberOfOfferedSharedKeys = 2;
 		params.serverName = "snf4j.org";
 		params.signatureSchemes = new SignatureScheme[] {SignatureScheme.ECDSA_SECP384R1_SHA384};
+		params.pskKeyExchangeModes = new PskKeyExchangeMode[0];
 		he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
 		produced = he.produce();
@@ -116,7 +119,7 @@ public class HandshakeEngineTest extends EngineTest {
 		
 		assertEquals(32, ch.getLegacySessionId().length);
 		assertCipherSuites(ch, CipherSuite.TLS_AES_128_GCM_SHA256);
-		assertEquals(5, ch.getExtensioins().size());
+		assertEquals(5, ch.getExtensions().size());
 		assertSupportedVersions(ch, 0x0304);
 		assertSupportedGroups(ch, NamedGroup.SECP256R1, NamedGroup.SECP384R1);
 		assertSignatureAlgorithms(ch, SignatureScheme.ECDSA_SECP384R1_SHA384);

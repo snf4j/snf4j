@@ -45,6 +45,8 @@ import org.snf4j.tls.extension.ISupportedVersionsExtension;
 import org.snf4j.tls.extension.KeyShareEntry;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
+import org.snf4j.tls.extension.PskKeyExchangeModesExtension;
 import org.snf4j.tls.extension.ServerNameExtension;
 import org.snf4j.tls.extension.SignatureAlgorithmsExtension;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
@@ -76,6 +78,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 		addConsumer(CONSUMERS, new CertificateConsumer());
 		addConsumer(CONSUMERS, new CertificateVerifyConsumer());
 		addConsumer(CONSUMERS, new FinishedConsumer());
+		addConsumer(CONSUMERS, new NewSessionTicketConsumer());
 	}
 	
 	private final IHandshakeDecoder decoder;
@@ -149,7 +152,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 		IHandshakeConsumer consumer = value < CONSUMERS.length ? CONSUMERS[value] : null;
 		
 		if (consumer != null) {
-			List<IExtension> extensions = handshake.getExtensioins();
+			List<IExtension> extensions = handshake.getExtensions();
 			boolean isHRR = false;
 
 			if (value == HandshakeType.SERVER_HELLO.value()) {
@@ -312,6 +315,10 @@ public class HandshakeEngine implements IHandshakeEngine {
 			extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, 0x0304));
 			extensions.add(new SupportedGroupsExtension(groups));
 			extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
+			PskKeyExchangeMode[] modes = params.getPskKeyExchangeModes();
+			if (modes.length > 0) {
+				extensions.add(new PskKeyExchangeModesExtension(modes));
+			}
 			
 			try {
 				int offered = pairs.length;

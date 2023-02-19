@@ -591,6 +591,18 @@ public class TLSEngine implements IEngine {
 							length + Record.HEADER_LENGTH,
 							produced);
 				}
+				if (type == ContentType.HANDSHAKE.value()) {
+					dst.position(dst.position()-produced);
+					byte[] data = new byte[produced];
+					ByteBuffer dup = dst.duplicate();
+					
+					dup.get(data);
+					return unwrapHandshake(
+							ByteBuffer.wrap(data),
+							0,
+							produced,
+							length + Record.HEADER_LENGTH);
+				}
 				if (type == ContentType.ALERT.value()) {
 					dst.position(dst.position()-produced);
 					byte[] data = new byte[produced];
@@ -615,10 +627,11 @@ public class TLSEngine implements IEngine {
 	}
 	
 	private IEngineResult unwrapHandshake(ByteBuffer src, int off, int length, int consumed) throws Alert {
-		src.position(src.position() + off);
+		boolean connected = handshaker.isConnected();
 		
+		src.position(src.position() + off);
 		if (aggregator.unwrap(src, length)) {
-			if (handshaker.isConnected()) {
+			if (!connected && handshaker.isConnected()) {
 				if (aggregator.isEmpty()) {
 					this.status = NOT_HANDSHAKING;
 					return new EngineResult(

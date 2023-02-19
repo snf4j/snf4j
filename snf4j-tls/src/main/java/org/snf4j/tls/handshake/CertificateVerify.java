@@ -82,7 +82,7 @@ public class CertificateVerify extends KnownHandshake implements ICertificateVer
 	}
 
 	@Override
-	public List<IExtension> getExtensioins() {
+	public List<IExtension> getExtensions() {
 		return null;
 	}
 

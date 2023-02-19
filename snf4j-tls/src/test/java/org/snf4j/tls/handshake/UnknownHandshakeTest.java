@@ -44,7 +44,7 @@ public class UnknownHandshakeTest extends HandshakeTest {
 		assertArrayEquals(bytes(11,0,0,3,0,1,2), buffer());
 		assertFalse(h.isKnown());
 		assertArrayEquals(bytes(0,1,2), h.getData());
-		assertNull(h.getExtensioins());
+		assertNull(h.getExtensions());
 	}
 
 }

@@ -46,7 +46,7 @@ public final class ExtensionsUtil {
 	public static <T extends IExtension> T find(IHandshake handshake, ExtensionType type) {
 		int value = type.value();
 		
-		for (IExtension e: handshake.getExtensioins()) {
+		for (IExtension e: handshake.getExtensions()) {
 			if (e.getType().value() == value) {
 				return (T) e;
 			}

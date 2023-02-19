@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,42 +23,36 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
-import java.util.List;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.handshake.INewSessionTicket;
 
-import org.snf4j.tls.extension.IExtension;
+public class NewSessionTicketConsumer implements IHandshakeConsumer {
 
-public class UnknownHandshake extends AbstractHandshake {
-
-	private final byte[] data;
-	
-	public UnknownHandshake(HandshakeType type, byte[] data) {
-		super(type);
-		this.data = data;
+	@Override
+	public HandshakeType getType() {
+		return HandshakeType.NEW_SESSION_TICKET;
 	}
 
 	@Override
-	public int getDataLength() {
-		return data.length;
-	}
-
-	public byte[] getData() {
-		return data;
-	}
-	
-	@Override
-	protected void getData(ByteBuffer buffer) {
-		buffer.put(data);
-	}
-
-	@Override
-	public final boolean isKnown() { return false; }
-
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
+		if (state.getState() != MachineState.CLI_CONNECTED) {
+			throw new UnexpectedMessageAlert("Unexpected NewSessionTicket");
+		}
+		
+		INewSessionTicket nst = (INewSessionTicket) handshake;
+		
+		try {
+			byte[] psk = state.getKeySchedule().computePsk(nst.getNonce());
+		} catch (Exception e) {
+			throw new InternalErrorAlert("Failed to compute PSK", e);
+		}
 	}
 
 }

@@ -57,9 +57,9 @@ public class EncryptedExtensionsTest extends HandshakeTest {
 		assertSame(HandshakeType.ENCRYPTED_EXTENSIONS, h.getType());
 
 		EncryptedExtensions ee = (EncryptedExtensions) h;
-		assertEquals(2, ee.getExtensioins().size());
-		assertSame(ExtensionType.SUPPORTED_VERSIONS, ee.getExtensioins().get(0).getType());
-		assertSame(ExtensionType.SERVER_NAME, ee.getExtensioins().get(1).getType());
+		assertEquals(2, ee.getExtensions().size());
+		assertSame(ExtensionType.SUPPORTED_VERSIONS, ee.getExtensions().get(0).getType());
+		assertSame(ExtensionType.SERVER_NAME, ee.getExtensions().get(1).getType());
 
 		assertEquals(data.length-4, ee.getDataLength());
 		ee.getBytes(buffer);
@@ -72,7 +72,7 @@ public class EncryptedExtensionsTest extends HandshakeTest {
 		});
 		
 		ee = (EncryptedExtensions) EncryptedExtensions.getParser().parse(array(data, 4), data.length-4, ExtensionDecoder.DEFAULT);
-		assertEquals(0, ee.getExtensioins().size());
+		assertEquals(0, ee.getExtensions().size());
 
 		assertEquals(data.length-4, ee.getDataLength());
 		ee.getBytes(buffer);
@@ -97,7 +97,7 @@ public class EncryptedExtensionsTest extends HandshakeTest {
 		assertEquals(16, ee.getDataLength());
 		assertArrayEquals(bytes(8,0,0,16,0,14,0,10,0,6,0,4,0,0x1d,0,0x1e,0,0,0,0), buffer(0,20));
 		ee = (EncryptedExtensions) EncryptedExtensions.getParser().parse(array(buffer(), 4), 16, ExtensionDecoder.DEFAULT);
-		assertEquals(2, ee.getExtensioins().size());	
+		assertEquals(2, ee.getExtensions().size());	
 		buffer.clear();
 		
 		extensions.clear();
@@ -106,7 +106,7 @@ public class EncryptedExtensionsTest extends HandshakeTest {
 		assertEquals(2, ee.getDataLength());
 		assertArrayEquals(bytes(8,0,0,2,0,0), buffer(0,6));
 		ee = (EncryptedExtensions) EncryptedExtensions.getParser().parse(array(buffer(), 4), 2, ExtensionDecoder.DEFAULT);
-		assertEquals(0, ee.getExtensioins().size());	
+		assertEquals(0, ee.getExtensions().size());	
 	}
 
 	@Test

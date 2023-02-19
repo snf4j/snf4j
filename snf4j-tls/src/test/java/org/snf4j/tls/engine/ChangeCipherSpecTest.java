@@ -43,7 +43,7 @@ public class ChangeCipherSpecTest extends CommonTest {
 		assertEquals(6, ccs.getLength());
 		assertEquals(1, ccs.getDataLength());
 		assertTrue(ccs.isKnown());
-		assertNull(ccs.getExtensioins());
+		assertNull(ccs.getExtensions());
 		assertTrue(ccs.isPrepared());
 		
 		ccs.getBytes(buffer);

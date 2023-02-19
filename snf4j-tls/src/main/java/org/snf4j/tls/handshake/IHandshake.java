@@ -52,5 +52,5 @@ public interface IHandshake {
 	 * @return the associated extensions or {@code null} if extensions are not
 	 *         supported by this handshake message.
 	 */
-	List<IExtension> getExtensioins();
+	List<IExtension> getExtensions();
 }

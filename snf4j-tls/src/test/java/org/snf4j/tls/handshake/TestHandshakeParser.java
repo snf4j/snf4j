@@ -69,7 +69,7 @@ public class TestHandshakeParser extends AbstractHandshakeParser {
 				}
 
 				@Override
-				public List<IExtension> getExtensioins() {
+				public List<IExtension> getExtensions() {
 					return null;
 				}
 

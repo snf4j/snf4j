@@ -118,7 +118,7 @@ public class Certificate extends KnownHandshake implements ICertificate {
 	}
 	
 	@Override
-	public List<IExtension> getExtensioins() {
+	public List<IExtension> getExtensions() {
 		List<IExtension> extensions = new ArrayList<IExtension>();
 		
 		for (ICertificateEntry entry: entries) {

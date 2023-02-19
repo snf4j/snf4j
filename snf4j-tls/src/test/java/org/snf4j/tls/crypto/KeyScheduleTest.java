@@ -598,6 +598,62 @@ public class KeyScheduleTest extends CommonTest {
 		assertNotNull(keys.getAeadEncrypt(false));
 	}
 	
+	@Test
+	public void testDeriveResumptionMasterSecret() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		ks.deriveMasterSecret();
+		byte[] ms = getSecret(ks,"masterSecret");
+		
+		th.update(HandshakeType.CLIENT_HELLO, "CH".getBytes(ASCII));
+		th.update(HandshakeType.SERVER_HELLO, "SH".getBytes(ASCII));
+		th.update(HandshakeType.ENCRYPTED_EXTENSIONS, "EE".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE, "CT".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE_VERIFY, "CV".getBytes(ASCII));
+		th.update(HandshakeType.FINISHED, "F".getBytes(ASCII));
+		th.update(HandshakeType.CERTIFICATE, "ct".getBytes(ASCII));
+		th.update(HandshakeType.FINISHED, "f".getBytes(ASCII));
+		ks.deriveResumptionMasterSecret();
+		byte[] resumption = ks.hkdfExpandLabel(ms, "tls13 res master".getBytes(ASCII), md.digest("CHSHEECTCVFctf".getBytes()), hashLen);
+		assertArrayEquals(resumption, getSecret(ks,"resumptionMasterSecret"));
+	}
+
+	@Test
+	public void testEraseResumptionMasterSecret() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		ks.deriveMasterSecret();
+		assertNull(getSecret(ks, "resumptionMasterSecret"));
+		ks.deriveResumptionMasterSecret();
+		byte[] rm = getSecret(ks, "resumptionMasterSecret");
+		assertNotErased(rm);
+		ks.eraseResumptionMasterSecret();
+		assertErased(rm);
+		assertNull(getSecret(ks, "resumptionMasterSecret"));	
+		ks.deriveResumptionMasterSecret();
+		rm = getSecret(ks, "resumptionMasterSecret");
+		assertNotErased(rm);
+		ks.deriveResumptionMasterSecret();
+		assertErased(rm);
+		assertNotNull(getSecret(ks, "resumptionMasterSecret"));	
+	}
+	
+	@Test
+	public void testComputePsk() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		ks.deriveMasterSecret();
+		ks.deriveResumptionMasterSecret();
+		byte[] rm = getSecret(ks, "resumptionMasterSecret");
+		
+		byte[] nonce = bytes(1,2,3,4);
+		byte[] psk = ks.hkdfExpandLabel(rm, "tls13 resumption".getBytes(ASCII), nonce, hashLen);
+		assertArrayEquals(psk, ks.computePsk(nonce));
+	}
+	
 	DestroyFailedException exception;
 	int exceptionCount;
 	int destroyCount;

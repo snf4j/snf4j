@@ -32,6 +32,7 @@ import org.snf4j.tls.cipher.ICipherSuiteSpec;
 import org.snf4j.tls.extension.INamedGroupSpec;
 import org.snf4j.tls.extension.ISignatureSchemeSpec;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.SignatureScheme;
 
 public class EngineDefaults {
@@ -82,6 +83,10 @@ public class EngineDefaults {
 
 	private final static SignatureScheme[] IMPLEMENTED_SIGNATURE_SCHEMES = implemented(DEFAULT_SIGNATURE_SCHEMES);
 
+	private final static PskKeyExchangeMode[] DEFAULT_PSK_KEY_EXCHANGE_MODES = new PskKeyExchangeMode[] {
+			PskKeyExchangeMode.PSK_DHE_KE
+			};
+	
 	public final static int LEGACY_VERSION = 0x0303;
 	
 	private static CipherSuite[] implemented(CipherSuite[] suites) {
@@ -145,6 +150,10 @@ public class EngineDefaults {
 	
 	static SignatureScheme[] getDefaulSignatureSchemes() {
 		return IMPLEMENTED_SIGNATURE_SCHEMES.clone();
+	}
+
+	static PskKeyExchangeMode[] getDefaultPskKeyExchangeModes() {
+		return DEFAULT_PSK_KEY_EXCHANGE_MODES.clone();
 	}
 
 }
