@@ -27,6 +27,8 @@ package org.snf4j.tls.engine;
 
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
+import org.snf4j.tls.session.ISessionManager;
+import org.snf4j.tls.session.SessionManager;
 
 public class TestHandler implements IEngineHandler {
 
@@ -35,6 +37,8 @@ public class TestHandler implements IEngineHandler {
 	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
 
 	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
+
+	public volatile ISessionManager sessionManager = new SessionManager();
 	
 	@Override
 	public boolean verify(IServerNameExtension serverName) {
@@ -55,5 +59,9 @@ public class TestHandler implements IEngineHandler {
 	public int calculatePadding(ContentType type, int contentLength) {
 		return 0;
 	}
-
+	
+	@Override
+	public ISessionManager getSessionManager() {
+		return sessionManager;
+	}
 }

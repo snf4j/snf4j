@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -37,6 +38,13 @@ import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.crypto.Hkdf;
+import org.snf4j.tls.crypto.IHash;
+import org.snf4j.tls.crypto.IHkdf;
+import org.snf4j.tls.crypto.ITranscriptHash;
+import org.snf4j.tls.crypto.KeySchedule;
+import org.snf4j.tls.crypto.TranscriptHash;
 import org.snf4j.tls.extension.ExtensionValidator;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionValidator;
@@ -45,6 +53,9 @@ import org.snf4j.tls.extension.ISupportedVersionsExtension;
 import org.snf4j.tls.extension.KeyShareEntry;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.OfferedPsk;
+import org.snf4j.tls.extension.PreSharedKeyExtension;
+import org.snf4j.tls.extension.PskIdentity;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.PskKeyExchangeModesExtension;
 import org.snf4j.tls.extension.ServerNameExtension;
@@ -59,6 +70,9 @@ import org.snf4j.tls.handshake.IHandshakeDecoder;
 import org.snf4j.tls.handshake.IServerHello;
 import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.ISessionManager;
+import org.snf4j.tls.session.Session;
+import org.snf4j.tls.session.SessionTicket;
 
 public class HandshakeEngine implements IHandshakeEngine {
 	
@@ -306,19 +320,17 @@ public class HandshakeEngine implements IHandshakeEngine {
 			
 			List<IExtension> extensions = new ArrayList<IExtension>();
 			
-			String serverName = params.getServerName();
+			String peerHost = params.getPeerHost();
 			NamedGroup[] groups = params.getNamedGroups();
+			CipherSuite[] cipherSuites = params.getCipherSuites();
 			
-			if (serverName != null) {
-				extensions.add(new ServerNameExtension(serverName));
+			if (peerHost != null) {
+				extensions.add(new ServerNameExtension(peerHost));
 			}
 			extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, 0x0304));
 			extensions.add(new SupportedGroupsExtension(groups));
 			extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
 			PskKeyExchangeMode[] modes = params.getPskKeyExchangeModes();
-			if (modes.length > 0) {
-				extensions.add(new PskKeyExchangeModesExtension(modes));
-			}
 			
 			try {
 				int offered = pairs.length;
@@ -333,13 +345,98 @@ public class HandshakeEngine implements IHandshakeEngine {
 				throw new InternalErrorAlert("Failed to generate exchange key", e);
 			}
 			
+			List<SessionTicket> tickets = null;
+			OfferedPsk[] psks = null;
+			
+			if (modes.length > 0) {
+				extensions.add(new PskKeyExchangeModesExtension(modes));
+				Session session = state.getSession();
+				ISessionManager manager;
+				
+				if (session == null) {
+					manager = state.getHandler().getSessionManager();
+					if (peerHost != null) {
+						session = manager.getSession(peerHost, params.getPeerPort());
+					}
+				}
+				else {
+					manager = session.getManager();
+				}
+				
+				if (session != null) {
+					tickets = manager.findTickets(session);
+
+					if (!tickets.isEmpty()) {
+						long time = System.currentTimeMillis();
+						int offerHashes = 0;
+						
+						for (CipherSuite cipherSuite: cipherSuites) {
+							offerHashes |= 1 << cipherSuite.spec().getHashSpec().getOrdinal();
+						}
+						
+						for (Iterator<SessionTicket> i = tickets.iterator(); i.hasNext();) {
+							SessionTicket ticket = i.next();
+							
+							if (time - ticket.getCreationTime() <= ticket.getLifetime() * 1000) {
+								if ((offerHashes & (1 << ticket.getHashSpec().getOrdinal())) != 0) {
+									continue;
+								}
+							}
+							else {
+								//TODO: discard ticket
+							}
+							i.remove();
+						}
+						
+						if (!tickets.isEmpty()) {
+							int i = 0;
+							
+							psks = new OfferedPsk[tickets.size()];
+							for (SessionTicket ticket: tickets) {
+								long obfuscatedAge = (time - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x1_0000_0000L;
+								
+								psks[i++] = new OfferedPsk(
+										new PskIdentity(ticket.getTicket(), obfuscatedAge), 
+										new byte[ticket.getHashSpec().getHashLength()]);
+							}
+							extensions.add(new PreSharedKeyExtension(psks));
+						}						
+					}
+				}
+			}
+			
 			ClientHello clientHello = new ClientHello(
 					EngineDefaults.LEGACY_VERSION, 
 					random, 
 					legacySessionId, 
-					state.getParameters().getCipherSuites(), 
+					cipherSuites, 
 					new byte[1], 
 					extensions);
+			
+			if (psks != null) {
+				int i = 0;
+				byte[] truncated = clientHello.prepare();
+				int truncatedLength = truncated.length - PreSharedKeyExtension.bindersLength(psks);
+				
+				try {
+					for (SessionTicket ticket: tickets) {
+						IHash hash = ticket.getHashSpec().getHash();
+						ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
+						IHkdf hkdf = new Hkdf(hash.createMac());
+						KeySchedule keyScheduler = new KeySchedule(hkdf, th, ticket.getHashSpec());
+						
+						keyScheduler.deriveEarlySecret(ticket.getPsk(), false);
+						keyScheduler.deriveBinderKey();
+						byte[] binder = keyScheduler.computePskBinder(truncated, truncatedLength);
+						System.arraycopy(binder, 0, psks[i++].getBinder(), 0, binder.length);
+						state.addPskContext(new PskContext(keyScheduler, ticket));
+					}
+					PreSharedKeyExtension.updateBinders(truncated, truncatedLength, psks);
+				}
+				catch (Exception e) {
+					throw new InternalErrorAlert("Failed to bind PSK", e);
+				}
+			}
 			
 			state.setClientHello(clientHello);
 			state.produce(new ProducedHandshake(clientHello, RecordType.INITIAL));

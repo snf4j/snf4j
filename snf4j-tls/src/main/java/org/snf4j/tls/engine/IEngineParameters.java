@@ -45,7 +45,9 @@ public interface IEngineParameters {
 
 	boolean isCompatibilityMode();
 	
-	String getServerName();
+	String getPeerHost();
+	
+	int getPeerPort();
 
 	boolean isServerNameRequired();
 	

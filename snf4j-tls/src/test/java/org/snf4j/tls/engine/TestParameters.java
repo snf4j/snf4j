@@ -59,8 +59,10 @@ public class TestParameters implements IEngineParameters {
 	
 	int numberOfOfferedSharedKeys = 1;
 	
-	String serverName;
+	String peerHost;
 
+	int peerPort;
+	
 	boolean serverNameRequired;
 
 	DelegatedTaskMode delegatedTaskMode = DelegatedTaskMode.ALL;
@@ -91,8 +93,13 @@ public class TestParameters implements IEngineParameters {
 	}
 
 	@Override
-	public String getServerName() {
-		return serverName;
+	public String getPeerHost() {
+		return peerHost;
+	}
+
+	@Override
+	public int getPeerPort() {
+		return peerPort;
 	}
 
 	@Override

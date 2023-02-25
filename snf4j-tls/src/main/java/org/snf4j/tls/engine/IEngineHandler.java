@@ -27,6 +27,7 @@ package org.snf4j.tls.engine;
 
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
+import org.snf4j.tls.session.ISessionManager;
 
 public interface IEngineHandler {
 
@@ -37,5 +38,7 @@ public interface IEngineHandler {
 	ICertificateValidator getCertificateValidator();
 	
 	int calculatePadding(ContentType type, int contentLength);
+	
+	ISessionManager getSessionManager();
 
 }

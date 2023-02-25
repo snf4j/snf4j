@@ -23,69 +23,45 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.session;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.snf4j.tls.cipher.CipherSuite;
 
-import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Record;
-
-public class ChangeCipherSpec implements IHandshake {
-
-	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
+public class SessionBuilder {
 	
+	private ISessionManager manager;
 	
-	@Override
-	public HandshakeType getType() {
-		return null;
-	}
+	private String host;
+	
+	private int port;
+	
+	private CipherSuite cipherSuite;
 
-	@Override
-	public void getBytes(ByteBuffer buffer) {
-		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
-		buffer.put((byte)1);
-	}
-
-	@Override
-	public int getLength() {
-		return Record.HEADER_LENGTH + 1;
-	}
-
-	@Override
-	public int getDataLength() {
-		return 1;
-	}
-
-	@Override
-	public boolean isKnown() {
-		return true;
-	}
-
-	@Override
-	public boolean isPrepared() {
-		return true;
-	}
-
-	@Override
-	public byte[] prepare() {
-		byte[] prepared = new byte[getLength()];
-		
-		getBytes(ByteBuffer.wrap(prepared));
-		return prepared;
-	}
-
-	@Override
-	public byte[] getPrepared() {
-		return prepare();
+	public SessionBuilder manager(ISessionManager manager) {
+		this.manager = manager;
+		return this;
 	}
 	
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
+	public SessionBuilder host(String host) {
+		this.host = host;
+		return this;
 	}
 
+	public SessionBuilder port(int port) {
+		this.port = port;
+		return this;
+	}
+
+	public SessionBuilder cipherSuite(CipherSuite cipherSuite) {
+		this.cipherSuite = cipherSuite;
+		return this;
+	}
+	
+	public Session build() {
+		return new Session(
+				manager, 
+				cipherSuite, 
+				host, 
+				port);
+	}
 }

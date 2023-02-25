@@ -32,6 +32,7 @@ import java.util.Arrays;
 import javax.crypto.SecretKey;
 import org.snf4j.tls.Args;
 import org.snf4j.tls.cipher.ICipherSuiteSpec;
+import org.snf4j.tls.cipher.IHashSpec;
 import org.snf4j.tls.handshake.HandshakeType;
 
 public class KeySchedule {
@@ -70,11 +71,15 @@ public class KeySchedule {
 	
 	private final ITranscriptHash transcriptHash;
 	
-	private final ICipherSuiteSpec cipherSuiteSpec;
+	private final IHashSpec hashSpec;
 	
 	private final int hashLength;
 	
 	private final byte[] emptyHash;
+
+	private ICipherSuiteSpec cipherSuiteSpec;
+	
+	private boolean usingPsk;
 	
 	private boolean externalPsk;
 	
@@ -108,23 +113,51 @@ public class KeySchedule {
 		}
 	}
 	
+	private static ICipherSuiteSpec check(ICipherSuiteSpec cipherSuiteSpec) {
+		Args.checkNull(cipherSuiteSpec, "cipherSuiteSpec");
+		return cipherSuiteSpec;
+	}
+	
 	public KeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, ICipherSuiteSpec cipherSuiteSpec) {
+		this(hkdf, transcriptHash, check(cipherSuiteSpec).getHashSpec());
+		this.cipherSuiteSpec = cipherSuiteSpec;
+	}
+
+	public KeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, IHashSpec hashSpec) {
 		Args.checkNull(hkdf, "hkdf");
 		Args.checkNull(transcriptHash, "transcriptHash");
-		Args.checkNull(cipherSuiteSpec, "cipherSuiteSpec");
+		Args.checkNull(hashSpec, "hashSpec");
 		this.hkdf = hkdf;
 		this.transcriptHash = transcriptHash;
+		this.hashSpec = hashSpec;
+		emptyHash = hashSpec.getEmptyHash();
+		hashLength = hashSpec.getHashLength();
+	}
+
+	public void setCipherSuiteSpec(ICipherSuiteSpec cipherSuiteSpec) {
+		Args.checkNull(cipherSuiteSpec, "cipherSuiteSpec");
 		this.cipherSuiteSpec = cipherSuiteSpec;
-		emptyHash = cipherSuiteSpec.getHashSpec().getEmptyHash();
-		hashLength = cipherSuiteSpec.getHashSpec().getHashLength();
+	}
+	
+	public IHashSpec getHashSpec() {
+		return hashSpec;
+	}
+	
+	public ITranscriptHash getTranscriptHash() {
+		return transcriptHash;
 	}
 		
+	public boolean isUsingPsk() {
+		return usingPsk;
+	}
+	
 	public void deriveEarlySecret(byte[] psk, boolean externalPsk) throws InvalidKeyException {
 		Args.checkNull(psk, "psk");
 		byte[] earlySecret = hkdf.extract(new byte[hashLength], psk);
 		eraseEarlySecret();
 		this.earlySecret = earlySecret;
 		this.externalPsk = externalPsk;
+		usingPsk = true;
 	}
 
 	public void deriveEarlySecret() throws InvalidKeyException {
@@ -133,6 +166,7 @@ public class KeySchedule {
 		eraseEarlySecret();
 		this.earlySecret = earlySecret;
 		this.externalPsk = false;
+		usingPsk = false;
 	}
 	
 	public void eraseEarlySecret() {
@@ -174,9 +208,9 @@ public class KeySchedule {
 		}
 	}
 	
-	public byte[] computePskBinder(byte[] truncatedClientHello) throws InvalidKeyException {
+	public byte[] computePskBinder(byte[] clientHello, int length) throws InvalidKeyException {
 		checkDerived(binderKey, "Binder Key");
-		byte[] hash = transcriptHash.getHash(HandshakeType.CLIENT_HELLO, truncatedClientHello);
+		byte[] hash = transcriptHash.getHash(HandshakeType.CLIENT_HELLO, clientHello, length);
 		byte[] finishedKey = hkdfExpandLabel(binderKey,
 				FINISHED,
 				EMPTY,
@@ -194,12 +228,8 @@ public class KeySchedule {
 				hashLength);
 	}
 	
-	protected SecretKey createKey(byte[] key, ICipherSuiteSpec cipherSuiteSpec) {
-		return cipherSuiteSpec.getAead().createKey(key);
-	}
-	
 	private SecretKey createKey(byte[] key) {
-		SecretKey secretKey = createKey(key, cipherSuiteSpec);
+		SecretKey secretKey = cipherSuiteSpec.getAead().createKey(key);
 		
 		Arrays.fill(key, (byte)0);
 		return secretKey;
@@ -384,6 +414,17 @@ public class KeySchedule {
 		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(ckey), civ, createKey(skey), siv);
 	}
 			
+	public void eraseAll() {	
+		eraseApplicationTrafficSecrets();
+		eraseBinderKey();
+		eraseEarlySecret();
+		eraseEarlyTrafficSecret();
+		eraseHandshakeSecret();
+		eraseHandshakeTrafficSecrets();
+		eraseMasterSecret();
+		eraseResumptionMasterSecret();
+	}
+	
 	byte[] hkdfExpandLabel(byte[] secret, String label, byte[] context, int length) throws InvalidKeyException {
 		return hkdfExpandLabel(secret, label(label), context, length);
 	}

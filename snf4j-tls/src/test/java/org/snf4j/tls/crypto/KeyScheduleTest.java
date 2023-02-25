@@ -27,8 +27,11 @@ package org.snf4j.tls.crypto;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
@@ -166,9 +169,12 @@ public class KeyScheduleTest extends CommonTest {
 	
 	@Test
 	public void testDeriveEarlySecret() throws Exception {
+		assertSame(th, ks.getTranscriptHash());
+		assertSame(CipherSuiteSpec.TLS_AES_128_GCM_SHA256.getHashSpec(), ks.getHashSpec());
+		assertFalse(ks.isUsingPsk());
 		ks.deriveEarlySecret();
 		ks.deriveBinderKey();
-		byte[] key = ks.computePskBinder("xxx".getBytes());
+		byte[] key = ks.computePskBinder("xxx".getBytes(),3);
 		byte[] es = earlySecret(null);
 		byte[] bk = binderKey(es, false);
 		assertArrayEquals(pskBinder(bk, md.digest("xxx".getBytes())), key);
@@ -178,8 +184,9 @@ public class KeyScheduleTest extends CommonTest {
 		Arrays.fill(psk, (byte)0xab);
 		
 		ks.deriveEarlySecret(psk, false);
+		assertTrue(ks.isUsingPsk());
 		ks.deriveBinderKey();
-		byte[] key2 = ks.computePskBinder("xxx".getBytes());
+		byte[] key2 = ks.computePskBinder("xxx".getBytes(),3);
 		es = earlySecret(psk);
 		bk = binderKey(es, false);
 		assertArrayEquals(pskBinder(bk, md.digest("xxx".getBytes())), key2);
@@ -187,7 +194,7 @@ public class KeyScheduleTest extends CommonTest {
 
 		ks.deriveEarlySecret(psk, true);
 		ks.deriveBinderKey();
-		byte[] key3 = ks.computePskBinder("xxx".getBytes());
+		byte[] key3 = ks.computePskBinder("xxx".getBytes(),3);
 		es = earlySecret(psk);
 		bk = binderKey(es, true);
 		assertArrayEquals(pskBinder(bk, md.digest("xxx".getBytes())), key3);
@@ -201,7 +208,7 @@ public class KeyScheduleTest extends CommonTest {
 		th.updateHelloRetryRequest("HRR".getBytes());
 		ks.deriveEarlySecret(psk, false);
 		ks.deriveBinderKey();
-		byte[] key4 = ks.computePskBinder("xxx".getBytes());
+		byte[] key4 = ks.computePskBinder("xxx".getBytes(),3);
 		es = earlySecret(psk);
 		bk = binderKey(es, false);
 		md.reset();
@@ -313,6 +320,7 @@ public class KeyScheduleTest extends CommonTest {
 	public void testDeriveEarlyTrafficKeys() throws Exception {
 		ks.deriveEarlySecret();
 		ks.deriveEarlyTrafficSecret();
+		ks.setCipherSuiteSpec(CipherSuiteSpec.TLS_AES_128_GCM_SHA256);
 		TrafficKeys keys = ks.deriveEarlyTrafficKeys();
 		byte[] ets = getSecret(ks, "earlyTrafficSecret");
 		byte[] iv = ks.hkdfExpandLabel(ets, "tls13 iv".getBytes(ASCII), new byte[0], 12);
@@ -654,6 +662,31 @@ public class KeyScheduleTest extends CommonTest {
 		assertArrayEquals(psk, ks.computePsk(nonce));
 	}
 	
+	@Test
+	public void testEraseAll() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveEarlyTrafficSecret();
+		ks.deriveBinderKey();
+		ks.deriveHandshakeSecret(secret);
+		ks.deriveHandshakeTrafficSecrets();
+		ks.deriveMasterSecret();
+		ks.deriveApplicationTrafficSecrets();
+		ks.deriveResumptionMasterSecret();
+		
+		ks.eraseAll();
+		assertNull(getSecret(ks, "earlySecret"));
+		assertNull(getSecret(ks, "earlyTrafficSecret"));
+		assertNull(getSecret(ks, "binderKey"));
+		assertNull(getSecret(ks, "handshakeSecret"));
+		assertNull(getSecret(ks, "clientHandshakeTrafficSecret"));
+		assertNull(getSecret(ks, "serverHandshakeTrafficSecret"));
+		assertNull(getSecret(ks, "masterSecret"));
+		assertNull(getSecret(ks, "clientApplicationTrafficSecret"));
+		assertNull(getSecret(ks, "serverApplicationTrafficSecret"));
+		assertNull(getSecret(ks, "resumptionMasterSecret"));
+	}
+	
 	DestroyFailedException exception;
 	int exceptionCount;
 	int destroyCount;
@@ -681,13 +714,13 @@ public class KeyScheduleTest extends CommonTest {
 		
 		ks.deriveEarlySecret();
 		try {
-			ks.computePskBinder("CH".getBytes());
+			ks.computePskBinder("CH".getBytes(),2);
 			fail();
 		} catch (IllegalStateException e) {
 			assertEquals("Binder Key not derived", e.getMessage());
 		}
 		ks.deriveBinderKey();
-		ks.computePskBinder("CH".getBytes());
+		ks.computePskBinder("CH".getBytes(),2);
 
 		try {
 			ks.deriveEarlyTrafficKeys();

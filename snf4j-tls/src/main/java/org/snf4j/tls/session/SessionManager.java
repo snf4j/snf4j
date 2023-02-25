@@ -23,69 +23,66 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.session;
 
-import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
-import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Record;
+public class SessionManager implements ISessionManager {
 
-public class ChangeCipherSpec implements IHandshake {
-
-	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
+	private int timeout;
 	
+	private int limit;
+	
+	private final Map<Long, List<SessionTicket>> tickets = new HashMap<Long, List<SessionTicket>>();
+	
+	private final Map<String, Session> sessions = new HashMap<String, Session>();
 	
 	@Override
-	public HandshakeType getType() {
+	public void storeSession(Session session) {
+		if (session.getHost() != null) {
+			sessions.put(session.getHost() + ':' + session.getPort(), session);
+		}
+	}
+
+	@Override
+	public Session getSession(long sessionId) {
 		return null;
 	}
-
+	
 	@Override
-	public void getBytes(ByteBuffer buffer) {
-		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
-		buffer.put((byte)1);
+	public Session getSession() {
+		return null;
 	}
-
+	
 	@Override
-	public int getLength() {
-		return Record.HEADER_LENGTH + 1;
+	public Session getSession(String host, int port) {
+		return sessions.get(host + ':' + port);
 	}
-
+	
 	@Override
-	public int getDataLength() {
-		return 1;
+	public Session getSession(byte[] identity) {
+		return null;
 	}
-
+	
 	@Override
-	public boolean isKnown() {
-		return true;
-	}
-
-	@Override
-	public boolean isPrepared() {
-		return true;
-	}
-
-	@Override
-	public byte[] prepare() {
-		byte[] prepared = new byte[getLength()];
+	public void storeTicket(Session session, SessionTicket ticket) {
+		List<SessionTicket> list = tickets.get(session.getId());
 		
-		getBytes(ByteBuffer.wrap(prepared));
-		return prepared;
-	}
-
-	@Override
-	public byte[] getPrepared() {
-		return prepare();
+		if (list == null) {
+			list = new LinkedList<SessionTicket>();
+			tickets.put(session.getId(), list);
+		}
+		list.add(ticket);
 	}
 	
 	@Override
-	public List<IExtension> getExtensions() {
-		return null;
+	public List<SessionTicket> findTickets(Session session) {
+		List<SessionTicket> list = tickets.get(session.getId());
+		
+		return list == null ? new ArrayList<SessionTicket>(0) : new ArrayList<SessionTicket>(list);
 	}
-
 }

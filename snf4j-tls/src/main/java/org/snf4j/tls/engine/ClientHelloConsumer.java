@@ -197,9 +197,9 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
 				IHkdf hkdf = new Hkdf(hash.createMac());
 				
-				state.initialize(new KeySchedule(hkdf, th, cipherSuite.spec()), th, cipherSuite);
-				ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+				state.initialize(new KeySchedule(hkdf, th, cipherSuite.spec()), cipherSuite);
 				state.getKeySchedule().deriveEarlySecret();
+				ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 				state.getKeySchedule().deriveEarlyTrafficSecret();
 				state.getListener().onEarlyTrafficSecret(state);
 			} catch (Exception e) {

@@ -40,6 +40,8 @@ import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.IClientHello;
+import org.snf4j.tls.session.Session;
+import org.snf4j.tls.session.SessionBuilder;
 
 public class EngineState {
 	
@@ -65,11 +67,17 @@ public class EngineState {
 	
 	private int stateBits;
 	
+	private Session session;
+	
+	private SessionBuilder sessionBuilder = new SessionBuilder();
+
 	private ITranscriptHash transcriptHash;
 	
 	private KeySchedule keySchedule;
 		
 	private IClientHello clientHello;
+	
+	private List<PskContext> psks;
 	
 	private CipherSuite cipherSuite;
 	
@@ -84,7 +92,7 @@ public class EngineState {
 	private PublicKey publicKey;
 	
 	private int maxFragmentLength = 16384;
-	
+		
 	public EngineState(MachineState state, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener) {
 		this.state = state;
 		this.stateBits = state.bitMask();
@@ -129,9 +137,9 @@ public class EngineState {
 		return keySchedule != null;
 	}
 	
-	public void initialize(KeySchedule keySchedule, ITranscriptHash transcriptHash, CipherSuite cipherSuite) {
+	public void initialize(KeySchedule keySchedule, CipherSuite cipherSuite) {
 		this.keySchedule = keySchedule;
-		this.transcriptHash = transcriptHash;
+		this.transcriptHash = keySchedule.getTranscriptHash();
 		this.cipherSuite = cipherSuite;
 	}
 	
@@ -139,6 +147,18 @@ public class EngineState {
 		return transcriptHash;
 	}
 
+	public Session getSession() {
+		return session;
+	}
+	
+	public void setSession(Session session) {
+		this.session = session;
+	}
+	
+	public SessionBuilder getSessionBuilder() {
+		return sessionBuilder;
+	}
+	
 	public KeySchedule getKeySchedule() {
 		return keySchedule;
 	}
@@ -307,5 +327,24 @@ public class EngineState {
 		return maxFragmentLength;
 	}
 	
+	public void addPskContext(PskContext psk) {
+		if (psks == null) {
+			psks = new LinkedList<PskContext>();
+		}
+		psks.add(psk);
+	}
+	
+	public List<PskContext> getPskContexts() {
+		return psks;
+	}
+		
+	public void clearPskContexts() {
+		if (psks != null) {
+			for (PskContext psk: psks) {
+				psk.clear();
+			}
+			psks = null;
+		}
+	}
 	
 }

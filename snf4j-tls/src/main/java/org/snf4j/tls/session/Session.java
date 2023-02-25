@@ -23,69 +23,63 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.session;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Record;
+import org.snf4j.tls.cipher.CipherSuite;
 
-public class ChangeCipherSpec implements IHandshake {
+public class Session {
 
-	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
+	private final static AtomicLong ID = new AtomicLong();
 	
+	private final long id;
 	
-	@Override
-	public HandshakeType getType() {
-		return null;
+	private final long creationTime;
+	
+	private final ISessionManager manager;
+
+	private final String host;
+	
+	private final int port;
+	
+	private final CipherSuite cipherSuite;
+	
+	public Session(ISessionManager manager, CipherSuite cipherSuite, String host, int port) {
+		this.id = ID.incrementAndGet();
+		creationTime = System.currentTimeMillis();
+		this.manager = manager;
+		this.cipherSuite = cipherSuite;
+		this.host = host;
+		this.port = port;
+		this.manager.storeSession(this);
 	}
 
-	@Override
-	public void getBytes(ByteBuffer buffer) {
-		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
-		buffer.put((byte)1);
+	public long getId() {
+		return id;
 	}
 
-	@Override
-	public int getLength() {
-		return Record.HEADER_LENGTH + 1;
+	public long getCreationTime() {
+		return creationTime;
 	}
 
-	@Override
-	public int getDataLength() {
-		return 1;
+	public String getHost() {
+		return host;
 	}
 
-	@Override
-	public boolean isKnown() {
-		return true;
-	}
-
-	@Override
-	public boolean isPrepared() {
-		return true;
-	}
-
-	@Override
-	public byte[] prepare() {
-		byte[] prepared = new byte[getLength()];
-		
-		getBytes(ByteBuffer.wrap(prepared));
-		return prepared;
-	}
-
-	@Override
-	public byte[] getPrepared() {
-		return prepare();
+	public int getPort() {
+		return port;
 	}
 	
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
+	public ISessionManager getManager() {
+		return manager;
 	}
 
+	public CipherSuite getCipherSuite() {
+		return cipherSuite;
+	}
+	
+	public void storeTicket(SessionTicket ticket) {
+		manager.storeTicket(this, ticket);
+	}
 }

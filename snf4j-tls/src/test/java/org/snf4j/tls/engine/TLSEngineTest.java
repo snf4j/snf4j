@@ -57,6 +57,10 @@ import org.snf4j.tls.extension.NamedGroup;
 
 public class TLSEngineTest extends EngineTest {
 	
+	SSLContext serverCtx;
+
+	SSLContext clientCtx;
+	
 	ByteBuffer in;
 	
 	ByteBuffer out;
@@ -111,17 +115,22 @@ public class TLSEngineTest extends EngineTest {
 	SSLEngine sslServer() throws Exception {
 		SSLContextBuilder builder = SSLContextBuilder.forServer(key("RSA", "rsa"), cert("rsasha256"));
 		builder.protocol("TLSv1.3");
-		SSLContext ctx = builder.build();
-		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forServer(ctx);
+		serverCtx = builder.build();
+		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forServer(serverCtx);
 		return engineBuilder.build();
 	}
 
+	SSLEngine sslServer(SSLContext ctx) throws Exception {
+		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forServer(ctx);
+		return engineBuilder.build();
+	}
+	
 	SSLEngine sslClient() throws Exception {
 		SSLContextBuilder builder = SSLContextBuilder.forClient();
 		builder.protocol("TLSv1.3");
 		builder.trustManager(cert("rsasha256"));
-		SSLContext ctx = builder.build();
-		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forClient(ctx);
+		clientCtx = builder.build();
+		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forClient(clientCtx);
 		return engineBuilder.build("snf4j.org", 100);
 	}
 	
@@ -787,6 +796,223 @@ public class TLSEngineTest extends EngineTest {
 		assertResult(tls.unwrap(in, out), CLOSED, NOT_HANDSHAKING, in.limit(), 0);
 		assertEngine(tls, NOT_HANDSHAKING, true, true);
 		assertInOut(in.limit(), 0);
+	}
+	
+	@Test
+	public void testClientResumption() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslServer();
+		ssl.beginHandshake();
+		
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		//ServerHello ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
+		//ServerHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		Runnable task = tls.getDelegatedTask();
+		task.run();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_WRAP);
+		//new session ticket ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		//new session ticket <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
+		//closing
+		ssl.closeOutbound();
+		clear();
+		assertResult(ssl.wrap(in, out), CLOSED, NOT_HANDSHAKING);
+		flip();
+		assertResult(tls.unwrap(in, out), CLOSED, NEED_WRAP, in.position(), 0);
+		clear();
+		assertResult(tls.wrap(in, out), CLOSED, NOT_HANDSHAKING, 0, out.position());
+		flip();
+		assertResult(ssl.unwrap(in, out), CLOSED, NOT_HANDSHAKING);
+		
+		ssl = sslServer(serverCtx);
+		ssl.beginHandshake();
+		
+		tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		//ServerHello ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
+		//ServerHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position(), 0);
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_WRAP);
+		clear();
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		assertEngine(ssl, HandshakeStatus.NOT_HANDSHAKING);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
+	}
+
+	@Test
+	public void testClientResumptionWithHRR() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslServer();
+		ssl.beginHandshake();
+		
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		//ServerHello ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
+		//ServerHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		Runnable task = tls.getDelegatedTask();
+		task.run();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_WRAP);
+		//new session ticket ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		//new session ticket <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
+		//closing
+		ssl.closeOutbound();
+		clear();
+		assertResult(ssl.wrap(in, out), CLOSED, NOT_HANDSHAKING);
+		flip();
+		assertResult(tls.unwrap(in, out), CLOSED, NEED_WRAP, in.position(), 0);
+		clear();
+		assertResult(tls.wrap(in, out), CLOSED, NOT_HANDSHAKING, 0, out.position());
+		flip();
+		assertResult(ssl.unwrap(in, out), CLOSED, NOT_HANDSHAKING);
+		
+		ssl = sslServer(serverCtx);
+		ssl.beginHandshake();
+		
+		tls = new TLSEngine(true, new EngineParametersBuilder()
+				.numberOfOfferedSharedKeys(0)
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		//HRR ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);;
+		//HRR <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position(), 0);
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		//ServerHello ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
+		//ServerHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position(), 0);
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_WRAP);
+		clear();
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		assertEngine(ssl, HandshakeStatus.NOT_HANDSHAKING);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
 	}
 	
 }

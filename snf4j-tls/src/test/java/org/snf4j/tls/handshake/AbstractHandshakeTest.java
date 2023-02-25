@@ -93,6 +93,22 @@ public class AbstractHandshakeTest extends HandshakeTest {
 		e.getBytes(buffer);
 		assertArrayEquals(bytes(1,0,0,7,0,5,0,0,2,97,98), buffer());
 	}
+
+	@Test
+	public void testGetPrepared() {
+		Handshake e = new Handshake(HandshakeType.CLIENT_HELLO, bytes(0,5,0,0,2,97,98));
+		
+		assertFalse(e.isPrepared());
+		byte[] prepared = e.prepare();
+		assertTrue(e.isPrepared());
+		assertSame(prepared, e.getPrepared());
+		
+		e = new Handshake(HandshakeType.CLIENT_HELLO, bytes(0,5,0,0,2,97,98));
+		byte[] prepared2 = e.getPrepared();
+		assertTrue(e.isPrepared());
+		assertSame(prepared2, e.getPrepared());
+		assertArrayEquals(prepared, prepared2);
+	}
 	
 	class Handshake extends AbstractHandshake {
 

@@ -53,4 +53,14 @@ public final class ExtensionsUtil {
 		}
 		return null;
 	}
+
+	@SuppressWarnings("unchecked")
+	public static <T extends IExtension> T findLast(IHandshake handshake) {
+		int index = handshake.getExtensions().size() - 1;
+		
+		if (index >= 0) {
+			return (T) handshake.getExtensions().get(index);
+		}
+		return null;
+	}
 }

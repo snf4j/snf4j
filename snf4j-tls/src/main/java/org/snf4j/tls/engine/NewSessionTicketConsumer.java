@@ -32,6 +32,7 @@ import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.INewSessionTicket;
+import org.snf4j.tls.session.SessionTicket;
 
 public class NewSessionTicketConsumer implements IHandshakeConsumer {
 
@@ -49,7 +50,13 @@ public class NewSessionTicketConsumer implements IHandshakeConsumer {
 		INewSessionTicket nst = (INewSessionTicket) handshake;
 		
 		try {
-			byte[] psk = state.getKeySchedule().computePsk(nst.getNonce());
+			SessionTicket ticket = new SessionTicket(
+					state.getCipherSuite().spec().getHashSpec(),
+					state.getKeySchedule().computePsk(nst.getNonce()), 
+					nst.getTicket(), 
+					nst.getLifetime(), 
+					nst.getAgeAdd());
+			state.getSession().storeTicket(ticket);
 		} catch (Exception e) {
 			throw new InternalErrorAlert("Failed to compute PSK", e);
 		}

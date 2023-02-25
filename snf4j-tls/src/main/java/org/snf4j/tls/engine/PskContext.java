@@ -25,67 +25,29 @@
  */
 package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.snf4j.tls.crypto.KeySchedule;
+import org.snf4j.tls.session.SessionTicket;
 
-import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Record;
-
-public class ChangeCipherSpec implements IHandshake {
-
-	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
+public class PskContext {
 	
+	private final KeySchedule keySchedule;
 	
-	@Override
-	public HandshakeType getType() {
-		return null;
+	private final SessionTicket ticket;
+
+	public PskContext(KeySchedule keySchedule, SessionTicket ticket) {
+		this.keySchedule = keySchedule;
+		this.ticket = ticket;
 	}
 
-	@Override
-	public void getBytes(ByteBuffer buffer) {
-		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
-		buffer.put((byte)1);
+	public KeySchedule getKeySchedule() {
+		return keySchedule;
 	}
 
-	@Override
-	public int getLength() {
-		return Record.HEADER_LENGTH + 1;
-	}
-
-	@Override
-	public int getDataLength() {
-		return 1;
-	}
-
-	@Override
-	public boolean isKnown() {
-		return true;
-	}
-
-	@Override
-	public boolean isPrepared() {
-		return true;
-	}
-
-	@Override
-	public byte[] prepare() {
-		byte[] prepared = new byte[getLength()];
-		
-		getBytes(ByteBuffer.wrap(prepared));
-		return prepared;
-	}
-
-	@Override
-	public byte[] getPrepared() {
-		return prepare();
+	public SessionTicket getTicket() {
+		return ticket;
 	}
 	
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
+	public void clear() {
+		keySchedule.eraseAll();
 	}
-
 }

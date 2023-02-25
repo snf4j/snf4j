@@ -28,6 +28,8 @@ package org.snf4j.tls.engine;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.ISessionManager;
+import org.snf4j.tls.session.SessionManager;
 
 public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineStateListener {
 
@@ -38,7 +40,9 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
 	
 	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
-
+	
+	public volatile ISessionManager sessionManager = new SessionManager();
+	
 	public RuntimeException onETSException;
 
 	public RuntimeException onHTSException;
@@ -75,6 +79,12 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 		return certificateValidator;
 	}
 	
+	@Override
+	public ISessionManager getSessionManager() {
+		trace("SM");
+		return sessionManager;
+	}
+
 	@Override
 	public boolean verify(IServerNameExtension serverName) {
 		trace("VSN(" + serverName.getHostName() +")");

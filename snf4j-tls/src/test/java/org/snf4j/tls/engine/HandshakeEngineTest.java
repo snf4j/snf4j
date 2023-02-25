@@ -104,7 +104,7 @@ public class HandshakeEngineTest extends EngineTest {
 		params.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
 		params.compatibilityMode = true;
 		params.numberOfOfferedSharedKeys = 2;
-		params.serverName = "snf4j.org";
+		params.peerHost = "snf4j.org";
 		params.signatureSchemes = new SignatureScheme[] {SignatureScheme.ECDSA_SECP384R1_SHA384};
 		params.pskKeyExchangeModes = new PskKeyExchangeMode[0];
 		he = new HandshakeEngine(true, params, handler, handler);

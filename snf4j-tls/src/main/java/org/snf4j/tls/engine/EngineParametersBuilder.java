@@ -48,7 +48,9 @@ public class EngineParametersBuilder {
 	
 	private int numberOfOfferedSharedKeys = 1;
 	
-	private String serverName;
+	private String peerHost;
+
+	private int peerPort = -1;
 	
 	private boolean serverNameRequired;
 	
@@ -89,11 +91,16 @@ public class EngineParametersBuilder {
 		return this;
 	}
 
-	public EngineParametersBuilder serverName(String serverName) {
-		this.serverName = serverName;
+	public EngineParametersBuilder peerHost(String peerHost) {
+		this.peerHost = peerHost;
 		return this;
 	}
 
+	public EngineParametersBuilder peerPort(int peerPort) {
+		this.peerPort = peerPort;
+		return this;
+	}
+	
 	public EngineParametersBuilder serverNameRequired(boolean serverNameRequired) {
 		this.serverNameRequired = serverNameRequired;
 		return this;
@@ -113,7 +120,8 @@ public class EngineParametersBuilder {
 				compatibilityMode,
 				numberOfOfferedSharedKeys,
 				secureRandom,
-				serverName,
+				peerHost,
+				peerPort,
 				serverNameRequired,
 				delegatedTaskMode
 				);

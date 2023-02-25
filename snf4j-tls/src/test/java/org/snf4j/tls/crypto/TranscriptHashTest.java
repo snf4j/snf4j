@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -91,7 +91,7 @@ public class TranscriptHashTest extends CommonTest {
 		}
 		if (client == null) {
 			try {
-				th.getHash(t, ascii(""));
+				th.getHash(t, ascii(""), 0);
 				fail();
 			}
 			catch (IllegalArgumentException e) {
@@ -159,10 +159,10 @@ public class TranscriptHashTest extends CommonTest {
 		assertHash("", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS));
 		assertHash("", th.getHash(HandshakeType.END_OF_EARLY_DATA));
-		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii("")));
-		assertHash("", th.getHash(HandshakeType.SERVER_HELLO, ascii("")));
-		assertHash("", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS, ascii("")));
-		assertHash("", th.getHash(HandshakeType.END_OF_EARLY_DATA, ascii("")));
+		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii(""), 0));
+		assertHash("", th.getHash(HandshakeType.SERVER_HELLO, ascii(""), 0));
+		assertHash("", th.getHash(HandshakeType.ENCRYPTED_EXTENSIONS, ascii(""), 0));
+		assertHash("", th.getHash(HandshakeType.END_OF_EARLY_DATA, ascii(""), 0));
 		assertIllegalAgument(th, HandshakeType.CERTIFICATE_REQUEST, null);
 		assertIllegalAgument(th, HandshakeType.CERTIFICATE, null);
 		assertIllegalAgument(th, HandshakeType.CERTIFICATE_VERIFY, null);
@@ -237,20 +237,20 @@ public class TranscriptHashTest extends CommonTest {
 		TranscriptHash th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
 
 		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO));
-		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii("")));
-		assertHash("XX", th.getHash(HandshakeType.CLIENT_HELLO, ascii("XX")));
+		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii(""), 0));
+		assertHash("XX", th.getHash(HandshakeType.CLIENT_HELLO, ascii("XX"), 2));
 		assertHash("", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("", th.getHash(HandshakeType.FINISHED, true));
 		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
-		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii("")));
-		assertHash("XX", th.getHash(HandshakeType.CLIENT_HELLO, ascii("XX")));
+		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO, ascii(""), 0));
+		assertHash("XX", th.getHash(HandshakeType.CLIENT_HELLO, ascii("XX"), 2));
 		assertHash("CH", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CH", th.getHash(HandshakeType.FINISHED, true));
 		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
-		assertHash("CH", th.getHash(HandshakeType.SERVER_HELLO, ascii("")));
-		assertHash("CHXX", th.getHash(HandshakeType.SERVER_HELLO, ascii("XX")));
+		assertHash("CH", th.getHash(HandshakeType.SERVER_HELLO, ascii(""), 0));
+		assertHash("CHXX", th.getHash(HandshakeType.SERVER_HELLO, ascii("XX"), 2));
 		assertHash("CHSH", th.getHash(HandshakeType.SERVER_HELLO));
 		assertHash("CHSH", th.getHash(HandshakeType.FINISHED, false));
 		assertHash("CHSH", th.getHash(HandshakeType.FINISHED, true));

@@ -135,14 +135,14 @@ public class PreSharedKeyExtension extends KnownExtension implements IPreSharedK
 		}
 	};
 	
-	protected PreSharedKeyExtension(int selectedIdentity) {
+	public PreSharedKeyExtension(int selectedIdentity) {
 		super(TYPE);
 		Args.checkRange(selectedIdentity, 0, 0xffff, "selectedIdentity");
 		this.selectedIdentity = selectedIdentity;
 		offeredPsks = EMPTY;
 	}
 
-	protected PreSharedKeyExtension(OfferedPsk... offeredPsks) {
+	public PreSharedKeyExtension(OfferedPsk... offeredPsks) {
 		super(TYPE);
 		Args.checkMin(offeredPsks, 1, "offeredPsks");
 		this.selectedIdentity = -1;
@@ -204,4 +204,22 @@ public class PreSharedKeyExtension extends KnownExtension implements IPreSharedK
 		return PARSER;
 	}
 
+	public static int bindersLength(OfferedPsk[] offeredPsks) {
+		int length = 2;
+		
+		for (OfferedPsk offeredPsk: offeredPsks) {
+			length += offeredPsk.getBinder().length + 1;
+		}
+		return length;
+	}
+	
+	public static void updateBinders(byte[] clientHello, int offset, OfferedPsk[] offeredPsks) {
+		offset += 2;
+		for (OfferedPsk offeredPsk: offeredPsks) {
+			byte[] binder = offeredPsk.getBinder();
+			
+			System.arraycopy(offeredPsk.getBinder(), 0, clientHello, ++offset, binder.length);
+			offset += binder.length;
+		}		
+	}
 }

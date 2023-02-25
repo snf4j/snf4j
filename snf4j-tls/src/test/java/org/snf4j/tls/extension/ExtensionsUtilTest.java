@@ -68,4 +68,20 @@ public class ExtensionsUtilTest {
 		assertNull(ExtensionsUtil.find(ch, ExtensionType.HEARTBEAT));
 		assertNotNull(ExtensionsUtil.find(ch, ExtensionType.COOKIE));
 	}
+	
+	@Test
+	public void testFindLast() {
+		ArrayList<IExtension> extensions = new ArrayList<IExtension>();
+		ClientHello ch = new ClientHello(0x0303, new byte[32], new byte[10], new CipherSuite[2], new byte[0], extensions);
+
+		assertNull(ExtensionsUtil.findLast(ch));
+
+		extensions.add(new ServerNameExtension("xxxx"));
+		IServerNameExtension e = ExtensionsUtil.findLast(ch);
+		assertNotNull(e);
+
+		extensions.add(new CookieExtension(new byte[11]));
+		ICookieExtension e2 = ExtensionsUtil.findLast(ch);
+		assertNotNull(e2);
+	}
 }

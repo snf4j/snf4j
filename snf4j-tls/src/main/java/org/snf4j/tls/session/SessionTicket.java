@@ -23,69 +23,63 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.session;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.snf4j.tls.cipher.IHashSpec;
 
-import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Record;
+public class SessionTicket {
 
-public class ChangeCipherSpec implements IHandshake {
-
-	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
+	private final IHashSpec hashSpec;
 	
+	private final byte[] psk;
 	
-	@Override
-	public HandshakeType getType() {
-		return null;
-	}
-
-	@Override
-	public void getBytes(ByteBuffer buffer) {
-		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
-		buffer.put((byte)1);
-	}
-
-	@Override
-	public int getLength() {
-		return Record.HEADER_LENGTH + 1;
-	}
-
-	@Override
-	public int getDataLength() {
-		return 1;
-	}
-
-	@Override
-	public boolean isKnown() {
-		return true;
-	}
-
-	@Override
-	public boolean isPrepared() {
-		return true;
-	}
-
-	@Override
-	public byte[] prepare() {
-		byte[] prepared = new byte[getLength()];
+	private final byte[] ticket;
+	
+	private final long creationTime;
+	
+	private final long ageAdd;
+	
+	private final long lifetime;
+	
+	private final long maxEarlyDataSize;
 		
-		getBytes(ByteBuffer.wrap(prepared));
-		return prepared;
+	public SessionTicket(IHashSpec hashSpec, byte[] psk, byte[] ticket, long lifetime, long ageAdd) {
+		this.hashSpec = hashSpec;
+		this.psk = psk;
+		this.ticket = ticket;
+		this.creationTime = System.currentTimeMillis();
+		this.ageAdd = ageAdd;
+		this.lifetime = lifetime;
+		maxEarlyDataSize = -1L;
 	}
 
-	@Override
-	public byte[] getPrepared() {
-		return prepare();
+	
+	public IHashSpec getHashSpec() {
+		return hashSpec;
+	}
+
+	public byte[] getPsk() {
+		return psk;
+	}
+
+	public byte[] getTicket() {
+		return ticket;
+	}
+
+	public long getCreationTime() {
+		return creationTime;
+	}
+
+	public long getAgeAdd() {
+		return ageAdd;
+	}
+
+	public long getLifetime() {
+		return lifetime;
+	}
+
+	public long getMaxEarlyDataSize() {
+		return maxEarlyDataSize;
 	}
 	
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
-	}
-
 }

@@ -60,6 +60,12 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		if (!Arrays.equals(finished.getVerifyData(), verifyData)) {
 			throw new DecryptErrorAlert("Failed to verify server verify data");
 		}
+		if (state.getSession() == null) {
+			state.setSession(state.getSessionBuilder()
+				.manager(state.getHandler().getSessionManager())
+				.cipherSuite(state.getCipherSuite())
+				.build());
+		}
 		state.changeState(MachineState.SRV_CONNECTED);
 	}
 
@@ -93,6 +99,14 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			state.getKeySchedule().deriveResumptionMasterSecret();
 		} catch (Exception e) {
 			throw new InternalErrorAlert("Failed to compute server verify data", e);
+		}
+		if (state.getSession() == null) {
+			state.setSession(state.getSessionBuilder()
+				.manager(state.getHandler().getSessionManager())
+				.host(state.getParameters().getPeerHost())
+				.port(state.getParameters().getPeerPort())
+				.cipherSuite(state.getCipherSuite())
+				.build());
 		}
 		state.changeState(MachineState.CLI_CONNECTED);
 	}

@@ -33,6 +33,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.junit.Test;
 import org.snf4j.core.ByteBufferArray;
@@ -192,6 +193,50 @@ public class PreSharedKeyExtensionTest extends ExtensionTest {
 		assertFailure(array(data, 0), data.length, noIdentities, true);
 		data = bytes(0,10,0,4,21,22,23,24,16,17,18,19,0,8,5,1,2,3,4,5,1,1);
 		assertFailure(array(data, 0), data.length, differentNumbers, true);
+	}
+	
+	@Test
+	public void testBindersLength() {
+		OfferedPsk[] psks = new OfferedPsk[] {};
+		
+		assertEquals(2, PreSharedKeyExtension.bindersLength(psks));
+		
+		PskIdentity pskId1 = new PskIdentity(bytes(1,2,3), 1111);
+		PskIdentity pskId2 = new PskIdentity(bytes(4,5), 2222);
+		
+		OfferedPsk psk1 = new OfferedPsk(pskId1, bytes(6,7,8,9));
+		OfferedPsk psk2 = new OfferedPsk(pskId2, bytes(10,11,12,13,14));
+		
+		psks = new OfferedPsk[] {psk1};
+		assertEquals(2+4+1, PreSharedKeyExtension.bindersLength(psks));
 
+		psks = new OfferedPsk[] {psk1,psk2};
+		assertEquals(2+4+1+5+1, PreSharedKeyExtension.bindersLength(psks));
+	}
+	
+	@Test
+	public void testUpdateBinders() {
+		byte[] ch = new byte[10];
+		OfferedPsk[] psks = new OfferedPsk[] {};
+		
+		Arrays.fill(ch, (byte)255);
+		PreSharedKeyExtension.updateBinders(ch, 1, psks);
+		assertArrayEquals(bytes("ffffffffffffffffffff"), ch);
+
+		PskIdentity pskId1 = new PskIdentity(bytes(1,2,3), 1111);
+		PskIdentity pskId2 = new PskIdentity(bytes(4,5), 2222);
+		
+		OfferedPsk psk1 = new OfferedPsk(pskId1, bytes(6,7,8,9));
+		OfferedPsk psk2 = new OfferedPsk(pskId2, bytes(10,11,12,13,14));
+		
+		psks = new OfferedPsk[] {psk1};
+		PreSharedKeyExtension.updateBinders(ch, 1, psks);
+		assertArrayEquals(bytes("ffffffff06070809ffff"), ch);
+		
+		ch = new byte[16];
+		Arrays.fill(ch, (byte)255);
+		psks = new OfferedPsk[] {psk1,psk2};
+		PreSharedKeyExtension.updateBinders(ch, 1, psks);
+		assertArrayEquals(bytes("ffffffff06070809ff0a0b0c0d0effff"), ch);
 	}
 }

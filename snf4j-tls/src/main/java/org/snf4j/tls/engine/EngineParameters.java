@@ -48,7 +48,9 @@ public class EngineParameters implements IEngineParameters {
 	
 	private final SecureRandom secureRandom;// = new SecureRandom();
 	
-	private final String serverName;
+	private final String peerHost;
+	
+	private final int peerPort;
 	
 	private final boolean serverNameRequired;
 	
@@ -56,8 +58,8 @@ public class EngineParameters implements IEngineParameters {
 	
 	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
 			PskKeyExchangeMode[] pskKeyExchangeModes,
-			boolean compatibilityMode, int numberOfOfferedSharedKeys, SecureRandom secureRandom, String serverName,
-			boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode) {
+			boolean compatibilityMode, int numberOfOfferedSharedKeys, SecureRandom secureRandom, String peerHost,
+			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode) {
 		super();
 		this.cipherSuites = cipherSuites;
 		this.namedGroups = namedGroups;
@@ -66,7 +68,8 @@ public class EngineParameters implements IEngineParameters {
 		this.compatibilityMode = compatibilityMode;
 		this.numberOfOfferedSharedKeys = numberOfOfferedSharedKeys;
 		this.secureRandom = secureRandom;
-		this.serverName = serverName;
+		this.peerHost = peerHost;
+		this.peerPort = peerPort;
 		this.serverNameRequired = serverNameRequired;
 		this.delegatedTaskMode = delegatedTaskMode;
 	}
@@ -102,10 +105,15 @@ public class EngineParameters implements IEngineParameters {
 	}
 
 	@Override
-	public String getServerName() {
-		return serverName;
+	public String getPeerHost() {
+		return peerHost;
 	}
 
+	@Override
+	public int getPeerPort() {
+		return peerPort;
+	}
+	
 	@Override
 	public boolean isServerNameRequired() {
 		return serverNameRequired;

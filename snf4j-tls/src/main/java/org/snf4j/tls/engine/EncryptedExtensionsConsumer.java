@@ -45,7 +45,9 @@ public class EncryptedExtensionsConsumer  implements IHandshakeConsumer {
 			throw new UnexpectedMessageAlert("Unexpected EncryptedExtensions");
 		}
 		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
-		state.changeState(MachineState.CLI_WAIT_CERT);
+		state.changeState(state.getKeySchedule().isUsingPsk() 
+				? MachineState.CLI_WAIT_FINISHED 
+				: MachineState.CLI_WAIT_CERT);
 	}
 
 }

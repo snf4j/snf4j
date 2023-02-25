@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -348,7 +348,7 @@ public class TranscriptHash implements ITranscriptHash {
 		return getHash(type, client ? CLIENT_MAPPING : SERVER_MAPPING);
 	}
 	
-	private byte[] getHash(HandshakeType type, byte[] replacement, int[] mapping) {
+	private byte[] getHash(HandshakeType type, byte[] replacement, int length, int[] mapping) {
 		int index = mapping[type.value()];
 		if (index != -1) {
 			Item item = null;
@@ -368,13 +368,15 @@ public class TranscriptHash implements ITranscriptHash {
 				md = clone(this.md);
 				md.reset();
 			}
-			return md.digest(replacement);
+			md.update(replacement, 0, length);
+			return md.digest();
 		}		
 		throw new IllegalArgumentException();
 	}
 	
-	public byte[] getHash(HandshakeType type, byte[] replacement) {
-		return getHash(type, replacement, mapping(type));
+	@Override
+	public byte[] getHash(HandshakeType type, byte[] replacement, int length) {
+		return getHash(type, replacement, length, mapping(type));
 	}
 	
 	private class Item {

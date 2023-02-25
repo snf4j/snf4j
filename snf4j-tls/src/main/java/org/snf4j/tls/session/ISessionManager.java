@@ -23,69 +23,23 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.session;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
-import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Record;
-
-public class ChangeCipherSpec implements IHandshake {
-
-	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
+public interface ISessionManager {
 	
+	Session getSession(long sessionId);
 	
-	@Override
-	public HandshakeType getType() {
-		return null;
-	}
-
-	@Override
-	public void getBytes(ByteBuffer buffer) {
-		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
-		buffer.put((byte)1);
-	}
-
-	@Override
-	public int getLength() {
-		return Record.HEADER_LENGTH + 1;
-	}
-
-	@Override
-	public int getDataLength() {
-		return 1;
-	}
-
-	@Override
-	public boolean isKnown() {
-		return true;
-	}
-
-	@Override
-	public boolean isPrepared() {
-		return true;
-	}
-
-	@Override
-	public byte[] prepare() {
-		byte[] prepared = new byte[getLength()];
-		
-		getBytes(ByteBuffer.wrap(prepared));
-		return prepared;
-	}
-
-	@Override
-	public byte[] getPrepared() {
-		return prepare();
-	}
+	Session getSession();
 	
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
-	}
-
+	Session getSession(String host, int port);
+	
+	Session getSession(byte[] identity);
+	
+	void storeSession(Session session);
+	
+	void storeTicket(Session session, SessionTicket ticket);
+	
+	List<SessionTicket> findTickets(Session session);
 }

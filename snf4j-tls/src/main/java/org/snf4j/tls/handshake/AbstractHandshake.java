@@ -82,5 +82,13 @@ public abstract class AbstractHandshake implements IHandshake {
 		return prepared;
 	}
 
+	@Override
+	public byte[] getPrepared() {
+		if (prepared == null) {
+			return prepare();
+		}
+		return prepared;
+	}
+	
 	protected abstract void getData(ByteBuffer buffer);
 }

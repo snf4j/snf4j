@@ -46,6 +46,8 @@ public interface IHandshake {
 	
 	byte[] prepare();
 	
+	byte[] getPrepared();
+	
 	/**
 	 * Returns extensions associated with this handshake message.
 	 * 

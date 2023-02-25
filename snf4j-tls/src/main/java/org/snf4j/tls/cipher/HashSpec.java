@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,13 +35,13 @@ public class HashSpec implements IHashSpec {
 	public final static IHashSpec SHA384;
 	
 	static {
-		SHA256 = new HashSpec("SHA-256", 32, Hash.SHA256,
+		SHA256 = new HashSpec(0, "SHA-256", 32, Hash.SHA256,
 			new byte[] {(byte)0xe3,(byte)0xb0,(byte)0xc4,0x42,(byte)0x98,(byte)0xfc,0x1c,0x14,
 					(byte)0x9a,(byte)0xfb,(byte)0xf4,(byte)0xc8,(byte)0x99,0x6f,(byte)0xb9,0x24,
 					0x27,(byte)0xae,0x41,(byte)0xe4,0x64,(byte)0x9b,(byte)0x93,0x4c,(byte)0xa4,
 					(byte)0x95,(byte)0x99,0x1b,0x78,0x52,(byte)0xb8,0x55}
 		);
-		SHA384 = new HashSpec("SHA-348", 48, Hash.SHA384,
+		SHA384 = new HashSpec(1, "SHA-348", 48, Hash.SHA384,
 			new byte[] {0x38,(byte)0xb0,0x60,(byte)0xa7,0x51,(byte)0xac,(byte)0x96,0x38,0x4c,
 					(byte)0xd9,0x32,0x7e,(byte)0xb1,(byte)0xb1,(byte)0xe3,0x6a,0x21,(byte)0xfd,
 					(byte)0xb7,0x11,0x14,(byte)0xbe,0x07,0x43,0x4c,0x0c,(byte)0xc7,(byte)0xbf,
@@ -51,6 +51,8 @@ public class HashSpec implements IHashSpec {
 		);
 	}
 	
+	private final int ordinal;
+
 	private final String algorithm;
 	
 	private final int hashLength;
@@ -58,9 +60,10 @@ public class HashSpec implements IHashSpec {
 	private final byte[] emptyHash;
 	
 	private final IHash hash;
-
-	public HashSpec(String algorithm, int hashLength, IHash hash, byte[] emptyHash) {
+	
+	public HashSpec(int ordinal, String algorithm, int hashLength, IHash hash, byte[] emptyHash) {
 		super();
+		this.ordinal = ordinal;
 		this.algorithm = algorithm;
 		this.hashLength = hashLength;
 		this.emptyHash = emptyHash;
@@ -86,4 +89,9 @@ public class HashSpec implements IHashSpec {
 	public IHash getHash() {
 		return hash;
 	}
+
+	public int getOrdinal() {
+		return ordinal;
+	}
+	
 }

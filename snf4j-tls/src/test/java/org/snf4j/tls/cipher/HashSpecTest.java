@@ -45,6 +45,7 @@ public class HashSpecTest {
 		assertEquals(32, HashSpec.SHA256.getHashLength());
 		assertSame(Hash.SHA256, HashSpec.SHA256.getHash());
 		assertNotSame(HashSpec.SHA256.getEmptyHash(), HashSpec.SHA256.getEmptyHash());
+		assertEquals(0, HashSpec.SHA256.getOrdinal());
 	}
 
 	@Test
@@ -55,5 +56,6 @@ public class HashSpecTest {
 		assertEquals(48, HashSpec.SHA384.getHashLength());
 		assertSame(Hash.SHA384, HashSpec.SHA384.getHash());
 		assertNotSame(HashSpec.SHA384.getEmptyHash(), HashSpec.SHA384.getEmptyHash());
+		assertEquals(1, HashSpec.SHA384.getOrdinal());
 	}
 }
