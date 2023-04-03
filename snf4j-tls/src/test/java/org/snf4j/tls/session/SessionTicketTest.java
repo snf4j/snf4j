@@ -25,30 +25,42 @@
  */
 package org.snf4j.tls.session;
 
-import java.security.InvalidKeyException;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
-import org.snf4j.tls.cipher.IHashSpec;
-import org.snf4j.tls.engine.EngineState;
-import org.snf4j.tls.extension.OfferedPsk;
-import org.snf4j.tls.handshake.NewSessionTicket;
+import org.junit.Test;
+import org.snf4j.tls.CommonTest;
+import org.snf4j.tls.cipher.HashSpec;
 
-public interface ISessionManager {
-	
-	ISession getSession(long sessionId);
-	
-	ISession getSession(String host, int port);
-	
-	ISession newSession(SessionInfo info);
-	
-	void removeSession(long sessionId);
-	
-	UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec);
-	
-	void putTicket(ISession session, SessionTicket ticket);
-	
-	void removeTicket(ISession session, SessionTicket ticket);
-	
-	SessionTicket[] getTickets(ISession session);
-	
-	NewSessionTicket newTicket(EngineState state) throws InvalidKeyException;
+public class SessionTicketTest extends CommonTest {
+
+	@Test
+	public void testAll() throws Exception {
+		byte[] psk = new byte[10];
+		byte[] ticket = new byte[5];
+		
+		SessionTicket st = new SessionTicket(HashSpec.SHA256, psk, ticket, 100, 111, 1000);
+		assertSame(HashSpec.SHA256, st.getHashSpec());
+		assertArrayEquals(psk, st.getPsk());
+		assertArrayEquals(ticket, st.getTicket());
+		assertEquals(111, st.getAgeAdd());
+		assertEquals(1000L, st.getCreationTime());
+		assertEquals(-1, st.getMaxEarlyDataSize());
+		assertTrue(st.isValid(1000-1+100000));
+		assertFalse(st.isValid(1000+100000));
+		
+		long time = System.currentTimeMillis();
+		st = new SessionTicket(HashSpec.SHA384, psk, ticket, 1, 111111);
+		assertSame(HashSpec.SHA384, st.getHashSpec());
+		assertTrue(st.getCreationTime() >= time);
+		assertEquals(111111, st.getAgeAdd());
+		assertTrue(st.isValid());
+		waitFor(500);
+		assertTrue(st.isValid());
+		waitFor(600);
+		assertFalse(st.isValid());
+	}
 }

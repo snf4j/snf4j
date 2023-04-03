@@ -61,10 +61,9 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			throw new DecryptErrorAlert("Failed to verify server verify data");
 		}
 		if (state.getSession() == null) {
-			state.setSession(state.getSessionBuilder()
-				.manager(state.getHandler().getSessionManager())
-				.cipherSuite(state.getCipherSuite())
-				.build());
+			state.setSession(state.getHandler().getSessionManager().newSession(
+					state.getSessionInfo()
+						.cipherSuite(state.getCipherSuite())));
 		}
 		state.changeState(MachineState.SRV_CONNECTED);
 	}
@@ -83,8 +82,10 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			throw new DecryptErrorAlert("Failed to verify server verify data");
 		}
 				
+		IEngineParameters params = state.getParameters();
+		
 		//TODO: skip if early data is offered
-		if (state.getParameters().isCompatibilityMode() && !state.hadState(MachineState.CLI_WAIT_2_SH)) {
+		if (params.isCompatibilityMode() && !state.hadState(MachineState.CLI_WAIT_2_SH)) {
 			state.getListener().produceChangeCipherSpec(state);
 		}
 		
@@ -100,14 +101,15 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		} catch (Exception e) {
 			throw new InternalErrorAlert("Failed to compute server verify data", e);
 		}
+		
 		if (state.getSession() == null) {
-			state.setSession(state.getSessionBuilder()
-				.manager(state.getHandler().getSessionManager())
-				.host(state.getParameters().getPeerHost())
-				.port(state.getParameters().getPeerPort())
-				.cipherSuite(state.getCipherSuite())
-				.build());
+			state.setSession(state.getHandler().getSessionManager().newSession(
+					state.getSessionInfo()
+						.host(params.getPeerHost())
+						.port(params.getPeerPort())
+						.cipherSuite(state.getCipherSuite())));
 		}
+		
 		state.changeState(MachineState.CLI_CONNECTED);
 	}
 	

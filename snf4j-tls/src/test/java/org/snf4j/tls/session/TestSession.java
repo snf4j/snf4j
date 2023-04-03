@@ -27,41 +27,54 @@ package org.snf4j.tls.session;
 
 import org.snf4j.tls.cipher.CipherSuite;
 
-public class SessionBuilder {
-	
-	private ISessionManager manager;
-	
-	private String host;
-	
-	private int port;
-	
-	private CipherSuite cipherSuite;
+public class TestSession implements ISession {
 
-	public SessionBuilder manager(ISessionManager manager) {
-		this.manager = manager;
-		return this;
+	private long id;
+	
+	public byte[] data;
+	
+	TestSession(long id, int size) {
+		this.id = id;
+		data = new byte[size];
 	}
 	
-	public SessionBuilder host(String host) {
-		this.host = host;
-		return this;
+	@Override
+	public long getId() {
+		return id;
 	}
 
-	public SessionBuilder port(int port) {
-		this.port = port;
-		return this;
+	@Override
+	public long getCreationTime() {
+		return 0;
 	}
 
-	public SessionBuilder cipherSuite(CipherSuite cipherSuite) {
-		this.cipherSuite = cipherSuite;
-		return this;
+	@Override
+	public CipherSuite getCipherSuite() {
+		return null;
 	}
-	
-	public Session build() {
-		return new Session(
-				manager, 
-				cipherSuite, 
-				host, 
-				port);
+
+	@Override
+	public String getHost() {
+		return null;
 	}
+
+	@Override
+	public int getPort() {
+		return 0;
+	}
+
+	@Override
+	public ISessionManager getManager() {
+		return null;
+	}
+
+	@Override
+	public void invalidate() {
+	}
+
+	@Override
+	public boolean isValid() {
+		return true;
+	}
+
 }

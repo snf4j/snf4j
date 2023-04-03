@@ -40,8 +40,8 @@ import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.IClientHello;
-import org.snf4j.tls.session.Session;
-import org.snf4j.tls.session.SessionBuilder;
+import org.snf4j.tls.session.ISession;
+import org.snf4j.tls.session.SessionInfo;
 
 public class EngineState {
 	
@@ -67,9 +67,9 @@ public class EngineState {
 	
 	private int stateBits;
 	
-	private Session session;
+	private ISession session;
 	
-	private SessionBuilder sessionBuilder = new SessionBuilder();
+	private SessionInfo sessionInfo = new SessionInfo();
 
 	private ITranscriptHash transcriptHash;
 	
@@ -147,16 +147,16 @@ public class EngineState {
 		return transcriptHash;
 	}
 
-	public Session getSession() {
+	public ISession getSession() {
 		return session;
 	}
 	
-	public void setSession(Session session) {
+	public void setSession(ISession session) {
 		this.session = session;
 	}
 	
-	public SessionBuilder getSessionBuilder() {
-		return sessionBuilder;
+	public SessionInfo getSessionInfo() {
+		return sessionInfo;
 	}
 	
 	public KeySchedule getKeySchedule() {

@@ -25,30 +25,33 @@
  */
 package org.snf4j.tls.session;
 
-import java.security.InvalidKeyException;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
-import org.snf4j.tls.cipher.IHashSpec;
-import org.snf4j.tls.engine.EngineState;
-import org.snf4j.tls.extension.OfferedPsk;
-import org.snf4j.tls.handshake.NewSessionTicket;
+import org.junit.Test;
+import org.snf4j.tls.cipher.CipherSuite;
 
-public interface ISessionManager {
+public class SessionInfoTest {
+
+	@Test
+	public void testDefaults() {
+		SessionInfo info = new SessionInfo();
+		
+		assertNull(info.host());
+		assertEquals(-1, info.port());
+		assertNull(info.cipherSuite());
+	}
 	
-	ISession getSession(long sessionId);
-	
-	ISession getSession(String host, int port);
-	
-	ISession newSession(SessionInfo info);
-	
-	void removeSession(long sessionId);
-	
-	UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec);
-	
-	void putTicket(ISession session, SessionTicket ticket);
-	
-	void removeTicket(ISession session, SessionTicket ticket);
-	
-	SessionTicket[] getTickets(ISession session);
-	
-	NewSessionTicket newTicket(EngineState state) throws InvalidKeyException;
+	@Test
+	public void testUpdates() {
+		SessionInfo info = new SessionInfo()
+				.host("xxx")
+				.port(100)
+				.cipherSuite(CipherSuite.TLS_CHACHA20_POLY1305_SHA256);
+		
+		assertEquals("xxx", info.host());
+		assertEquals(100, info.port());
+		assertSame(CipherSuite.TLS_CHACHA20_POLY1305_SHA256, info.cipherSuite());
+	}
 }

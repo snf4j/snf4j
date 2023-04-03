@@ -31,6 +31,11 @@ import org.snf4j.tls.extension.IExtension;
 
 public interface INewSessionTicket extends IHandshake {
 	
+	/**
+	 * Gets the lifetime in seconds from the time of ticket issuance.
+	 * 
+	 * @return the ticket lifetime
+	 */
 	long getLifetime();
 	
 	long getAgeAdd();

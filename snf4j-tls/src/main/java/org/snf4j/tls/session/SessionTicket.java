@@ -36,23 +36,26 @@ public class SessionTicket {
 	private final byte[] ticket;
 	
 	private final long creationTime;
+
+	private final long expirationTime;
 	
 	private final long ageAdd;
 	
-	private final long lifetime;
-	
 	private final long maxEarlyDataSize;
 		
-	public SessionTicket(IHashSpec hashSpec, byte[] psk, byte[] ticket, long lifetime, long ageAdd) {
+	public SessionTicket(IHashSpec hashSpec, byte[] psk, byte[] ticket, long lifetime, long ageAdd, long creationTime) {
 		this.hashSpec = hashSpec;
 		this.psk = psk;
 		this.ticket = ticket;
-		this.creationTime = System.currentTimeMillis();
+		this.creationTime = creationTime;
 		this.ageAdd = ageAdd;
-		this.lifetime = lifetime;
+		expirationTime = creationTime + lifetime * 1000;
 		maxEarlyDataSize = -1L;
 	}
 
+	public SessionTicket(IHashSpec hashSpec, byte[] psk, byte[] ticket, long lifetime, long ageAdd) {
+		this(hashSpec, psk, ticket, lifetime, ageAdd, System.currentTimeMillis());
+	}
 	
 	public IHashSpec getHashSpec() {
 		return hashSpec;
@@ -74,10 +77,14 @@ public class SessionTicket {
 		return ageAdd;
 	}
 
-	public long getLifetime() {
-		return lifetime;
+	public boolean isValid(long currentTime) {
+		return expirationTime > currentTime;
 	}
-
+	
+	public boolean isValid() {
+		return isValid(System.currentTimeMillis());
+	}
+	
 	public long getMaxEarlyDataSize() {
 		return maxEarlyDataSize;
 	}

@@ -25,61 +25,113 @@
  */
 package org.snf4j.tls.session;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.tls.cipher.CipherSuite;
 
-public class Session {
+class Session implements ISession {
 
 	private final static AtomicLong ID = new AtomicLong();
+	
+	private final static SessionTicket[] EMPTY = new SessionTicket[0];
 	
 	private final long id;
 	
 	private final long creationTime;
 	
-	private final ISessionManager manager;
+	private final SessionManager manager;
 
 	private final String host;
 	
 	private final int port;
 	
 	private final CipherSuite cipherSuite;
+
+	private final Object ticketsLock = new Object();
+
+	private final List<SessionTicket> tickets = new LinkedList<SessionTicket>();
 	
-	public Session(ISessionManager manager, CipherSuite cipherSuite, String host, int port) {
+	private final AtomicBoolean valid = new AtomicBoolean(true);
+	
+	Session(SessionManager manager, CipherSuite cipherSuite, String host, int port, long creationTime) {
 		this.id = ID.incrementAndGet();
-		creationTime = System.currentTimeMillis();
+		this.creationTime = creationTime;
 		this.manager = manager;
 		this.cipherSuite = cipherSuite;
 		this.host = host;
 		this.port = port;
-		this.manager.storeSession(this);
+	}
+	
+	@Override
+	public void invalidate() {
+		manager.invalidateSession(this);
+	}
+	
+	
+	boolean markInvalid() {
+		return valid.compareAndSet(true, false);
+	}
+	
+	@Override
+	public boolean isValid() {
+		return valid.get();
 	}
 
+	@Override
 	public long getId() {
 		return id;
 	}
 
+	@Override
 	public long getCreationTime() {
 		return creationTime;
 	}
 
+	@Override
 	public String getHost() {
 		return host;
 	}
 
+	@Override
 	public int getPort() {
 		return port;
 	}
 	
+	@Override
 	public ISessionManager getManager() {
 		return manager;
 	}
 
+	@Override
 	public CipherSuite getCipherSuite() {
 		return cipherSuite;
 	}
 	
-	public void storeTicket(SessionTicket ticket) {
-		manager.storeTicket(this, ticket);
+	void addTicket(SessionTicket ticket) {
+		tickets.add(ticket);
+	}
+
+	SessionTicket[] getTickets(long currentTime) {
+		for (Iterator<SessionTicket> i = tickets.iterator(); i.hasNext();) {
+			if (!i.next().isValid(currentTime)) {
+				i.remove();
+			}
+		}
+		if (tickets.isEmpty()) {
+			return EMPTY;
+		}
+		return tickets.toArray(new SessionTicket[tickets.size()]);
+	}
+	
+	void removeTicket(SessionTicket ticket) {
+		tickets.remove(ticket);
+	}
+	
+	Object getTicketsLock() {
+		return ticketsLock;
 	}
 }

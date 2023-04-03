@@ -166,6 +166,10 @@ public class CommonTest {
 	    return factory.generatePrivate(spec);
 	}
 
+	public static void waitFor(long millis) throws InterruptedException {
+		Thread.sleep(millis);
+	}
+	
 	@Before
 	public void before() throws Exception {
 		buffer.clear();

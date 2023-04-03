@@ -96,7 +96,7 @@ public class NewSessionTicket extends KnownHandshake implements INewSessionTicke
 		
 	};
 	
-	protected NewSessionTicket(byte[] ticket, byte[] nonce, long lifetime, long ageAdd, List<IExtension> extensions) {
+	public NewSessionTicket(byte[] ticket, byte[] nonce, long lifetime, long ageAdd, List<IExtension> extensions) {
 		super(TYPE);
 		Args.checkMin(ticket, 1, "ticket");
 		Args.checkNull(nonce, "nonce");

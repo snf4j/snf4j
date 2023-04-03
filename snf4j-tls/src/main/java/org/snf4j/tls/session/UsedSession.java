@@ -25,30 +25,30 @@
  */
 package org.snf4j.tls.session;
 
-import java.security.InvalidKeyException;
+public class UsedSession {
+	
+	private final ISession session;
 
-import org.snf4j.tls.cipher.IHashSpec;
-import org.snf4j.tls.engine.EngineState;
-import org.snf4j.tls.extension.OfferedPsk;
-import org.snf4j.tls.handshake.NewSessionTicket;
+	private final SessionTicket ticket;
+	
+	private final int selectedIdentity;
 
-public interface ISessionManager {
+	public UsedSession(ISession session, SessionTicket ticket, int selectedIdentity) {
+		this.session = session;
+		this.ticket = ticket;
+		this.selectedIdentity = selectedIdentity;
+	}
+
+	public ISession getSession() {
+		return session;
+	}
+
+	public int getSelectedIdentity() {
+		return selectedIdentity;
+	}
+
+	public SessionTicket getTicket() {
+		return ticket;
+	}
 	
-	ISession getSession(long sessionId);
-	
-	ISession getSession(String host, int port);
-	
-	ISession newSession(SessionInfo info);
-	
-	void removeSession(long sessionId);
-	
-	UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec);
-	
-	void putTicket(ISession session, SessionTicket ticket);
-	
-	void removeTicket(ISession session, SessionTicket ticket);
-	
-	SessionTicket[] getTickets(ISession session);
-	
-	NewSessionTicket newTicket(EngineState state) throws InvalidKeyException;
 }

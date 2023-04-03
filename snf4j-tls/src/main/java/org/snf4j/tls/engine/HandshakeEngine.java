@@ -29,7 +29,6 @@ import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -70,8 +69,8 @@ import org.snf4j.tls.handshake.IHandshakeDecoder;
 import org.snf4j.tls.handshake.IServerHello;
 import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.ISession;
 import org.snf4j.tls.session.ISessionManager;
-import org.snf4j.tls.session.Session;
 import org.snf4j.tls.session.SessionTicket;
 
 public class HandshakeEngine implements IHandshakeEngine {
@@ -79,6 +78,8 @@ public class HandshakeEngine implements IHandshakeEngine {
 	private final static Random RANDOM = new Random();
 	
 	private final static IHandshakeConsumer[] CONSUMERS;
+	
+	private final static SessionTicket[] EMPTY = new SessionTicket[0];
 	
 	private static void addConsumer(IHandshakeConsumer[] consumers, IHandshakeConsumer consumer) {
 		CONSUMERS[consumer.getType().value()] = consumer;
@@ -345,59 +346,58 @@ public class HandshakeEngine implements IHandshakeEngine {
 				throw new InternalErrorAlert("Failed to generate exchange key", e);
 			}
 			
-			List<SessionTicket> tickets = null;
+			SessionTicket[] tickets = EMPTY;
 			OfferedPsk[] psks = null;
 			
 			if (modes.length > 0) {
 				extensions.add(new PskKeyExchangeModesExtension(modes));
-				Session session = state.getSession();
+				ISession session = state.getSession();
 				ISessionManager manager;
 				
 				if (session == null) {
 					manager = state.getHandler().getSessionManager();
 					if (peerHost != null) {
 						session = manager.getSession(peerHost, params.getPeerPort());
+						state.setSession(session);
 					}
 				}
 				else {
 					manager = session.getManager();
 				}
 				
-				if (session != null) {
-					tickets = manager.findTickets(session);
-
-					if (!tickets.isEmpty()) {
-						long time = System.currentTimeMillis();
+				if (session != null && session.isValid()) {
+					tickets = session.getManager().getTickets(session);
+					int ticketsLen = tickets.length;
+					
+					if (ticketsLen > 0) {
 						int offerHashes = 0;
+						int offered = 0;
 						
 						for (CipherSuite cipherSuite: cipherSuites) {
 							offerHashes |= 1 << cipherSuite.spec().getHashSpec().getOrdinal();
 						}
 						
-						for (Iterator<SessionTicket> i = tickets.iterator(); i.hasNext();) {
-							SessionTicket ticket = i.next();
-							
-							if (time - ticket.getCreationTime() <= ticket.getLifetime() * 1000) {
-								if ((offerHashes & (1 << ticket.getHashSpec().getOrdinal())) != 0) {
-									continue;
-								}
+						for (int i=0; i<ticketsLen; ++i) {
+							if ((offerHashes & (1 << tickets[i].getHashSpec().getOrdinal())) == 0) {
+								tickets[i] = null;
 							}
 							else {
-								//TODO: discard ticket
+								++offered;
 							}
-							i.remove();
 						}
 						
-						if (!tickets.isEmpty()) {
+						if (offered > 0) {
 							int i = 0;
 							
-							psks = new OfferedPsk[tickets.size()];
+							psks = new OfferedPsk[offered];
 							for (SessionTicket ticket: tickets) {
-								long obfuscatedAge = (time - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x1_0000_0000L;
-								
-								psks[i++] = new OfferedPsk(
-										new PskIdentity(ticket.getTicket(), obfuscatedAge), 
-										new byte[ticket.getHashSpec().getHashLength()]);
+								if (ticket != null) {
+									long obfuscatedAge = (System.currentTimeMillis() - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x1_0000_0000L;
+
+									psks[i++] = new OfferedPsk(
+											new PskIdentity(ticket.getTicket(), obfuscatedAge), 
+											new byte[ticket.getHashSpec().getHashLength()]);
+								}
 							}
 							extensions.add(new PreSharedKeyExtension(psks));
 						}						

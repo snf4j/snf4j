@@ -283,10 +283,9 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			
 			PskContext psk = pskCtxs.remove(selected);
 			
-			//TODO release ticket
-			
 			state.clearPskContexts();
 			keySchedule = psk.getKeySchedule();
+			state.getSession().getManager().removeTicket(state.getSession(), psk.getTicket());
 			if (keySchedule.getHashSpec() != cipherSuite.spec().getHashSpec()) {
 				keySchedule.eraseAll();
 				throw new IllegalParameterAlert("Incompatible Hash associated with PSK");

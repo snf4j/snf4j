@@ -25,30 +25,24 @@
  */
 package org.snf4j.tls.session;
 
-import java.security.InvalidKeyException;
+import org.snf4j.tls.cipher.CipherSuite;
 
-import org.snf4j.tls.cipher.IHashSpec;
-import org.snf4j.tls.engine.EngineState;
-import org.snf4j.tls.extension.OfferedPsk;
-import org.snf4j.tls.handshake.NewSessionTicket;
+public interface ISession {
+	
+	ISessionManager getManager();
 
-public interface ISessionManager {
+	void invalidate();
 	
-	ISession getSession(long sessionId);
+	boolean isValid();
 	
-	ISession getSession(String host, int port);
+	long getId();
 	
-	ISession newSession(SessionInfo info);
+	long getCreationTime();
 	
-	void removeSession(long sessionId);
+	CipherSuite getCipherSuite();
 	
-	UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec);
+	String getHost();
 	
-	void putTicket(ISession session, SessionTicket ticket);
-	
-	void removeTicket(ISession session, SessionTicket ticket);
-	
-	SessionTicket[] getTickets(ISession session);
-	
-	NewSessionTicket newTicket(EngineState state) throws InvalidKeyException;
+	int getPort();
+		
 }

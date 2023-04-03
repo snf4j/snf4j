@@ -81,7 +81,6 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	
 	@Override
 	public ISessionManager getSessionManager() {
-		trace("SM");
 		return sessionManager;
 	}
 
