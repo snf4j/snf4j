@@ -32,11 +32,14 @@ import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.DecryptErrorAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.handshake.Finished;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IFinished;
 import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.handshake.NewSessionTicket;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.ISession;
 
 public class FinishedConsumer implements IHandshakeConsumer {
 
@@ -60,11 +63,25 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		if (!Arrays.equals(finished.getVerifyData(), verifyData)) {
 			throw new DecryptErrorAlert("Failed to verify server verify data");
 		}
-		if (state.getSession() == null) {
-			state.setSession(state.getHandler().getSessionManager().newSession(
-					state.getSessionInfo()
-						.cipherSuite(state.getCipherSuite())));
+		
+		ISession session = state.getSession();
+		
+		if (session == null) {
+			session = state.getHandler().getSessionManager().newSession(state.getSessionInfo()
+					.cipherSuite(state.getCipherSuite()));
+			state.setSession(session);
 		}
+		
+		if (session.isValid() && state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE)) {
+			try {
+				NewSessionTicket ticket = state.getHandler().getSessionManager().newTicket(state);
+				
+				state.produce(new ProducedHandshake(ticket, RecordType.APPLICATION, RecordType.APPLICATION));
+			} catch (Exception e) {
+				throw new InternalErrorAlert("Failed to create new session ticket", e);
+			}
+		}
+		
 		state.changeState(MachineState.SRV_CONNECTED);
 	}
 
@@ -102,12 +119,14 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			throw new InternalErrorAlert("Failed to compute server verify data", e);
 		}
 		
-		if (state.getSession() == null) {
-			state.setSession(state.getHandler().getSessionManager().newSession(
-					state.getSessionInfo()
-						.host(params.getPeerHost())
-						.port(params.getPeerPort())
-						.cipherSuite(state.getCipherSuite())));
+		ISession session = state.getSession();
+		
+		if (session == null) {
+			session = state.getHandler().getSessionManager().newSession(state.getSessionInfo()
+					.host(params.getPeerHost())
+					.port(params.getPeerPort())
+					.cipherSuite(state.getCipherSuite()));
+			state.setSession(session);
 		}
 		
 		state.changeState(MachineState.CLI_CONNECTED);

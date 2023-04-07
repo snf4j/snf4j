@@ -46,6 +46,13 @@ import org.snf4j.tls.alert.MissingExtensionAlert;
 import org.snf4j.tls.alert.ProtocolVersionAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.cipher.HashSpec;
+import org.snf4j.tls.crypto.Hkdf;
+import org.snf4j.tls.crypto.IHash;
+import org.snf4j.tls.crypto.IHkdf;
+import org.snf4j.tls.crypto.ITranscriptHash;
+import org.snf4j.tls.crypto.KeySchedule;
+import org.snf4j.tls.crypto.TranscriptHash;
 import org.snf4j.tls.extension.CookieExtension;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.ExtensionsUtil;
@@ -57,6 +64,7 @@ import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.handshake.ServerHelloRandom;
+import org.snf4j.tls.session.SessionTicket;
 
 public class ServerHelloConsumerTest extends EngineTest {
 
@@ -380,5 +388,39 @@ public class ServerHelloConsumerTest extends EngineTest {
 		remove(extensions, ExtensionType.KEY_SHARE);
 		ServerHello sh = serverHello(0x0303);
 		new ServerHelloConsumer().consume(state, sh, data(sh), false);
+	}
+	
+	@Test
+	public void testRemoveNoPskKeySchedule() throws Exception {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+		IHash hash = HashSpec.SHA256.getHash();
+		ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
+		IHkdf hkdf = new Hkdf(hash.createMac());
+		
+		KeySchedule ks1 = new KeySchedule(hkdf, th, HashSpec.SHA256);
+		KeySchedule ks2 = new KeySchedule(hkdf, th, HashSpec.SHA256);
+		KeySchedule ks3 = new KeySchedule(hkdf, th, HashSpec.SHA256);
+
+		assertNull(ServerHelloConsumer.removeNoPskKeySchedule(state));
+		
+		SessionTicket st = new SessionTicket(HashSpec.SHA256, bytes(1), bytes(2), 0, 0);
+		state.addPskContext(new PskContext(ks1, st));
+		state.addPskContext(new PskContext(ks2, st));
+		
+		assertEquals(2, state.getPskContexts().size());
+		assertNull(ServerHelloConsumer.removeNoPskKeySchedule(state));
+		assertEquals(2, state.getPskContexts().size());
+		state.addPskContext(new PskContext(ks3));
+		
+		assertEquals(3, state.getPskContexts().size());
+		KeySchedule ks = ServerHelloConsumer.removeNoPskKeySchedule(state);
+		assertSame(ks3, ks);
+		assertEquals(2, state.getPskContexts().size());
+		assertSame(ks1, state.getPskContexts().get(0).getKeySchedule());
+		assertSame(ks2, state.getPskContexts().get(1).getKeySchedule());
 	}
 }

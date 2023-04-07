@@ -425,10 +425,18 @@ public class TLSEngineTest extends EngineTest {
 		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, 6, 0);
 		assertEngine(tls, NEED_UNWRAP);
 		assertInOut(6, 0);
-		assertResult(tls.unwrap(in, out), OK, FINISHED, in.position()-6, 0);
-		assertEngine(tls, NOT_HANDSHAKING);
-		assertInOut(in.position(), 0);
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position()-6, 0);
 		
+		//NewSessionTicket ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(0, out.position());
+		
+		//NewSessionTicket <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, FINISHED);
+				
 		//application data
 		byte[] data = bytes(1,2,3,4,5,6,7,8,9,0);
 		clear(data);
@@ -735,9 +743,17 @@ public class TLSEngineTest extends EngineTest {
 		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, 6, 0);
 		assertEngine(tls, NEED_UNWRAP);
 		assertInOut(6, 0);
-		assertResult(tls.unwrap(in, out), OK, FINISHED, in.position()-6, 0);
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position()-6, 0);
+
+		//NewSessionTicket ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
 		assertEngine(tls, NOT_HANDSHAKING);
-		assertInOut(in.position(), 0);
+		assertInOut(0, out.position());
+		
+		//NewSessionTicket <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, FINISHED);
 		
 		//application data
 		byte[] data = bytes(1,2,3,4,5,6,7,8,9,0);
@@ -798,21 +814,7 @@ public class TLSEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 	}
 	
-	@Test
-	public void testClientResumption() throws Exception {
-		Assume.assumeTrue(JAVA11);
-
-		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
-		
-		SSLEngine ssl = sslServer();
-		ssl.beginHandshake();
-		
-		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
-				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
-				.peerHost("host")
-				.peerPort(8000)
-				.build(), 
-				handler);
+	void prepareForClientResumption(TLSEngine tls, SSLEngine ssl) throws Exception {
 		tls.beginHandshake();
 		//ClientHello ->
 		clear();
@@ -856,7 +858,26 @@ public class TLSEngineTest extends EngineTest {
 		assertResult(tls.wrap(in, out), CLOSED, NOT_HANDSHAKING, 0, out.position());
 		flip();
 		assertResult(ssl.unwrap(in, out), CLOSED, NOT_HANDSHAKING);
+	}
+	
+	@Test
+	public void testClientResumption() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
 		
+		SSLEngine ssl = sslServer();
+		ssl.beginHandshake();
+		
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		prepareForClientResumption(tls, ssl);
+
 		ssl = sslServer(serverCtx);
 		ssl.beginHandshake();
 		
@@ -900,7 +921,7 @@ public class TLSEngineTest extends EngineTest {
 	}
 
 	@Test
-	public void testClientResumptionWithHRR() throws Exception {
+	public void testClientResumptionFallback() throws Exception {
 		Assume.assumeTrue(JAVA11);
 
 		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
@@ -915,6 +936,19 @@ public class TLSEngineTest extends EngineTest {
 				.build(), 
 				handler);
 		tls.beginHandshake();
+		prepareForClientResumption(tls, ssl);
+
+		ssl = sslServer();
+		ssl.beginHandshake();
+		
+		tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
 		//ClientHello ->
 		clear();
 		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
@@ -934,30 +968,38 @@ public class TLSEngineTest extends EngineTest {
 		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
 		flip();
 		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
-		Runnable task = tls.getDelegatedTask();
-		task.run();
+		tls.getDelegatedTask().run();
 		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
 		clear();
 		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
 		flip();
 		assertResult(ssl.unwrap(in, out), OK, NEED_WRAP);
-		//new session ticket ->
 		clear();
 		assertResult(ssl.wrap(in, out), OK, FINISHED);
-		//new session ticket <-
+		assertEngine(ssl, HandshakeStatus.NOT_HANDSHAKING);
 		flip();
 		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
-		//closing
-		ssl.closeOutbound();
-		clear();
-		assertResult(ssl.wrap(in, out), CLOSED, NOT_HANDSHAKING);
-		flip();
-		assertResult(tls.unwrap(in, out), CLOSED, NEED_WRAP, in.position(), 0);
-		clear();
-		assertResult(tls.wrap(in, out), CLOSED, NOT_HANDSHAKING, 0, out.position());
-		flip();
-		assertResult(ssl.unwrap(in, out), CLOSED, NOT_HANDSHAKING);
+	}
+	
+	@Test
+	public void testClientResumptionWithHRR() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
 		
+		SSLEngine ssl = sslServer();
+		ssl.beginHandshake();
+		
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		prepareForClientResumption(tls, ssl);
+
 		ssl = sslServer(serverCtx);
 		ssl.beginHandshake();
 		
@@ -1003,6 +1045,83 @@ public class TLSEngineTest extends EngineTest {
 		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
 		flip();
 		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position(), 0);
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_WRAP);
+		clear();
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		assertEngine(ssl, HandshakeStatus.NOT_HANDSHAKING);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
+	}
+
+	@Test
+	public void testClientResumptionFallbackWithHRR() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslServer();
+		ssl.beginHandshake();
+		
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		prepareForClientResumption(tls, ssl);
+
+		ssl = sslServer();
+		ssl.beginHandshake();
+		
+		tls = new TLSEngine(true, new EngineParametersBuilder()
+				.numberOfOfferedSharedKeys(0)
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.peerHost("host")
+				.peerPort(8000)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		//HRR ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);;
+		//HRR <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position(), 0);
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		//ServerHello ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
+		//ServerHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		tls.getDelegatedTask().run();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
 		clear();
 		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
 		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);

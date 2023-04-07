@@ -29,6 +29,8 @@ import org.snf4j.tls.IntConstant;
 
 public class PskKeyExchangeMode extends IntConstant {
 
+	private static final PskKeyExchangeMode[] EMPTY = new PskKeyExchangeMode[0];
+	
 	public static final PskKeyExchangeMode PSK_KE = new PskKeyExchangeMode("psk_ke", 0);
 
 	public static final PskKeyExchangeMode PSK_DHE_KE = new PskKeyExchangeMode("psk_dhe_ke", 1);
@@ -54,4 +56,25 @@ public class PskKeyExchangeMode extends IntConstant {
 		}
 	}
 
+	public static PskKeyExchangeMode[] implemented(PskKeyExchangeMode[] modes) {
+		if (modes.length > 0) {
+			boolean found = false;
+			
+			for (PskKeyExchangeMode mode: modes) {
+				if (mode == PskKeyExchangeMode.PSK_DHE_KE) {
+					found = true;
+					break;
+				}
+			}
+			if (found) {
+				if (modes.length > 1) {
+					modes = new PskKeyExchangeMode[] { PskKeyExchangeMode.PSK_DHE_KE };
+				}
+			}
+			else {
+				modes = EMPTY;
+			}
+		}
+		return modes;
+	}
 }

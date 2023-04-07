@@ -331,7 +331,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 			extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, 0x0304));
 			extensions.add(new SupportedGroupsExtension(groups));
 			extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
-			PskKeyExchangeMode[] modes = params.getPskKeyExchangeModes();
+			PskKeyExchangeMode[] modes = PskKeyExchangeMode.implemented(params.getPskKeyExchangeModes());
 			
 			try {
 				int offered = pairs.length;

@@ -38,6 +38,7 @@ import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.IClientHello;
 import org.snf4j.tls.session.ISession;
@@ -78,6 +79,8 @@ public class EngineState {
 	private IClientHello clientHello;
 	
 	private List<PskContext> psks;
+	
+	private int pskModes;
 	
 	private CipherSuite cipherSuite;
 	
@@ -345,6 +348,17 @@ public class EngineState {
 			}
 			psks = null;
 		}
+	}
+	
+	public void setPskModes(PskKeyExchangeMode[] modes) {
+		pskModes = 0;
+		for (PskKeyExchangeMode mode: modes) {
+			pskModes |= 1 << mode.value();
+		}
+	}
+	
+	public boolean hasPskMode(PskKeyExchangeMode mode) {
+		return (pskModes & (1 << mode.value())) != 0;
 	}
 	
 }

@@ -39,6 +39,7 @@ import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.record.RecordType;
 
@@ -60,6 +61,31 @@ public class EngineStateTest {
 	
 	static int id(ProducedHandshake handshake) {
 		return ((ServerHello)handshake.getHandshake()).getLegacyVersion();
+	}
+	
+	@Test
+	public void testSetPskModes() {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+
+		state.setPskModes(new PskKeyExchangeMode[] {PskKeyExchangeMode.PSK_KE});
+		assertTrue(state.hasPskMode(PskKeyExchangeMode.PSK_KE));
+		assertFalse(state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE));
+
+		state.setPskModes(new PskKeyExchangeMode[] {PskKeyExchangeMode.PSK_DHE_KE});
+		assertFalse(state.hasPskMode(PskKeyExchangeMode.PSK_KE));
+		assertTrue(state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE));
+	
+		state.setPskModes(new PskKeyExchangeMode[] {PskKeyExchangeMode.PSK_KE, PskKeyExchangeMode.PSK_DHE_KE});
+		assertTrue(state.hasPskMode(PskKeyExchangeMode.PSK_KE));
+		assertTrue(state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE));
+
+		state.setPskModes(new PskKeyExchangeMode[] {});
+		assertFalse(state.hasPskMode(PskKeyExchangeMode.PSK_KE));
+		assertFalse(state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE));
 	}
 	
 	@Test

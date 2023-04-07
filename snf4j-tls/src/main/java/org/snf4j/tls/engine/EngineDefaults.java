@@ -83,7 +83,7 @@ public class EngineDefaults {
 
 	private final static SignatureScheme[] IMPLEMENTED_SIGNATURE_SCHEMES = implemented(DEFAULT_SIGNATURE_SCHEMES);
 
-	private final static PskKeyExchangeMode[] DEFAULT_PSK_KEY_EXCHANGE_MODES = new PskKeyExchangeMode[] {
+	private final static PskKeyExchangeMode[] IMPLEMENTED_PSK_KEY_EXCHANGE_MODES = new PskKeyExchangeMode[] {
 			PskKeyExchangeMode.PSK_DHE_KE
 			};
 	
@@ -153,7 +153,7 @@ public class EngineDefaults {
 	}
 
 	static PskKeyExchangeMode[] getDefaultPskKeyExchangeModes() {
-		return DEFAULT_PSK_KEY_EXCHANGE_MODES.clone();
+		return IMPLEMENTED_PSK_KEY_EXCHANGE_MODES.clone();
 	}
 
 }

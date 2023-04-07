@@ -47,4 +47,17 @@ public class PskKeyExchangeModeTest {
 		assertFalse(PskKeyExchangeMode.of(255).isKnown());
 	}
 
+	@Test
+	public void testImplemented() {
+		PskKeyExchangeMode[] modes = new PskKeyExchangeMode[0];
+		assertSame(modes, PskKeyExchangeMode.implemented(modes));
+		modes = new PskKeyExchangeMode[] {PskKeyExchangeMode.PSK_KE};
+		assertEquals(0, PskKeyExchangeMode.implemented(modes).length);
+		modes = new PskKeyExchangeMode[] {PskKeyExchangeMode.PSK_DHE_KE};
+		assertSame(modes, PskKeyExchangeMode.implemented(modes));
+		modes = new PskKeyExchangeMode[] {PskKeyExchangeMode.PSK_DHE_KE,PskKeyExchangeMode.PSK_KE};
+		modes = PskKeyExchangeMode.implemented(modes);
+		assertEquals(1, modes.length);
+		assertSame(PskKeyExchangeMode.PSK_DHE_KE, modes[0]);
+	}
 }

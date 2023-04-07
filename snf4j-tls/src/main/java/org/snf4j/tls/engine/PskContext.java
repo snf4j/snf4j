@@ -39,6 +39,11 @@ public class PskContext {
 		this.ticket = ticket;
 	}
 
+	public PskContext(KeySchedule keySchedule) {
+		this.keySchedule = keySchedule;
+		this.ticket = null;
+	}
+	
 	public KeySchedule getKeySchedule() {
 		return keySchedule;
 	}
@@ -50,4 +55,5 @@ public class PskContext {
 	public void clear() {
 		keySchedule.eraseAll();
 	}
+	
 }

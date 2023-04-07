@@ -79,7 +79,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		return HandshakeType.SERVER_HELLO;
 	}
 
-	private void consumeHRR(EngineState state, IServerHello serverHello, ByteBuffer[] data, IKeyShareExtension keyShare) throws Alert {
+	private void consumeHRR(EngineState state, IServerHello serverHello, ByteBuffer[] data, IKeyShareExtension keyShare, int noPskCount) throws Alert {
 		IClientHello clientHello = state.getClientHello();
 		List<IExtension> extensions = clientHello.getExtensions();
 		List<PskContext> pskCtxs = state.getPskContexts();
@@ -89,16 +89,20 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		if (pskCtxs != null) {
 			long time = System.currentTimeMillis();
 			int size = pskCtxs.size();
-			OfferedPsk[] psks = new OfferedPsk[size];
+			OfferedPsk[] psks = new OfferedPsk[size - noPskCount];
 			
 			for (int i = size - 1; i >= 0; i--) {
 				PskContext pskCtx = pskCtxs.get(i);
 				SessionTicket ticket = pskCtx.getTicket();
-				long obfuscatedAge = (time - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x1_0000_0000L;
+
+				if (ticket != null) {
+					long obfuscatedAge = (time - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x1_0000_0000L;
 				
-				psks[i] = new OfferedPsk(
-						new PskIdentity(ticket.getTicket(), obfuscatedAge), 
-						new byte[ticket.getHashSpec().getHashLength()]);
+					psks[i] = new OfferedPsk(
+							new PskIdentity(ticket.getTicket(), obfuscatedAge), 
+							new byte[ticket.getHashSpec().getHashLength()]);
+				}
+				
 				if (i == 0) {
 					pskCtx.getKeySchedule().getTranscriptHash().updateHelloRetryRequest(data);
 				}
@@ -107,7 +111,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 					ByteBuffer[] dupData = new ByteBuffer[len];
 					
 					for (int j=0; j<len; ++j) {
-						dupData[j] = data[i].duplicate();
+						dupData[j] = data[j].duplicate();
 					}
 					pskCtx.getKeySchedule().getTranscriptHash().updateHelloRetryRequest(dupData);
 				}
@@ -211,9 +215,11 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		
 		try {
 			for (PskContext pskCtx: state.getPskContexts()) {
-				byte[] binder = pskCtx.getKeySchedule().computePskBinder(truncated, truncatedLength);
+				if (pskCtx.getTicket() != null) {
+					byte[] binder = pskCtx.getKeySchedule().computePskBinder(truncated, truncatedLength);
 				
-				System.arraycopy(binder, 0, psks[i++].getBinder(), 0, binder.length);
+					System.arraycopy(binder, 0, psks[i++].getBinder(), 0, binder.length);
+				}
 			}
 			PreSharedKeyExtension.updateBinders(truncated, truncatedLength, psks);
 		}
@@ -222,6 +228,22 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		}
 		
 		state.produce(new ProducedHandshake(clientHello, recordType, nextRecordType));
+	}
+	
+	static KeySchedule removeNoPskKeySchedule(EngineState state) {
+		List<PskContext> pskCtxs = state.getPskContexts();
+
+		if (pskCtxs != null) {
+			PskContext psk = pskCtxs.remove(pskCtxs.size()-1);
+			
+			if (psk.getTicket() == null) {
+				return psk.getKeySchedule();
+			}
+			else {
+				pskCtxs.add(psk);
+			}
+		}
+		return null;
 	}
 	
 	@Override
@@ -276,8 +298,13 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			}
 			
 			int selected = preSharedKey.getSelectedIdentity();
+			int maxSelected = pskCtxs.size()-1;
 			
-			if (selected >= pskCtxs.size()) {
+			if (pskCtxs.get(maxSelected).getTicket() == null) {
+				--maxSelected;
+			}
+			
+			if (selected > maxSelected) {
 				throw new IllegalParameterAlert("Invalid selected identity");
 			}
 			
@@ -285,16 +312,20 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			
 			state.clearPskContexts();
 			keySchedule = psk.getKeySchedule();
+			keySchedule.eraseBinderKey();
 			state.getSession().getManager().removeTicket(state.getSession(), psk.getTicket());
+		}
+		else if (!isHRR) {
+			keySchedule = removeNoPskKeySchedule(state);
+			state.clearPskContexts();
+		}
+
+		if (keySchedule != null) {
 			if (keySchedule.getHashSpec() != cipherSuite.spec().getHashSpec()) {
 				keySchedule.eraseAll();
 				throw new IllegalParameterAlert("Incompatible Hash associated with PSK");
 			}
-			keySchedule.eraseBinderKey();
 			keySchedule.setCipherSuiteSpec(cipherSuite.spec());
-		}
-		else if (!isHRR) {
-			state.clearPskContexts();
 		}
 		
 		IKeyShareExtension keyShare = find(handshake, ExtensionType.KEY_SHARE);
@@ -325,7 +356,15 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 								}
 							}
 							if (!pskCtxs.isEmpty()) {
-								consumeHRR(state, serverHello, data, keyShare);
+								IHash hash = hashSpec.getHash();
+								ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
+								IHkdf hkdf = new Hkdf(hash.createMac());
+								KeySchedule keyScheduler = new KeySchedule(hkdf, th, hashSpec);
+								
+								keyScheduler.deriveEarlySecret();
+								th.update(HandshakeType.CLIENT_HELLO, clientHello);
+								pskCtxs.add(new PskContext(keyScheduler));
+								consumeHRR(state, serverHello, data, keyShare, 1);
 								return;
 							}
 							state.clearPskContexts();
@@ -350,7 +389,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		}
 		
 		if (isHRR) {
-			consumeHRR(state, serverHello, data, keyShare);
+			consumeHRR(state, serverHello, data, keyShare, 0);
 			return;
 		}
 		

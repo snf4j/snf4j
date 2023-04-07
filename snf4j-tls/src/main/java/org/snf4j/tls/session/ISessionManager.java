@@ -25,8 +25,6 @@
  */
 package org.snf4j.tls.session;
 
-import java.security.InvalidKeyException;
-
 import org.snf4j.tls.cipher.IHashSpec;
 import org.snf4j.tls.engine.EngineState;
 import org.snf4j.tls.extension.OfferedPsk;
@@ -50,5 +48,5 @@ public interface ISessionManager {
 	
 	SessionTicket[] getTickets(ISession session);
 	
-	NewSessionTicket newTicket(EngineState state) throws InvalidKeyException;
+	NewSessionTicket newTicket(EngineState state) throws Exception;
 }

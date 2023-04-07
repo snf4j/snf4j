@@ -288,7 +288,7 @@ public class SessionManager implements ISessionManager {
 	}
 
 	@Override
-	public NewSessionTicket newTicket(EngineState state) throws InvalidKeyException {
+	public NewSessionTicket newTicket(EngineState state) throws Exception {
 		return newTicket(state, System.currentTimeMillis());
 	}
 	

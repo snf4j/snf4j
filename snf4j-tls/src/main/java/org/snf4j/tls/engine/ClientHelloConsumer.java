@@ -55,6 +55,8 @@ import org.snf4j.tls.crypto.TranscriptHash;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IKeyShareExtension;
+import org.snf4j.tls.extension.IPreSharedKeyExtension;
+import org.snf4j.tls.extension.IPskKeyExchangeModesExtension;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.extension.ISignatureAlgorithmsExtension;
 import org.snf4j.tls.extension.ISupportedGroupsExtension;
@@ -145,6 +147,18 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		ISignatureAlgorithmsExtension signAlgorithms = find(handshake, ExtensionType.SIGNATURE_ALGORITHMS);
 		if (signAlgorithms == null) {
 			throw new MissingExtensionAlert("Missing signature_algorithms extension in ClientHello");
+		}
+		
+		IPskKeyExchangeModesExtension preSharedKeyModes = find(handshake, ExtensionType.PSK_KEY_EXCHANGE_MODES);
+		if (preSharedKeyModes != null) {
+			state.setPskModes(preSharedKeyModes.getModes());
+		}
+		
+		IPreSharedKeyExtension preSharedKey = find(handshake, ExtensionType.PRE_SHARED_KEY);
+		if (preSharedKey != null) {
+			if (preSharedKey != handshake.getExtensions().get(handshake.getExtensions().size()-1)) {
+				throw new IllegalParameterAlert("PSK extension not the last extension");
+			}
 		}
 		
 		KeyShareEntry keyShareEntry;
