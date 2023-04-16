@@ -169,8 +169,16 @@ public class HandshakeAggregator {
 			}
 		}
 
-		if (handshaker.needProduce()) {
-			continueUnwrap = false;
+		if (continueUnwrap) {
+			if (handshaker.needProduce()) {
+				continueUnwrap = false;
+			}
+			else {
+				handshaker.updateTasks();
+				if (handshaker.needProduce()) {
+					continueUnwrap = false;
+				}
+			}
 		}
 		
 		if (remaining > 0 && pending != src) {

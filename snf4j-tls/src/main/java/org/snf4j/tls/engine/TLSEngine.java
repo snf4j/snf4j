@@ -161,7 +161,7 @@ public class TLSEngine implements IEngine {
 
 	@Override
 	public Object getSession() {
-		return null;
+		return handshaker.getSession();
 	}
 
 	@Override

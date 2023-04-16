@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.crypto;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.util.Arrays;
@@ -211,6 +212,18 @@ public class KeySchedule {
 	public byte[] computePskBinder(byte[] clientHello, int length) throws InvalidKeyException {
 		checkDerived(binderKey, "Binder Key");
 		byte[] hash = transcriptHash.getHash(HandshakeType.CLIENT_HELLO, clientHello, length);
+		byte[] finishedKey = hkdfExpandLabel(binderKey,
+				FINISHED,
+				EMPTY,
+				hashLength);
+		byte[] hmac = hkdf.extract(finishedKey, hash);
+		Arrays.fill(finishedKey, (byte)0);
+		return hmac;
+	}
+
+	public byte[] computePskBinder(ByteBuffer[] clientHello) throws InvalidKeyException {
+		checkDerived(binderKey, "Binder Key");
+		byte[] hash = transcriptHash.getHash(HandshakeType.CLIENT_HELLO, clientHello);
 		byte[] finishedKey = hkdfExpandLabel(binderKey,
 				FINISHED,
 				EMPTY,

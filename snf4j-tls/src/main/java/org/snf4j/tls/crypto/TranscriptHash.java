@@ -348,7 +348,7 @@ public class TranscriptHash implements ITranscriptHash {
 		return getHash(type, client ? CLIENT_MAPPING : SERVER_MAPPING);
 	}
 	
-	private byte[] getHash(HandshakeType type, byte[] replacement, int length, int[] mapping) {
+	private MessageDigest md(HandshakeType type, int[] mapping) {
 		int index = mapping[type.value()];
 		if (index != -1) {
 			Item item = null;
@@ -368,15 +368,27 @@ public class TranscriptHash implements ITranscriptHash {
 				md = clone(this.md);
 				md.reset();
 			}
-			md.update(replacement, 0, length);
-			return md.digest();
+			return md;
 		}		
 		throw new IllegalArgumentException();
 	}
 	
 	@Override
 	public byte[] getHash(HandshakeType type, byte[] replacement, int length) {
-		return getHash(type, replacement, length, mapping(type));
+		MessageDigest md = md(type, mapping(type));
+
+		md.update(replacement, 0, length);
+		return md.digest();
+	}
+
+	@Override
+	public byte[] getHash(HandshakeType type, ByteBuffer[] replacement) {
+		MessageDigest md = md(type, mapping(type));
+
+		for (ByteBuffer buffer: replacement) {
+			md.update(buffer);
+		}
+		return md.digest();
 	}
 	
 	private class Item {

@@ -117,6 +117,11 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 	
 	@Override
+	public ISession getSession() {
+		return state.getSession();
+	}
+	
+	@Override
 	public IEngineHandler getHandler() {
 		return state.getHandler();
 	}

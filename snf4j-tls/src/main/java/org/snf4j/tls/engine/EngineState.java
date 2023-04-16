@@ -150,6 +150,10 @@ public class EngineState {
 		return transcriptHash;
 	}
 
+	public void setTranscriptHash(ITranscriptHash transcriptHash) {
+		this.transcriptHash = transcriptHash;
+	}
+	
 	public ISession getSession() {
 		return session;
 	}

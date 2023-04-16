@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.DecryptErrorAlert;
 import org.snf4j.tls.alert.HandshakeFailureAlert;
 import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
@@ -65,6 +66,8 @@ import org.snf4j.tls.extension.KeyShareEntry;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.ParsedKey;
+import org.snf4j.tls.extension.PreSharedKeyExtension;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.ServerNameExtension;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
 import org.snf4j.tls.extension.SupportedVersionsExtension;
@@ -79,6 +82,7 @@ import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.UsedSession;
 
 public class ClientHelloConsumer implements IHandshakeConsumer {
 
@@ -159,6 +163,14 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			if (preSharedKey != handshake.getExtensions().get(handshake.getExtensions().size()-1)) {
 				throw new IllegalParameterAlert("PSK extension not the last extension");
 			}
+			
+			if (preSharedKeyModes == null) {
+				throw new MissingExtensionAlert("Missing psk_key_exchange_modes extension in ClientHello");
+			}
+			
+			if (!state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE)) {
+				preSharedKey = null;
+			}
 		}
 		
 		KeyShareEntry keyShareEntry;
@@ -205,17 +217,76 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			state.setHostName(serverName.getHostName());
 		}
 		
+		boolean partInitialization = false;
+		UsedSession resumed = null;
+		if (preSharedKey != null) {
+			if (keyShareEntry != null) {
+				resumed = state.getHandler().getSessionManager().useSession(
+						preSharedKey.getOfferedPsks(),
+						cipherSuite.spec().getHashSpec());
+			}
+			else {
+				partInitialization = true;
+			}
+		}
+		
 		if (!state.isInitialized()) {
 			try {
 				IHash hash = cipherSuite.spec().getHashSpec().getHash();
-				ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
-				IHkdf hkdf = new Hkdf(hash.createMac());
+				ITranscriptHash th = state.getTranscriptHash();
 				
-				state.initialize(new KeySchedule(hkdf, th, cipherSuite.spec()), cipherSuite);
-				state.getKeySchedule().deriveEarlySecret();
-				ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
-				state.getKeySchedule().deriveEarlyTrafficSecret();
-				state.getListener().onEarlyTrafficSecret(state);
+				if (th == null) {
+					th = new TranscriptHash(hash.createMessageDigest());
+				}
+				
+				if (partInitialization) {
+					state.setTranscriptHash(th);
+					ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+				}
+				else {
+					IHkdf hkdf = new Hkdf(hash.createMac());
+
+					state.initialize(new KeySchedule(hkdf, th, cipherSuite.spec()), cipherSuite);
+					if (resumed != null) {
+						state.getKeySchedule().deriveEarlySecret(resumed.getTicket().getPsk(), false);
+						state.getKeySchedule().deriveBinderKey();
+
+						int bindersLen = PreSharedKeyExtension.bindersLength(preSharedKey.getOfferedPsks());
+						int i = data.length;
+						ByteBuffer[] dupData = new ByteBuffer[i];
+						ByteBuffer dupBuf;
+
+						while(--i >= 0) {
+							dupBuf = data[i].duplicate();
+							dupData[i] = dupBuf;
+							if (bindersLen > 0) {
+								int len = Math.min(dupBuf.remaining(), bindersLen);
+
+								if (len > 0) {
+									bindersLen -= len;
+									dupBuf.limit(dupBuf.limit()-len);
+								}
+							}
+						}
+
+						byte[] expectedBinder = state.getKeySchedule().computePskBinder(dupData);
+						byte[] binder = preSharedKey.getOfferedPsks()[resumed.getSelectedIdentity()].getBinder();
+
+						if (!Arrays.equals(expectedBinder, binder)) {
+							state.getHandler().getSessionManager().putTicket(
+									resumed.getSession(), 
+									resumed.getTicket());
+							throw new DecryptErrorAlert("Invalid PSK binder");
+						}
+						state.setSession(resumed.getSession());
+					}
+					else {
+						state.getKeySchedule().deriveEarlySecret();
+					}
+					ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+					state.getKeySchedule().deriveEarlyTrafficSecret();
+					state.getListener().onEarlyTrafficSecret(state);
+				}
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to create key schedule", e);
 			}			
@@ -224,17 +295,19 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 		}
 		
-		List<IExtension> extensions = new ArrayList<IExtension>();
-
-		extensions.add(new SupportedVersionsExtension(
-				ISupportedVersionsExtension.Mode.SERVER_HELLO, 
-				negotiatedVersion));
 		if (keyShareEntry == null) {
 			if (state.getState() == MachineState.SRV_WAIT_2_CH) {
 				throw new UnexpectedMessageAlert("Unexpected third ClientHello");
 			}
+
+			List<IExtension> extensions = new ArrayList<IExtension>();
+
 			state.setNamedGroup(namedGroup);
+			extensions.add(new SupportedVersionsExtension(
+					ISupportedVersionsExtension.Mode.SERVER_HELLO, 
+					negotiatedVersion));
 			extensions.add(new KeyShareExtension(namedGroup));
+			
 			ServerHello helloRetryRequest = new ServerHello(
 					EngineDefaults.LEGACY_VERSION,
 					ServerHelloRandom.getHelloRetryRequestRandom(),
@@ -256,7 +329,8 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		AbstractEngineTask task = new KeyExchangeTask(
 				namedGroup, 
 				keyShareEntry.getParsedKey(), 
-				clientHello.getLegacySessionId()); 
+				clientHello.getLegacySessionId(),
+				resumed != null ? resumed.getSelectedIdentity() : -1); 
 		if (taskMode.all()) {
 			state.addTask(task);
 		}
@@ -264,15 +338,23 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			task.run(state);
 		}
 		
-		ISignatureAlgorithmsExtension signAlgorithmsCert = find(handshake, ExtensionType.SIGNATURE_ALGORITHMS_CERT);
-		task = new CertificateTask(
-				state.getHandler().getCertificateSelector(),
-				new CertificateCriteria(
-					CertificateType.X509,
-					state.getHostName(),
-					signAlgorithms.getSchemes(),
-					signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes()
-				));
+		if (resumed != null) {
+			task = new CertificateTask();
+			if (!taskMode.all()) {
+				taskMode = DelegatedTaskMode.NONE;
+			}
+		}
+		else {
+			ISignatureAlgorithmsExtension signAlgorithmsCert = find(handshake, ExtensionType.SIGNATURE_ALGORITHMS_CERT);
+			task = new CertificateTask(
+					state.getHandler().getCertificateSelector(),
+					new CertificateCriteria(
+							CertificateType.X509,
+							state.getHostName(),
+							signAlgorithms.getSchemes(),
+							signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes()
+							));
+		}
 		if (taskMode.certificates()) {
 			state.changeState(MachineState.SRV_WAIT_TASK);
 			state.addTask(task);
@@ -290,14 +372,17 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		
 		private final byte[] legacySessionId;
 		
+		private final int selectedIdentity;
+		
 		private volatile byte[] secret;
 		
 		private volatile PublicKey publicKey;
 		
-		KeyExchangeTask(NamedGroup namedGroup, ParsedKey parsedKey, byte[] legacySessionId) {
+		KeyExchangeTask(NamedGroup namedGroup, ParsedKey parsedKey, byte[] legacySessionId, int selectedIdentity) {
 			this.namedGroup = namedGroup;
 			this.parsedKey = parsedKey;
 			this.legacySessionId = legacySessionId;
+			this.selectedIdentity = selectedIdentity;
 		}
 		
 		@Override
@@ -330,6 +415,9 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			extensions.add(new KeyShareExtension(
 					IKeyShareExtension.Mode.SERVER_HELLO, 
 					new KeyShareEntry(namedGroup, publicKey)));
+			if (selectedIdentity >= 0) {
+				extensions.add(new PreSharedKeyExtension(selectedIdentity));
+			}
 			
 			byte[] random = new byte[32];
 			
@@ -383,6 +471,11 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			this.selector = selector;
 			this.criteria = criteria;
 		}
+
+		CertificateTask() {
+			this.selector = null;
+			this.criteria = null;
+		}
 		
 		@Override
 		public boolean isProducing() {
@@ -396,20 +489,24 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 
 		@Override
 		void execute() throws Exception {
-			certificates = selector.selectCertificates(criteria);
+			if (selector != null) {
+				certificates = selector.selectCertificates(criteria);
+			}
 		}
 		
 		@Override
 		public void finish(EngineState state) throws Alert {
-			Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
-			ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
-			
-			byte[] signature = ConsumerUtil.sign(state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false), 
-					certificates.getAlgorithm(), 
-					certificates.getPrivateKey(), 
-					false);
-			CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
-			ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);	
+			if (certificates != null) {
+				Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
+				ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
+
+				byte[] signature = ConsumerUtil.sign(state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false), 
+						certificates.getAlgorithm(), 
+						certificates.getPrivateKey(), 
+						false);
+				CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
+				ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);	
+			}
 			
 			try {
 				Finished finished = new Finished(state.getKeySchedule().computeServerVerifyData());

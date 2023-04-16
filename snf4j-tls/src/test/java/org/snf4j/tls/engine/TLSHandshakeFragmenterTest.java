@@ -49,6 +49,7 @@ import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IEncryptorHolder;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.ISession;
 
 public class TLSHandshakeFragmenterTest extends EngineTest {
 
@@ -414,6 +415,11 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		@Override
 		public int getMaxFragmentLength() {
 			return maxFragmentLength;
+		}
+
+		@Override
+		public ISession getSession() {
+			return null;
 		}
 	}
 	

@@ -174,10 +174,12 @@ public class KeyScheduleTest extends CommonTest {
 		assertFalse(ks.isUsingPsk());
 		ks.deriveEarlySecret();
 		ks.deriveBinderKey();
-		byte[] key = ks.computePskBinder("xxx".getBytes(),3);
+		byte[] xxx = "xxx".getBytes();
+		byte[] key = ks.computePskBinder(xxx,3);
 		byte[] es = earlySecret(null);
 		byte[] bk = binderKey(es, false);
-		assertArrayEquals(pskBinder(bk, md.digest("xxx".getBytes())), key);
+		assertArrayEquals(pskBinder(bk, md.digest(xxx)), key);
+		assertArrayEquals(key, ks.computePskBinder(array(xxx,0,1)));
 		assertEquals(32, key.length);
 		
 		byte[] psk = new byte[hashLen];
@@ -186,18 +188,18 @@ public class KeyScheduleTest extends CommonTest {
 		ks.deriveEarlySecret(psk, false);
 		assertTrue(ks.isUsingPsk());
 		ks.deriveBinderKey();
-		byte[] key2 = ks.computePskBinder("xxx".getBytes(),3);
+		byte[] key2 = ks.computePskBinder(xxx,3);
 		es = earlySecret(psk);
 		bk = binderKey(es, false);
-		assertArrayEquals(pskBinder(bk, md.digest("xxx".getBytes())), key2);
+		assertArrayEquals(pskBinder(bk, md.digest(xxx)), key2);
 		assertEquals(32, key2.length);
 
 		ks.deriveEarlySecret(psk, true);
 		ks.deriveBinderKey();
-		byte[] key3 = ks.computePskBinder("xxx".getBytes(),3);
+		byte[] key3 = ks.computePskBinder(xxx,3);
 		es = earlySecret(psk);
 		bk = binderKey(es, true);
-		assertArrayEquals(pskBinder(bk, md.digest("xxx".getBytes())), key3);
+		assertArrayEquals(pskBinder(bk, md.digest(xxx)), key3);
 		assertEquals(32, key3.length);
 		
 		assertKeyNotEquals(key, key2);
@@ -208,7 +210,7 @@ public class KeyScheduleTest extends CommonTest {
 		th.updateHelloRetryRequest("HRR".getBytes());
 		ks.deriveEarlySecret(psk, false);
 		ks.deriveBinderKey();
-		byte[] key4 = ks.computePskBinder("xxx".getBytes(),3);
+		byte[] key4 = ks.computePskBinder(xxx,3);
 		es = earlySecret(psk);
 		bk = binderKey(es, false);
 		md.reset();
@@ -217,7 +219,8 @@ public class KeyScheduleTest extends CommonTest {
 		md.update(new byte[] {(byte)254,0,0,(byte)hashLen});
 		md.update(ch1);
 		md.update("HRR".getBytes());
-		assertArrayEquals(pskBinder(bk, md.digest("xxx".getBytes())), key4);
+		assertArrayEquals(pskBinder(bk, md.digest(xxx)), key4);
+		assertArrayEquals(key4, ks.computePskBinder(array(xxx,0,1)));
 		assertEquals(32, key4.length);
 	}
 	
@@ -719,8 +722,15 @@ public class KeyScheduleTest extends CommonTest {
 		} catch (IllegalStateException e) {
 			assertEquals("Binder Key not derived", e.getMessage());
 		}
+		try {
+			ks.computePskBinder(array("CHXXXX".getBytes(),0,1));
+			fail();
+		} catch (IllegalStateException e) {
+			assertEquals("Binder Key not derived", e.getMessage());
+		}
 		ks.deriveBinderKey();
 		ks.computePskBinder("CH".getBytes(),2);
+		ks.computePskBinder(array("CHXXXX".getBytes(),0,1));
 
 		try {
 			ks.deriveEarlyTrafficKeys();

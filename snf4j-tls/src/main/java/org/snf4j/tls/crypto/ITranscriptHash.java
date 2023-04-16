@@ -46,6 +46,8 @@ public interface ITranscriptHash {
 
 	byte[] getHash(HandshakeType type, byte[] replacement, int length);
 
+	byte[] getHash(HandshakeType type, ByteBuffer[] replacement);
+	
 	String getAlgorithm();
 	
 	MessageDigest getHashFunction();
