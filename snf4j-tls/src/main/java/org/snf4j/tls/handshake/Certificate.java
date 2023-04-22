@@ -122,7 +122,7 @@ public class Certificate extends KnownHandshake implements ICertificate {
 		List<IExtension> extensions = new ArrayList<IExtension>();
 		
 		for (ICertificateEntry entry: entries) {
-			extensions.addAll(entry.getExtensioins());
+			extensions.addAll(entry.getExtensions());
 		}
 		return extensions;
 	}
@@ -147,7 +147,7 @@ public class Certificate extends KnownHandshake implements ICertificate {
 		for (ICertificateEntry entry: entries) {
 			len += 3 + 2;
 			len += entry.getDataLength();
-			len += ExtensionsUtil.calculateLength(entry.getExtensioins());
+			len += ExtensionsUtil.calculateLength(entry.getExtensions());
 		}
 		return len;
 	}
@@ -179,8 +179,8 @@ public class Certificate extends KnownHandshake implements ICertificate {
 			buffer.put((byte) (len >> 16));
 			buffer.putShort((short) (len & 0xffff));
 			buffer.put(entry.getData());
-			buffer.putShort((short) ExtensionsUtil.calculateLength(entry.getExtensioins()));
-			for (IExtension e: entry.getExtensioins()) {
+			buffer.putShort((short) ExtensionsUtil.calculateLength(entry.getExtensions()));
+			for (IExtension e: entry.getExtensions()) {
 				e.getBytes(buffer);
 			}
 		}

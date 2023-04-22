@@ -35,5 +35,5 @@ public interface ICertificateEntry {
 	
 	int getDataLength();
 	
-	List<IExtension> getExtensioins();
+	List<IExtension> getExtensions();
 }

@@ -66,5 +66,8 @@ public class Alert extends ProtocolException {
 	public boolean isClosure() {
 		return closure;
 	}
-	
+
+	public static Alert of(AlertLevel level, AlertDescription description) {
+		return AlertUtil.of(level, description);
+	}
 }

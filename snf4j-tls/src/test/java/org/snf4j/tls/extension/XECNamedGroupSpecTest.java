@@ -37,6 +37,7 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 
 import org.junit.Assume;
@@ -53,7 +54,7 @@ public class XECNamedGroupSpecTest extends ExtensionTest {
 		Assume.assumeTrue(JAVA11);
 
 		XECNamedGroupSpec spec = XECNamedGroupSpec.X25519;
-		KeyPair kp = spec.getKeyExchange().generateKeyPair();
+		KeyPair kp = spec.getKeyExchange().generateKeyPair(RANDOM);
 		spec.getData(buffer, kp.getPublic());
 		byte[] data = buffer();
 		ParsedKey pk = spec.parse(ByteBufferArray.wrap(array(data,0)), data.length);
@@ -61,7 +62,7 @@ public class XECNamedGroupSpecTest extends ExtensionTest {
 		buffer.clear();
 		
 		spec = XECNamedGroupSpec.X448;
-		kp = spec.getKeyExchange().generateKeyPair();
+		kp = spec.getKeyExchange().generateKeyPair(RANDOM);
 		spec.getData(buffer, kp.getPublic());
 		data = buffer();
 		pk = spec.parse(ByteBufferArray.wrap(array(data,0)), data.length);
@@ -235,12 +236,12 @@ public class XECNamedGroupSpecTest extends ExtensionTest {
 		}
 
 		@Override
-		public byte[] generateSecret(PrivateKey privateKey, PublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException {
+		public byte[] generateSecret(PrivateKey privateKey, PublicKey publicKey, SecureRandom random) throws NoSuchAlgorithmException, InvalidKeyException {
 			return null;
 		}
 
 		@Override
-		public KeyPair generateKeyPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+		public KeyPair generateKeyPair(SecureRandom random) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 			return null;
 		}
 

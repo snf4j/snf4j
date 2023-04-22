@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -194,7 +195,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			}
 		}
 		else {
-			KeyExchangeTask task = new KeyExchangeTask(namedGroup, psk);
+			KeyExchangeTask task = new KeyExchangeTask(namedGroup, psk, state.getParameters().getSecureRandom());
 			if (state.getParameters().getDelegatedTaskMode().all()) {
 				state.changeState(MachineState.CLI_WAIT_TASK);
 				state.addTask(task);
@@ -403,7 +404,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		try {
 			IKeyExchange keyExchange = namedGroup.spec().getKeyExchange();
 			PublicKey publicKey = namedGroup.spec().generateKey(keyShare.getEntries()[0].getParsedKey());
-			byte[] secret = keyExchange.generateSecret(privateKey, publicKey);
+			byte[] secret = keyExchange.generateSecret(privateKey, publicKey, state.getParameters().getSecureRandom());
 			
 			state.getKeySchedule().deriveHandshakeSecret(secret);
 			state.getKeySchedule().deriveHandshakeTrafficSecrets();
@@ -423,11 +424,14 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		
 		private final boolean psk;
 		
+		private final SecureRandom random;
+		
 		private volatile KeyPair pair;
 		
-		KeyExchangeTask(NamedGroup namedGroup, boolean psk) {
+		KeyExchangeTask(NamedGroup namedGroup, boolean psk, SecureRandom random) {
 			this.namedGroup = namedGroup;
 			this.psk = psk;
+			this.random = random;
 		}
 		
 		@Override
@@ -465,7 +469,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 
 		@Override
 		void execute() throws Exception {
-			pair = namedGroup.spec().getKeyExchange().generateKeyPair();
+			pair = namedGroup.spec().getKeyExchange().generateKeyPair(random);
 		}
 	}
 }

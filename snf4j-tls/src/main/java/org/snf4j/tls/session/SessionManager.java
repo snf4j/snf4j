@@ -28,6 +28,7 @@ package org.snf4j.tls.session;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.SecureRandom;
+import java.security.cert.Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
@@ -83,8 +84,8 @@ public class SessionManager implements ISessionManager {
 	}
 	
 	static String key(ISession session) {
-		if (session.getHost() != null && session.getPort() != -1) {
-			return key(session.getHost(), session.getPort());
+		if (session.getPeerHost() != null && session.getPeerPort() != -1) {
+			return key(session.getPeerHost(), session.getPeerPort());
 		}
 		return null;
 	}
@@ -124,13 +125,19 @@ public class SessionManager implements ISessionManager {
 		return getSession(host, port, System.currentTimeMillis());
 	}
 	
+	Certificate[] prepareCerts(Certificate[] certs) {
+		return certs == null ? null : certs.clone();
+	}
+	
 	ISession newSession(SessionInfo info, long currentTime) {
 		Session session = new Session(
 				this, 
-				info.cipherSuite(), 
-				info.host(), 
-				info.port(),
-				currentTime);
+				info.cipher(), 
+				info.peerHost(), 
+				info.peerPort(),
+				currentTime,
+				prepareCerts(info.peerCerts()),
+				prepareCerts(info.localCerts()));
 		
 		putSession(session, currentTime);
 		return session;

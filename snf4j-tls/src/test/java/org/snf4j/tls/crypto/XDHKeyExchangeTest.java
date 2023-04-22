@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,8 +58,8 @@ public class XDHKeyExchangeTest extends CommonTest {
 	}
 	
 	void assertKeyExchange(XDHKeyExchange dh, String algo, int len) throws Exception {
-		KeyPair kp1 = dh.generateKeyPair();
-		KeyPair kp2 = dh.generateKeyPair();
+		KeyPair kp1 = dh.generateKeyPair(RANDOM);
+		KeyPair kp2 = dh.generateKeyPair(RANDOM);
 		
 		assertEquals(getU(kp1.getPublic()), dh.getU(kp1.getPublic()));
 		assertEquals(JAVA11, dh.isImplemented());
@@ -67,8 +67,8 @@ public class XDHKeyExchangeTest extends CommonTest {
 		
 		assertEquals(kp1.getPublic(), dh.generatePublicKey(getU(kp1.getPublic())));
 		
-		byte[] s1 = dh.generateSecret(kp1.getPrivate(), kp2.getPublic());
-		byte[] s2 = dh.generateSecret(kp2.getPrivate(), kp1.getPublic());
+		byte[] s1 = dh.generateSecret(kp1.getPrivate(), kp2.getPublic(), RANDOM);
+		byte[] s2 = dh.generateSecret(kp2.getPrivate(), kp1.getPublic(), RANDOM);
 		assertArrayEquals(s1,s2);
 		assertEquals(len,s1.length);
 	}
@@ -82,12 +82,12 @@ public class XDHKeyExchangeTest extends CommonTest {
 
 	@Test
 	public void testGenerateSecret() throws Exception {
-		KeyPair kp1 = ECKeyExchange.SECP256R1.generateKeyPair();
-		KeyPair kp2 = ECKeyExchange.SECP256R1.generateKeyPair();
+		KeyPair kp1 = ECKeyExchange.SECP256R1.generateKeyPair(RANDOM);
+		KeyPair kp2 = ECKeyExchange.SECP256R1.generateKeyPair(RANDOM);
 		
 		XDHKeyExchange e = new XDHKeyExchange("ECDH", ECKeyExchange.SECP256R1.getAlgorithm());
-		byte[] s1 = e.generateSecret(kp1.getPrivate(), kp2.getPublic());
-		byte[] s2 = e.generateSecret(kp2.getPrivate(), kp1.getPublic());
+		byte[] s1 = e.generateSecret(kp1.getPrivate(), kp2.getPublic(), RANDOM);
+		byte[] s2 = e.generateSecret(kp2.getPrivate(), kp1.getPublic(), RANDOM);
 		assertArrayEquals(s1, s2);
 	}
 	
@@ -107,7 +107,7 @@ public class XDHKeyExchangeTest extends CommonTest {
 	
 	@Test
 	public void testGenerateKeyPair() throws Exception {
-		KeyPair kp = new TestXDHKeyExchange("EC", ECKeyExchange.SECP256R1.getAlgorithm()).generateKeyPair();
+		KeyPair kp = new TestXDHKeyExchange("EC", ECKeyExchange.SECP256R1.getAlgorithm()).generateKeyPair(RANDOM);
 		assertEquals("EC", kp.getPublic().getAlgorithm());
 	}
 	
@@ -127,7 +127,7 @@ public class XDHKeyExchangeTest extends CommonTest {
 	
 	@Test
 	public void testgeneratePublicKey() throws Exception {
-		KeyPair kp = DHKeyExchange.FFDHE2048.generateKeyPair();
+		KeyPair kp = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM);
 		PublicKey k = new TestXDHKeyExchange("DH", DHKeyExchange.FFDHE2048.getAlgorithm()).generatePublicKey(((DHPublicKey)kp.getPublic()).getY());
 		assertEquals("DH", k.getAlgorithm());
 	}
@@ -135,7 +135,7 @@ public class XDHKeyExchangeTest extends CommonTest {
 	@Test
 	public void testGetU() throws Exception {
 		Method m = DHPublicKey.class.getMethod("getY");
-		KeyPair pk = DHKeyExchange.FFDHE2048.generateKeyPair();
+		KeyPair pk = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM);
 		assertEquals(((DHPublicKey)pk.getPublic()).getY(), XDHKeyExchange.X25519.getU(m, pk.getPublic()));
 		
 		try {

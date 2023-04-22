@@ -134,10 +134,12 @@ public class AlertTest {
 				new UnexpectedMessageAlert("Text1"),
 				new UnrecognizedNameAlert("Text1"),
 				new DecryptErrorAlert("Text1"),
+				new CertificateRequiredAlert("Text1"),
 				new RecordOverflowAlert("Text1")
 		};
 		for (Alert alert: alerts) {
 			assertErrorAlert(alert, "Text1", null);
+			assertSame(alert.getClass(), Alert.of(alert.getLevel(), alert.getDescription()).getClass());
 		}
 		
 		alerts = new Alert[] {

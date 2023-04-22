@@ -31,6 +31,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.snf4j.core.engine.HandshakeStatus.FINISHED;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_TASK;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
@@ -40,10 +41,14 @@ import static org.snf4j.core.engine.Status.CLOSED;
 import static org.snf4j.core.engine.Status.OK;
 
 import java.nio.ByteBuffer;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLPeerUnverifiedException;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -51,9 +56,13 @@ import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.engine.Status;
+import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.core.session.ssl.SSLContextBuilder;
 import org.snf4j.core.session.ssl.SSLEngineBuilder;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.CertificateRequiredAlert;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.session.ISession;
 
 public class TLSEngineTest extends EngineTest {
 	
@@ -112,28 +121,39 @@ public class TLSEngineTest extends EngineTest {
 		return data;
 	}
 
-	SSLEngine sslServer() throws Exception {
-		SSLContextBuilder builder = SSLContextBuilder.forServer(key("RSA", "rsa"), cert("rsasha256"));
-		builder.protocol("TLSv1.3");
+	SSLEngine sslServer(ClientAuth clientAuth, X509Certificate trustCert) throws Exception {
+		SSLContextBuilder builder = SSLContextBuilder.forServer(key("EC", "secp256r1"), cert("secp256r1"));
+		builder.protocol("TLSv1.3").trustManager(trustCert);
 		serverCtx = builder.build();
 		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forServer(serverCtx);
+		engineBuilder.clientAuth(clientAuth);
 		return engineBuilder.build();
 	}
 
+	SSLEngine sslServer() throws Exception {
+		return sslServer(ClientAuth.NONE, cert("rsasha256"));
+	}
+	
 	SSLEngine sslServer(SSLContext ctx) throws Exception {
 		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forServer(ctx);
 		return engineBuilder.build();
 	}
 	
-	SSLEngine sslClient() throws Exception {
+	SSLEngine sslClient(boolean useKeyManager) throws Exception {
 		SSLContextBuilder builder = SSLContextBuilder.forClient();
-		builder.protocol("TLSv1.3");
-		builder.trustManager(cert("rsasha256"));
+		builder.protocol("TLSv1.3").trustManager(cert("rsasha256"));
+		if (useKeyManager) {
+			builder.keyManager(key("EC", "secp256r1"), cert("secp256r1"));
+		}
 		clientCtx = builder.build();
 		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forClient(clientCtx);
 		return engineBuilder.build("snf4j.org", 100);
 	}
 
+	SSLEngine sslClient() throws Exception {
+		return sslClient(false);
+	}
+	
 	SSLEngine sslClient(SSLContext ctx) throws Exception {
 		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forClient(clientCtx);
 		return engineBuilder.build("snf4j.org", 100);
@@ -231,6 +251,41 @@ public class TLSEngineTest extends EngineTest {
 				break;
 			}
 			task.run();
+		}
+	}
+
+	static void assertLocalCerts(TLSEngine engine, String... certNames) throws Exception {
+		assertCerts(((ISession)engine.getSession()).getLocalCertificates(), certNames);
+	}
+
+	static void assertPeerCerts(TLSEngine engine, String... certNames) throws Exception {
+		assertCerts(((ISession)engine.getSession()).getPeerCertificates(), certNames);
+	}
+	
+	static void assertLocalCerts(SSLEngine engine, String... certNames) throws Exception {
+		assertCerts(engine.getSession().getLocalCertificates(), certNames);
+	}
+
+	static void assertPeerCerts(SSLEngine engine, String... certNames) throws Exception {
+		Certificate[] certs;
+		
+		try {
+			certs = engine.getSession().getPeerCertificates();
+		} catch (SSLPeerUnverifiedException e) {
+			certs = null;
+		}
+		assertCerts(certs, certNames);
+	}
+	
+	static void assertCerts(Certificate[] certs, String... certNames) throws Exception {
+		if (certNames.length == 0) {
+			assertNull(certs);
+		}
+		else {
+			assertEquals(certNames.length, certs.length);
+			for (int i=0; i<certNames.length; ++i) {
+				assertEquals(certs[i], cert(certNames[i]));
+			}
 		}
 	}
 	
@@ -358,6 +413,247 @@ public class TLSEngineTest extends EngineTest {
 	}
 
 	@Test
+	public void testClientWithCRRequestedNoCert() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslServer(ClientAuth.REQUESTED, cert("rsasha256"));
+		ssl.beginHandshake();
+		
+		handler.certificateSelector.certNames = new String[0];
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.build(), 
+				handler);
+		assertEngine(tls, NOT_HANDSHAKING);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(0, -1);
+
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+
+		//ServerHello ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
+
+		//ServerHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(in.limit(), 0);
+		
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		assertEngine(tls, NEED_TASK);
+		assertInOut(in.limit(), 0);
+		
+		Runnable task = tls.getDelegatedTask();
+		assertEngine(tls, HandshakeStatus.NEED_UNWRAP);
+		assertNull(tls.getDelegatedTask());
+		task.run();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
+		tls.getDelegatedTask().run();
+		assertEngine(tls, NEED_WRAP);
+
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
+		assertInOut(0, out.position());
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		ssl.getDelegatedTask().run();
+		
+		//new session ticket ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		
+		//new session ticket <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
+		
+		assertLocalCerts(ssl, "secp256r1");
+		assertPeerCerts(ssl);
+		assertLocalCerts(tls);
+		assertPeerCerts(tls, "secp256r1");
+	}
+
+	@Test
+	public void testClientWithCRRequired() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslServer(ClientAuth.REQUIRED, cert("rsasha256"));
+		ssl.beginHandshake();
+		
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.build(), 
+				handler);
+		assertEngine(tls, NOT_HANDSHAKING);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(0, -1);
+
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+
+		//ServerHello ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
+
+		//ServerHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(in.limit(), 0);
+		
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		assertEngine(tls, NEED_TASK);
+		assertInOut(in.limit(), 0);
+		
+		Runnable task = tls.getDelegatedTask();
+		assertEngine(tls, HandshakeStatus.NEED_UNWRAP);
+		assertNull(tls.getDelegatedTask());
+		task.run();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
+		tls.getDelegatedTask().run();
+		assertEngine(tls, NEED_WRAP);
+
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
+		assertInOut(0, out.position());
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		ssl.getDelegatedTask().run();
+		
+		//new session ticket ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		
+		//new session ticket <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
+		
+		assertLocalCerts(ssl, "secp256r1");
+		assertPeerCerts(ssl, "rsasha256");
+		assertLocalCerts(tls, "rsasha256");
+		assertPeerCerts(tls, "secp256r1");
+	}
+
+	@Test
+	public void testClientWithCRRequiredNoCert() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslServer(ClientAuth.REQUIRED, cert("rsasha256"));
+		ssl.beginHandshake();
+		
+		handler.certificateSelector.certNames = new String[0];
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.build(), 
+				handler);
+		assertEngine(tls, NOT_HANDSHAKING);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(0, -1);
+
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+
+		//ServerHello ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);;
+
+		//ServerHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(in.limit(), 0);
+		
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		assertEngine(tls, NEED_TASK);
+		assertInOut(in.limit(), 0);
+		
+		Runnable task = tls.getDelegatedTask();
+		assertEngine(tls, HandshakeStatus.NEED_UNWRAP);
+		assertNull(tls.getDelegatedTask());
+		task.run();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
+		tls.getDelegatedTask().run();
+		assertEngine(tls, NEED_WRAP);
+
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
+		assertInOut(0, out.position());
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		ssl.getDelegatedTask().run();
+		
+		clear();
+		try {
+			assertResult(ssl.wrap(in, out), OK, NEED_WRAP);
+			fail();
+		}
+		catch (SSLException e) {}
+		assertEngine(ssl, NEED_WRAP, true, false);
+		assertResult(ssl.wrap(in, out), CLOSED, NOT_HANDSHAKING);
+		assertEngine(ssl, NOT_HANDSHAKING, true, true);
+		
+		flip();
+		try {
+			assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
+			fail();
+		}
+		catch (Alert e) {}
+		assertEngine(tls, NOT_HANDSHAKING, true, true);
+	}
+	
+	@Test
 	public void testServer() throws Exception {
 		Assume.assumeTrue(JAVA11);
 		
@@ -441,7 +737,8 @@ public class TLSEngineTest extends EngineTest {
 		//NewSessionTicket <-
 		flip();
 		assertResult(ssl.unwrap(in, out), OK, FINISHED);
-				
+		assertNull(((ISession)tls.getSession()).getPeerCertificates());
+		
 		//application data
 		byte[] data = bytes(1,2,3,4,5,6,7,8,9,0);
 		clear(data);
@@ -499,6 +796,238 @@ public class TLSEngineTest extends EngineTest {
 		assertResult(tls.unwrap(in, out), CLOSED, NOT_HANDSHAKING, in.limit(), 0);
 		assertEngine(tls, NOT_HANDSHAKING, true, true);
 		assertInOut(in.limit(), 0);
+	}
+
+	@Test
+	public void testServerWithCRRequestedNoCert() throws Exception {
+		Assume.assumeTrue(JAVA11);
+		
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslClient();
+		ssl.beginHandshake();
+
+		TLSEngine tls = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.clientAuth(ClientAuth.REQUESTED)
+				.build(), 
+				handler);
+		assertEngine(tls, NOT_HANDSHAKING);
+		tls.beginHandshake();
+		assertEngine(tls, NEED_UNWRAP);
+		
+		//ClientHello ->
+		clear();
+		ssl.wrap(in, out);
+		//ClientHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.limit(), 0);
+		assertInOut(in.limit(), 0);
+		tls.getDelegatedTask().run();
+		//ServerHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, out.position());
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, out.position());
+		int pos0 = out.position();
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 6);
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, pos0 + 6);		
+		//EncryptedExtension... ->
+		pos0 = out.position();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position()-pos0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(0, out.position());
+		//ServerHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		assertResult(ssl.unwrap(in, out), OK, NEED_UNWRAP);
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		assertEngine(ssl, NOT_HANDSHAKING);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, 6, 0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(6, 0);
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position()-6, 0);
+		
+		//NewSessionTicket ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(0, out.position());
+		
+		//NewSessionTicket <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, FINISHED);
+
+		assertLocalCerts(ssl);
+		assertPeerCerts(ssl, "rsasha256");
+		assertLocalCerts(tls, "rsasha256");
+		assertPeerCerts(tls);
+	}
+
+	@Test
+	public void testServerWithCRRequiredNoCert() throws Exception {
+		Assume.assumeTrue(JAVA11);
+		
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslClient();
+		ssl.beginHandshake();
+
+		TLSEngine tls = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.clientAuth(ClientAuth.REQUIRED)
+				.build(), 
+				handler);
+		assertEngine(tls, NOT_HANDSHAKING);
+		tls.beginHandshake();
+		assertEngine(tls, NEED_UNWRAP);
+		
+		//ClientHello ->
+		clear();
+		ssl.wrap(in, out);
+		//ClientHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.limit(), 0);
+		assertInOut(in.limit(), 0);
+		tls.getDelegatedTask().run();
+		//ServerHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, out.position());
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, out.position());
+		int pos0 = out.position();
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 6);
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, pos0 + 6);		
+		//EncryptedExtension... ->
+		pos0 = out.position();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position()-pos0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(0, out.position());
+		//ServerHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		assertResult(ssl.unwrap(in, out), OK, NEED_UNWRAP);
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		assertEngine(ssl, NOT_HANDSHAKING);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, 6, 0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(6, 0);
+		try {
+			assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position()-6, 0);
+			fail();
+		}
+		catch (CertificateRequiredAlert e) {
+		}
+
+		assertEngine(tls, NEED_WRAP, true, false);
+		clear();
+		assertResult(tls.wrap(in, out), CLOSED, NOT_HANDSHAKING, 0, out.position());
+		assertEngine(tls, NOT_HANDSHAKING, true, true);
+		flip();
+		try {
+			assertResult(ssl.unwrap(in, out), OK, NEED_UNWRAP);
+		}
+		catch (SSLException e) {			
+		}
+		assertEngine(ssl, NOT_HANDSHAKING, true, true);
+		assertNull(tls.getSession());
+	}
+
+	@Test
+	public void testServerWithCRRequired() throws Exception {
+		Assume.assumeTrue(JAVA11);
+		
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
+		
+		SSLEngine ssl = sslClient(true);
+		ssl.beginHandshake();
+
+		TLSEngine tls = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.clientAuth(ClientAuth.REQUIRED)
+				.build(), 
+				handler);
+		assertEngine(tls, NOT_HANDSHAKING);
+		tls.beginHandshake();
+		assertEngine(tls, NEED_UNWRAP);
+		
+		//ClientHello ->
+		clear();
+		ssl.wrap(in, out);
+		//ClientHello <-
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.limit(), 0);
+		assertInOut(in.limit(), 0);
+		tls.getDelegatedTask().run();
+		//ServerHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, out.position());
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, out.position());
+		int pos0 = out.position();
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 6);
+		assertEngine(tls, NEED_WRAP);
+		assertInOut(0, pos0 + 6);		
+		//EncryptedExtension... ->
+		pos0 = out.position();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position()-pos0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(0, out.position());
+		//ServerHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		assertResult(ssl.unwrap(in, out), OK, NEED_UNWRAP);
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, FINISHED);
+		assertEngine(ssl, NOT_HANDSHAKING);
+		
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, 6, 0);
+		assertEngine(tls, NEED_UNWRAP);
+		assertInOut(6, 0);
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position()-6, 0);
+		tls.getDelegatedTask().run();
+		assertEngine(tls, NEED_UNWRAP);
+		clear();
+		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
+		
+		//NewSessionTicket ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(0, out.position());
+		
+		//NewSessionTicket <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, FINISHED);
+		
+		assertLocalCerts(ssl, "secp256r1");
+		assertPeerCerts(ssl, "rsasha256");
+		assertLocalCerts(tls, "rsasha256");
+		assertPeerCerts(tls, "secp256r1");
 	}
 	
 	TLSEngine prepareForServerResumption(SSLEngine ssl) throws Exception {
@@ -646,6 +1175,7 @@ public class TLSEngineTest extends EngineTest {
 			flip();
 			assertResult(ssl.unwrap(in, out), OK, FINISHED);
 			assertEngine(ssl, NOT_HANDSHAKING);
+			assertNull(((ISession)tls.getSession()).getPeerCertificates());
 		}
 	}
 

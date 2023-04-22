@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,16 +30,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.security.KeyPair;
-
 import javax.crypto.interfaces.DHPublicKey;
 
 import org.junit.Test;
+import org.snf4j.tls.CommonTest;
 
-public class DHKeyExchangeTest {
+public class DHKeyExchangeTest extends CommonTest {
 
 	void assertKeyExchange(DHKeyExchange dh, String algo, int len) throws Exception {
-		KeyPair kp1 = dh.generateKeyPair();
-		KeyPair kp2 = dh.generateKeyPair();
+		KeyPair kp1 = dh.generateKeyPair(RANDOM);
+		KeyPair kp2 = dh.generateKeyPair(RANDOM);
 		
 		assertEquals(((DHPublicKey)kp1.getPublic()).getY(), dh.getY(kp1.getPublic()));
 		assertTrue(dh.isImplemented());
@@ -48,8 +48,8 @@ public class DHKeyExchangeTest {
 		
 		assertEquals(kp1.getPublic(), dh.generatePublicKey(((DHPublicKey)kp1.getPublic()).getY()));
 		
-		byte[] s1 = dh.generateSecret(kp1.getPrivate(), kp2.getPublic());
-		byte[] s2 = dh.generateSecret(kp2.getPrivate(), kp1.getPublic());
+		byte[] s1 = dh.generateSecret(kp1.getPrivate(), kp2.getPublic(), RANDOM);
+		byte[] s2 = dh.generateSecret(kp2.getPrivate(), kp1.getPublic(), RANDOM);
 		assertArrayEquals(s1,s2);
 		assertEquals(len,s1.length);
 	}

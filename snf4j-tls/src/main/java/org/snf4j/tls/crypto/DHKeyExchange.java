@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 
 import javax.crypto.KeyAgreement;
@@ -84,22 +85,22 @@ public class DHKeyExchange implements IDHKeyExchange {
 	}
 	
 	@Override
-	public byte[] generateSecret(PrivateKey privateKey, PublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException {
+	public byte[] generateSecret(PrivateKey privateKey, PublicKey publicKey, SecureRandom random) throws NoSuchAlgorithmException, InvalidKeyException {
         KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
         
-        keyAgreement.init(privateKey);
+        keyAgreement.init(privateKey, random);
         keyAgreement.doPhase(publicKey, true);
         return keyAgreement.generateSecret();
 	}
 
 	@Override
-	public KeyPair generateKeyPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+	public KeyPair generateKeyPair(SecureRandom random) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 		KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DH");
 		
-		keyPairGenerator.initialize(new DHParameterSpec(p,g));
+		keyPairGenerator.initialize(new DHParameterSpec(p,g), random);
 		return keyPairGenerator.generateKeyPair();
 	}
-
+	
 	@Override
 	public PublicKey generatePublicKey(BigInteger y) throws NoSuchAlgorithmException, InvalidKeySpecException {
 		return KeyFactory.getInstance("DH").generatePublic(new DHPublicKeySpec(y, p, g));

@@ -97,7 +97,7 @@ public class EngineTest extends CommonTest {
 		ArrayList<KeyShareEntry> entries = new ArrayList<KeyShareEntry>();
 		
 		for (NamedGroup group: groups) {
-			KeyPair pair = group.spec().getKeyExchange().generateKeyPair();
+			KeyPair pair = group.spec().getKeyExchange().generateKeyPair(RANDOM);
 			
 			ByteBuffer buffer = ByteBuffer.allocate(1000);
 			group.spec().getData(buffer, pair.getPublic());

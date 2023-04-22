@@ -27,6 +27,7 @@ package org.snf4j.tls.engine;
 
 import java.security.SecureRandom;
 
+import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
@@ -56,10 +57,12 @@ public class EngineParameters implements IEngineParameters {
 	
 	private final DelegatedTaskMode delegatedTaskMode;// = DelegatedTaskMode.NONE;
 	
+	private final ClientAuth clientAuth;
+	
 	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
 			PskKeyExchangeMode[] pskKeyExchangeModes,
 			boolean compatibilityMode, int numberOfOfferedSharedKeys, SecureRandom secureRandom, String peerHost,
-			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode) {
+			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode,ClientAuth clientAuth) {
 		super();
 		this.cipherSuites = cipherSuites;
 		this.namedGroups = namedGroups;
@@ -72,6 +75,7 @@ public class EngineParameters implements IEngineParameters {
 		this.peerPort = peerPort;
 		this.serverNameRequired = serverNameRequired;
 		this.delegatedTaskMode = delegatedTaskMode;
+		this.clientAuth = clientAuth;
 	}
 
 	@Override
@@ -127,6 +131,11 @@ public class EngineParameters implements IEngineParameters {
 	@Override
 	public DelegatedTaskMode getDelegatedTaskMode() {
 		return delegatedTaskMode;
+	}
+
+	@Override
+	public ClientAuth getClientAuth() {
+		return clientAuth;
 	}
 	
 }

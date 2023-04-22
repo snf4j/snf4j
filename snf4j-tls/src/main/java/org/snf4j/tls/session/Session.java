@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.session;
 
+import java.security.cert.Certificate;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -51,19 +52,25 @@ class Session implements ISession {
 	
 	private final CipherSuite cipherSuite;
 
+	private final Certificate[] peerCertificates;
+	
+	private final Certificate[] localCertificates;
+
 	private final Object ticketsLock = new Object();
 
 	private final List<SessionTicket> tickets = new LinkedList<SessionTicket>();
 	
 	private final AtomicBoolean valid = new AtomicBoolean(true);
 	
-	Session(SessionManager manager, CipherSuite cipherSuite, String host, int port, long creationTime) {
+	Session(SessionManager manager, CipherSuite cipherSuite, String host, int port, long creationTime, Certificate[] peerCertificates, Certificate[] localCertificates) {
 		this.id = ID.incrementAndGet();
 		this.creationTime = creationTime;
 		this.manager = manager;
 		this.cipherSuite = cipherSuite;
 		this.host = host;
 		this.port = port;
+		this.peerCertificates = peerCertificates;
+		this.localCertificates = localCertificates;
 	}
 	
 	@Override
@@ -92,12 +99,12 @@ class Session implements ISession {
 	}
 
 	@Override
-	public String getHost() {
+	public String getPeerHost() {
 		return host;
 	}
 
 	@Override
-	public int getPort() {
+	public int getPeerPort() {
 		return port;
 	}
 	
@@ -109,6 +116,16 @@ class Session implements ISession {
 	@Override
 	public CipherSuite getCipherSuite() {
 		return cipherSuite;
+	}
+
+	@Override
+	public Certificate[] getPeerCertificates() {
+		return peerCertificates == null ? null : peerCertificates.clone();
+	}
+
+	@Override
+	public Certificate[] getLocalCertificates() {
+		return localCertificates == null ? null : localCertificates.clone();
 	}
 	
 	void addTicket(SessionTicket ticket) {
@@ -134,4 +151,5 @@ class Session implements ISession {
 	Object getTicketsLock() {
 		return ticketsLock;
 	}
+
 }

@@ -26,6 +26,7 @@
 package org.snf4j.tls.engine;
 
 import java.security.PrivateKey;
+import java.security.cert.Certificate;
 
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.CertificateEntry;
@@ -38,10 +39,13 @@ public class SelectedCertificates {
 	
 	private final PrivateKey privateKey;
 
-	public SelectedCertificates(SignatureScheme algorithm, CertificateEntry[] entries, PrivateKey privateKey) {
+	private final Certificate[] certs;
+	
+	public SelectedCertificates(SignatureScheme algorithm, CertificateEntry[] entries, PrivateKey privateKey, Certificate[] certs) {
 		this.algorithm = algorithm;
 		this.entries = entries;
 		this.privateKey = privateKey;
+		this.certs = certs;
 	}
 
 	public SignatureScheme getAlgorithm() {
@@ -54,6 +58,10 @@ public class SelectedCertificates {
 
 	public PrivateKey getPrivateKey() {
 		return privateKey;
+	}
+
+	public Certificate[] getCertificates() {
+		return certs;
 	}
 	
 	

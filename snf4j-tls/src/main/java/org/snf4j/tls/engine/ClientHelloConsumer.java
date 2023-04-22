@@ -32,10 +32,12 @@ import static org.snf4j.tls.extension.ExtensionsUtil.find;
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.DecryptErrorAlert;
 import org.snf4j.tls.alert.HandshakeFailureAlert;
@@ -69,9 +71,11 @@ import org.snf4j.tls.extension.ParsedKey;
 import org.snf4j.tls.extension.PreSharedKeyExtension;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.ServerNameExtension;
+import org.snf4j.tls.extension.SignatureAlgorithmsExtension;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
 import org.snf4j.tls.extension.SupportedVersionsExtension;
 import org.snf4j.tls.handshake.Certificate;
+import org.snf4j.tls.handshake.CertificateRequest;
 import org.snf4j.tls.handshake.CertificateType;
 import org.snf4j.tls.handshake.CertificateVerify;
 import org.snf4j.tls.handshake.EncryptedExtensions;
@@ -272,6 +276,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 						byte[] expectedBinder = state.getKeySchedule().computePskBinder(dupData);
 						byte[] binder = preSharedKey.getOfferedPsks()[resumed.getSelectedIdentity()].getBinder();
 
+						state.getKeySchedule().eraseBinderKey();
 						if (!Arrays.equals(expectedBinder, binder)) {
 							state.getHandler().getSessionManager().putTicket(
 									resumed.getSession(), 
@@ -330,7 +335,8 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				namedGroup, 
 				keyShareEntry.getParsedKey(), 
 				clientHello.getLegacySessionId(),
-				resumed != null ? resumed.getSelectedIdentity() : -1); 
+				resumed != null ? resumed.getSelectedIdentity() : -1,
+				state.getParameters().getSecureRandom()); 
 		if (taskMode.all()) {
 			state.addTask(task);
 		}
@@ -374,15 +380,18 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		
 		private final int selectedIdentity;
 		
+		private final SecureRandom random;
+		
 		private volatile byte[] secret;
 		
 		private volatile PublicKey publicKey;
 		
-		KeyExchangeTask(NamedGroup namedGroup, ParsedKey parsedKey, byte[] legacySessionId, int selectedIdentity) {
+		KeyExchangeTask(NamedGroup namedGroup, ParsedKey parsedKey, byte[] legacySessionId, int selectedIdentity, SecureRandom random) {
 			this.namedGroup = namedGroup;
 			this.parsedKey = parsedKey;
 			this.legacySessionId = legacySessionId;
 			this.selectedIdentity = selectedIdentity;
+			this.random = random;
 		}
 		
 		@Override
@@ -398,11 +407,12 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		@Override
 		void execute() throws Exception {
 			IKeyExchange keyExchange = namedGroup.spec().getKeyExchange();
-			KeyPair pair = keyExchange.generateKeyPair();
+			KeyPair pair = keyExchange.generateKeyPair(random);
 			publicKey = pair.getPublic();
 			secret = keyExchange.generateSecret(
 					pair.getPrivate(), 
-					namedGroup.spec().generateKey(parsedKey));
+					namedGroup.spec().generateKey(parsedKey),
+					random);
 		}
 
 		@Override
@@ -459,51 +469,40 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		}
 	}
 	
-	static class CertificateTask extends AbstractEngineTask {
+	static class CertificateTask extends AbstractCertificateTask {
 
-		private final ICertificateSelector selector;
-		
-		private final CertificateCriteria criteria;
-		
-		private volatile SelectedCertificates certificates;
-		
 		CertificateTask(ICertificateSelector selector, CertificateCriteria criteria) {
-			this.selector = selector;
-			this.criteria = criteria;
+			super(selector, criteria);
 		}
 
 		CertificateTask() {
-			this.selector = null;
-			this.criteria = null;
-		}
-		
-		@Override
-		public boolean isProducing() {
-			return true;
-		}
-
-		@Override
-		public String name() {
-			return "Certificate";
-		}
-
-		@Override
-		void execute() throws Exception {
-			if (selector != null) {
-				certificates = selector.selectCertificates(criteria);
-			}
 		}
 		
 		@Override
 		public void finish(EngineState state) throws Alert {
+			MachineState nextState = MachineState.SRV_WAIT_FINISHED;
+			
 			if (certificates != null) {
+				IEngineParameters params = state.getParameters();
+				
+				if (params.getClientAuth() != ClientAuth.NONE) {
+					List<IExtension> extensions = new ArrayList<IExtension>();
+					
+					extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
+					CertificateRequest certificateRequest = new CertificateRequest(extensions);
+					ConsumerUtil.prepare(state, certificateRequest, RecordType.HANDSHAKE);
+					nextState = MachineState.SRV_WAIT_CERT;
+				}
+				
+				state.getSessionInfo().localCerts(certificates.getCertificates());
 				Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
 				ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
 
 				byte[] signature = ConsumerUtil.sign(state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false), 
 						certificates.getAlgorithm(), 
 						certificates.getPrivateKey(), 
-						false);
+						false,
+						params.getSecureRandom());
 				CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
 				ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);	
 			}
@@ -517,7 +516,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to compute server verify data", e);
 			}
-			state.changeState(MachineState.SRV_WAIT_FINISHED);
+			state.changeState(nextState);
 		}
 
 	}

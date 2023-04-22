@@ -54,7 +54,7 @@ public class CertificateEntry implements ICertificateEntry {
 	}
 	
 	@Override
-	public List<IExtension> getExtensioins() {
+	public List<IExtension> getExtensions() {
 		return extensions;
 	}
 

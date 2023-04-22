@@ -246,7 +246,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		assertEquals(1, cert.getEntries().length);
 		ICertificateEntry entry = cert.getEntries()[0];
 		assertEquals(entry.getDataLength(), entry.getData().length);
-		assertEquals(0, entry.getExtensioins().size());
+		assertEquals(0, entry.getExtensions().size());
 		assertArrayEquals(cert("rsasha256").getEncoded(), entry.getData());
 		
 		ICertificateVerify certv = (ICertificateVerify) produced[3].getHandshake();
@@ -254,7 +254,8 @@ public class ClientHelloConsumerTest extends EngineTest {
 		byte[] signature = ConsumerUtil.sign(state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false), 
 				SignatureScheme.RSA_PKCS1_SHA256, 
 				key("RSA", "rsa"), 
-				false);
+				false,
+				RANDOM);
 		assertArrayEquals(signature, certv.getSignature());
 		assertNull(certv.getExtensions());
 		

@@ -26,6 +26,7 @@
 package org.snf4j.tls.engine;
 
 import java.security.PrivateKey;
+import java.security.cert.Certificate;
 import java.util.ArrayList;
 
 import org.snf4j.tls.CommonTest;
@@ -49,12 +50,14 @@ public class TestCertificateSelector implements ICertificateSelector {
 	public SelectedCertificates selectCertificates(CertificateCriteria criteria)  throws Exception {
 		this.criteria = criteria;
 		PrivateKey key = CommonTest.key(keyAlgorithm, keyName);
-		CertificateEntry[] certs = new CertificateEntry[certNames.length];
+		CertificateEntry[] entries = new CertificateEntry[certNames.length];
+		Certificate[] certs = new Certificate[entries.length];
 		
 		for (int i=0; i<certNames.length; ++i) {
-			certs[i] = new CertificateEntry(CommonTest.cert(certNames[i]).getEncoded(), new ArrayList<IExtension>(0));
+			certs[i] = CommonTest.cert(certNames[i]);
+			entries[i] = new CertificateEntry(certs[i].getEncoded(), new ArrayList<IExtension>(0));
 		}
-		return new SelectedCertificates(signatureScheme, certs, key);
+		return new SelectedCertificates(signatureScheme, entries, key, certs);
 	}
 
 }

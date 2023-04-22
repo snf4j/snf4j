@@ -45,6 +45,7 @@ import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.tls.alert.AlertDescription;
+import org.snf4j.tls.alert.AlertLevel;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.CloseNotifyAlert;
 import org.snf4j.tls.alert.DecodeErrorAlert;
@@ -661,7 +662,7 @@ public class TLSEngine implements IEngine {
 			throw new DecodeErrorAlert("Invalid length of alert content");
 		}
 		src.position(src.position() + off);
-		src.get();
+		AlertLevel level = AlertLevel.of(src.get());
 		AlertDescription desc = AlertDescription.of(src.get());
 		if (desc.equals(AlertDescription.CLOSE_NOTIFY)) {
 			alert = new CloseNotifyAlert("Closing by peer");
@@ -678,7 +679,11 @@ public class TLSEngine implements IEngine {
 					consumed, 
 					0);
 		}
-		return null;
+		alert = Alert.of(level, desc);
+		inboundDone = true;
+		outboundDone = true;
+		status = NOT_HANDSHAKING;
+		throw alert;
 	}
 
 	private IEngineResult unwrapChangeCipherSpec(ByteBuffer src, int off, int length, int consumed) throws Alert {

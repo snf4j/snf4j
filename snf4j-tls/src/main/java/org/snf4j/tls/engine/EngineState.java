@@ -26,7 +26,6 @@
 package org.snf4j.tls.engine;
 
 import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -56,8 +55,10 @@ public class EngineState {
 	
 	private final Queue<IEngineTask> runningTasks = new LinkedList<IEngineTask>();
 	
-	private List<KeySharePrivateKey> privateKeys = new ArrayList<KeySharePrivateKey>();
+	private final List<KeySharePrivateKey> privateKeys = new ArrayList<KeySharePrivateKey>();
 	
+	private final SessionInfo sessionInfo = new SessionInfo();
+
 	private final IEngineParameters parameters;
 	
 	private final IEngineHandler handler;
@@ -70,8 +71,6 @@ public class EngineState {
 	
 	private ISession session;
 	
-	private SessionInfo sessionInfo = new SessionInfo();
-
 	private ITranscriptHash transcriptHash;
 	
 	private KeySchedule keySchedule;
@@ -92,10 +91,10 @@ public class EngineState {
 	
 	private boolean producingTasks;
 	
-	private PublicKey publicKey;
-	
 	private int maxFragmentLength = 16384;
 		
+	private CertificateCriteria certCryteria;
+	
 	public EngineState(MachineState state, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener) {
 		this.state = state;
 		this.stateBits = state.bitMask();
@@ -318,18 +317,6 @@ public class EngineState {
 		privateKeys.clear();
 	}
 	
-	public void storePublicKey(PublicKey publicKey) {
-		this.publicKey = publicKey;
-	}
-	
-	public PublicKey getPublicKey() {
-		return publicKey;
-	}
-
-	public void clearPublicKeys() {
-		publicKey = null;
-	}
-	
 	public int getMaxFragmentLength() {
 		return maxFragmentLength;
 	}
@@ -365,4 +352,12 @@ public class EngineState {
 		return (pskModes & (1 << mode.value())) != 0;
 	}
 	
+	public CertificateCriteria getCertCryteria() {
+		return certCryteria;
+	}
+
+	public void setCertCryteria(CertificateCriteria certCryteria) {
+		this.certCryteria = certCryteria;
+	}
+
 }

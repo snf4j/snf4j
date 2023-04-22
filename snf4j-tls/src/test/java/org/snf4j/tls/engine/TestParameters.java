@@ -27,6 +27,7 @@ package org.snf4j.tls.engine;
 
 import java.security.SecureRandom;
 
+import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
@@ -66,6 +67,8 @@ public class TestParameters implements IEngineParameters {
 	boolean serverNameRequired;
 
 	DelegatedTaskMode delegatedTaskMode = DelegatedTaskMode.ALL;
+	
+	ClientAuth clientAuth = ClientAuth.NONE;
 	
 	@Override
 	public CipherSuite[] getCipherSuites() {
@@ -120,6 +123,11 @@ public class TestParameters implements IEngineParameters {
 	@Override
 	public PskKeyExchangeMode[] getPskKeyExchangeModes() {
 		return pskKeyExchangeModes;
+	}
+
+	@Override
+	public ClientAuth getClientAuth() {
+		return clientAuth;
 	}
 
 }

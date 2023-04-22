@@ -27,6 +27,7 @@ package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -90,6 +91,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 		addConsumer(CONSUMERS, new ClientHelloConsumer());	
 		addConsumer(CONSUMERS, new ServerHelloConsumer());	
 		addConsumer(CONSUMERS, new EncryptedExtensionsConsumer());
+		addConsumer(CONSUMERS, new CertificateRequestConsumer());
 		addConsumer(CONSUMERS, new CertificateConsumer());
 		addConsumer(CONSUMERS, new CertificateVerifyConsumer());
 		addConsumer(CONSUMERS, new FinishedConsumer());
@@ -279,7 +281,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 		NamedGroup[] groups = params.getNamedGroups();
 		groups = Arrays.copyOf(groups, Math.min(groups.length, params.getNumberOfOfferedSharedKeys()));
 		
-		KeyExchangeTask task = new KeyExchangeTask(groups);
+		KeyExchangeTask task = new KeyExchangeTask(groups, params.getSecureRandom());
 		if (groups.length > 0 && params.getDelegatedTaskMode().all()) {
 			state.changeState(MachineState.CLI_WAIT_TASK);
 			state.addTask(task);
@@ -293,10 +295,13 @@ public class HandshakeEngine implements IHandshakeEngine {
 
 		private final NamedGroup[] namedGroups;
 		
+		private final SecureRandom random;
+		
 		private volatile KeyPair[] pairs;
 		
-		KeyExchangeTask(NamedGroup[] namedGroups) {
+		KeyExchangeTask(NamedGroup[] namedGroups, SecureRandom random) {
 			this.namedGroups = namedGroups;
+			this.random = random;
 		}
 		
 		@Override
@@ -455,7 +460,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 			
 			for (int i=0; i<namedGroups.length; ++i) {
 				NamedGroup group = namedGroups[i];
-				pairs[i] = group.spec().getKeyExchange().generateKeyPair();
+				pairs[i] = group.spec().getKeyExchange().generateKeyPair(random);
 			}
 			this.pairs = pairs;
 		}

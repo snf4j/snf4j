@@ -30,13 +30,12 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
+import java.security.SecureRandom;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
-
 import org.junit.Before;
 import org.snf4j.core.util.PemUtil;
 import org.snf4j.core.util.PemUtil.Label;
@@ -46,7 +45,7 @@ public class CommonTest {
 
 	protected final ByteBuffer buffer = ByteBuffer.allocate(0x20010);
 
-	private static Random RANDOM = new Random(); 
+	protected static final SecureRandom RANDOM = new SecureRandom(); 	
 	
 	public static final boolean JAVA11;
 

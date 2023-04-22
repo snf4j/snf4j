@@ -27,11 +27,13 @@ package org.snf4j.tls.engine;
 
 import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
-import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
+import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.CertificateRequiredAlert;
+import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.ICertificate;
@@ -45,16 +47,17 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		return HandshakeType.CERTIFICATE;
 	}
 
-	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
-		if (state.getState() != MachineState.CLI_WAIT_CERT) {
-			throw new UnexpectedMessageAlert("Unexpected Certificate");
+	private void consumeClient(EngineState state, ICertificate certificate, ByteBuffer[] data) throws Alert {
+		if (certificate.getEntries().length == 0) {
+			throw new DecodeErrorAlert("Empty server certificate message");
 		}
-		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+		
+		ConsumerUtil.updateTranscriptHash(state, certificate.getType(), data);
 		
 		AbstractEngineTask task = new CertificateTask(
 				state.getHandler().getCertificateValidator(),
-				((ICertificate)handshake).getEntries());
+				certificate.getEntries());
+		
 		if (state.getParameters().getDelegatedTaskMode().certificates()) {
 			state.changeState(MachineState.CLI_WAIT_TASK);
 			state.addTask(task);
@@ -64,13 +67,53 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		}		
 	}
 
+	private void consumeServer(EngineState state, ICertificate certificate, ByteBuffer[] data) throws Alert {
+		ConsumerUtil.updateTranscriptHash(state, certificate.getType(), data);
+
+		if (certificate.getEntries().length == 0) {
+			if (state.getParameters().getClientAuth() == ClientAuth.REQUIRED) {
+				throw new CertificateRequiredAlert("Empty client certificate message");
+			}
+			state.changeState(MachineState.SRV_WAIT_FINISHED);
+			return;
+		}
+		
+		AbstractEngineTask task = new CertificateTask(
+				state.getHandler().getCertificateValidator(),
+				certificate.getEntries());
+		if (state.getParameters().getDelegatedTaskMode().certificates()) {
+			state.changeState(MachineState.SRV_WAIT_TASK);
+			state.addTask(task);
+		}
+		else {
+			task.run(state);
+		}		
+	}
+	
+	@Override
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
+		switch (state.getState()) {
+		case CLI_WAIT_CERT_CR:
+		case CLI_WAIT_CERT:
+			consumeClient(state, (ICertificate) handshake, data);
+			break;
+			
+		case SRV_WAIT_CERT:
+			consumeServer(state, (ICertificate) handshake, data);
+			break;
+			
+		default:
+			throw new UnexpectedMessageAlert("Unexpected Certificate");
+		}
+	}
+
 	static class CertificateTask extends AbstractEngineTask {
 
 		private final ICertificateValidator validator;
 		
 		private final ICertificateEntry[] entries;
 		
-		private volatile PublicKey publicKey;
+		private volatile X509Certificate[] certs;
 		
 		private volatile Alert alert;
 		
@@ -94,8 +137,10 @@ public class CertificateConsumer implements IHandshakeConsumer {
 			if (alert != null) {
 				throw alert;
 			}
-			state.storePublicKey(publicKey);
-			state.changeState(MachineState.CLI_WAIT_CV);
+			state.getSessionInfo().peerCerts(certs);
+			state.changeState(state.isClientMode() 
+					? MachineState.CLI_WAIT_CV
+					: MachineState.SRV_WAIT_CV);
 		}
 
 		@Override
@@ -109,7 +154,7 @@ public class CertificateConsumer implements IHandshakeConsumer {
 			}
 			alert = validator.validateCertificates(certs);
 			if (alert == null) {
-				publicKey = certs[0].getPublicKey();
+				this.certs = certs;
 			}
 			else {
 				this.alert = alert;

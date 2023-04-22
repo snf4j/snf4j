@@ -69,7 +69,7 @@ public class DHNamedGroupSpecTest extends ExtensionTest {
 		assertArrayEquals(y, buffer());
 		buffer.clear();
 
-		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair();
+		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM);
 		spec.getData(buffer, kp1.getPublic());
 		byte[] data = buffer();
 		ParsedKey pk = spec.parse(ByteBufferArray.wrap(array(data, 0)), data.length);
@@ -97,7 +97,7 @@ public class DHNamedGroupSpecTest extends ExtensionTest {
 	
 	@Test
 	public void testParse() throws Exception {
-		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair(); 
+		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM); 
 		DHNamedGroupSpec spec = DHNamedGroupSpec.FFDHE2048;
 		
 		spec.getData(buffer, kp1.getPublic());
@@ -109,8 +109,8 @@ public class DHNamedGroupSpecTest extends ExtensionTest {
 
 	@Test
 	public void testParseInproperY() throws Exception {
-		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair(); 
-		KeyPair kp2 = DHKeyExchange.FFDHE2048.generateKeyPair(); 
+		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM); 
+		KeyPair kp2 = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM); 
 		DHNamedGroupSpec spec = DHNamedGroupSpec.FFDHE2048;
 		
 		spec.getData(buffer, kp1.getPublic());
@@ -119,7 +119,7 @@ public class DHNamedGroupSpecTest extends ExtensionTest {
 		ParsedKey pk = spec.parse(ByteBufferArray.wrap(array(data,0)), data.length);
 		PublicKey k = spec.generateKey(pk);
 		try {
-			spec.getKeyExchange().generateSecret(kp2.getPrivate(), k);
+			spec.getKeyExchange().generateSecret(kp2.getPrivate(), k, RANDOM);
 			fail();
 		} catch (InvalidKeyException e) {}
 
@@ -127,7 +127,7 @@ public class DHNamedGroupSpecTest extends ExtensionTest {
 		pk = spec.parse(ByteBufferArray.wrap(array(data,0)), data.length);
 		k = spec.generateKey(pk);
 		try {
-			spec.getKeyExchange().generateSecret(kp2.getPrivate(), k);
+			spec.getKeyExchange().generateSecret(kp2.getPrivate(), k, RANDOM);
 			fail();
 		} catch (InvalidKeyException e) {}
 	}
@@ -145,7 +145,7 @@ public class DHNamedGroupSpecTest extends ExtensionTest {
 
 	@Test
 	public void testParseFailures() throws Exception {
-		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair();
+		KeyPair kp1 = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM);
 		DHNamedGroupSpec spec = DHNamedGroupSpec.FFDHE2048;
 		spec.getData(buffer, kp1.getPublic());
 		byte[] data = buffer();

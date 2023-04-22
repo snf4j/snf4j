@@ -25,41 +25,64 @@
  */
 package org.snf4j.tls.session;
 
+import java.security.cert.Certificate;
+
 import org.snf4j.tls.cipher.CipherSuite;
 
 public class SessionInfo {
 	
-	private String host;
+	private String peerHost;
 	
-	private int port = -1;
+	private int peerPort = -1;
 	
-	private CipherSuite cipherSuite;
+	private CipherSuite cipher;
 
-	public String host() {
-		return host;
+	private Certificate[] peerCerts;
+
+	private Certificate[] localCerts;
+	
+	public String peerHost() {
+		return peerHost;
 	}
 
-	public SessionInfo host(String host) {
-		this.host = host;
+	public SessionInfo peerHost(String peerHost) {
+		this.peerHost = peerHost;
 		return this;
 	}
 
-	public int port() {
-		return port;
+	public int peerPort() {
+		return peerPort;
 	}
 
-	public SessionInfo port(int port) {
-		this.port = port;
+	public SessionInfo peerPort(int peerPort) {
+		this.peerPort = peerPort;
 		return this;
 	}
 
-	public CipherSuite cipherSuite() {
-		return cipherSuite;
+	public CipherSuite cipher() {
+		return cipher;
 	}
 
-	public SessionInfo cipherSuite(CipherSuite cipherSuite) {
-		this.cipherSuite = cipherSuite;
+	public SessionInfo cipher(CipherSuite cipher) {
+		this.cipher = cipher;
 		return this;
 	}
 
+	public Certificate[] peerCerts() {
+		return peerCerts;
+	}
+	
+	public SessionInfo peerCerts(Certificate[] certs) {
+		peerCerts = certs;
+		return this;
+	}
+
+	public Certificate[] localCerts() {
+		return localCerts;
+	}
+	
+	public SessionInfo localCerts(Certificate[] certs) {
+		localCerts = certs;
+		return this;
+	}
 }

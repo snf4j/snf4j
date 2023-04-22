@@ -26,6 +26,15 @@
 package org.snf4j.tls.engine;
 
 public interface ICertificateSelector {
-	
+
+	/**
+	 * Selects certificates based on the specified criteria.
+	 * 
+	 * @param criteria the criteria for selecting of certificates
+	 * @return the selected certificates. If no certificate could be found it should
+	 *         return the {@link SelectedCertificates} object with empty lists of
+	 *         certificates and certificate entries.
+	 * @throws Exception if an error occurred
+	 */
 	SelectedCertificates selectCertificates(CertificateCriteria criteria) throws Exception;
 }

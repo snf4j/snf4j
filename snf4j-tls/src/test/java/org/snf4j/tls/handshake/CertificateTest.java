@@ -63,7 +63,7 @@ public class CertificateTest extends HandshakeTest {
 		assertArrayEquals(bytes(1,2,3,4), ct.getRequestContext());
 		assertEquals(1, ct.getEntries().length);
 		assertArrayEquals(bytes(5,6), ct.getEntries()[0].getData());
-		assertEquals(0, ct.getEntries()[0].getExtensioins().size());
+		assertEquals(0, ct.getEntries()[0].getExtensions().size());
 		
 		assertEquals(data.length-4, ct.getDataLength());
 		ct.getBytes(buffer);
@@ -101,7 +101,7 @@ public class CertificateTest extends HandshakeTest {
 		assertArrayEquals(bytes(), ct.getRequestContext());
 		assertEquals(1, ct.getEntries().length);
 		assertArrayEquals(bytes(), ct.getEntries()[0].getData());
-		assertEquals(0, ct.getEntries()[0].getExtensioins().size());
+		assertEquals(0, ct.getEntries()[0].getExtensions().size());
 		
 		assertEquals(data.length-4, ct.getDataLength());
 		ct.getBytes(buffer);
@@ -153,7 +153,7 @@ public class CertificateTest extends HandshakeTest {
 		ct = (Certificate) Certificate.getParser().parse(array(buffer(), 4), 12, ExtensionDecoder.DEFAULT);
 		assertEquals(1, ct.getEntries().length);
 		assertArrayEquals(bytes(1,2,3), ct.getEntries()[0].getData());
-		assertEquals(0, ct.getEntries()[0].getExtensioins().size());
+		assertEquals(0, ct.getEntries()[0].getExtensions().size());
 		buffer.clear();
 		
 		byte[] data = bytes(0x1ffff, (byte)1, (byte)2, (byte)3);
@@ -165,7 +165,7 @@ public class CertificateTest extends HandshakeTest {
 		ct = (Certificate) Certificate.getParser().parse(array(buffer(), 4), 131080, ExtensionDecoder.DEFAULT);
 		assertEquals(1, ct.getEntries().length);
 		assertArrayEquals(data, ct.getEntries()[0].getData());
-		assertEquals(0, ct.getEntries()[0].getExtensioins().size());
+		assertEquals(0, ct.getEntries()[0].getExtensions().size());
 		buffer.clear();
 		
 		data = bytes(0x1ffff-5, (byte)1, (byte)2, (byte)3);
@@ -177,7 +177,7 @@ public class CertificateTest extends HandshakeTest {
 		ct = (Certificate) Certificate.getParser().parse(array(buffer(), 4), 131080-5, ExtensionDecoder.DEFAULT);
 		assertEquals(1, ct.getEntries().length);
 		assertArrayEquals(data, ct.getEntries()[0].getData());
-		assertEquals(0, ct.getEntries()[0].getExtensioins().size());
+		assertEquals(0, ct.getEntries()[0].getExtensions().size());
 		buffer.clear();
 		
 		data = bytes(0x1ffff-9, (byte)1, (byte)2, (byte)3);
@@ -189,7 +189,7 @@ public class CertificateTest extends HandshakeTest {
 		ct = (Certificate) Certificate.getParser().parse(array(buffer(), 4), 131080-9, ExtensionDecoder.DEFAULT);
 		assertEquals(1, ct.getEntries().length);
 		assertArrayEquals(data, ct.getEntries()[0].getData());
-		assertEquals(0, ct.getEntries()[0].getExtensioins().size());
+		assertEquals(0, ct.getEntries()[0].getExtensions().size());
 		buffer.clear();
 
 		ct = new Certificate(bytes(), entries(extensions, bytes(1), bytes(2,3)));
@@ -200,9 +200,9 @@ public class CertificateTest extends HandshakeTest {
 		ct = (Certificate) Certificate.getParser().parse(array(buffer(), 4), 17, ExtensionDecoder.DEFAULT);
 		assertEquals(2, ct.getEntries().length);
 		assertArrayEquals(bytes(1), ct.getEntries()[0].getData());
-		assertEquals(0, ct.getEntries()[0].getExtensioins().size());
+		assertEquals(0, ct.getEntries()[0].getExtensions().size());
 		assertArrayEquals(bytes(2,3), ct.getEntries()[1].getData());
-		assertEquals(0, ct.getEntries()[1].getExtensioins().size());
+		assertEquals(0, ct.getEntries()[1].getExtensions().size());
 		assertEquals(0, ct.getExtensions().size());
 		buffer.clear();
 	
@@ -214,9 +214,9 @@ public class CertificateTest extends HandshakeTest {
 		ct = (Certificate) Certificate.getParser().parse(array(buffer(), 4), 31, ExtensionDecoder.DEFAULT);
 		assertEquals(1, ct.getEntries().length);
 		assertArrayEquals(bytes(1), ct.getEntries()[0].getData());
-		assertEquals(2, ct.getEntries()[0].getExtensioins().size());
-		assertSame(ExtensionType.SERVER_NAME, ct.getEntries()[0].getExtensioins().get(0).getType());
-		assertSame(ExtensionType.COOKIE, ct.getEntries()[0].getExtensioins().get(1).getType());
+		assertEquals(2, ct.getEntries()[0].getExtensions().size());
+		assertSame(ExtensionType.SERVER_NAME, ct.getEntries()[0].getExtensions().get(0).getType());
+		assertSame(ExtensionType.COOKIE, ct.getEntries()[0].getExtensions().get(1).getType());
 		assertEquals(2,ct.getExtensions().size());
 		assertSame(ExtensionType.SERVER_NAME, ct.getExtensions().get(0).getType());
 		assertSame(ExtensionType.COOKIE, ct.getExtensions().get(1).getType());
@@ -228,13 +228,13 @@ public class CertificateTest extends HandshakeTest {
 		ct = (Certificate) Certificate.getParser().parse(array(buffer(), 4), 58, ExtensionDecoder.DEFAULT);
 		assertEquals(2, ct.getEntries().length);
 		assertArrayEquals(bytes(1), ct.getEntries()[0].getData());
-		assertEquals(2, ct.getEntries()[0].getExtensioins().size());
+		assertEquals(2, ct.getEntries()[0].getExtensions().size());
 		assertArrayEquals(bytes(2), ct.getEntries()[1].getData());
-		assertEquals(2, ct.getEntries()[1].getExtensioins().size());
-		assertSame(ExtensionType.SERVER_NAME, ct.getEntries()[0].getExtensioins().get(0).getType());
-		assertSame(ExtensionType.COOKIE, ct.getEntries()[0].getExtensioins().get(1).getType());
-		assertSame(ExtensionType.SERVER_NAME, ct.getEntries()[1].getExtensioins().get(0).getType());
-		assertSame(ExtensionType.COOKIE, ct.getEntries()[1].getExtensioins().get(1).getType());
+		assertEquals(2, ct.getEntries()[1].getExtensions().size());
+		assertSame(ExtensionType.SERVER_NAME, ct.getEntries()[0].getExtensions().get(0).getType());
+		assertSame(ExtensionType.COOKIE, ct.getEntries()[0].getExtensions().get(1).getType());
+		assertSame(ExtensionType.SERVER_NAME, ct.getEntries()[1].getExtensions().get(0).getType());
+		assertSame(ExtensionType.COOKIE, ct.getEntries()[1].getExtensions().get(1).getType());
 		assertEquals(4,ct.getExtensions().size());
 		assertSame(ExtensionType.SERVER_NAME, ct.getExtensions().get(0).getType());
 		assertSame(ExtensionType.COOKIE, ct.getExtensions().get(1).getType());

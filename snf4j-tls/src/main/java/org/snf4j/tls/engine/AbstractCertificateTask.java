@@ -23,31 +23,41 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.session;
+package org.snf4j.tls.engine;
 
-import java.security.cert.Certificate;
+abstract public class AbstractCertificateTask extends AbstractEngineTask {
 
-import org.snf4j.tls.cipher.CipherSuite;
+	private final ICertificateSelector selector;
+	
+	private final CertificateCriteria criteria;
+	
+	protected volatile SelectedCertificates certificates;
+	
+	AbstractCertificateTask(ICertificateSelector selector, CertificateCriteria criteria) {
+		this.selector = selector;
+		this.criteria = criteria;
+	}
 
-public interface ISession {
+	AbstractCertificateTask() {
+		this.selector = null;
+		this.criteria = null;
+	}
 	
-	ISessionManager getManager();
+	@Override
+	public boolean isProducing() {
+		return true;
+	}
 
-	void invalidate();
-	
-	boolean isValid();
-	
-	long getId();
-	
-	long getCreationTime();
-	
-	CipherSuite getCipherSuite();
-	
-	String getPeerHost();
-	
-	int getPeerPort();
-	
-	Certificate[] getPeerCertificates();
-		
-	Certificate[] getLocalCertificates();
+	@Override
+	public String name() {
+		return "Certificate";
+	}
+
+	@Override
+	void execute() throws Exception {
+		if (selector != null) {
+			certificates = selector.selectCertificates(criteria);
+		}
+	}
+
 }

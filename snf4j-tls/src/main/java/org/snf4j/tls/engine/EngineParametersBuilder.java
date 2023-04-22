@@ -27,6 +27,7 @@ package org.snf4j.tls.engine;
 
 import java.security.SecureRandom;
 
+import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
@@ -55,6 +56,8 @@ public class EngineParametersBuilder {
 	private boolean serverNameRequired;
 	
 	private DelegatedTaskMode delegatedTaskMode = DelegatedTaskMode.NONE;
+	
+	private ClientAuth clientAuth = ClientAuth.NONE;
 	
 	public EngineParametersBuilder cipherSuites(CipherSuite... cipherSuites) {
 		this.cipherSuites = cipherSuites.clone();
@@ -111,6 +114,11 @@ public class EngineParametersBuilder {
 		return this;
 	}
 	
+	public EngineParametersBuilder clientAuth(ClientAuth clientAuth) {
+		this.clientAuth = clientAuth;
+		return this;
+	}
+	
 	public EngineParameters build() {
 		return new EngineParameters(
 				cipherSuites.clone(),
@@ -123,7 +131,8 @@ public class EngineParametersBuilder {
 				peerHost,
 				peerPort,
 				serverNameRequired,
-				delegatedTaskMode
+				delegatedTaskMode,
+				clientAuth
 				);
 	}
 

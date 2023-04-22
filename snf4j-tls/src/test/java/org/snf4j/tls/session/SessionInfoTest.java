@@ -29,6 +29,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
+import java.security.cert.Certificate;
+
 import org.junit.Test;
 import org.snf4j.tls.cipher.CipherSuite;
 
@@ -38,20 +40,28 @@ public class SessionInfoTest {
 	public void testDefaults() {
 		SessionInfo info = new SessionInfo();
 		
-		assertNull(info.host());
-		assertEquals(-1, info.port());
-		assertNull(info.cipherSuite());
+		assertNull(info.peerHost());
+		assertEquals(-1, info.peerPort());
+		assertNull(info.cipher());
+		assertNull(info.localCerts());
+		assertNull(info.peerCerts());
 	}
 	
 	@Test
 	public void testUpdates() {
+		Certificate[] certs1 = new Certificate[0];
+		Certificate[] certs2 = new Certificate[0];
 		SessionInfo info = new SessionInfo()
-				.host("xxx")
-				.port(100)
-				.cipherSuite(CipherSuite.TLS_CHACHA20_POLY1305_SHA256);
+				.peerHost("xxx")
+				.peerPort(100)
+				.cipher(CipherSuite.TLS_CHACHA20_POLY1305_SHA256)
+				.peerCerts(certs1)
+				.localCerts(certs2);
 		
-		assertEquals("xxx", info.host());
-		assertEquals(100, info.port());
-		assertSame(CipherSuite.TLS_CHACHA20_POLY1305_SHA256, info.cipherSuite());
+		assertEquals("xxx", info.peerHost());
+		assertEquals(100, info.peerPort());
+		assertSame(CipherSuite.TLS_CHACHA20_POLY1305_SHA256, info.cipher());
+		assertSame(certs1, info.peerCerts());
+		assertSame(certs2, info.localCerts());
 	}
 }

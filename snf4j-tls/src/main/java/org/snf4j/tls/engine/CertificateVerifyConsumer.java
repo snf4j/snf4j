@@ -40,25 +40,48 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 		return HandshakeType.CERTIFICATE_VERIFY;
 	}
 
-	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws Alert {
-		if (state.getState() != MachineState.CLI_WAIT_CV) {
-			throw new UnexpectedMessageAlert("Unexpected CertificateVerify");
-		}
-		
-		ICertificateVerify certificateVerify = (ICertificateVerify) handshake;
-
+	private void consumeClient(EngineState state, ICertificateVerify certificateVerify, ByteBuffer[] data) throws Alert {
 		boolean verified = ConsumerUtil.verify(certificateVerify.getSignature(), 
 				state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false),
 				certificateVerify.getAlgorithm(),
-				state.getPublicKey(), 
+				state.getSessionInfo().peerCerts()[0].getPublicKey(), 
 				false);
 		if (!verified) {
 			throw new DecryptErrorAlert("Failed to verify certificate");
 		}
 		
-		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+		ConsumerUtil.updateTranscriptHash(state, certificateVerify.getType(), data);
 		state.changeState(MachineState.CLI_WAIT_FINISHED);
+	}
+
+	private void consumeServer(EngineState state, ICertificateVerify certificateVerify, ByteBuffer[] data) throws Alert {
+		boolean verified = ConsumerUtil.verify(certificateVerify.getSignature(), 
+				state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, true),
+				certificateVerify.getAlgorithm(),
+				state.getSessionInfo().peerCerts()[0].getPublicKey(), 
+				true);
+		if (!verified) {
+			throw new DecryptErrorAlert("Failed to verify certificate");
+		}
+		
+		ConsumerUtil.updateTranscriptHash(state, certificateVerify.getType(), data);
+		state.changeState(MachineState.SRV_WAIT_FINISHED);
+	}
+	
+	@Override
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws Alert {
+		switch (state.getState()) {
+		case CLI_WAIT_CV:
+			consumeClient(state, (ICertificateVerify) handshake, data);
+			break;
+			
+		case SRV_WAIT_CV:
+			consumeServer(state, (ICertificateVerify) handshake, data);
+			break;
+			
+		default:
+			throw new UnexpectedMessageAlert("Unexpected CertificateVerify");
+		}
 	}
 
 }

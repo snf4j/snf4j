@@ -23,31 +23,14 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.session;
+package org.snf4j.tls.alert;
 
-import java.security.cert.Certificate;
+public class CertificateRequiredAlert extends Alert {
+	
+	private static final long serialVersionUID = 1L;
 
-import org.snf4j.tls.cipher.CipherSuite;
+	public CertificateRequiredAlert(String message) {
+		super(message, AlertDescription.CERTIFICATE_REQUIRED);
+	}
 
-public interface ISession {
-	
-	ISessionManager getManager();
-
-	void invalidate();
-	
-	boolean isValid();
-	
-	long getId();
-	
-	long getCreationTime();
-	
-	CipherSuite getCipherSuite();
-	
-	String getPeerHost();
-	
-	int getPeerPort();
-	
-	Certificate[] getPeerCertificates();
-		
-	Certificate[] getLocalCertificates();
 }

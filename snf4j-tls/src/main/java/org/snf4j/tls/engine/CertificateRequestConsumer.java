@@ -25,29 +25,53 @@
  */
 package org.snf4j.tls.engine;
 
+import static org.snf4j.tls.extension.ExtensionsUtil.find;
+
 import java.nio.ByteBuffer;
 
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.MissingExtensionAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.extension.ExtensionType;
+import org.snf4j.tls.extension.ISignatureAlgorithmsExtension;
+import org.snf4j.tls.handshake.CertificateType;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 
-public class EncryptedExtensionsConsumer  implements IHandshakeConsumer {
+public class CertificateRequestConsumer implements IHandshakeConsumer {
 
 	@Override
 	public HandshakeType getType() {
-		return HandshakeType.ENCRYPTED_EXTENSIONS;
+		return HandshakeType.CERTIFICATE_REQUEST;
 	}
 
 	@Override
 	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
-		if (state.getState() != MachineState.CLI_WAIT_EE) {
-			throw new UnexpectedMessageAlert("Unexpected EncryptedExtensions");
+		switch (state.getState()) {
+		case CLI_WAIT_CERT_CR:
+			break;
+			
+		default:
+			throw new UnexpectedMessageAlert("Unexpected CertificateRequest");
 		}
+		
+		ISignatureAlgorithmsExtension signAlgorithms = find(handshake, ExtensionType.SIGNATURE_ALGORITHMS);
+		if (signAlgorithms == null) {
+			throw new MissingExtensionAlert("Missing signature_algorithms extension in CertificateRequest");
+		}
+		ISignatureAlgorithmsExtension signAlgorithmsCert = find(handshake, ExtensionType.SIGNATURE_ALGORITHMS_CERT);
+
+		
 		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
-		state.changeState(state.getKeySchedule().isUsingPsk() 
-				? MachineState.CLI_WAIT_FINISHED 
-				: MachineState.CLI_WAIT_CERT_CR);
+
+		state.setCertCryteria(new CertificateCriteria(
+				CertificateType.X509,
+				state.getSessionInfo().peerHost(),
+				signAlgorithms.getSchemes(),
+				signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes()
+				));
+		
+		state.changeState(MachineState.CLI_WAIT_CERT);
 	}
 
 }

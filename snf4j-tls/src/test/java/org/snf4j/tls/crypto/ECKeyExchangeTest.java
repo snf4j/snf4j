@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,12 +33,13 @@ import java.security.KeyPair;
 import java.security.interfaces.ECPublicKey;
 
 import org.junit.Test;
+import org.snf4j.tls.CommonTest;
 
-public class ECKeyExchangeTest {
+public class ECKeyExchangeTest extends CommonTest {
 
 	void assertKeyExchange(ECKeyExchange dh, String algo, int len) throws Exception {
-		KeyPair kp1 = dh.generateKeyPair();
-		KeyPair kp2 = dh.generateKeyPair();
+		KeyPair kp1 = dh.generateKeyPair(RANDOM);
+		KeyPair kp2 = dh.generateKeyPair(RANDOM);
 		
 		assertEquals(((ECPublicKey)kp1.getPublic()).getW().getAffineX(), dh.getX(kp1.getPublic()));
 		assertEquals(((ECPublicKey)kp1.getPublic()).getW().getAffineY(), dh.getY(kp1.getPublic()));
@@ -47,8 +48,8 @@ public class ECKeyExchangeTest {
 		
 		assertEquals(kp1.getPublic(), dh.generatePublicKey(((ECPublicKey)kp1.getPublic()).getW().getAffineX(),((ECPublicKey)kp1.getPublic()).getW().getAffineY()));
 		
-		byte[] s1 = dh.generateSecret(kp1.getPrivate(), kp2.getPublic());
-		byte[] s2 = dh.generateSecret(kp2.getPrivate(), kp1.getPublic());
+		byte[] s1 = dh.generateSecret(kp1.getPrivate(), kp2.getPublic(), RANDOM);
+		byte[] s2 = dh.generateSecret(kp2.getPrivate(), kp1.getPublic(), RANDOM);
 		assertArrayEquals(s1,s2);
 		assertEquals(len,s1.length);
 	}

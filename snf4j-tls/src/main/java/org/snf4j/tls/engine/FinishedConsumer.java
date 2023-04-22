@@ -33,6 +33,8 @@ import org.snf4j.tls.alert.DecryptErrorAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
+import org.snf4j.tls.handshake.Certificate;
+import org.snf4j.tls.handshake.CertificateVerify;
 import org.snf4j.tls.handshake.Finished;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IFinished;
@@ -68,7 +70,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		
 		if (session == null) {
 			session = state.getHandler().getSessionManager().newSession(state.getSessionInfo()
-					.cipherSuite(state.getCipherSuite()));
+					.cipher(state.getCipherSuite()));
 			state.setSession(session);
 		}
 		
@@ -98,50 +100,105 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		if (!Arrays.equals(finished.getVerifyData(), verifyData)) {
 			throw new DecryptErrorAlert("Failed to verify server verify data");
 		}
-				
-		IEngineParameters params = state.getParameters();
 		
-		//TODO: skip if early data is offered
-		if (params.isCompatibilityMode() && !state.hadState(MachineState.CLI_WAIT_2_SH)) {
-			state.getListener().produceChangeCipherSpec(state);
+		ConsumerUtil.updateTranscriptHash(state, finished.getType(), data);
+		
+		DelegatedTaskMode taskMode = state.getParameters().getDelegatedTaskMode();
+		CertificateCriteria criteria = state.getCertCryteria();
+		CertificateTask task;
+		if (criteria != null) {
+			task = new CertificateTask(
+					state.getHandler().getCertificateSelector(),
+					criteria);
+		}
+		else {
+			task = new CertificateTask();
+			taskMode = DelegatedTaskMode.NONE;
 		}
 		
-		try {
-			ConsumerUtil.updateTranscriptHash(state, finished.getType(), data);
-			state.getKeySchedule().deriveMasterSecret();
-			state.getKeySchedule().deriveApplicationTrafficSecrets();
-			state.getListener().onApplicationTrafficSecrets(state);
-			state.getListener().onReceivingTraficKey(RecordType.APPLICATION);
-			finished = new Finished(state.getKeySchedule().computeClientVerifyData());
-			ConsumerUtil.produce(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
-			state.getKeySchedule().deriveResumptionMasterSecret();
-		} catch (Exception e) {
-			throw new InternalErrorAlert("Failed to compute server verify data", e);
+		if (taskMode.certificates()) {
+			state.changeState(MachineState.CLI_WAIT_TASK);
+			state.addTask(task);
 		}
-		
-		ISession session = state.getSession();
-		
-		if (session == null) {
-			session = state.getHandler().getSessionManager().newSession(state.getSessionInfo()
-					.host(params.getPeerHost())
-					.port(params.getPeerPort())
-					.cipherSuite(state.getCipherSuite()));
-			state.setSession(session);
+		else {
+			task.run(state);
 		}
-		
-		state.changeState(MachineState.CLI_CONNECTED);
 	}
 	
 	@Override
 	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR)	throws Alert {
-		if (state.getState() == MachineState.CLI_WAIT_FINISHED) {
+		switch (state.getState()) {
+		case CLI_WAIT_FINISHED:
 			consumeClient(state, (IFinished) handshake, data);
-		}
-		else if (state.getState() == MachineState.SRV_WAIT_FINISHED) {
+			break;
+			
+		case SRV_WAIT_FINISHED:
 			consumeServer(state, (IFinished) handshake, data);
-		}
-		else {
+			break;
+			
+		default:
 			throw new UnexpectedMessageAlert("Unexpected Finished");
+		}
+	}
+	
+	static class CertificateTask extends AbstractCertificateTask {
+
+		CertificateTask(ICertificateSelector selector, CertificateCriteria criteria) {
+			super(selector, criteria);
+		}
+
+		CertificateTask() {
+			super();
+		}
+		
+		@Override
+		public void finish(EngineState state) throws Alert {
+			IEngineParameters params = state.getParameters();
+			
+			//TODO: skip if early data is offered
+			if (params.isCompatibilityMode() && !state.hadState(MachineState.CLI_WAIT_2_SH)) {
+				state.getListener().prepareChangeCipherSpec(state);
+			}
+			
+			if (certificates != null) {
+				Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
+				ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
+
+				if (certificate.getEntries().length > 0) {
+					state.getSessionInfo().localCerts(certificates.getCertificates());
+					byte[] signature = ConsumerUtil.sign(state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, true), 
+							certificates.getAlgorithm(), 
+							certificates.getPrivateKey(), 
+							true,
+							params.getSecureRandom());
+					CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
+					ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);
+				}
+			}
+			
+			try {
+				state.getKeySchedule().deriveMasterSecret();
+				state.getKeySchedule().deriveApplicationTrafficSecrets();
+				state.getListener().onApplicationTrafficSecrets(state);
+				state.getListener().onReceivingTraficKey(RecordType.APPLICATION);
+				Finished finished = new Finished(state.getKeySchedule().computeClientVerifyData());
+				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
+				state.getKeySchedule().deriveResumptionMasterSecret();
+			} catch (Exception e) {
+				throw new InternalErrorAlert("Failed to compute server verify data", e);
+			}
+			
+			ISession session = state.getSession();
+			
+			if (session == null) {
+				session = state.getHandler().getSessionManager().newSession(state.getSessionInfo()
+						.peerHost(params.getPeerHost())
+						.peerPort(params.getPeerPort())
+						.cipher(state.getCipherSuite()));
+				state.setSession(session);
+			}
+			
+			state.changeState(MachineState.CLI_CONNECTED);
 		}
 	}
 }

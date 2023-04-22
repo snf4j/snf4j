@@ -57,7 +57,7 @@ public class ConsumerUtilTest extends CommonTest {
 		s.initSign(certs.getPrivateKey());
 		s.update(cat(octets,server,bytes(0),bytes(1,2,3,4)));
 		byte[] signature = s.sign();
-		assertArrayEquals(signature, ConsumerUtil.sign(bytes(1,2,3,4), certs.getAlgorithm(), certs.getPrivateKey(), false));
+		assertArrayEquals(signature, ConsumerUtil.sign(bytes(1,2,3,4), certs.getAlgorithm(), certs.getPrivateKey(), false, RANDOM));
 
 		CertificateFactory cf = CertificateFactory.getInstance("X.509");
 		Certificate cert = cf.generateCertificate(new ByteArrayInputStream(certs.getEntries()[0].getData()));
@@ -67,7 +67,7 @@ public class ConsumerUtilTest extends CommonTest {
 		s.initSign(certs.getPrivateKey());
 		s.update(cat(octets,client,bytes(0),bytes(1,2,3,4,5)));
 		signature = s.sign();
-		assertArrayEquals(signature, ConsumerUtil.sign(bytes(1,2,3,4,5), certs.getAlgorithm(), certs.getPrivateKey(), true));
+		assertArrayEquals(signature, ConsumerUtil.sign(bytes(1,2,3,4,5), certs.getAlgorithm(), certs.getPrivateKey(), true, RANDOM));
 		assertTrue(ConsumerUtil.verify(signature, bytes(1,2,3,4,5), certs.getAlgorithm(), cert.getPublicKey(), true));
 		
 		SignatureScheme scheme = new SignatureScheme(100) {
@@ -76,7 +76,7 @@ public class ConsumerUtilTest extends CommonTest {
 			}
 		};
 		try {
-			ConsumerUtil.sign(bytes(1,2,3,4,5), scheme, certs.getPrivateKey(), true);
+			ConsumerUtil.sign(bytes(1,2,3,4,5), scheme, certs.getPrivateKey(), true, RANDOM);
 			fail();
 		} catch (InternalErrorAlert e) {}
 		try {

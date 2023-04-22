@@ -26,6 +26,8 @@
 package org.snf4j.tls.engine;
 
 import java.security.SecureRandom;
+
+import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
@@ -54,5 +56,7 @@ public interface IEngineParameters {
 	int getNumberOfOfferedSharedKeys();
 	
 	DelegatedTaskMode getDelegatedTaskMode();
+	
+	ClientAuth getClientAuth();
 	
 }

@@ -29,10 +29,12 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.security.cert.Certificate;
 import java.util.Arrays;
 
 import org.junit.Before;
@@ -103,13 +105,21 @@ public class SessionManagerTest extends CommonTest {
 	}
 	
 	@Test
+	public void testPrepareCerts() throws Exception {
+		Certificate[] certs = new Certificate[] {cert("rsapsssha256"), cert("rsasha1")};
+		assertNull(mgr.prepareCerts(null));
+		assertNotSame(certs, mgr.prepareCerts(certs));
+		assertArrayEquals(certs, mgr.prepareCerts(certs));
+	}
+	
+	@Test
 	public void testInvalidateSession() throws Exception {
-		SessionInfo sinfo = new SessionInfo().cipherSuite(CipherSuite.TLS_AES_128_GCM_SHA256);
-		SessionInfo cinfo = new SessionInfo().host("xxx").cipherSuite(CipherSuite.TLS_AES_256_GCM_SHA384);
+		SessionInfo sinfo = new SessionInfo().cipher(CipherSuite.TLS_AES_128_GCM_SHA256);
+		SessionInfo cinfo = new SessionInfo().peerHost("xxx").cipher(CipherSuite.TLS_AES_256_GCM_SHA384);
 
 		ISession s1 = mgr.newSession(sinfo,1000);
 		assertTrue(s1.isValid());
-		ISession s2 = mgr.newSession(cinfo.port(100),1000);
+		ISession s2 = mgr.newSession(cinfo.peerPort(100),1000);
 		assertTrue(s2.isValid());
 		
 		assertNotNull(mgr.getSession(s1.getId(),1000));
@@ -131,22 +141,34 @@ public class SessionManagerTest extends CommonTest {
 	
 	@Test
 	public void testNewSession() throws Exception {
-		SessionInfo sinfo = new SessionInfo().cipherSuite(CipherSuite.TLS_AES_128_GCM_SHA256);
-		SessionInfo cinfo = new SessionInfo().host("xxx").cipherSuite(CipherSuite.TLS_AES_256_GCM_SHA384);
+		Certificate[] certs1 = new Certificate[] {cert("rsasha1")};
+		Certificate[] certs2 = new Certificate[] {cert("rsasha1"),cert("rsasha256")};
+		SessionInfo sinfo = new SessionInfo().cipher(CipherSuite.TLS_AES_128_GCM_SHA256);
+		SessionInfo cinfo = new SessionInfo()
+				.peerHost("xxx")
+				.cipher(CipherSuite.TLS_AES_256_GCM_SHA384)
+				.peerCerts(certs1)
+				.localCerts(certs2);
 		
 		ISession s1 = mgr.newSession(sinfo, 1000);
-		assertNull(s1.getHost());
-		assertEquals(-1, s1.getPort());
+		assertNull(s1.getPeerHost());
+		assertEquals(-1, s1.getPeerPort());
 		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, s1.getCipherSuite());
 		assertEquals(1000, s1.getCreationTime());
 		assertSame(mgr, s1.getManager());
+		assertNull(s1.getPeerCertificates());
+		assertNull(s1.getLocalCertificates());
 
-		ISession s2 = mgr.newSession(cinfo.port(100), 1001);
-		assertEquals("xxx",s2.getHost());
-		assertEquals(100, s2.getPort());
+		ISession s2 = mgr.newSession(cinfo.peerPort(100), 1001);
+		assertEquals("xxx",s2.getPeerHost());
+		assertEquals(100, s2.getPeerPort());
 		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, s2.getCipherSuite());
 		assertEquals(1001, s2.getCreationTime());
 		assertSame(mgr, s2.getManager());
+		assertNotSame(certs1, s2.getPeerCertificates());
+		assertArrayEquals(certs1, s2.getPeerCertificates());
+		assertNotSame(certs2, s2.getLocalCertificates());
+		assertArrayEquals(certs2, s2.getLocalCertificates());
 		
 		assertSame(s1, mgr.getSession(s1.getId(), 1000+86400*1000));
 		assertSame(s1, mgr.getSession(s1.getId(), 1000+86400*1000));
@@ -160,11 +182,11 @@ public class SessionManagerTest extends CommonTest {
 		assertSame(s2, mgr.getSession(s2.getId(), 1001+86400*1000));
 		assertNull(mgr.getSession(s2.getId(), 1001+1+86400*1000));
 		
-		s1 = mgr.newSession(cinfo.port(-1),1000);
+		s1 = mgr.newSession(cinfo.peerPort(-1),1000);
 		assertSame(s1, mgr.getSession(s1.getId(), 1000));
 		assertNull(mgr.getSession("xxx", -1, 1000));
 
-		s2 = mgr.newSession(cinfo.host(null).port(101),1000);
+		s2 = mgr.newSession(cinfo.peerHost(null).peerPort(101),1000);
 		assertSame(s2, mgr.getSession(s2.getId(), 1000));
 		assertNull(mgr.getSession(null, 101, 1000));
 		
@@ -178,7 +200,7 @@ public class SessionManagerTest extends CommonTest {
 		waitFor(600);
 		assertNull(mgr.getSession(s1.getId()));
 		time = System.currentTimeMillis();
-		s2 = mgr.newSession(cinfo.host("xx").port(33));
+		s2 = mgr.newSession(cinfo.peerHost("xx").peerPort(33));
 		assertTrue(s2.getCreationTime() >= time);
 		waitFor(500);
 		assertNotNull(mgr.getSession(s2.getId()));
@@ -190,11 +212,11 @@ public class SessionManagerTest extends CommonTest {
 	
 	@Test
 	public void testRemoveSession() throws Exception {
-		SessionInfo sinfo = new SessionInfo().cipherSuite(CipherSuite.TLS_AES_128_GCM_SHA256);
-		SessionInfo cinfo = new SessionInfo().host("xxx").cipherSuite(CipherSuite.TLS_AES_256_GCM_SHA384);
+		SessionInfo sinfo = new SessionInfo().cipher(CipherSuite.TLS_AES_128_GCM_SHA256);
+		SessionInfo cinfo = new SessionInfo().peerHost("xxx").cipher(CipherSuite.TLS_AES_256_GCM_SHA384);
 		
 		ISession s1 = mgr.newSession(sinfo, 1000);
-		ISession s2 = mgr.newSession(cinfo.port(100), 1001);
+		ISession s2 = mgr.newSession(cinfo.peerPort(100), 1001);
 		
 		assertNotNull(mgr.getSession(s1.getId(), 1000 + 86400*1000));
 		mgr.removeSession(s1.getId(), 1000 + 86400*1000);
@@ -206,7 +228,7 @@ public class SessionManagerTest extends CommonTest {
 		assertNull(mgr.getSession(s2.getId(), 1000 + 86400*1000));
 		assertNull(mgr.getSession("xxx",100, 1000 + 86400*1000));
 		
-		s1 = mgr.newSession(cinfo.port(101), 1000);
+		s1 = mgr.newSession(cinfo.peerPort(101), 1000);
 		mgr.removeSession(s1.getId(), 1000 + 1 + 86400*1000);
 		assertNull(mgr.getSession(s1.getId(), 1000 + 86400*1000));
 		assertNotNull(mgr.getSession("xxx",101, 1000 + 86400*1000));
@@ -217,7 +239,7 @@ public class SessionManagerTest extends CommonTest {
 		long time = System.currentTimeMillis();
 
 		s1 = mgr.newSession(sinfo);
-		s2 = mgr.newSession(cinfo.port(101));
+		s2 = mgr.newSession(cinfo.peerPort(101));
 		
 		waitFor(500);
 		assertNotNull(mgr.getSession(s1.getId()));
@@ -233,7 +255,7 @@ public class SessionManagerTest extends CommonTest {
 	
 	@Test
 	public void testNewTicket() throws Exception {
-		SessionInfo info = new SessionInfo().cipherSuite(CipherSuite.TLS_AES_128_GCM_SHA256);
+		SessionInfo info = new SessionInfo().cipher(CipherSuite.TLS_AES_128_GCM_SHA256);
 		
 		Session session = (Session) mgr.newSession(info, 1000);
 		EngineState state = state(session, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
@@ -303,7 +325,7 @@ public class SessionManagerTest extends CommonTest {
 	
 	@Test
 	public void testUseSession() throws Exception {
-		SessionInfo info = new SessionInfo().cipherSuite(CipherSuite.TLS_AES_128_GCM_SHA256);
+		SessionInfo info = new SessionInfo().cipher(CipherSuite.TLS_AES_128_GCM_SHA256);
 		
 		Session session1 = (Session) mgr.newSession(info, 1000);
 		EngineState state1 = state(session1, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
@@ -351,7 +373,7 @@ public class SessionManagerTest extends CommonTest {
 	
 	@Test
 	public void testGetTickets() throws Exception {
-		SessionInfo info = new SessionInfo().cipherSuite(CipherSuite.TLS_AES_128_GCM_SHA256);
+		SessionInfo info = new SessionInfo().cipher(CipherSuite.TLS_AES_128_GCM_SHA256);
 		Session session = (Session) mgr.newSession(info, 1000);
 		EngineState state = state(session, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
 		
@@ -404,7 +426,7 @@ public class SessionManagerTest extends CommonTest {
 	
 	@Test(expected=IllegalArgumentException.class)
 	public void testCheckSessionDifferentManager() {
-		SessionInfo info = new SessionInfo().cipherSuite(CipherSuite.TLS_AES_128_GCM_SHA256);
+		SessionInfo info = new SessionInfo().cipher(CipherSuite.TLS_AES_128_GCM_SHA256);
 		Session session = (Session) mgr.newSession(info, 1000);
 		mgr = new SessionManager();
 		mgr.checkSession(session);
@@ -440,12 +462,12 @@ public class SessionManagerTest extends CommonTest {
 			}
 
 			@Override
-			public String getHost() {
+			public String getPeerHost() {
 				return null;
 			}
 
 			@Override
-			public int getPort() {
+			public int getPeerPort() {
 				return 0;
 			}
 
@@ -456,6 +478,16 @@ public class SessionManagerTest extends CommonTest {
 			@Override
 			public boolean isValid() {
 				return false;
+			}
+
+			@Override
+			public Certificate[] getPeerCertificates() {
+				return null;
+			}
+
+			@Override
+			public Certificate[] getLocalCertificates() {
+				return null;
 			}
 		};
 		mgr.checkSession(session);

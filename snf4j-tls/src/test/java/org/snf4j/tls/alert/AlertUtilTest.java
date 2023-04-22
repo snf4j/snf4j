@@ -23,31 +23,32 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.session;
+package org.snf4j.tls.alert;
 
-import java.security.cert.Certificate;
+import static org.junit.Assert.assertEquals;
 
-import org.snf4j.tls.cipher.CipherSuite;
+import org.junit.Test;
 
-public interface ISession {
-	
-	ISessionManager getManager();
+public class AlertUtilTest {
 
-	void invalidate();
-	
-	boolean isValid();
-	
-	long getId();
-	
-	long getCreationTime();
-	
-	CipherSuite getCipherSuite();
-	
-	String getPeerHost();
-	
-	int getPeerPort();
-	
-	Certificate[] getPeerCertificates();
+	@Test
+	public void testOf() {
+		int count = 0;
 		
-	Certificate[] getLocalCertificates();
+		for (int i=0; i<256; ++i) {
+			AlertDescription desc = AlertDescription.of(i);
+			Alert alert = AlertUtil.of(AlertLevel.FATAL, desc);
+			
+			if (desc.isKnown()) {
+				if (!"Alert".equals(alert.getClass().getSimpleName())) {
+					++count;
+				}
+			}
+			else {
+				assertEquals("Alert", alert.getClass().getSimpleName());
+				assertEquals("Received 'unknown' error alert from peer", alert.getMessage());
+			}
+		}
+		assertEquals(13, count);
+	}
 }

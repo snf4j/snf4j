@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.util.Arrays;
 
@@ -81,14 +82,14 @@ public class ConsumerUtil {
 		state.produce(new ProducedHandshake(handshake, recordType));
 	}
 
-	static byte[] sign(byte[] content, SignatureScheme scheme, PrivateKey privateKey, boolean client) throws Alert {
+	static byte[] sign(byte[] content, SignatureScheme scheme, PrivateKey privateKey, boolean client, SecureRandom random) throws Alert {
 		try {
 			Signature sign = scheme
 					.spec()
 					.getSignature()
 					.createSignature();
 			
-			sign.initSign(privateKey);
+			sign.initSign(privateKey, random);
 			sign.update(SIGNATURE_64_OCTETS);
 			if (client) {
 				sign.update(SIGNATURE_CLIENT_CONTEXT);

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
@@ -118,10 +119,10 @@ public class XDHKeyExchange implements IXDHKeyExchange {
 	}
 
 	@Override
-	public byte[] generateSecret(PrivateKey privateKey, PublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException {
+	public byte[] generateSecret(PrivateKey privateKey, PublicKey publicKey, SecureRandom random) throws NoSuchAlgorithmException, InvalidKeyException {
         KeyAgreement keyAgreement = KeyAgreement.getInstance(dh);
         
-        keyAgreement.init(privateKey);
+        keyAgreement.init(privateKey, random);
         keyAgreement.doPhase(publicKey, true);
         return keyAgreement.generateSecret();
 	}
@@ -135,9 +136,9 @@ public class XDHKeyExchange implements IXDHKeyExchange {
 	}
 	
 	@Override
-	public KeyPair generateKeyPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+	public KeyPair generateKeyPair(SecureRandom random) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 		KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(dh);
-        keyPairGenerator.initialize(paramSpec(PARAMETER_SPEC));
+        keyPairGenerator.initialize(paramSpec(PARAMETER_SPEC), random);
 		return keyPairGenerator.genKeyPair();
 	}
 

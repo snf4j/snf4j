@@ -25,6 +25,8 @@
  */
 package org.snf4j.tls.session;
 
+import java.security.cert.Certificate;
+
 import org.snf4j.tls.cipher.CipherSuite;
 
 public class TestSession implements ISession {
@@ -54,12 +56,12 @@ public class TestSession implements ISession {
 	}
 
 	@Override
-	public String getHost() {
+	public String getPeerHost() {
 		return null;
 	}
 
 	@Override
-	public int getPort() {
+	public int getPeerPort() {
 		return 0;
 	}
 
@@ -75,6 +77,16 @@ public class TestSession implements ISession {
 	@Override
 	public boolean isValid() {
 		return true;
+	}
+
+	@Override
+	public Certificate[] getPeerCertificates() {
+		return null;
+	}
+
+	@Override
+	public Certificate[] getLocalCertificates() {
+		return null;
 	}
 
 }

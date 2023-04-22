@@ -32,7 +32,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.security.PublicKey;
 import java.util.ArrayList;
 import org.junit.Test;
 import org.snf4j.tls.alert.Alert;
@@ -120,41 +119,6 @@ public class EngineStateTest {
 				new TestHandshakeHandler(),
 				new TestHandshakeHandler());
 		assertEquals(16384, state.getMaxFragmentLength());
-	}
-	
-	@Test
-	public void testStorePublicKey() {
-		EngineState state = new EngineState(
-				MachineState.CLI_INIT, 
-				new TestParameters(), 
-				new TestHandshakeHandler(),
-				new TestHandshakeHandler());
-
-		PublicKey key = new PublicKey() {
-
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public String getAlgorithm() {
-				return null;
-			}
-
-			@Override
-			public String getFormat() {
-				return null;
-			}
-
-			@Override
-			public byte[] getEncoded() {
-				return null;
-			}
-		};
-		
-		assertNull(state.getPublicKey());
-		state.storePublicKey(key);
-		assertSame(key, state.getPublicKey());
-		state.clearPublicKeys();
-		assertNull(state.getPublicKey());
 	}
 	
 	@Test
