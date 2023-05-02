@@ -27,6 +27,8 @@ package org.snf4j.tls.record;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 
@@ -51,7 +53,7 @@ public class CryptorTest extends CommonTest {
 	
 	@Test
 	public void testNextNonce() {
-		Cryptor c = new Cryptor(IV.clone(), 16) {};
+		Cryptor c = new Cryptor(IV.clone(), 16, 1000) {};
 		
 		assertEquals(0, c.getSequence());
 		byte[] nonce = c.nextNonce();
@@ -74,10 +76,34 @@ public class CryptorTest extends CommonTest {
 	
 	@Test
 	public void testGetExapnsion() {
-		Cryptor c = new Cryptor(IV.clone(), 16) {};
+		Cryptor c = new Cryptor(IV.clone(), 16, 1000) {};
 		
-		assertEquals(16, c.getExapnsion());
-		c = new Cryptor(IV.clone(), 17) {};
-		assertEquals(17, c.getExapnsion());
+		assertEquals(16, c.getExpansion());
+		c = new Cryptor(IV.clone(), 17, 1000) {};
+		assertEquals(17, c.getExpansion());
+	}
+	
+	@Test
+	public void testIsMarkedForUpdate() {
+		Cryptor c = new Cryptor(IV.clone(), 16, 1000) {};
+		
+		assertFalse(c.isMarkedForUpdate());
+		c.markForUpdate();
+		assertTrue(c.isMarkedForUpdate());
+	}
+	
+	@Test
+	public void testIsKeyLimitReached() {
+		Cryptor c = new Cryptor(IV.clone(), 16, 1000) {};
+
+		assertFalse(c.isKeyLimitReached());
+		c.incProcessedBytes(500);
+		assertFalse(c.isKeyLimitReached());
+		c.incProcessedBytes(500);
+		assertFalse(c.isKeyLimitReached());
+		c.incProcessedBytes(1);
+		assertTrue(c.isKeyLimitReached());
+		c.incProcessedBytes(1);
+		assertTrue(c.isKeyLimitReached());
 	}
 }

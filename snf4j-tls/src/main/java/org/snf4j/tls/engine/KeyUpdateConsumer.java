@@ -26,48 +26,41 @@
 package org.snf4j.tls.engine;
 
 import java.nio.ByteBuffer;
-import org.snf4j.tls.alert.Alert;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Encryptor;
-import org.snf4j.tls.record.IEncryptorHolder;
-import org.snf4j.tls.record.Record;
 
-public class TLSHandshakeFragmenter extends AbstractHandshakeFragmenter {
-	
-	public TLSHandshakeFragmenter(IHandshakeEngine handshaker, IEncryptorHolder encryptors, IEngineStateListener listener) {
-		super(handshaker, encryptors, listener);
-	}
-	
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.handshake.IKeyUpdate;
+import org.snf4j.tls.handshake.KeyUpdate;
+import org.snf4j.tls.handshake.KeyUpdateRequest;
+import org.snf4j.tls.record.RecordType;
+
+public class KeyUpdateConsumer implements IHandshakeConsumer {
+
 	@Override
-	protected int calculateExpansionLength(Encryptor encryptor) {
-		return encryptor == null 
-				? Record.HEADER_LENGTH 
-				: Record.HEADER_LENGTH + 1 + encryptor.getExpansion();
+	public HandshakeType getType() {
+		return HandshakeType.KEY_UPDATE;
 	}
-	
+
 	@Override
-	protected ByteBuffer prepareForContent(ByteBuffer dst, int contentLength, int maxFragmentLength, Encryptor encryptor) {
-		if (encryptor == null) {
-			Record.header(ContentType.HANDSHAKE, contentLength, dst);
-			return dst;
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
+		if (!state.getState().isConnected()) {
+			throw new UnexpectedMessageAlert("Unexpected KeyUpdate");
 		}
-		else {
-			int padding = handshaker.getHandler().calculatePadding(ContentType.HANDSHAKE, contentLength);
-			
-			if (padding > 0) {
-				padding = Math.min(padding, maxFragmentLength-contentLength);
-			}
-			return ByteBuffer.wrap(new byte[contentLength + 1 + padding]);
+		
+		IKeyUpdate ku = (IKeyUpdate) handshake;
+		
+		state.getListener().onKeyUpdate(state, ku.getRequest());
+		if (!ku.getRequest().isKnown()) {
+			throw new IllegalParameterAlert("Unknown KeyUpdateRequest");
+		}
+		
+		state.getListener().onNewReceivingTraficKey(state, RecordType.NEXT_GEN);
+		if (ku.getRequest() == KeyUpdateRequest.UPDATE_REQUESTED) {
+			state.produce(new ProducedHandshake(new KeyUpdate(false), RecordType.APPLICATION, RecordType.NEXT_GEN));
 		}
 	}
-	
-	@Override
-	protected int wrap(ByteBuffer content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws Alert {
-		if (encryptor == null) {
-			return contentLength + Record.HEADER_LENGTH;
-		}
-		content.put((byte) ContentType.HANDSHAKE.value());
-		content.position(0);
-		return Record.protect(content, encryptor, dst);
-	}
+
 }

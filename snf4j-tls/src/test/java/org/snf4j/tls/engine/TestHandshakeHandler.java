@@ -25,13 +25,16 @@
  */
 package org.snf4j.tls.engine;
 
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IServerNameExtension;
+import org.snf4j.tls.handshake.KeyUpdateRequest;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.RecordType;
 import org.snf4j.tls.session.ISessionManager;
 import org.snf4j.tls.session.SessionManager;
 
-public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineStateListener {
+public class TestHandshakeHandler implements IEngineHandler, IEngineStateListener {
 
 	private StringBuilder trace = new StringBuilder();
 	
@@ -43,13 +46,15 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	
 	public volatile ISessionManager sessionManager = new SessionManager();
 	
-	public RuntimeException onETSException;
+	public Alert onETSException;
 
-	public RuntimeException onHTSException;
+	public Alert onHTSException;
 	
-	public RuntimeException onATSException;
+	public Alert onATSException;
 	
 	public int padding;
+	
+	public long keyLimit = -1;
 	
 	public void trace(String msg) {
 		synchronized (trace) {
@@ -91,52 +96,67 @@ public class TestHandshakeHandler implements IHandshakeEngineHandler, IEngineSta
 	}
 
 	@Override
-	public void onEarlyTrafficSecret(EngineState state) throws Exception {
-		trace("ETS");
-		if (onETSException != null) {
-			throw onETSException;
+	public void onNewTrafficSecrets(IEngineState state, RecordType recordType) throws Alert {
+		switch (recordType) {
+		case ZERO_RTT:
+			trace("ETS");
+			if (onETSException != null) {
+				throw onETSException;
+			}
+			break;
+			
+		case HANDSHAKE:
+			trace("HTS");
+			if (onHTSException != null) {
+				throw onHTSException;
+			}
+			break;
+			
+		case APPLICATION:
+			trace("ATS");
+			if (onATSException != null) {
+				throw onATSException;
+			}
+			break;
+			
+		default:
+			trace("NTS");
 		}
 	}
 
 	@Override
-	public void onHandshakeTrafficSecrets(EngineState state) throws Exception {
-		trace("HTS");
-		if (onHTSException != null) {
-			throw onHTSException;
-		}
-	}
-
-	@Override
-	public void onApplicationTrafficSecrets(EngineState state) throws Exception {
-		trace("ATS");
-		if (onATSException != null) {
-			throw onATSException;
-		}
-	}
-
-	@Override
-	public 	void onReceivingTraficKey(RecordType recordType) {
+	public 	void onNewReceivingTraficKey(IEngineState state, RecordType recordType) {
 		trace("RTS(" + recordType.name() + ")");
 	}
 	
 	@Override
-	public void onSendingTraficKey(RecordType recordType) {
+	public void onNewSendingTraficKey(IEngineState state, RecordType recordType) {
 		trace("STS(" + recordType.name() + ")");
 	}
-	
+		
 	@Override
 	public int calculatePadding(ContentType type, int contentLength) {
 		return padding;
 	}
-
+	
 	@Override
-	public void produceChangeCipherSpec(EngineState state) {
+	public long getKeyLimit(CipherSuite cipher, long defaultValue) {
+		return keyLimit == -1 ? defaultValue : keyLimit;
+	}
+	
+	@Override
+	public void produceChangeCipherSpec(IEngineProducer producer) {
 		trace("prodCCS");
 	}
 
 	@Override
-	public void prepareChangeCipherSpec(EngineState state) {
+	public void prepareChangeCipherSpec(IEngineProducer producer) {
 		trace("prepCCS");
+	}
+
+	@Override
+	public void onKeyUpdate(IEngineState state, KeyUpdateRequest request) {
+		trace("KU(" + request.name() +")");
 	}
 	
 }

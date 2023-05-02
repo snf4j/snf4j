@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -90,6 +90,7 @@ public class ChaCha20AeadTest extends CommonTest {
 		assertEquals(32, aead.getKeyLength());
 		assertEquals(12, nonce.length);
 		assertEquals(12, aead.getIvLength());
+		assertEquals(1L<<62, aead.getKeyLimit());
 	}
 	
 	@Test
@@ -100,7 +101,7 @@ public class ChaCha20AeadTest extends CommonTest {
 	
 	@Test
 	public void testInit() throws Exception {
-		ChaCha20Aead aead = new ChaCha20Aead(16,16,12) {
+		ChaCha20Aead aead = new ChaCha20Aead(16,16,100000,12) {
 			
 			@Override
 			Cipher createCipher(String transformation) throws NoSuchAlgorithmException, NoSuchPaddingException {

@@ -25,6 +25,8 @@
  */
 package org.snf4j.tls.record;
 
+import java.util.Arrays;
+
 public class Cryptor {
 	
 	private final byte[] iv;
@@ -33,9 +35,14 @@ public class Cryptor {
 
 	private long sequence;
 	
-	protected Cryptor(byte[] iv, int expansion) {
+	private long keyLimitCountdown;
+	
+	private boolean updated;
+	
+	protected Cryptor(byte[] iv, int expansion, long keyLimit) {
 		this.iv = iv;
 		this.expansion = expansion;
+		this.keyLimitCountdown = keyLimit;
 	}
 	
 	public byte[] nextNonce() {
@@ -59,8 +66,27 @@ public class Cryptor {
 		--sequence;
 	}
 	
-	public int getExapnsion() {
+	public int getExpansion() {
 		return expansion;
 	}
 
+	public void erase() {
+		Arrays.fill(iv, (byte) 0);
+	}
+	
+	public void incProcessedBytes(int amount) {
+		keyLimitCountdown -= amount;
+	}
+	
+	public boolean isKeyLimitReached() {
+		return keyLimitCountdown < 0;
+	}
+	
+	public boolean isMarkedForUpdate() {
+		return updated;
+	}
+	
+	public void markForUpdate() {
+		updated = true;
+	}
 }

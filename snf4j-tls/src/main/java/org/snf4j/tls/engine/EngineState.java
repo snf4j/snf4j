@@ -43,7 +43,7 @@ import org.snf4j.tls.handshake.IClientHello;
 import org.snf4j.tls.session.ISession;
 import org.snf4j.tls.session.SessionInfo;
 
-public class EngineState {
+public class EngineState implements IEngineState, IEngineProducer {
 	
 	private final static ProducedHandshake[] NONE_PRODUCED = new ProducedHandshake[0];
 	
@@ -103,10 +103,12 @@ public class EngineState {
 		this.listener = listener;
 	}
 	
+	@Override
 	public IEngineParameters getParameters() {
 		return parameters;
 	}
 	
+	@Override
 	public IEngineHandler getHandler() {
 		return handler;
 	}
@@ -115,6 +117,7 @@ public class EngineState {
 		return listener;
 	}
 
+	@Override
 	public MachineState getState() {
 		return state;
 	}
@@ -131,6 +134,17 @@ public class EngineState {
 		return (stateBits & state.bitMask()) != 0;
 	}
 	
+	@Override
+	public boolean isStarted() {
+		return state.isStarted();
+	}
+	
+	@Override
+	public boolean isConnected() {
+		return state.isConnected();
+	}
+	
+	@Override
 	public boolean isClientMode() {
 		return state.clientMode();
 	}
@@ -153,6 +167,7 @@ public class EngineState {
 		this.transcriptHash = transcriptHash;
 	}
 	
+	@Override
 	public ISession getSession() {
 		return session;
 	}
@@ -165,10 +180,12 @@ public class EngineState {
 		return sessionInfo;
 	}
 	
+	@Override
 	public KeySchedule getKeySchedule() {
 		return keySchedule;
 	}
 
+	@Override
 	public CipherSuite getCipherSuite() {
 		return cipherSuite;
 	}
@@ -181,6 +198,7 @@ public class EngineState {
 		this.namedGroup = namedGroup;
 	}
 
+	@Override
 	public String getHostName() {
 		return hostName;
 	}
@@ -189,6 +207,7 @@ public class EngineState {
 		this.hostName = hostName;
 	}
 
+	@Override
 	public int getVersion() {
 		return version;
 	}
@@ -205,10 +224,17 @@ public class EngineState {
 		this.clientHello = clientHello;
 	}
 
+	@Override
 	public void produce(ProducedHandshake handshake) {
-		produced.add(handshake);
+		if (prepared.isEmpty()) {
+			produced.add(handshake);
+		}
+		else {
+			prepare(handshake);
+		}
 	}
 
+	@Override
 	public void prepare(ProducedHandshake handshake) {
 		prepared.add(handshake);
 	}
@@ -317,6 +343,7 @@ public class EngineState {
 		privateKeys.clear();
 	}
 	
+	@Override
 	public int getMaxFragmentLength() {
 		return maxFragmentLength;
 	}

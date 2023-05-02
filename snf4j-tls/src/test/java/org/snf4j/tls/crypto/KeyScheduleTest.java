@@ -335,6 +335,7 @@ public class KeyScheduleTest extends CommonTest {
 		assertNull(keys.getIv(false));
 		assertNull(keys.getKey(false));
 
+		assertSame(AESAead.AEAD_AES_128_GCM, keys.getAead());
 		assertNotNull(keys.getAeadDecrypt(true));
 		assertNotNull(keys.getAeadEncrypt(true));
 		try {
@@ -438,6 +439,7 @@ public class KeyScheduleTest extends CommonTest {
 		assertArrayEquals(k, key.getEncoded());
 		assertEquals("AES", key.getAlgorithm());		
 
+		assertSame(AESAead.AEAD_AES_128_GCM, keys.getAead());
 		assertNotNull(keys.getAeadDecrypt(true));
 		assertNotNull(keys.getAeadDecrypt(false));
 		assertNotNull(keys.getAeadEncrypt(true));
@@ -663,6 +665,43 @@ public class KeyScheduleTest extends CommonTest {
 		byte[] nonce = bytes(1,2,3,4);
 		byte[] psk = ks.hkdfExpandLabel(rm, "tls13 resumption".getBytes(ASCII), nonce, hashLen);
 		assertArrayEquals(psk, ks.computePsk(nonce));
+	}
+	
+	@Test
+	public void testDeriveNextGenerationTrafficKey() throws Exception {
+		byte[] secret = bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+		ks.deriveEarlySecret();
+		ks.deriveHandshakeSecret(secret);
+		ks.deriveMasterSecret();
+		ks.deriveApplicationTrafficSecrets();
+		byte[] cs = getSecret(ks, "clientApplicationTrafficSecret");
+		byte[] cloned = cs.clone();
+		
+		TrafficKeys keys = ks.deriveNextGenerationTrafficKey(true);
+		assertErased(cs);		
+		byte[] ncs = ks.hkdfExpandLabel(cloned, "tls13 traffic upd".getBytes(ASCII), new byte[0], hashLen);
+		assertArrayEquals(ncs, getSecret(ks, "clientApplicationTrafficSecret"));
+		assertNull(keys.getIv(false));
+		assertNull(keys.getKey(false));
+		byte[] iv = ks.hkdfExpandLabel(ncs, "tls13 iv".getBytes(ASCII), new byte[0], 12);
+		byte[] k = ks.hkdfExpandLabel(ncs, "tls13 key".getBytes(ASCII), new byte[0], 16);
+		assertArrayEquals(iv, keys.getIv(true));
+		assertArrayEquals(k, keys.getKey(true).getEncoded());
+
+		byte[] ss = getSecret(ks, "serverApplicationTrafficSecret");
+		cloned = ss.clone();
+		
+		keys = ks.deriveNextGenerationTrafficKey(false);
+		assertErased(ss);		
+		byte[] nss = ks.hkdfExpandLabel(cloned, "tls13 traffic upd".getBytes(ASCII), new byte[0], hashLen);
+		assertArrayEquals(nss, getSecret(ks, "serverApplicationTrafficSecret"));
+		assertNull(keys.getIv(true));
+		assertNull(keys.getKey(true));
+		iv = ks.hkdfExpandLabel(nss, "tls13 iv".getBytes(ASCII), new byte[0], 12);
+		k = ks.hkdfExpandLabel(nss, "tls13 key".getBytes(ASCII), new byte[0], 16);
+		assertArrayEquals(iv, keys.getIv(false));
+		assertArrayEquals(k, keys.getKey(false).getEncoded());
+	
 	}
 	
 	@Test

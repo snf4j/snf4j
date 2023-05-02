@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class ChaCha20Aead implements IAead {
 
-	public final static ChaCha20Aead AEAD_CHACHA20_POLY1305 = new ChaCha20Aead(16,32,12);
+	public final static ChaCha20Aead AEAD_CHACHA20_POLY1305 = new ChaCha20Aead(16,32,4611686018427387904L,12);
 	
 	private final static String TRANSFORMATION = "ChaCha20-Poly1305";
 	
@@ -48,6 +48,8 @@ public class ChaCha20Aead implements IAead {
 	private final int tagLength;
 	
 	private final int keyLength;
+	
+	private final long keyLimit;
 	
 	private final int ivLength;
 
@@ -64,9 +66,10 @@ public class ChaCha20Aead implements IAead {
 		IMPLEMENTED = implemented(TRANSFORMATION);
 	}
 	
-	public ChaCha20Aead(int tagLength, int keyLength, int ivLength) {
+	public ChaCha20Aead(int tagLength, int keyLength, long keyLimit, int ivLength) {
 		this.tagLength = tagLength;
 		this.keyLength = keyLength;
+		this.keyLimit = keyLimit;
 		this.ivLength = ivLength;
 	}
 	
@@ -83,6 +86,11 @@ public class ChaCha20Aead implements IAead {
 	@Override
 	public int getIvLength() {
 		return ivLength;
+	}
+
+	@Override
+	public long getKeyLimit() {
+		return keyLimit;
 	}
 
 	@Override

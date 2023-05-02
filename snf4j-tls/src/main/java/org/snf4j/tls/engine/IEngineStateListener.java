@@ -25,21 +25,21 @@
  */
 package org.snf4j.tls.engine;
 
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.handshake.KeyUpdateRequest;
 import org.snf4j.tls.record.RecordType;
 
 public interface IEngineStateListener {
 
-	void onEarlyTrafficSecret(EngineState state) throws Exception;
-	
-	void onHandshakeTrafficSecrets(EngineState state) throws Exception;
-	
-	void onApplicationTrafficSecrets(EngineState state) throws Exception;
-	
-	void onReceivingTraficKey(RecordType recordType);
+	void onNewTrafficSecrets(IEngineState state, RecordType recordType) throws Alert;
+		
+	void onNewReceivingTraficKey(IEngineState state, RecordType recordType) throws Alert;
 
-	void onSendingTraficKey(RecordType recordType);
+	void onNewSendingTraficKey(IEngineState state, RecordType recordType) throws Alert;
 	
-	void produceChangeCipherSpec(EngineState state);
+	void onKeyUpdate(IEngineState state, KeyUpdateRequest request);
 	
-	void prepareChangeCipherSpec(EngineState state);
+	void produceChangeCipherSpec(IEngineProducer producer);
+	
+	void prepareChangeCipherSpec(IEngineProducer producer);
 }

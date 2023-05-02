@@ -72,6 +72,10 @@ public class TrafficKeys {
 		return client ? clientIv : serverIv;
 	}
 	
+	public IAead getAead() {
+		return aead;
+	}
+	
 	public void clear() {
 		clientKey = null;
 		serverKey = null;

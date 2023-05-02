@@ -82,6 +82,7 @@ public class AESAeadTest extends CommonTest {
 		assertEquals(16, aead.getKeyLength());
 		assertEquals(12, nonce.length);
 		assertEquals(12, aead.getIvLength());
+		assertEquals(1L<<37, aead.getKeyLimit());
 	}
 
 	@Test
@@ -119,6 +120,7 @@ public class AESAeadTest extends CommonTest {
 		assertEquals(32, aead.getKeyLength());
 		assertEquals(12, nonce.length);
 		assertEquals(12, aead.getIvLength());
+		assertEquals(1L<<37, aead.getKeyLimit());
 	}
 	
 }

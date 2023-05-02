@@ -62,6 +62,8 @@ public class KeySchedule {
 
 	private static final byte[] S_AP_TRAFFIC = label("s ap traffic");
 	
+	private static final byte[] TRAFFIC_UPD = label("traffic upd");
+	
 	private static final byte[] KEY = label("key");
 
 	private static final byte[] IV = label("iv");
@@ -382,11 +384,22 @@ public class KeySchedule {
 	}
 
 	public void eraseApplicationTrafficSecrets() {
-		if (clientApplicationTrafficSecret != null) {
-			Arrays.fill(clientApplicationTrafficSecret, (byte)0);
-			Arrays.fill(serverApplicationTrafficSecret, (byte)0);
-			serverApplicationTrafficSecret = null;
-			clientApplicationTrafficSecret = null;
+		eraseApplicationTrafficSecret(true);
+		eraseApplicationTrafficSecret(false);
+	}
+	
+	private void eraseApplicationTrafficSecret(boolean client) {
+		if (client) {
+			if (clientApplicationTrafficSecret != null) {
+				Arrays.fill(clientApplicationTrafficSecret, (byte)0);
+				clientApplicationTrafficSecret = null;
+			}
+		}
+		else {
+			if (serverApplicationTrafficSecret != null) {
+				Arrays.fill(serverApplicationTrafficSecret, (byte)0);
+				serverApplicationTrafficSecret = null;
+			}
 		}
 	}
 	
@@ -427,6 +440,44 @@ public class KeySchedule {
 		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(ckey), civ, createKey(skey), siv);
 	}
 			
+	public TrafficKeys deriveNextGenerationTrafficKey(boolean client) throws InvalidKeyException {
+		if (client) {
+			checkDerived(clientApplicationTrafficSecret, "Application Traffic Secrets");
+			byte[] updated = hkdfExpandLabel(clientApplicationTrafficSecret,
+					TRAFFIC_UPD,
+					EMPTY,
+					hashLength);
+			byte[] iv = hkdfExpandLabel(updated,
+					IV,
+					EMPTY,
+					cipherSuiteSpec.getAead().getIvLength());
+			byte[] key = hkdfExpandLabel(updated,
+					KEY,
+					EMPTY,
+					cipherSuiteSpec.getAead().getKeyLength());
+			eraseApplicationTrafficSecret(client);
+			clientApplicationTrafficSecret = updated;
+			return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(key), iv, null, null);
+		}
+
+		checkDerived(serverApplicationTrafficSecret, "Application Traffic Secrets");
+		byte[] updated = hkdfExpandLabel(serverApplicationTrafficSecret,
+				TRAFFIC_UPD,
+				EMPTY,
+				hashLength);
+		byte[] iv = hkdfExpandLabel(updated,
+				IV,
+				EMPTY,
+				cipherSuiteSpec.getAead().getIvLength());
+		byte[] key = hkdfExpandLabel(updated,
+				KEY,
+				EMPTY,
+				cipherSuiteSpec.getAead().getKeyLength());
+		eraseApplicationTrafficSecret(client);
+		serverApplicationTrafficSecret = updated;
+		return new TrafficKeys(cipherSuiteSpec.getAead(), null, null, createKey(key), iv);
+	}
+	
 	public void eraseAll() {	
 		eraseApplicationTrafficSecrets();
 		eraseBinderKey();

@@ -314,14 +314,14 @@ public class ServerHelloConsumerTest extends EngineTest {
 	@Test(expected = InternalErrorAlert.class)
 	public void testConsumeEx1() throws Exception {
 		ServerHello sh = serverHello(0x0303);
-		handler.onETSException = new NullPointerException();
+		handler.onETSException = new InternalErrorAlert("");
 		new ServerHelloConsumer().consume(state, sh, data(sh), false);
 	}
 
 	@Test(expected = InternalErrorAlert.class)
 	public void testConsumeEx2() throws Exception {
 		ServerHello sh = serverHello(0x0303);
-		handler.onHTSException = new NullPointerException();
+		handler.onHTSException = new InternalErrorAlert("");
 		new ServerHelloConsumer().consume(state, sh, data(sh), false);
 	}
 	

@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.engine;
 
+import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.session.ISessionManager;
@@ -38,6 +39,8 @@ public interface IEngineHandler {
 	ICertificateValidator getCertificateValidator();
 	
 	int calculatePadding(ContentType type, int contentLength);
+	
+	long getKeyLimit(CipherSuite cipher, long defaultValue);
 	
 	ISessionManager getSessionManager();
 

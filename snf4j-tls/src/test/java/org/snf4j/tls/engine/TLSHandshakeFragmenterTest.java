@@ -42,10 +42,13 @@ import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.crypto.AESAead;
 import org.snf4j.tls.crypto.AeadEncrypt;
+import org.snf4j.tls.crypto.ITranscriptHash;
+import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.extension.CookieExtension;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.handshake.KeyUpdateRequest;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IEncryptorHolder;
 import org.snf4j.tls.record.RecordType;
@@ -339,8 +342,78 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		
 	}
 	
+	class TestState implements IEngineState {
+
+		@Override
+		public IEngineParameters getParameters() {
+			return null;
+		}
+		
+		@Override
+		public IEngineHandler getHandler() {
+			return null;
+		}
+		
+		@Override
+		public MachineState getState() {
+			return null;
+		}
+
+		@Override
+		public boolean isClientMode() {
+			return false;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return false;
+		}
+
+		@Override
+		public boolean isConnected() {
+			return false;
+		}
+
+		@Override
+		public ITranscriptHash getTranscriptHash() {
+			return null;
+		}
+
+		@Override
+		public ISession getSession() {
+			return null;
+		}
+
+		@Override
+		public KeySchedule getKeySchedule() {
+			return null;
+		}
+
+		@Override
+		public CipherSuite getCipherSuite() {
+			return null;
+		}
+
+		@Override
+		public String getHostName() {
+			return null;
+		}
+
+		@Override
+		public int getVersion() {
+			return 0;
+		}
+
+		@Override
+		public int getMaxFragmentLength() {
+			return maxFragmentLength;
+		}
+	}
+	
 	class TestEngine implements IHandshakeEngine {
 
+		TestState state = new TestState();
+		
 		@Override
 		public IEngineHandler getHandler() {
 			return handler;
@@ -394,32 +467,16 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		}
 
 		@Override
-		public boolean isStarted() {
-			return false;
-		}
-
-		@Override
-		public boolean isConnected() {
-			return false;
-		}
-
-		@Override
-		public boolean isClientMode() {
-			return false;
-		}
-
-		@Override
 		public void start() throws Alert {
 		}
-
+		
 		@Override
-		public int getMaxFragmentLength() {
-			return maxFragmentLength;
+		public void updateKeys() throws Alert {			
 		}
-
+		
 		@Override
-		public ISession getSession() {
-			return null;
+		public IEngineState getState() {
+			return state;
 		}
 	}
 	
@@ -437,40 +494,35 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 	}
 	
 	class TestListener implements IEngineStateListener {
-
 		@Override
-		public void onEarlyTrafficSecret(EngineState state) throws Exception {
+		public void onNewTrafficSecrets(IEngineState state, RecordType recordType) throws Alert {
 			trace("X");
 		}
 
 		@Override
-		public void onHandshakeTrafficSecrets(EngineState state) throws Exception {
+		public void onNewReceivingTraficKey(IEngineState state, RecordType recordType) {
 			trace("X");
 		}
 
 		@Override
-		public void onApplicationTrafficSecrets(EngineState state) throws Exception {
-			trace("X");
-		}
-
-		@Override
-		public void onReceivingTraficKey(RecordType recordType) {
-			trace("X");
-		}
-
-		@Override
-		public void onSendingTraficKey(RecordType recordType) {
+		public void onNewSendingTraficKey(IEngineState state, RecordType recordType) {
 			trace("OSTK(" + recordType + ")");
 		}
 
 		@Override
-		public void produceChangeCipherSpec(EngineState state) {
+		public void onKeyUpdate(IEngineState state, KeyUpdateRequest request) {		
+			trace("OKU(" + request.name() + ")");
+		}
+		
+		@Override
+		public void produceChangeCipherSpec(IEngineProducer producer) {
 			trace("X");
 		}
 
 		@Override
-		public void prepareChangeCipherSpec(EngineState state) {
+		public void prepareChangeCipherSpec(IEngineProducer producer) {
 			trace("X");
 		}
+
 	}
 }

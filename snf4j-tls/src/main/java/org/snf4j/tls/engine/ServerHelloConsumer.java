@@ -383,10 +383,10 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 				}
 				state.getTranscriptHash().update(HandshakeType.CLIENT_HELLO, clientHello);
 				state.getKeySchedule().deriveEarlyTrafficSecret();
-				state.getListener().onEarlyTrafficSecret(state);
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to create key schedule", e);
 			}			
+			state.getListener().onNewTrafficSecrets(state, RecordType.ZERO_RTT);
 		}
 		
 		if (isHRR) {
@@ -408,12 +408,12 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			
 			state.getKeySchedule().deriveHandshakeSecret(secret);
 			state.getKeySchedule().deriveHandshakeTrafficSecrets();
-			state.getListener().onHandshakeTrafficSecrets(state);
-			state.getListener().onReceivingTraficKey(RecordType.HANDSHAKE);
 		} 
 		catch (Exception e) {
 			throw new InternalErrorAlert("Failed to derive handshake secret", e);
 		}
+		state.getListener().onNewTrafficSecrets(state, RecordType.HANDSHAKE);
+		state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);
 		state.setVersion(negotiatedVersion);
 		state.changeState(MachineState.CLI_WAIT_EE);
 	}

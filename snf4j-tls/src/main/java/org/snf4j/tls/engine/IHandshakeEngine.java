@@ -29,7 +29,6 @@ import java.nio.ByteBuffer;
 
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.Alert;
-import org.snf4j.tls.session.ISession;
 
 public interface IHandshakeEngine {
 
@@ -53,15 +52,9 @@ public interface IHandshakeEngine {
 	
 	Runnable getTask();
 	
-	boolean isStarted();
-	
-	boolean isConnected();
-	
-	boolean isClientMode();
-	
 	void start() throws Alert;
 	
-	int getMaxFragmentLength();
+	IEngineState getState();
 	
-	ISession getSession();
+	void updateKeys() throws Alert;
 }

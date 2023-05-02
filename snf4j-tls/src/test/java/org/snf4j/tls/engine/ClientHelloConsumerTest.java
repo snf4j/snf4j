@@ -283,7 +283,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 
 		state = serverState();
 		consumer.consume(state, ch, data(ch), false);
-		handler.onATSException = new NullPointerException();
+		handler.onATSException = new InternalErrorAlert("");
 		state.getTask().run();
 		state.getTask().run();
 		try {

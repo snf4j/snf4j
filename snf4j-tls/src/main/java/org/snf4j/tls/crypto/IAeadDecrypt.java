@@ -35,4 +35,6 @@ public interface IAeadDecrypt {
 	byte[] decrypt(byte[] nonce, byte[] additionalData, byte[] ciphertext) throws GeneralSecurityException;
 
 	void decrypt(byte[] nonce, byte[] additionalData, ByteBuffer ciphertext, ByteBuffer plaintext) throws GeneralSecurityException;
+
+	void erase();
 }

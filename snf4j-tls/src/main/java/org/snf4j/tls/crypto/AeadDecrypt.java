@@ -32,6 +32,8 @@ import java.security.NoSuchAlgorithmException;
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.security.auth.DestroyFailedException;
+
 import org.snf4j.tls.Args;
 
 public class AeadDecrypt implements IAeadDecrypt {
@@ -67,6 +69,15 @@ public class AeadDecrypt implements IAeadDecrypt {
 		aead.initDecrypt(cipher, key, nonce);
 		cipher.updateAAD(additionalData);
 		cipher.doFinal(ciphertext, plaintext);
+	}
+
+	@Override
+	public void erase() {
+		try {
+			key.destroy();
+		} catch (DestroyFailedException e) {
+			//Ignore
+		}
 	}
 	
 }

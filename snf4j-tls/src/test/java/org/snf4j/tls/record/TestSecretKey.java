@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,21 +23,42 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.record;
 
-import java.nio.ByteBuffer;
-import java.security.GeneralSecurityException;
+import javax.crypto.SecretKey;
+import javax.security.auth.DestroyFailedException;
 
-public interface IAeadEncrypt {
+public class TestSecretKey implements SecretKey {
+
+	private static final long serialVersionUID = 1L;
+
+	public DestroyFailedException destroyException;
 	
-	IAead getAead();
+	public int destroyCount;
 
-	byte[] encrypt(byte[] nonce, byte[] additionalData, byte[] plaintext) throws GeneralSecurityException;
+	public int destroyExceptionCount;
 	
-	void encrypt(byte[] nonce, byte[] additionalData, ByteBuffer plaintext, ByteBuffer ciphertext) throws GeneralSecurityException;
+	@Override
+	public String getAlgorithm() {
+		return null;
+	}
 
-	void encrypt(byte[] nonce, byte[] additionalData, ByteBuffer[] plaintext, ByteBuffer ciphertext) throws GeneralSecurityException;
-	
-	void erase();
+	@Override
+	public String getFormat() {
+		return null;
+	}
 
+	@Override
+	public byte[] getEncoded() {
+		return null;
+	}
+
+	@Override
+	public void destroy() throws DestroyFailedException {
+		++destroyCount;
+		if (destroyException != null) {
+			++destroyExceptionCount;
+			throw destroyException;
+		}
+	}
 }

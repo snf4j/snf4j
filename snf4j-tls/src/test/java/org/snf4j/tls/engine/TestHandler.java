@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.engine;
 
+import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.session.ISessionManager;
@@ -58,6 +59,11 @@ public class TestHandler implements IEngineHandler {
 	@Override
 	public int calculatePadding(ContentType type, int contentLength) {
 		return 0;
+	}
+	
+	@Override
+	public long getKeyLimit(CipherSuite cipher, long defaultValue) {
+		return defaultValue;
 	}
 	
 	@Override

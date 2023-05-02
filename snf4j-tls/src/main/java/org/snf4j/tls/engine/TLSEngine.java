@@ -53,6 +53,7 @@ import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.RecordOverflowAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.record.ContentType;
+import org.snf4j.tls.record.Cryptor;
 import org.snf4j.tls.record.Decryptor;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.Record;
@@ -99,8 +100,8 @@ public class TLSEngine implements IEngine {
 
 	@Override
 	public void beginHandshake() throws Exception {
-		if (!handshaker.isStarted()) {
-			status = handshaker.isClientMode() ? NEED_WRAP : NEED_UNWRAP;
+		if (!handshaker.getState().isStarted()) {
+			status = handshaker.getState().isClientMode() ? NEED_WRAP : NEED_UNWRAP;
 			handshaker.start();
 		}
 	}
@@ -135,7 +136,7 @@ public class TLSEngine implements IEngine {
 	@Override
 	public int getMinNetworkBufferSize() {
 		return Record.HEADER_LENGTH 
-				+ handshaker.getMaxFragmentLength() 
+				+ handshaker.getState().getMaxFragmentLength() 
 				+ 1 
 				+ 255;
 	}
@@ -162,7 +163,7 @@ public class TLSEngine implements IEngine {
 
 	@Override
 	public Object getSession() {
-		return handshaker.getSession();
+		return handshaker.getState().getSession();
 	}
 
 	@Override
@@ -171,10 +172,10 @@ public class TLSEngine implements IEngine {
 	}
 
 	private int[] consumedAndPadding(int srcRemaining, int dstRemaining, Encryptor encryptor) {
-		int maxFragmentLen = handshaker.getMaxFragmentLength();
+		int maxFragmentLen = handshaker.getState().getMaxFragmentLength();
 		int consumed = (int) Math.min(
 				srcRemaining, 
-				dstRemaining - Record.HEADER_LENGTH - 1 - encryptor.getExapnsion());
+				dstRemaining - Record.HEADER_LENGTH - 1 - encryptor.getExpansion());
 		int padding;
 		
 		if (consumed > maxFragmentLen) {
@@ -192,6 +193,24 @@ public class TLSEngine implements IEngine {
 		return new int[] {consumed, padding};
 	}
 
+	private IEngineResult checkKeyLimit(Cryptor cryptor, IEngineResult currentResult) throws Alert {
+		if (!cryptor.isMarkedForUpdate() 
+				&& (cryptor.isKeyLimitReached() || cryptor.getSequence() > 0xffff_ffffL)) {
+			handshaker.updateKeys();
+			cryptor.markForUpdate();
+			handshaker.updateTasks();
+			if (handshaker.needProduce()) {
+				status = NEED_WRAP;
+				return new EngineResult(
+						OK,
+						status,
+						currentResult.bytesConsumed(),
+						currentResult.bytesProduced());
+			}
+		}
+		return currentResult;
+	}
+	
 	private IEngineResult wrapAppData(ByteBuffer[] srcs, ByteBuffer dst) throws Exception {
 		if (srcs.length == 1) {
 			return wrapAppData(srcs[0], dst);
@@ -235,15 +254,20 @@ public class TLSEngine implements IEngine {
 		for (int i=0; i<dupSrcs.length-1; ++i) {
 			srcs[i].position(dupSrcs[i].position());
 		}
-		return new EngineResult(OK, status, consumed, produced);
+		return checkKeyLimit(encryptor, 
+				new EngineResult(
+						OK, 
+						status, 
+						consumed, 
+						produced));
 	}
 
 	private IEngineResult wrapAppData(ByteBuffer src, ByteBuffer dst) throws Exception {
 		Encryptor encryptor = listener.getEncryptor();
-		int maxFragmentLen = handshaker.getMaxFragmentLength();
+		int maxFragmentLen = handshaker.getState().getMaxFragmentLength();
 		int consumed = (int) Math.min(
 				src.remaining(), 
-				dst.remaining() - Record.HEADER_LENGTH - 1 - encryptor.getExapnsion());
+				dst.remaining() - Record.HEADER_LENGTH - 1 - encryptor.getExpansion());
 		int padding;
 		
 		if (consumed > maxFragmentLen) {
@@ -271,7 +295,12 @@ public class TLSEngine implements IEngine {
 				encryptor,
 				dst);
 		src.position(dup.position());
-		return new EngineResult(OK, status, consumed, produced);
+		return checkKeyLimit(encryptor, 
+				new EngineResult(
+						OK, 
+						status, 
+						consumed, 
+						produced));
 	}
 
 	private IEngineResult wrapAlert(ByteBuffer dst, HandshakeStatus status) throws Exception {
@@ -318,7 +347,7 @@ public class TLSEngine implements IEngine {
 					Record.ALERT_CONTENT_LENGTH);
 
 			if (padding > 0) {
-				padding = Math.min(padding, handshaker.getMaxFragmentLength()-Record.ALERT_CONTENT_LENGTH);
+				padding = Math.min(padding, handshaker.getState().getMaxFragmentLength()-Record.ALERT_CONTENT_LENGTH);
 			}
 			if (Record.checkForAlert(dst, padding, encryptor)) {
 				produced = Record.alert(alert, padding, encryptor, dst);
@@ -438,7 +467,7 @@ public class TLSEngine implements IEngine {
 			throw e;
 		}
 		
-		if (handshaker.isConnected()) {
+		if (handshaker.getState().isConnected()) {
 			this.status = NOT_HANDSHAKING;
 			return new EngineResult(
 					OK, 
@@ -466,7 +495,7 @@ public class TLSEngine implements IEngine {
 
 	private IEngineResult unwrapAppData(ByteBuffer src, int length) throws Alert {
 		Decryptor decryptor = listener.getDecryptor();
-		byte[] plaintext = new byte[length - decryptor.getExapnsion()];		
+		byte[] plaintext = new byte[length - decryptor.getExpansion()];		
 		
 		int remaining = Record.unprotect(
 				src, 
@@ -474,7 +503,7 @@ public class TLSEngine implements IEngine {
 				decryptor, 
 				ByteBuffer.wrap(plaintext)) - 1;
 
-		if (remaining > handshaker.getMaxFragmentLength()) {
+		if (remaining > handshaker.getState().getMaxFragmentLength()) {
 			throw new RecordOverflowAlert("Encrypted record is too big");
 		}
 		
@@ -520,14 +549,14 @@ public class TLSEngine implements IEngine {
 			
 			int length = src.getShort(src.position() + 3);
 		
-			if (length > handshaker.getMaxFragmentLength() + 256) {
+			if (length > handshaker.getState().getMaxFragmentLength() + 256) {
 				throw new RecordOverflowAlert("Encrypted record is too big");
 			}
 			
 			if (length <= remaining) {
 				Decryptor decryptor = listener.getDecryptor();
 				
-				if (dst.remaining() < length - decryptor.getExapnsion()) {
+				if (dst.remaining() < length - decryptor.getExpansion()) {
 					return new EngineResult(
 							BUFFER_OVERFLOW, 
 							getHandshakeStatus(), 
@@ -541,7 +570,7 @@ public class TLSEngine implements IEngine {
 						decryptor, 
 						dst) - 1;
 				
-				if (produced > handshaker.getMaxFragmentLength()) {
+				if (produced > handshaker.getState().getMaxFragmentLength()) {
 					throw new RecordOverflowAlert("Encrypted record is too big");
 				}
 
@@ -586,11 +615,11 @@ public class TLSEngine implements IEngine {
 				produced -= padding;
 				
 				if (type == ContentType.APPLICATION_DATA.value()) {
-					return new EngineResult(
+					return checkKeyLimit(decryptor, new EngineResult(
 							OK,
 							NOT_HANDSHAKING,
 							length + Record.HEADER_LENGTH,
-							produced);
+							produced));
 				}
 				if (type == ContentType.HANDSHAKE.value()) {
 					dst.position(dst.position()-produced);
@@ -598,11 +627,11 @@ public class TLSEngine implements IEngine {
 					ByteBuffer dup = dst.duplicate();
 					
 					dup.get(data);
-					return unwrapHandshake(
+					return checkKeyLimit(decryptor, unwrapHandshake(
 							ByteBuffer.wrap(data),
 							0,
 							produced,
-							length + Record.HEADER_LENGTH);
+							length + Record.HEADER_LENGTH));
 				}
 				if (type == ContentType.ALERT.value()) {
 					dst.position(dst.position()-produced);
@@ -628,11 +657,11 @@ public class TLSEngine implements IEngine {
 	}
 	
 	private IEngineResult unwrapHandshake(ByteBuffer src, int off, int length, int consumed) throws Alert {
-		boolean connected = handshaker.isConnected();
+		boolean connected = handshaker.getState().isConnected();
 		
 		src.position(src.position() + off);
 		if (aggregator.unwrap(src, length)) {
-			if (!connected && handshaker.isConnected()) {
+			if (!connected && handshaker.getState().isConnected()) {
 				if (aggregator.isEmpty()) {
 					this.status = NOT_HANDSHAKING;
 					return new EngineResult(
@@ -710,12 +739,12 @@ public class TLSEngine implements IEngine {
 				int type = ContentType.of(src.get(src.position())).value();
 				
 				if (type == ContentType.APPLICATION_DATA.value()) {
-					if (len > handshaker.getMaxFragmentLength() + 256) {
+					if (len > handshaker.getState().getMaxFragmentLength() + 256) {
 						throw new RecordOverflowAlert("Encrypted record is too big");
 					}
 					return unwrapAppData(src, len);
 				}
-				if (len > handshaker.getMaxFragmentLength()) {
+				if (len > handshaker.getState().getMaxFragmentLength()) {
 					throw new RecordOverflowAlert("Record fragment is too big");
 				}
 				if (type == ContentType.HANDSHAKE.value()) {
@@ -789,7 +818,7 @@ public class TLSEngine implements IEngine {
 
 			if (aggregator.isPending()) {
 				if (aggregator.unwrapPending()) {
-					if (handshaker.isConnected()) {
+					if (handshaker.getState().isConnected()) {
 						if (aggregator.isEmpty()) {
 							this.status = NOT_HANDSHAKING;
 							return new EngineResult(

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,9 +37,9 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class AESAead implements IAead {
 
-	public final static AESAead AEAD_AES_128_GCM = new AESAead(16, 16, 12);
+	public final static AESAead AEAD_AES_128_GCM = new AESAead(16, 16, 137438953472L, 12);
 	
-	public final static AESAead AEAD_AES_256_GCM = new AESAead(16, 32, 12);
+	public final static AESAead AEAD_AES_256_GCM = new AESAead(16, 32, 137438953472L, 12);
 	
 	private final static String TRANSFORMATION = "AES/GCM/NoPadding";
 
@@ -51,11 +51,14 @@ public class AESAead implements IAead {
 	
 	private final int keyLength;
 	
+	private final long keyLimit;
+	
 	private final int ivLength;
 	
-	public AESAead(int tagLength, int keyLength, int ivLength) {
+	public AESAead(int tagLength, int keyLength, long keyLimit, int ivLength) {
 		this.tagLength = tagLength;
 		this.keyLength = keyLength;
+		this.keyLimit = keyLimit;
 		this.ivLength = ivLength;
 		tagBits = tagLength*8;
 	}
@@ -68,6 +71,11 @@ public class AESAead implements IAead {
 	@Override
 	public int getKeyLength() {
 		return keyLength;
+	}
+	
+	@Override
+	public long getKeyLimit() {
+		return keyLimit;
 	}
 	
 	@Override

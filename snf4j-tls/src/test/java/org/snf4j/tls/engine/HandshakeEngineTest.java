@@ -73,9 +73,9 @@ public class HandshakeEngineTest extends EngineTest {
 				SignatureScheme.ECDSA_SECP256R1_SHA256, 
 				SignatureScheme.ECDSA_SECP384R1_SHA384});
 		
-		assertFalse(he.isStarted());
+		assertFalse(he.getState().isStarted());
 		he.start();
-		assertTrue(he.isStarted());
+		assertTrue(he.getState().isStarted());
 		try {
 			he.start();
 			fail();

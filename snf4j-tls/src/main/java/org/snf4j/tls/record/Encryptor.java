@@ -31,13 +31,24 @@ public class Encryptor extends Cryptor {
 
 	private final IAeadEncrypt aead;
 	
-	public Encryptor(IAeadEncrypt aead, byte[] iv) {
-		super(iv, aead.getAead().getTagLength());
+	public Encryptor(IAeadEncrypt aead, byte[] iv, long keyLimit) {
+		super(iv, aead.getAead().getTagLength(), keyLimit);
 		this.aead = aead;
 	}
 
+	public Encryptor(IAeadEncrypt aead, byte[] iv) {
+		super(iv, aead.getAead().getTagLength(), aead.getAead().getKeyLimit());
+		this.aead = aead;
+	}
+	
 	public IAeadEncrypt getAead() {
 		return aead;
 	}
 
+	@Override
+	public void erase() {
+		super.erase();
+		aead.erase();
+	}	
+	
 }

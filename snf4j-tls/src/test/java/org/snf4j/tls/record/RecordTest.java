@@ -54,8 +54,8 @@ public class RecordTest extends CommonTest {
 	
 	public void before() throws Exception {
 		super.before();
-		encryptor = new Encryptor(new AeadEncrypt(AEAD.createKey(KEY),AEAD), IV);
-		decryptor = new Decryptor(new AeadDecrypt(AEAD.createKey(KEY),AEAD), IV);
+		encryptor = new Encryptor(new AeadEncrypt(AEAD.createKey(KEY),AEAD), IV, 14);
+		decryptor = new Decryptor(new AeadDecrypt(AEAD.createKey(KEY),AEAD), IV, 10);
 	}
 	
 	@Test
@@ -108,6 +108,7 @@ public class RecordTest extends CommonTest {
 		ByteBuffer content = ByteBuffer.allocate(10);
 		ByteBuffer dst = ByteBuffer.allocate(10);
 		dst.position(1);
+		assertFalse(encryptor.isKeyLimitReached());
 		try {
 			Record.protect(content, encryptor, dst);
 			fail();
@@ -120,10 +121,18 @@ public class RecordTest extends CommonTest {
 		encryptor.nextNonce();
 		content.clear();
 		dst = ByteBuffer.allocate(100);
+		assertFalse(encryptor.isKeyLimitReached());
 		int produced = Record.protect(content, encryptor, dst);
+		assertFalse(encryptor.isKeyLimitReached());
 		assertEquals(5+10+16, produced);
 		dst.flip();
 		assertEquals(produced, dst.remaining());
+		content.clear();
+		content.putInt(10).flip();
+		Record.protect(content, encryptor, dst);
+		assertFalse(encryptor.isKeyLimitReached());
+		encryptor.incProcessedBytes(1);
+		assertTrue(encryptor.isKeyLimitReached());		
 	}
 	
 	@Test
@@ -131,6 +140,7 @@ public class RecordTest extends CommonTest {
 		ByteBuffer content = ByteBuffer.allocate(10);
 		ByteBuffer dst = ByteBuffer.allocate(10);
 		dst.position(1);
+		assertFalse(encryptor.isKeyLimitReached());
 		try {
 			Record.protect(new ByteBuffer[] {content}, 10, encryptor, dst);
 			fail();
@@ -143,10 +153,18 @@ public class RecordTest extends CommonTest {
 		encryptor.nextNonce();
 		content.clear();
 		dst = ByteBuffer.allocate(100);
+		assertFalse(encryptor.isKeyLimitReached());
 		int produced = Record.protect(new ByteBuffer[] {content}, 10, encryptor, dst);
+		assertFalse(encryptor.isKeyLimitReached());
 		assertEquals(5+10+16, produced);
 		dst.flip();
 		assertEquals(produced, dst.remaining());
+		content.clear();
+		content.putInt(10).flip();
+		Record.protect(new ByteBuffer[] {content}, 4, encryptor, dst);
+		assertFalse(encryptor.isKeyLimitReached());
+		encryptor.incProcessedBytes(1);
+		assertTrue(encryptor.isKeyLimitReached());		
 	}
 
 	@Test
@@ -158,9 +176,13 @@ public class RecordTest extends CommonTest {
 		
 		ByteBuffer dup = dst.duplicate();
 		content.clear();
+		assertFalse(decryptor.isKeyLimitReached());
 		assertEquals(10, Record.unprotect(dst, dst.remaining()-5, decryptor, content));
+		assertFalse(decryptor.isKeyLimitReached());
 		content.flip();
 		assertEquals(10, content.remaining());
+		decryptor.incProcessedBytes(1);
+		assertTrue(decryptor.isKeyLimitReached());
 		
 		try {
 			Record.unprotect(dup, dup.remaining()-5, decryptor, content);

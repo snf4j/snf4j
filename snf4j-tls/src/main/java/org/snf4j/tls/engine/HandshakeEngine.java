@@ -68,6 +68,7 @@ import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.IHandshakeDecoder;
 import org.snf4j.tls.handshake.IServerHello;
+import org.snf4j.tls.handshake.KeyUpdate;
 import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
 import org.snf4j.tls.session.ISession;
@@ -87,7 +88,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 	
 	static {
-		CONSUMERS = new IHandshakeConsumer[21];
+		CONSUMERS = new IHandshakeConsumer[25];
 		addConsumer(CONSUMERS, new ClientHelloConsumer());	
 		addConsumer(CONSUMERS, new ServerHelloConsumer());	
 		addConsumer(CONSUMERS, new EncryptedExtensionsConsumer());
@@ -96,6 +97,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 		addConsumer(CONSUMERS, new CertificateVerifyConsumer());
 		addConsumer(CONSUMERS, new FinishedConsumer());
 		addConsumer(CONSUMERS, new NewSessionTicketConsumer());
+		addConsumer(CONSUMERS, new KeyUpdateConsumer());
 	}
 	
 	private final IHandshakeDecoder decoder;
@@ -119,8 +121,8 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 	
 	@Override
-	public ISession getSession() {
-		return state.getSession();
+	public IEngineState getState() {
+		return state;
 	}
 	
 	@Override
@@ -246,30 +248,10 @@ public class HandshakeEngine implements IHandshakeEngine {
 	public Runnable getTask() {
 		return state.getTask();
 	}
-	
-	@Override
-	public boolean isStarted() {
-		return state.getState().isStarted();
-	}
-	
-	@Override
-	public boolean isConnected() {
-		return state.getState().isConnected();
-	}
-	
-	@Override
-	public boolean isClientMode() {
-		return state.isClientMode();
-	}
-	
-	@Override
-	public int getMaxFragmentLength() {
-		return state.getMaxFragmentLength();
-	}
-	
+		
 	@Override
 	public void start() throws Alert {
-		if (isStarted()) {
+		if (state.isStarted()) {
 			throw new InternalErrorAlert("Handshake has already started");
 		}
 		if (!state.isClientMode()) {
@@ -289,6 +271,11 @@ public class HandshakeEngine implements IHandshakeEngine {
 		else {
 			task.run(state);
 		}
+	}
+	
+	@Override
+	public void updateKeys() throws Alert {
+		state.produce(new ProducedHandshake(new KeyUpdate(true), RecordType.APPLICATION, RecordType.NEXT_GEN));
 	}
 	
 	static class KeyExchangeTask extends AbstractEngineTask {

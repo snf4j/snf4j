@@ -50,7 +50,7 @@ public class Record {
 				+ ALERT_CONTENT_LENGTH 
 				+ 1 
 				+ padding 
-				+ encryptor.getExapnsion();
+				+ encryptor.getExpansion();
 	}
 	
 	public static int alert(Alert alert, ByteBuffer dst) {
@@ -78,7 +78,8 @@ public class Record {
 	}
 	
 	public static int protect(ByteBuffer content, Encryptor encryptor, ByteBuffer dst) throws Alert {
-		int length = content.remaining() + encryptor.getExapnsion();
+		int contentLength = content.remaining();
+		int length = contentLength + encryptor.getExpansion();
 		byte[] additionalData = new byte[HEADER_LENGTH];
 		byte[] nonce = encryptor.nextNonce();
 
@@ -92,6 +93,7 @@ public class Record {
 		dst.put(additionalData);
 		try {
 			encryptor.getAead().encrypt(nonce, additionalData, content, dst);
+			encryptor.incProcessedBytes(contentLength);
 		} catch (Exception e) {
 			encryptor.rollbackSequence();
 			dst.reset();
@@ -101,7 +103,7 @@ public class Record {
 	}
 
 	public static int protect(ByteBuffer[] content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws Alert {
-		int length = contentLength + encryptor.getExapnsion();
+		int length = contentLength + encryptor.getExpansion();
 		byte[] additionalData = new byte[HEADER_LENGTH];
 		byte[] nonce = encryptor.nextNonce();
 
@@ -115,6 +117,7 @@ public class Record {
 		dst.put(additionalData);
 		try {
 			encryptor.getAead().encrypt(nonce, additionalData, content, dst);
+			encryptor.incProcessedBytes(contentLength);
 		} catch (Exception e) {
 			encryptor.rollbackSequence();
 			dst.reset();
@@ -136,6 +139,7 @@ public class Record {
 			int pos0 = dst.position();
 			
 			decryptor.getAead().decrypt(nonce, additionalData, ciphertext, dst);
+			decryptor.incProcessedBytes(dst.position() - pos0);
 			record.position(ciphertext.position());
 			return dst.position() - pos0;
 		} catch (Exception e) {

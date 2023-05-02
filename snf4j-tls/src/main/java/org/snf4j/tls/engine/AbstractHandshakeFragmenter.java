@@ -68,9 +68,9 @@ abstract public class AbstractHandshakeFragmenter {
 	
 	public int wrap(ByteBuffer dst) throws Alert {
 		if (pending != null) {
-			return wrapPending(dst, handshaker.getMaxFragmentLength());
+			return wrapPending(dst, handshaker.getState().getMaxFragmentLength());
 		}
-		return wrap(dst, handshaker.getMaxFragmentLength());
+		return wrap(dst, handshaker.getState().getMaxFragmentLength());
 	}
 	
 	private int wrap(ByteBuffer dst, int maxFragmentLength) throws Alert {
@@ -172,6 +172,7 @@ abstract public class AbstractHandshakeFragmenter {
 			length += len;
 			if (handshake.getNextRecordType() != null) {
 				nextType = handshake.getNextRecordType();
+				break;
 			}
 			if (remaining == 0) {
 				break;
@@ -198,7 +199,7 @@ abstract public class AbstractHandshakeFragmenter {
 
 		length = wrap(content, length, encryptor, dst);
 		if (nextType != null) {
-			listener.onSendingTraficKey(nextType);
+			listener.onNewSendingTraficKey(handshaker.getState(), nextType);
 		}
 		return length;
 	}

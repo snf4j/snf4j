@@ -290,8 +290,10 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					}
 					ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 					state.getKeySchedule().deriveEarlyTrafficSecret();
-					state.getListener().onEarlyTrafficSecret(state);
+					state.getListener().onNewTrafficSecrets(state, RecordType.ZERO_RTT);
 				}
+			} catch (Alert e) {
+				throw e;
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to create key schedule", e);
 			}			
@@ -449,12 +451,12 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			try {
 				state.getKeySchedule().deriveHandshakeSecret(secret);
 				state.getKeySchedule().deriveHandshakeTrafficSecrets();
-				state.getListener().onHandshakeTrafficSecrets(state);
-				state.getListener().onReceivingTraficKey(RecordType.HANDSHAKE);
 			}
 			catch (Exception e) {
 				throw new InternalErrorAlert("Failed to derive handshake secret", e);
 			}
+			state.getListener().onNewTrafficSecrets(state, RecordType.HANDSHAKE);
+			state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);
 			Arrays.fill(secret, (byte)0);
 			
 			String hostName = state.getHostName();
@@ -512,10 +514,10 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
 				state.getKeySchedule().deriveMasterSecret();
 				state.getKeySchedule().deriveApplicationTrafficSecrets();
-				state.getListener().onApplicationTrafficSecrets(state);
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to compute server verify data", e);
 			}
+			state.getListener().onNewTrafficSecrets(state, RecordType.APPLICATION);
 			state.changeState(nextState);
 		}
 

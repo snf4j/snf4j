@@ -31,8 +31,13 @@ public class Decryptor extends Cryptor {
 	
 	private final IAeadDecrypt aead;
 	
+	public Decryptor(IAeadDecrypt aead, byte[] iv, long keyLimit) {
+		super(iv, aead.getAead().getTagLength(), keyLimit);
+		this.aead = aead;
+	}
+
 	public Decryptor(IAeadDecrypt aead, byte[] iv) {
-		super(iv, aead.getAead().getTagLength());
+		super(iv, aead.getAead().getTagLength(), aead.getAead().getKeyLimit());
 		this.aead = aead;
 	}
 
@@ -40,4 +45,9 @@ public class Decryptor extends Cryptor {
 		return aead;
 	}
 	
+	@Override
+	public void erase() {
+		super.erase();
+		aead.erase();
+	}	
 }

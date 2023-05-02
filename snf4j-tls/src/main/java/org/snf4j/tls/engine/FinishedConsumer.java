@@ -51,10 +51,9 @@ public class FinishedConsumer implements IHandshakeConsumer {
 	}
 
 	private void consumeServer(EngineState state, IFinished finished, ByteBuffer[] data) throws Alert {
-		state.getListener().onReceivingTraficKey(RecordType.APPLICATION);
-		
 		byte[] verifyData;
 		
+		state.getListener().onNewReceivingTraficKey(state, RecordType.APPLICATION);
 		try {
 			ConsumerUtil.updateTranscriptHash(state, finished.getType(), data);
 			state.getKeySchedule().deriveResumptionMasterSecret();
@@ -88,10 +87,9 @@ public class FinishedConsumer implements IHandshakeConsumer {
 	}
 
 	private void consumeClient(EngineState state, IFinished finished, ByteBuffer[] data) throws Alert {
-		state.getListener().onSendingTraficKey(RecordType.HANDSHAKE);
-		
 		byte[] verifyData;
 		
+		state.getListener().onNewSendingTraficKey(state, RecordType.HANDSHAKE);
 		try {
 			verifyData = state.getKeySchedule().computeServerVerifyData();
 		} catch (Exception e) {
@@ -179,11 +177,13 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			try {
 				state.getKeySchedule().deriveMasterSecret();
 				state.getKeySchedule().deriveApplicationTrafficSecrets();
-				state.getListener().onApplicationTrafficSecrets(state);
-				state.getListener().onReceivingTraficKey(RecordType.APPLICATION);
+				state.getListener().onNewTrafficSecrets(state, RecordType.APPLICATION);
+				state.getListener().onNewReceivingTraficKey(state, RecordType.APPLICATION);
 				Finished finished = new Finished(state.getKeySchedule().computeClientVerifyData());
 				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
 				state.getKeySchedule().deriveResumptionMasterSecret();
+			} catch (Alert e) {
+				throw e;
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to compute server verify data", e);
 			}

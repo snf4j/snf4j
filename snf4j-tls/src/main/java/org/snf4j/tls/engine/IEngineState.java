@@ -25,11 +25,37 @@
  */
 package org.snf4j.tls.engine;
 
-public interface IHandshakeEngineHandler extends IEngineHandler {
+import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.crypto.ITranscriptHash;
+import org.snf4j.tls.crypto.KeySchedule;
+import org.snf4j.tls.session.ISession;
+
+public interface IEngineState {
 	
-	void onEarlyTrafficSecret(EngineState state) throws Exception;
+	IEngineParameters getParameters();
 	
-	void onHandshakeTrafficSecrets(EngineState state) throws Exception;
+	IEngineHandler getHandler();
 	
-	void onApplicationTrafficSecrets(EngineState state) throws Exception;
+	MachineState getState();
+	
+	boolean isClientMode();
+	
+	boolean isStarted();
+	
+	boolean isConnected();
+	
+	ITranscriptHash getTranscriptHash();
+	
+	ISession getSession();
+	
+	KeySchedule getKeySchedule();
+	
+	CipherSuite getCipherSuite();
+	
+	String getHostName();
+	
+	int getVersion();
+	
+	int getMaxFragmentLength();
+	
 }
