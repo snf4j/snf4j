@@ -126,6 +126,7 @@ public class AlertTest {
 		alerts = new Alert[] {
 				new InternalErrorAlert("Text1"),
 				new DecodeErrorAlert("Text1"),
+				new BadRecordMacAlert("Text1"),
 				new UnsupportedExtensionAlert("Text1"),
 				new HandshakeFailureAlert("Text1"),
 				new IllegalParameterAlert("Text1"),

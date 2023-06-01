@@ -28,7 +28,7 @@ package org.snf4j.tls.record;
 import java.nio.ByteBuffer;
 
 import org.snf4j.tls.alert.Alert;
-import org.snf4j.tls.alert.DecryptErrorAlert;
+import org.snf4j.tls.alert.BadRecordMacAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.engine.EngineDefaults;
 
@@ -130,10 +130,9 @@ public class Record {
 		byte[] additionalData = new byte[HEADER_LENGTH];
 		byte[] nonce = decryptor.nextNonce();
 		
-		record.get(additionalData);
-		
 		dst.mark();
 		ByteBuffer ciphertext = record.duplicate();
+		ciphertext.get(additionalData);
 		ciphertext.limit(ciphertext.position() + contentLength);
 		try {
 			int pos0 = dst.position();
@@ -143,8 +142,9 @@ public class Record {
 			record.position(ciphertext.position());
 			return dst.position() - pos0;
 		} catch (Exception e) {
+			decryptor.rollbackSequence();
 			dst.reset();
-			throw new DecryptErrorAlert("Failed to decrypt record", e);
+			throw new BadRecordMacAlert("Failed to decrypt record", e);
 		}
 	}	
 }

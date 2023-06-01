@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,20 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-public interface IEndOfEarlyData  extends IHandshake {
+public enum EarlyDataState {
+
+	/** Early data not offered */
+	NONE, 
+	
+	/** Processing of the early data is in progress */
+	IN_PROGRESS, 
+	
+	/** Processing of the early data is completed successfully */
+	COMPLETED, 
+	
+	/** Processing of the early data has been rejected */
+	REJECTED
 
 }

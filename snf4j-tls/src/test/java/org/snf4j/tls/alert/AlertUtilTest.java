@@ -49,6 +49,6 @@ public class AlertUtilTest {
 				assertEquals("Received 'unknown' error alert from peer", alert.getMessage());
 			}
 		}
-		assertEquals(13, count);
+		assertEquals(14, count);
 	}
 }

@@ -28,18 +28,23 @@ package org.snf4j.tls.engine;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
-
 import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
 
 import org.junit.Test;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
 
 public class TLSEngineTest extends EngineTest {
 
 	ByteBuffer in;
 	
 	ByteBuffer out;
+	
+	private static final String PEER_HOST = "snf4j.org";
+	
+	private static final int PEER_PORT = 100;
 	
 	@Override
 	public void before() throws Exception {
@@ -78,6 +83,280 @@ public class TLSEngineTest extends EngineTest {
 	void assertInOut(int inLen, int outLen) {
 		assertEquals(inLen, in.remaining());
 		assertEquals(outLen, out.position());
+	}
+	
+	void prepareTickets(long... maxSizes) throws Exception {
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+		
+		handler.ticketInfos = new TicketInfo[maxSizes.length];
+		for (int i=0; i<maxSizes.length; ++i) {
+			long maxSize = maxSizes[i];
+			handler.ticketInfos[i] = maxSize == -1 ? new TicketInfo() : new TicketInfo(maxSize);
+		}
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		flip();
+		fc.fly(srv, in, out);
+		flip();
+		fc.fly(cli, in, out);
+		flip();
+		fc.fly(srv, in, out);
+		flip();
+		fc.fly(cli, in, out);
+		assertInOut(0,0);
+	}
+	
+	@Test
+	public void testEarlyData() throws Exception {
+		prepareTickets(111);
+		
+		byte[] data = random(111);
+		handler.earlyData.add(data);
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|Ued(111)|OK:uu|", fc.trace());
+		assertArrayEquals(data, fc.earlyData);
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|", fc.trace());
+		assertInOut(0,0);
+		
+		handler.earlyData.add(split(data, 50)[0]);
+		handler.earlyData.add(split(data, 50)[1]);
+		cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|Ued(111)|OK:uu|", fc.trace());
+		assertArrayEquals(data, fc.earlyData);
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|", fc.trace());
+		assertInOut(0,0);	
+	}
+
+	@Test
+	public void testEarlyDataTooBig() throws Exception {
+		prepareTickets(110);
+		
+		byte[] data = random(111);
+		handler.earlyData.add(data);
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		flip();
+		try {
+			fc.fly(srv, in, out);
+			fail();
+		}
+		catch (UnexpectedMessageAlert e) {
+			assertEquals("Early data is too big", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testEarlyDataTooBigInChunks() throws Exception {
+		prepareTickets(110);
+		
+		byte[] data = random(111);
+		handler.earlyData.add(split(data, 50)[0]);
+		handler.earlyData.add(split(data, 50)[1]);
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		flip();
+		try {
+			fc.fly(srv, in, out);
+			fail();
+		}
+		catch (UnexpectedMessageAlert e) {
+			assertEquals("Early data is too big", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testEarlyDataRejected() throws Exception {
+		prepareTickets(110);
+		
+		byte[] data = random(111);
+		handler.earlyData.add(data);
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		flip();
+		try {
+			fc.fly(srv, in, out);
+			fail();
+		}
+		catch (UnexpectedMessageAlert e) {
+		}
+
+		handler.earlyData.add(data);
+		cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|U|OK:uu|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|", fc.trace());
+		assertInOut(0,0);
+	}
+	
+	@Test
+	public void testHandshakeWithNoTask() throws Exception {
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|", fc.trace());
+		assertInOut(0,0);
 	}
 	
 	@Test

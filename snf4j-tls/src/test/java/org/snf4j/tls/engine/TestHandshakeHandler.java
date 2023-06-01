@@ -25,6 +25,9 @@
  */
 package org.snf4j.tls.engine;
 
+import java.util.LinkedList;
+import java.util.Queue;
+
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IServerNameExtension;
@@ -52,9 +55,15 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	
 	public Alert onATSException;
 	
+	public final Queue<byte[]> earlyData = new LinkedList<byte[]>();
+	
 	public int padding;
 	
 	public long keyLimit = -1;
+	
+	public long maxEarlyDataSize = 1000;
+	
+	public TicketInfo[] ticketInfos = new TicketInfo[] {new TicketInfo()};
 	
 	public void trace(String msg) {
 		synchronized (trace) {
@@ -94,7 +103,27 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 		trace("VSN(" + serverName.getHostName() +")");
 		return verifyServerName;
 	}
+	
+	@Override
+	public long getMaxEarlyDataSize() {
+		return maxEarlyDataSize;
+	}
+	
+	@Override
+	public TicketInfo[] createNewTickets() {
+		return ticketInfos;
+	}
 
+	@Override
+	public boolean hasEarlyData() {
+		return !earlyData.isEmpty();
+	}
+
+	@Override
+	public byte[] nextEarlyData() {
+		return earlyData.poll();
+	}
+	
 	@Override
 	public void onNewTrafficSecrets(IEngineState state, RecordType recordType) throws Alert {
 		switch (recordType) {

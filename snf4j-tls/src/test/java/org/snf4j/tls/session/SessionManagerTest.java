@@ -261,7 +261,7 @@ public class SessionManagerTest extends CommonTest {
 		EngineState state = state(session, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
 
 		assertEquals(0, session.getTickets(1000).length);
-		NewSessionTicket ticket1 = mgr.newTicket(state, 1000);
+		NewSessionTicket ticket1 = mgr.newTicket(state, -1, 1000);
 		assertArrayEquals(bytes(0,1), ticket1.getNonce());
 		assertEquals(1, session.getTickets(1000).length);
 		SessionTicket ticket = session.getTickets(1000)[0]; 
@@ -269,7 +269,7 @@ public class SessionManagerTest extends CommonTest {
 		assertEquals(ticket1.getAgeAdd(), ticket.getAgeAdd());
 		assertEquals(0, ticket1.getExtensions().size());
 		assertEquals(86400, ticket1.getLifetime());
-		assertSame(HashSpec.SHA256, ticket.getHashSpec());
+		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, ticket.getCipherSuite());
 		assertEquals(1000, ticket.getCreationTime());
 		assertArrayEquals(state.getKeySchedule().computePsk(bytes(0,1)), ticket.getPsk());
 		assertEquals(-1L, ticket.getMaxEarlyDataSize());
@@ -277,12 +277,12 @@ public class SessionManagerTest extends CommonTest {
 		assertTrue(ticket.isValid(1000-1+86400*1000));
 		assertFalse(ticket.isValid(1000+86400*1000));
 		
-		NewSessionTicket ticket2 = mgr.newTicket(state, 1000);
+		NewSessionTicket ticket2 = mgr.newTicket(state, -1, 1000);
 		assertArrayEquals(bytes(0,2), ticket2.getNonce());
 		assertFalse(ticket1.getAgeAdd() == ticket2.getAgeAdd());	
 		
 		long time = System.currentTimeMillis();
-		mgr.newTicket(state);
+		mgr.newTicket(state,-1);
 		assertEquals(3, mgr.getTickets(session,1000).length);
 		assertEquals(1, mgr.getTickets(session).length);
 		ticket = mgr.getTickets(session)[0];
@@ -295,8 +295,8 @@ public class SessionManagerTest extends CommonTest {
 		assertTrue(session.getCreationTime() >= time);
 		assertTrue(session.getId() > 1);
 		state = state(session, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
-		ticket1 = mgr.newTicket(state);
-		ticket2 = mgr.newTicket(state);
+		ticket1 = mgr.newTicket(state,-1);
+		ticket2 = mgr.newTicket(state,-1);
 		assertEquals(1L, ticket1.getLifetime());
 		assertEquals(2, mgr.getTickets(session).length);
 		UsedSession used = mgr.useSession(psks(ticket1.getTicket()), HashSpec.SHA256);
@@ -329,10 +329,10 @@ public class SessionManagerTest extends CommonTest {
 		
 		Session session1 = (Session) mgr.newSession(info, 1000);
 		EngineState state1 = state(session1, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
-		NewSessionTicket ticket1 = mgr.newTicket(state1, 1000);
+		NewSessionTicket ticket1 = mgr.newTicket(state1, -1, 1000);
 		Session session2 = (Session) mgr.newSession(info, 1000);
 		EngineState state2 = state(session2, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
-		NewSessionTicket ticket2 = mgr.newTicket(state2, 1000);
+		NewSessionTicket ticket2 = mgr.newTicket(state2, -1, 1000);
 
 		byte[] identity = ticket2.getTicket().clone();
 		for (int i=0; i<identity.length; ++i) {
@@ -359,10 +359,10 @@ public class SessionManagerTest extends CommonTest {
 		handshakeHandler.sessionManager = mgr;
 		session1 = (Session) mgr.newSession(info);
 		state1 = state(session1, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
-		ticket1 = mgr.newTicket(state1);
+		ticket1 = mgr.newTicket(state1,-1);
 		session2 = (Session) mgr.newSession(info);
 		state2 = state(session2, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
-		ticket2 = mgr.newTicket(state2);
+		ticket2 = mgr.newTicket(state2,-1);
 		
 		used = mgr.useSession(psks(ticket1.getTicket()), HashSpec.SHA256);
 		assertNotNull(used);
@@ -377,9 +377,9 @@ public class SessionManagerTest extends CommonTest {
 		Session session = (Session) mgr.newSession(info, 1000);
 		EngineState state = state(session, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
 		
-		NewSessionTicket ticket1 = mgr.newTicket(state, 1000);
-		NewSessionTicket ticket2 = mgr.newTicket(state, 1000);
-		NewSessionTicket ticket3 = mgr.newTicket(state, 1000);
+		NewSessionTicket ticket1 = mgr.newTicket(state, -1, 1000);
+		NewSessionTicket ticket2 = mgr.newTicket(state, -1, 1000);
+		NewSessionTicket ticket3 = mgr.newTicket(state, -1, 1000);
 
 		SessionTicket[] tickets = mgr.getTickets(session, 1000);
 		assertEquals(3, tickets.length);
@@ -400,7 +400,7 @@ public class SessionManagerTest extends CommonTest {
 		assertArrayEquals(ticket3.getTicket(), tickets[2].getTicket());
 		assertArrayEquals(ticket2.getTicket(), tickets[1].getTicket());
 		
-		mgr.newTicket(state, 1001);
+		mgr.newTicket(state, -1, 1001);
 		tickets = mgr.getTickets(session, 1000);
 		assertEquals(4, tickets.length);
 		assertEquals(4, mgr.getTickets(session, 1001).length);
@@ -413,10 +413,10 @@ public class SessionManagerTest extends CommonTest {
 		session = (Session) mgr.newSession(info);
 		state = state(session, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
 		
-		ticket1 = mgr.newTicket(state);
-		ticket2 = mgr.newTicket(state);
+		ticket1 = mgr.newTicket(state,-1);
+		ticket2 = mgr.newTicket(state,-1);
 		waitFor(500);
-		ticket3 = mgr.newTicket(state);
+		ticket3 = mgr.newTicket(state,-1);
 		assertEquals(3, mgr.getTickets(session).length);
 		waitFor(600);
 		assertEquals(1, mgr.getTickets(session).length);

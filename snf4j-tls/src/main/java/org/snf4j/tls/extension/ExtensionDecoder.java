@@ -52,6 +52,7 @@ public class ExtensionDecoder implements IExtensionDecoder {
 		decoder.addParser(CookieExtension.getParser());
 		decoder.addParser(PreSharedKeyExtension.getParser());
 		decoder.addParser(PskKeyExchangeModesExtension.getParser());
+		decoder.addParser(EarlyDataExtension.getParser());
 		DEFAULT = decoder;
 	}
 	

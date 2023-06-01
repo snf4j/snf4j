@@ -23,70 +23,71 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.extension;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
-import org.snf4j.tls.extension.IExtension;
+import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.Args;
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Record;
 
-public class ChangeCipherSpec implements IHandshake {
+public class EarlyDataExtension extends KnownExtension implements IEarlyDataExtension {
 
-	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
+	private final static ExtensionType TYPE = ExtensionType.EARLY_DATA;
 	
-	private ChangeCipherSpec() {}
+	private final long maxSize;
 	
-	@Override
-	public HandshakeType getType() {
-		return null;
+	private final static AbstractExtensionParser PARSER = new AbstractExtensionParser() {
+
+		@Override
+		public ExtensionType getType() {
+			return TYPE;
+		}
+
+		@Override
+		public IExtension parse(HandshakeType handshakeType, ByteBufferArray srcs, int remaining) throws Alert {
+			if (handshakeType.equals(HandshakeType.NEW_SESSION_TICKET)) {
+				if (remaining == 4) {
+					return new EarlyDataExtension(srcs.getUnsignedInt());
+				}
+			}
+			else if (remaining == 0) {
+				return new EarlyDataExtension();
+			}
+			throw decodeError("Inconsistent length");
+		}
+	};
+	
+	public EarlyDataExtension() {
+		super(TYPE);
+		maxSize = -1;
 	}
 
-	@Override
-	public void getBytes(ByteBuffer buffer) {
-		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
-		buffer.put((byte)1);
-	}
-
-	@Override
-	public int getLength() {
-		return Record.HEADER_LENGTH + 1;
+	public EarlyDataExtension(long maxSize) {
+		super(TYPE);
+		Args.checkRange(maxSize, 0L, 0xffffffffL, "maxSize");
+		this.maxSize = maxSize;
 	}
 
 	@Override
 	public int getDataLength() {
-		return 1;
+		return maxSize == -1 ? 0 : 4;
 	}
 
 	@Override
-	public boolean isKnown() {
-		return true;
+	public long getMaxSize() {
+		return maxSize;
 	}
 
-	@Override
-	public boolean isPrepared() {
-		return true;
-	}
-
-	@Override
-	public byte[] prepare() {
-		byte[] prepared = new byte[getLength()];
-		
-		getBytes(ByteBuffer.wrap(prepared));
-		return prepared;
-	}
-
-	@Override
-	public byte[] getPrepared() {
-		return prepare();
+	public static IExtensionParser getParser() {
+		return PARSER;
 	}
 	
 	@Override
-	public List<IExtension> getExtensions() {
-		return null;
+	protected void getData(ByteBuffer buffer) {
+		if (maxSize != -1) {
+			buffer.putInt((int) maxSize);
+		}
 	}
-
 }

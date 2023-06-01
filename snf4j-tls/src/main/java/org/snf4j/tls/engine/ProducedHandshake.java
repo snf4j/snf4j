@@ -30,22 +30,45 @@ import org.snf4j.tls.record.RecordType;
 
 public class ProducedHandshake {
 	
+	public enum Type {HANDSHAKE, APPLICATION_DATA, CHANGE_CIPHER_SPEC};
+	
 	private final IHandshake handshake;
+	
+	private final Type type;
 	
 	private final RecordType recordType;
 
 	private final RecordType nextRecordType;
 	
+	public ProducedHandshake(IHandshake handshake) {
+		this(handshake, null, (RecordType)null);
+	}
+
+	public ProducedHandshake(IHandshake handshake, Type type) {
+		this(handshake, null, (RecordType)null, type);
+	}
+
 	public ProducedHandshake(IHandshake handshake, RecordType recordType) {
-		this.handshake = handshake;
-		this.recordType = recordType;
-		this.nextRecordType = null;
+		this(handshake, recordType, (RecordType)null);
+	}
+
+	public ProducedHandshake(IHandshake handshake, RecordType recordType, Type type) {
+		this(handshake, recordType, null, type);
 	}
 
 	public ProducedHandshake(IHandshake handshake, RecordType recordType, RecordType nextRecordType) {
+		this(handshake, recordType, nextRecordType, handshake.getType() != null ? Type.HANDSHAKE : Type.APPLICATION_DATA);
+	}
+
+	public ProducedHandshake(IHandshake handshake, RecordType recordType, RecordType nextRecordType, Type type) {
 		this.handshake = handshake;
 		this.recordType = recordType;
 		this.nextRecordType = nextRecordType;
+		this.type = type;
+	}
+	
+	public Type getType() {
+		return type;
 	}
 	
 	public IHandshake getHandshake() {

@@ -123,6 +123,29 @@ public class CommonTest {
 		}
 		return bytes;
 	}
+
+	protected byte[][] split(byte[] array, int... sizes) {
+		byte[][] splitted = new byte[sizes.length+1][];
+		byte[] b;
+		int remaining = array.length;
+		int i=0;
+		int off=0;
+		
+		
+		for (; i<sizes.length; ++i) {
+			int size = sizes[i];
+			b = new byte[size];
+			
+			System.arraycopy(array, off, b, 0, size);
+			off += size;
+			remaining -= size;
+			splitted[i] = b;
+		}
+		b = new byte[remaining];
+		System.arraycopy(array, off, b, 0, remaining);
+		splitted[i] = b;
+		return splitted;
+	}
 	
 	protected ByteBuffer[] array(byte[] bytes, int off, int... sizes) {
 		ByteBuffer[] array = new ByteBuffer[sizes.length + 1];

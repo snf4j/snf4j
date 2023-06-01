@@ -25,10 +25,14 @@
  */
 package org.snf4j.tls.engine;
 
+import static org.snf4j.tls.extension.ExtensionsUtil.find;
+
 import java.nio.ByteBuffer;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.extension.ExtensionType;
+import org.snf4j.tls.extension.IEarlyDataExtension;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.INewSessionTicket;
@@ -49,6 +53,15 @@ public class NewSessionTicketConsumer implements IHandshakeConsumer {
 		}
 		
 		INewSessionTicket nst = (INewSessionTicket) handshake;
+		long maxEarlyDataSize;
+		
+		IEarlyDataExtension earlyData = find(handshake, ExtensionType.EARLY_DATA);
+		if (earlyData != null) {
+			maxEarlyDataSize = earlyData.getMaxSize();
+		}
+		else {
+			maxEarlyDataSize = -1;
+		}
 		
 		try {
 			ISession session = state.getSession();
@@ -56,11 +69,12 @@ public class NewSessionTicketConsumer implements IHandshakeConsumer {
 			if (session.isValid()) {
 				session.getManager().putTicket(session, 
 						new SessionTicket(
-								state.getCipherSuite().spec().getHashSpec(),
+								state.getCipherSuite(),
 								state.getKeySchedule().computePsk(nst.getNonce()), 
 								nst.getTicket(), 
 								nst.getLifetime(), 
-								nst.getAgeAdd()));
+								nst.getAgeAdd(),
+								maxEarlyDataSize));
 			}
 		} catch (Exception e) {
 			throw new InternalErrorAlert("Failed to compute PSK", e);

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,34 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-public interface IEndOfEarlyData  extends IHandshake {
+public class NoneEarlyDataContext implements IEarlyDataContext {
+
+	public static final IEarlyDataContext INSTANCE = new NoneEarlyDataContext();
+	
+	private NoneEarlyDataContext() {}
+	
+	@Override
+	public EarlyDataState getState() {
+		return EarlyDataState.NONE;
+	}
+	
+	@Override
+	public void complete() {
+	}
+	
+	@Override
+	public void reject() {
+	}
+
+	@Override
+	public void incProcessedBytes(int amount) {
+	}
+
+	@Override
+	public boolean isSizeLimitExceeded() {
+		return false;
+	}
 
 }

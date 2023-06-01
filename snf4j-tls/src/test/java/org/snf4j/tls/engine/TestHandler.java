@@ -41,6 +41,8 @@ public class TestHandler implements IEngineHandler {
 
 	public volatile ISessionManager sessionManager = new SessionManager();
 	
+	public long maxEarlyDataSize = 1000;
+	
 	@Override
 	public boolean verify(IServerNameExtension serverName) {
 		return verifyServerName;
@@ -69,5 +71,25 @@ public class TestHandler implements IEngineHandler {
 	@Override
 	public ISessionManager getSessionManager() {
 		return sessionManager;
+	}
+
+	@Override
+	public long getMaxEarlyDataSize() {
+		return maxEarlyDataSize;
+	}
+	
+	@Override
+	public TicketInfo[] createNewTickets() {
+		return new TicketInfo[] {new TicketInfo()};
+	}
+
+	@Override
+	public boolean hasEarlyData() {
+		return false;
+	}
+
+	@Override
+	public byte[] nextEarlyData() {
+		return null;
 	}
 }

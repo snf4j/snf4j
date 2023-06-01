@@ -32,9 +32,11 @@ import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.DecryptErrorAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.extension.EarlyDataExtension;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.handshake.Certificate;
 import org.snf4j.tls.handshake.CertificateVerify;
+import org.snf4j.tls.handshake.EndOfEarlyData;
 import org.snf4j.tls.handshake.Finished;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IFinished;
@@ -66,18 +68,29 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		}
 		
 		ISession session = state.getSession();
+		IEngineHandler handler = state.getHandler();
 		
 		if (session == null) {
-			session = state.getHandler().getSessionManager().newSession(state.getSessionInfo()
+			session = handler.getSessionManager().newSession(state.getSessionInfo()
 					.cipher(state.getCipherSuite()));
 			state.setSession(session);
 		}
 		
 		if (session.isValid() && state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE)) {
 			try {
-				NewSessionTicket ticket = state.getHandler().getSessionManager().newTicket(state);
+				TicketInfo[] ticketInfos = handler.createNewTickets();
 				
-				state.produce(new ProducedHandshake(ticket, RecordType.APPLICATION, RecordType.APPLICATION));
+				for (TicketInfo ticketInfo: ticketInfos) {
+					long maxSize = ticketInfo.getMaxEarlyDataSize();
+					NewSessionTicket ticket = handler.getSessionManager().newTicket(state, maxSize);
+					
+					if (maxSize != -1) {
+						ticket.getExtensions().add(new EarlyDataExtension(maxSize));
+					}
+					state.produce(new ProducedHandshake(
+							ticket, 
+							RecordType.APPLICATION));
+				}
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to create new session ticket", e);
 			}
@@ -89,7 +102,6 @@ public class FinishedConsumer implements IHandshakeConsumer {
 	private void consumeClient(EngineState state, IFinished finished, ByteBuffer[] data) throws Alert {
 		byte[] verifyData;
 		
-		state.getListener().onNewSendingTraficKey(state, RecordType.HANDSHAKE);
 		try {
 			verifyData = state.getKeySchedule().computeServerVerifyData();
 		} catch (Exception e) {
@@ -100,6 +112,14 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		}
 		
 		ConsumerUtil.updateTranscriptHash(state, finished.getType(), data);
+		
+		if (state.getEarlyDataContext().getState() == EarlyDataState.IN_PROGRESS) {
+			ConsumerUtil.prepare(state, new EndOfEarlyData(), RecordType.ZERO_RTT, RecordType.HANDSHAKE);
+			state.getEarlyDataContext().complete();
+		}
+		else {
+			state.getListener().onNewSendingTraficKey(state, RecordType.HANDSHAKE);
+		}
 		
 		DelegatedTaskMode taskMode = state.getParameters().getDelegatedTaskMode();
 		CertificateCriteria criteria = state.getCertCryteria();
@@ -153,8 +173,10 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		public void finish(EngineState state) throws Alert {
 			IEngineParameters params = state.getParameters();
 			
-			//TODO: skip if early data is offered
-			if (params.isCompatibilityMode() && !state.hadState(MachineState.CLI_WAIT_2_SH)) {
+			//CSS before encrypted handshake flight (early data not offered)
+			if (params.isCompatibilityMode() 
+					&& !state.hadState(MachineState.CLI_WAIT_2_SH) 
+					&& state.getEarlyDataContext().getState() == EarlyDataState.NONE) {
 				state.getListener().prepareChangeCipherSpec(state);
 			}
 			

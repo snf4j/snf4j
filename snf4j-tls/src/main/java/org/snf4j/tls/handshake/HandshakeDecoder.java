@@ -53,6 +53,7 @@ public class HandshakeDecoder implements IHandshakeDecoder {
 		decoder.addParser(Finished.getParser());
 		decoder.addParser(NewSessionTicket.getParser());
 		decoder.addParser(KeyUpdate.getParser());
+		decoder.addParser(EndOfEarlyData.getParser());
 		DEFAULT = decoder;
 	}
 	

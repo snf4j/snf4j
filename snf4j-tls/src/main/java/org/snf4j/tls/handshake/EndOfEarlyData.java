@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,55 @@
  */
 package org.snf4j.tls.handshake;
 
-public interface IEndOfEarlyData  extends IHandshake {
+import java.nio.ByteBuffer;
+import java.util.List;
+
+import org.snf4j.core.ByteBufferArray;
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.extension.IExtensionDecoder;
+
+public class EndOfEarlyData extends KnownHandshake implements IEndOfEarlyData {
+
+	private final static HandshakeType TYPE = HandshakeType.END_OF_EARLY_DATA;
+	
+	private final static AbstractHandshakeParser PARSER = new AbstractHandshakeParser() {
+
+		@Override
+		public HandshakeType getType() {
+			return TYPE;
+		}
+
+		@Override
+		public IHandshake parse(ByteBufferArray srcs, int remaining, IExtensionDecoder decoder) throws Alert {
+			if (remaining == 0) {
+				return new EndOfEarlyData();
+			}
+			throw decodeError("Inconsistent length");
+		}
+		
+	};
+	
+	public EndOfEarlyData() {
+		super(TYPE);
+	}
+
+	public static IHandshakeParser getParser() {
+		return PARSER;
+	}
+
+	@Override
+	public int getDataLength() {
+		return 0;
+	}
+
+	@Override
+	public List<IExtension> getExtensions() {
+		return null;
+	}
+
+	@Override
+	protected void getData(ByteBuffer buffer) {
+	}
 
 }

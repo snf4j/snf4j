@@ -25,11 +25,11 @@
  */
 package org.snf4j.tls.session;
 
-import org.snf4j.tls.cipher.IHashSpec;
+import org.snf4j.tls.cipher.CipherSuite;
 
 public class SessionTicket {
 
-	private final IHashSpec hashSpec;
+	private final CipherSuite cipherSuite;
 	
 	private final byte[] psk;
 	
@@ -43,22 +43,22 @@ public class SessionTicket {
 	
 	private final long maxEarlyDataSize;
 		
-	public SessionTicket(IHashSpec hashSpec, byte[] psk, byte[] ticket, long lifetime, long ageAdd, long creationTime) {
-		this.hashSpec = hashSpec;
+	public SessionTicket(CipherSuite cipherSuite, byte[] psk, byte[] ticket, long lifetime, long ageAdd, long maxEarlyDataSize, long creationTime) {
+		this.cipherSuite = cipherSuite;
 		this.psk = psk;
 		this.ticket = ticket;
 		this.creationTime = creationTime;
 		this.ageAdd = ageAdd;
 		expirationTime = creationTime + lifetime * 1000;
-		maxEarlyDataSize = -1L;
+		this.maxEarlyDataSize = maxEarlyDataSize;
 	}
 
-	public SessionTicket(IHashSpec hashSpec, byte[] psk, byte[] ticket, long lifetime, long ageAdd) {
-		this(hashSpec, psk, ticket, lifetime, ageAdd, System.currentTimeMillis());
+	public SessionTicket(CipherSuite cipherSuite, byte[] psk, byte[] ticket, long lifetime, long ageAdd, long maxEarlyDataSize) {
+		this(cipherSuite, psk, ticket, lifetime, ageAdd, maxEarlyDataSize, System.currentTimeMillis());
 	}
 	
-	public IHashSpec getHashSpec() {
-		return hashSpec;
+	public CipherSuite getCipherSuite() {
+		return cipherSuite;
 	}
 
 	public byte[] getPsk() {

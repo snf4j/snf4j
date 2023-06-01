@@ -25,10 +25,13 @@
  */
 package org.snf4j.tls.engine;
 
+import static org.snf4j.tls.extension.ExtensionsUtil.find;
+
 import java.nio.ByteBuffer;
 
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 
@@ -44,6 +47,14 @@ public class EncryptedExtensionsConsumer  implements IHandshakeConsumer {
 		if (state.getState() != MachineState.CLI_WAIT_EE) {
 			throw new UnexpectedMessageAlert("Unexpected EncryptedExtensions");
 		}
+		
+		IEarlyDataContext ctx = state.getEarlyDataContext();
+		if (ctx.getState() == EarlyDataState.IN_PROGRESS) {
+			if (find(handshake, ExtensionType.EARLY_DATA) == null) {
+				ctx.reject();
+			}
+		}
+		
 		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
 		state.changeState(state.getKeySchedule().isUsingPsk() 
 				? MachineState.CLI_WAIT_FINISHED 

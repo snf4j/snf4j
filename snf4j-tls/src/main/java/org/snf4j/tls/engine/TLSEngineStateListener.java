@@ -202,11 +202,15 @@ public class TLSEngineStateListener implements IEngineStateListener, IEncryptorH
 	
 	@Override
 	public void produceChangeCipherSpec(IEngineProducer producer) {
-		producer.produce(new ProducedHandshake(ChangeCipherSpec.INSTANCE, null));
+		producer.produce(new ProducedHandshake(
+				ChangeCipherSpec.INSTANCE, 
+				ProducedHandshake.Type.CHANGE_CIPHER_SPEC));
 	}
 
 	@Override
 	public void prepareChangeCipherSpec(IEngineProducer producer) {
-		producer.prepare(new ProducedHandshake(ChangeCipherSpec.INSTANCE, null));
+		producer.prepare(new ProducedHandshake(
+				ChangeCipherSpec.INSTANCE, 
+				ProducedHandshake.Type.CHANGE_CIPHER_SPEC));
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,33 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-public interface IEndOfEarlyData  extends IHandshake {
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import org.junit.Test;
+import org.snf4j.tls.CommonTest;
+
+public class EarlyDataTest extends CommonTest {
+
+	@Test
+	public void testAll() {
+		byte[] data = random(20);
+		EarlyData ed = new EarlyData(data);
+		
+		assertNull(ed.getType());
+		assertEquals(20, ed.getLength());
+		assertEquals(20, ed.getDataLength());
+		assertTrue(ed.isKnown());
+		assertNull(ed.getExtensions());
+		assertTrue(ed.isPrepared());
+		
+		ed.getBytes(buffer);
+		assertArrayEquals(data, buffer());
+		assertArrayEquals(data, ed.prepare());	
+		assertArrayEquals(data, ed.getPrepared());	
+	}
 }

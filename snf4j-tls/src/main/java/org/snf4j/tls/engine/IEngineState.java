@@ -58,4 +58,5 @@ public interface IEngineState {
 	
 	int getMaxFragmentLength();
 	
+	IEarlyDataContext getEarlyDataContext();
 }

@@ -232,7 +232,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		state.getTask().run();
 		state.getTask().run();
 		ProducedHandshake[] produced = state.getProduced();
-		assertEquals("VSN(snf4j.org)|ETS|CS|HTS|RTS(HANDSHAKE)|ATS|", handler.trace());
+		assertEquals("VSN(snf4j.org)|CS|HTS|RTS(HANDSHAKE)|ATS|", handler.trace());
 		CertificateCriteria criteria = handler.certificateSelector.criteria;
 		assertEquals("snf4j.org", criteria.getHostName());
 		assertSame(CertificateType.X509, criteria.getType());
@@ -298,7 +298,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		replace(extensions, keyShare());
 		ClientHello ch = clientHello();
 		consumer.consume(state, ch, data(ch), false);
-		assertEquals("VSN(snf4j.org)|ETS|", handler.trace());
+		assertEquals("VSN(snf4j.org)|", handler.trace());
 		
 		state = serverState();
 		remove(extensions, ExtensionType.SERVER_NAME);
@@ -313,7 +313,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		params.serverNameRequired = false;
 		ch = clientHello();
 		consumer.consume(state, ch, data(ch), false);
-		assertEquals("ETS|", handler.trace());
+		assertEquals("", handler.trace());
 		
 		extensions.add(serverName("snf4j.org"));
 		handler.verifyServerName = false;

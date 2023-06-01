@@ -35,7 +35,7 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.tls.cipher.IHashSpec;
-import org.snf4j.tls.engine.EngineState;
+import org.snf4j.tls.engine.IEngineState;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.OfferedPsk;
 import org.snf4j.tls.handshake.NewSessionTicket;
@@ -207,7 +207,7 @@ public class SessionManager implements ISessionManager {
 			if (session != null) {
 				synchronized (session.getTicketsLock()) {
 					for (SessionTicket ticket: session.getTickets(currentTime)) {
-						if (ticket.getHashSpec().getOrdinal() == hashOrdinal) {
+						if (ticket.getCipherSuite().spec().getHashSpec().getOrdinal() == hashOrdinal) {
 							if (Arrays.equals(identity, ticket.getTicket())) {
 								session.removeTicket(ticket);
 								return new UsedSession(session, ticket, i);
@@ -263,7 +263,7 @@ public class SessionManager implements ISessionManager {
 		return getTickets(session, System.currentTimeMillis());
 	}
 	
-	NewSessionTicket newTicket(EngineState state, long currentTime) throws InvalidKeyException {
+	NewSessionTicket newTicket(IEngineState state, long maxEarlyDataSize, long currentTime) throws InvalidKeyException {
 		Session checkedSession = checkSession(state.getSession());
 		long nonce = nextNonce.incrementAndGet();
 		SecureRandom random = state.getParameters().getSecureRandom();
@@ -280,11 +280,12 @@ public class SessionManager implements ISessionManager {
 				new ArrayList<IExtension>(0));
 		
 		SessionTicket ticket = new SessionTicket(
-				state.getCipherSuite().spec().getHashSpec(),
+				state.getCipherSuite(),
 				psk, 
 				ticketIdentity, 
 				lifetime, 
 				ageAdd,
+				maxEarlyDataSize,
 				currentTime);
 
 		synchronized (checkedSession.getTicketsLock()) {
@@ -295,8 +296,8 @@ public class SessionManager implements ISessionManager {
 	}
 
 	@Override
-	public NewSessionTicket newTicket(EngineState state) throws Exception {
-		return newTicket(state, System.currentTimeMillis());
+	public NewSessionTicket newTicket(IEngineState state, long maxEarlyDataSize) throws Exception {
+		return newTicket(state, maxEarlyDataSize, System.currentTimeMillis());
 	}
 	
 	byte[] ticket(ISession session, long nonce, SecureRandom random) {

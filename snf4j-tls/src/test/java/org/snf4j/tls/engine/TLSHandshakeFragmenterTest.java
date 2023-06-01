@@ -44,6 +44,7 @@ import org.snf4j.tls.crypto.AESAead;
 import org.snf4j.tls.crypto.AeadEncrypt;
 import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
+import org.snf4j.tls.engine.ProducedHandshake.Type;
 import org.snf4j.tls.extension.CookieExtension;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.handshake.ClientHello;
@@ -91,8 +92,16 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		produced.add(new ProducedHandshake(handshake, type, nextType));
 	}
 
+	private void add(IHandshake handshake, RecordType recordType, RecordType nextRecordType, ProducedHandshake.Type type) {
+		produced.add(new ProducedHandshake(handshake, recordType, nextRecordType, type));
+	}
+	
 	private void add(IHandshake handshake, RecordType type) {
-		add(handshake, type, null);
+		add(handshake, type, (RecordType)null);
+	}
+
+	private void add(IHandshake handshake, RecordType recordType, ProducedHandshake.Type type) {
+		add(handshake, recordType, null, type);
 	}
 	
 	private IHandshake handshake(int id, int size) {
@@ -202,6 +211,48 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		assertEquals("", trace());
 	}
 
+	@Test
+	public void testWrapDifferentHandshakeTypes() throws Exception {
+		add(handshake(1, 100), RecordType.ZERO_RTT, Type.APPLICATION_DATA);
+		add(handshake(1, 200), RecordType.ZERO_RTT, RecordType.HANDSHAKE, Type.HANDSHAKE);
+		assertEquals(105, wrapper.wrap(dst));
+		assertEquals(105, dst.position());
+		assertFalse(wrapper.isPending());
+		assertTrue(wrapper.needWrap());
+		assertEquals("", trace());
+
+		dst.clear();
+		assertEquals(205, wrapper.wrap(dst));
+		assertEquals(205, dst.position());
+		assertFalse(wrapper.isPending());
+		assertFalse(wrapper.needWrap());
+		assertEquals("OSTK(HANDSHAKE)|", trace());
+
+		dst.clear();
+		add(handshake(1, 300), RecordType.ZERO_RTT, Type.APPLICATION_DATA);
+		add(handshake(1, 701), RecordType.ZERO_RTT, Type.APPLICATION_DATA);
+		add(handshake(1, 400), RecordType.ZERO_RTT, RecordType.HANDSHAKE, Type.HANDSHAKE);
+		assertEquals(1005, wrapper.wrap(dst));
+		assertEquals(1005, dst.position());
+		assertTrue(wrapper.isPending());
+		assertTrue(wrapper.needWrap());
+		assertEquals("", trace());
+
+		dst.clear();
+		assertEquals(6, wrapper.wrap(dst));
+		assertEquals(6, dst.position());
+		assertFalse(wrapper.isPending());
+		assertTrue(wrapper.needWrap());
+		assertEquals("", trace());
+
+		dst.clear();
+		assertEquals(405, wrapper.wrap(dst));
+		assertEquals(405, dst.position());
+		assertFalse(wrapper.isPending());
+		assertFalse(wrapper.needWrap());
+		assertEquals("OSTK(HANDSHAKE)|", trace());
+	}
+	
 	@Test
 	public void testWrapDifferentRecordTypes() throws Exception {
 		add(handshake(1, 100), RecordType.INITIAL);
@@ -407,6 +458,11 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		@Override
 		public int getMaxFragmentLength() {
 			return maxFragmentLength;
+		}
+
+		@Override
+		public EarlyDataContext getEarlyDataContext() {
+			return null;
 		}
 	}
 	

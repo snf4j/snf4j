@@ -25,68 +25,42 @@
  */
 package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
-import org.snf4j.tls.extension.IExtension;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.ContentType;
-import org.snf4j.tls.record.Record;
+import org.junit.Test;
 
-public class ChangeCipherSpec implements IHandshake {
+public class EarlyDataContextTest {
 
-	public final static ChangeCipherSpec INSTANCE = new ChangeCipherSpec();
-	
-	private ChangeCipherSpec() {}
-	
-	@Override
-	public HandshakeType getType() {
-		return null;
-	}
-
-	@Override
-	public void getBytes(ByteBuffer buffer) {
-		Record.header(ContentType.CHANGE_CIPHER_SPEC, 1, buffer);
-		buffer.put((byte)1);
-	}
-
-	@Override
-	public int getLength() {
-		return Record.HEADER_LENGTH + 1;
-	}
-
-	@Override
-	public int getDataLength() {
-		return 1;
-	}
-
-	@Override
-	public boolean isKnown() {
-		return true;
-	}
-
-	@Override
-	public boolean isPrepared() {
-		return true;
-	}
-
-	@Override
-	public byte[] prepare() {
-		byte[] prepared = new byte[getLength()];
+	@Test
+	public void testAll() {
+		EarlyDataContext ctx = new EarlyDataContext(100);
+		assertSame(EarlyDataState.IN_PROGRESS, ctx.getState());
+		ctx.complete();
+		assertSame(EarlyDataState.COMPLETED, ctx.getState());
+		ctx.reject();
+		assertSame(EarlyDataState.COMPLETED, ctx.getState());
+		assertFalse(ctx.isSizeLimitExceeded());
+		ctx.incProcessedBytes(99);
+		assertFalse(ctx.isSizeLimitExceeded());
+		ctx.incProcessedBytes(1);
+		assertFalse(ctx.isSizeLimitExceeded());
+		ctx.incProcessedBytes(1);
+		assertTrue(ctx.isSizeLimitExceeded());
 		
-		getBytes(ByteBuffer.wrap(prepared));
-		return prepared;
-	}
+		ctx = new EarlyDataContext(true, 100);
+		assertSame(EarlyDataState.REJECTED, ctx.getState());
+		ctx.complete();
+		assertSame(EarlyDataState.REJECTED, ctx.getState());
+		ctx.reject();
+		assertSame(EarlyDataState.REJECTED, ctx.getState());
 
-	@Override
-	public byte[] getPrepared() {
-		return prepare();
+		ctx = new EarlyDataContext(false, 100);
+		assertSame(EarlyDataState.IN_PROGRESS, ctx.getState());
+		ctx.reject();
+		assertSame(EarlyDataState.REJECTED, ctx.getState());
+		ctx.complete();
+		assertSame(EarlyDataState.REJECTED, ctx.getState());		
 	}
-	
-	@Override
-	public List<IExtension> getExtensions() {
-		return null;
-	}
-
 }

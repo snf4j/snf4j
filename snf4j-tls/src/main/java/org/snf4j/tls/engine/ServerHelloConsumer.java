@@ -101,7 +101,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 				
 					psks[i] = new OfferedPsk(
 							new PskIdentity(ticket.getTicket(), obfuscatedAge), 
-							new byte[ticket.getHashSpec().getHashLength()]);
+							new byte[ticket.getCipherSuite().spec().getHashSpec().getHashLength()]);
 				}
 				
 				if (i == 0) {
@@ -163,7 +163,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 									break;
 								}
 							}
-							state.storePrivateKey(group, key);
+							state.addPrivateKey(group, key);
 							changed = true;
 						}
 					}
@@ -177,13 +177,26 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			changed = true;
 		}
 				
+		IEarlyDataContext ctx = state.getEarlyDataContext();
+		if (ctx.getState() == EarlyDataState.IN_PROGRESS) {
+			int typeValue = ExtensionType.EARLY_DATA.value();
+			
+			for (Iterator<IExtension> i=extensions.iterator(); i.hasNext();) {
+				if (i.next().getType().value() == typeValue) {
+					i.remove();
+					break;
+				}
+			}
+			ctx.reject();
+		}
+		
 		if (namedGroup == null) {
 			if (!changed) {
 				throw new IllegalParameterAlert("No change after HelloRetryRequest");
 			}
 			
-			//TODO: skip if early data is offered
-			if (state.getParameters().isCompatibilityMode()) {
+			//CCS before second ClientHello (early data not offered)
+			if (state.getParameters().isCompatibilityMode() && state.getEarlyDataContext().getState() == EarlyDataState.NONE) {
 				state.getListener().produceChangeCipherSpec(state);
 			}
 			
@@ -382,11 +395,9 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 					state.initialize(keySchedule, cipherSuite);
 				}
 				state.getTranscriptHash().update(HandshakeType.CLIENT_HELLO, clientHello);
-				state.getKeySchedule().deriveEarlyTrafficSecret();
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to create key schedule", e);
 			}			
-			state.getListener().onNewTrafficSecrets(state, RecordType.ZERO_RTT);
 		}
 		
 		if (isHRR) {
@@ -451,7 +462,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			int size = extensions.size();
 			KeyShareEntry entry = new KeyShareEntry(namedGroup, pair.getPublic());
 
-			state.storePrivateKey(namedGroup, pair.getPrivate());
+			state.addPrivateKey(namedGroup, pair.getPrivate());
 			for (int i=0; i<size; ++i) {
 				if (extensions.get(i).getType().equals(ExtensionType.KEY_SHARE)) {
 					extensions.set(i, new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entry));

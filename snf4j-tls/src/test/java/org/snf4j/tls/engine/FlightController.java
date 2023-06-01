@@ -35,6 +35,8 @@ public class FlightController {
 	
 	private final StringBuilder trace = new StringBuilder();
 	
+	public byte[] earlyData;
+	
 	void trace(String s) {
 		trace.append(s).append('|');
 	}
@@ -94,6 +96,8 @@ public class FlightController {
 	
 	void fly(TLSEngine engine, ByteBuffer in, ByteBuffer out) throws Exception {
 		IEngineResult r;
+		int pos;
+		int earlyData;
 		
 		switch (engine.getHandshakeStatus()) {
 		case NEED_WRAP:
@@ -103,12 +107,28 @@ public class FlightController {
 			break;
 			
 		case NEED_UNWRAP:
+			pos = out.position();
 			r = engine.unwrap(in, out);
-			if (r.bytesConsumed() == 0 && r.getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP) {
+			earlyData = out.position()-pos;
+			if (earlyData > 0) {
+				ByteBuffer dup = out.duplicate();
+				
+				dup.flip();
+				dup.position(pos);
+				this.earlyData = new byte[dup.remaining()];
+				dup.get(this.earlyData);
+			}
+			out.position(pos);
+			if (r.getStatus() == Status.BUFFER_UNDERFLOW) {
 				return;
 			}
 			else {
-				trace("U");
+				if (earlyData > 0) {
+					trace("Ued(" + earlyData +")");
+				}
+				else {
+					trace("U");
+				}
 				trace(engine, r);
 			}
 			break;

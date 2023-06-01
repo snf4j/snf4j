@@ -35,7 +35,7 @@ public class TestSession implements ISession {
 	
 	public byte[] data;
 	
-	TestSession(long id, int size) {
+	public TestSession(long id, int size) {
 		this.id = id;
 		data = new byte[size];
 	}

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -56,6 +56,22 @@ public class ArgsTest {
 		}
 		try {
 			Args.checkRange(1001, 100, 1000, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name is greater than 1000", e.getMessage());		
+		}
+
+		Args.checkRange(100L, 100L, 1000L, "name");
+		Args.checkRange(500L, 100L, 1000L, "name");
+		Args.checkRange(1000L, 100L, 1000L, "name");
+		try {
+			Args.checkRange(99L, 100L, 1000L, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name is less than 100", e.getMessage());		
+		}
+		try {
+			Args.checkRange(1001L, 100L, 1000L, "name");
 			fail();
 		} catch (IllegalArgumentException e) {
 			assertEquals("name is greater than 1000", e.getMessage());		
@@ -120,6 +136,18 @@ public class ArgsTest {
 		} catch (IllegalArgumentException e) {
 			assertEquals("name is greater than 99", e.getMessage());		
 		}
+
+		Args.checkMax(100L, 100L, "name");
+		Args.checkMax(99L, 100L, "name");
+		Args.checkMax(0L, 100L, "name");
+		Args.checkMax(-1L, 100L, "name");
+		try {
+			Args.checkMax(100L, 99L, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name is greater than 99", e.getMessage());		
+		}
+	
 	}
 
 	@Test

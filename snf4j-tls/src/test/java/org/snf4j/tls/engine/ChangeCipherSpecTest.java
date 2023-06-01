@@ -49,5 +49,6 @@ public class ChangeCipherSpecTest extends CommonTest {
 		ccs.getBytes(buffer);
 		assertArrayEquals(bytes(20,3,3,0,1,1), buffer());
 		assertArrayEquals(bytes(20,3,3,0,1,1), ccs.prepare());	
+		assertArrayEquals(bytes(20,3,3,0,1,1), ccs.getPrepared());	
 	}
 }

@@ -35,7 +35,7 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.snf4j.tls.CommonTest;
-import org.snf4j.tls.alert.DecryptErrorAlert;
+import org.snf4j.tls.alert.BadRecordMacAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.crypto.AESAead;
 import org.snf4j.tls.crypto.AeadDecrypt;
@@ -188,8 +188,9 @@ public class RecordTest extends CommonTest {
 			Record.unprotect(dup, dup.remaining()-5, decryptor, content);
 			fail();
 		}
-		catch (DecryptErrorAlert e) {
+		catch (BadRecordMacAlert e) {
 			assertEquals(0, content.position());
+			assertEquals(0, dup.position());
 		}
 	}
 	

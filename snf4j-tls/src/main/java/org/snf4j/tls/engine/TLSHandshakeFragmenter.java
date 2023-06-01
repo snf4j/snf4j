@@ -25,8 +25,11 @@
  */
 package org.snf4j.tls.engine;
 
+import static org.snf4j.tls.record.ContentType.APPLICATION_DATA;
+import static org.snf4j.tls.record.ContentType.HANDSHAKE;
 import java.nio.ByteBuffer;
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.engine.ProducedHandshake.Type;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IEncryptorHolder;
@@ -45,14 +48,18 @@ public class TLSHandshakeFragmenter extends AbstractHandshakeFragmenter {
 				: Record.HEADER_LENGTH + 1 + encryptor.getExpansion();
 	}
 	
+	private ContentType contentType(Type type) {
+		return type == Type.APPLICATION_DATA ? APPLICATION_DATA : HANDSHAKE;
+	}
+	
 	@Override
-	protected ByteBuffer prepareForContent(ByteBuffer dst, int contentLength, int maxFragmentLength, Encryptor encryptor) {
+	protected ByteBuffer prepareForContent(ByteBuffer dst, int contentLength, int maxFragmentLength, Type type, Encryptor encryptor) {
 		if (encryptor == null) {
-			Record.header(ContentType.HANDSHAKE, contentLength, dst);
+			Record.header(HANDSHAKE, contentLength, dst);
 			return dst;
 		}
 		else {
-			int padding = handshaker.getHandler().calculatePadding(ContentType.HANDSHAKE, contentLength);
+			int padding = handshaker.getHandler().calculatePadding(contentType(type), contentLength);
 			
 			if (padding > 0) {
 				padding = Math.min(padding, maxFragmentLength-contentLength);
@@ -62,12 +69,13 @@ public class TLSHandshakeFragmenter extends AbstractHandshakeFragmenter {
 	}
 	
 	@Override
-	protected int wrap(ByteBuffer content, int contentLength, Encryptor encryptor, ByteBuffer dst) throws Alert {
+	protected int wrap(ByteBuffer content, int contentLength, Type type, Encryptor encryptor, ByteBuffer dst) throws Alert {
 		if (encryptor == null) {
 			return contentLength + Record.HEADER_LENGTH;
 		}
-		content.put((byte) ContentType.HANDSHAKE.value());
+		content.put((byte) contentType(type).value());
 		content.position(0);
 		return Record.protect(content, encryptor, dst);
 	}
+
 }

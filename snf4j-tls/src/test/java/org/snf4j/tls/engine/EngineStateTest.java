@@ -27,22 +27,38 @@ package org.snf4j.tls.engine;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.security.KeyPair;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+
+import javax.crypto.Mac;
+
 import org.junit.Test;
+import org.snf4j.tls.CommonTest;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.crypto.DHKeyExchange;
+import org.snf4j.tls.crypto.Hkdf;
+import org.snf4j.tls.crypto.KeySchedule;
+import org.snf4j.tls.crypto.TranscriptHash;
 import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
+import org.snf4j.tls.handshake.CertificateType;
+import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.ISession;
+import org.snf4j.tls.session.TestSession;
 
-public class EngineStateTest {
+public class EngineStateTest extends CommonTest {
 
 	static ServerHello serverHello(int version) {
 		return new ServerHello(
@@ -53,6 +69,16 @@ public class EngineStateTest {
 				(byte)0, 
 				new ArrayList<IExtension>());
 	}
+
+	static ClientHello clientHello(int version) {
+		return new ClientHello(
+				version, 
+				new byte[32], 
+				new byte[0], 
+				new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256}, 
+				new byte[0], 
+				new ArrayList<IExtension>());
+	}
 	
 	static ProducedHandshake handshake(int id) {
 		return new ProducedHandshake(serverHello(id), RecordType.INITIAL);
@@ -60,6 +86,17 @@ public class EngineStateTest {
 	
 	static int id(ProducedHandshake handshake) {
 		return ((ServerHello)handshake.getHandshake()).getLegacyVersion();
+	}
+	
+	@Test
+	public void testConstructor() {
+		TestParameters p = new TestParameters();
+		TestHandshakeHandler h = new TestHandshakeHandler();
+		TestHandshakeHandler l = new TestHandshakeHandler();
+		EngineState state = new EngineState(MachineState.CLI_INIT,p,h,l); 
+		assertSame(p, state.getParameters());
+		assertSame(h, state.getHandler());
+		assertSame(l, state.getListener());
 	}
 	
 	@Test
@@ -85,6 +122,170 @@ public class EngineStateTest {
 		state.setPskModes(new PskKeyExchangeMode[] {});
 		assertFalse(state.hasPskMode(PskKeyExchangeMode.PSK_KE));
 		assertFalse(state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE));
+	}
+	
+	@Test
+	public void testStorePrivateKey() throws Exception {
+		KeyPair pair1 = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM);
+		KeyPair pair2 = DHKeyExchange.FFDHE3072.generateKeyPair(RANDOM);
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+		
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE2048));
+		state.addPrivateKey(NamedGroup.FFDHE2048, pair1.getPrivate());
+		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE3072));
+		state.addPrivateKey(NamedGroup.FFDHE3072, pair2.getPrivate());
+		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048));
+		assertSame(pair2.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE3072));
+		state.clearPrivateKeys();
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE2048));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE3072));
+		state.clearPrivateKeys();
+	}
+	
+	@Test
+	public void testPskContext() throws Exception {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+		TranscriptHash th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
+		Hkdf h = new Hkdf(Mac.getInstance("HmacSHA256"));
+		KeySchedule ks = new KeySchedule(h, th, CipherSuite.TLS_AES_128_GCM_SHA256.spec());
+		PskContext psk1 = new PskContext(ks);
+		PskContext psk2 = new PskContext(ks);
+		
+		assertNull(state.getPskContexts());
+		state.addPskContext(psk1);
+		assertEquals(1, state.getPskContexts().size());
+		assertSame(psk1, state.getPskContexts().get(0));
+		state.addPskContext(psk2);
+		assertEquals(2, state.getPskContexts().size());
+		assertSame(psk1, state.getPskContexts().get(0));
+		assertSame(psk2, state.getPskContexts().get(1));
+		assertSame(state.getPskContexts(), state.getPskContexts());
+		state.clearPskContexts();
+		assertNull(state.getPskContexts());
+		state.clearPskContexts();
+		assertNull(state.getPskContexts());
+	}
+	
+	@Test
+	public void testState() throws Exception {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+
+		assertSame(MachineState.CLI_INIT, state.getState());
+		assertFalse(state.isStarted());
+		assertFalse(state.isConnected());
+		assertTrue(state.isClientMode());
+		state.changeState(MachineState.CLI_WAIT_1_SH);
+		assertSame(MachineState.CLI_WAIT_1_SH, state.getState());
+		assertTrue(state.isStarted());
+		assertFalse(state.isConnected());
+		state.changeState(MachineState.CLI_CONNECTED);
+		assertSame(MachineState.CLI_CONNECTED, state.getState());
+		assertTrue(state.isStarted());
+		assertTrue(state.isConnected());
+		
+		state = new EngineState(
+				MachineState.SRV_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+
+		assertSame(MachineState.SRV_INIT, state.getState());
+		assertFalse(state.isStarted());
+		assertFalse(state.isConnected());
+		assertFalse(state.isClientMode());
+		state.changeState(MachineState.SRV_WAIT_1_CH);
+		assertSame(MachineState.SRV_WAIT_1_CH, state.getState());
+		assertTrue(state.isStarted());
+		assertFalse(state.isConnected());
+		state.changeState(MachineState.SRV_CONNECTED);
+		assertSame(MachineState.SRV_CONNECTED, state.getState());
+		assertTrue(state.isStarted());
+		assertTrue(state.isConnected());
+	}
+
+	@Test
+	public void testInitialize() throws Exception {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+		
+		assertFalse(state.isInitialized());
+		
+		Hkdf h = new Hkdf(Mac.getInstance("HmacSHA256"));
+		TranscriptHash th1 = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
+		TranscriptHash th2 = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
+		KeySchedule ks = new KeySchedule(h, th1, CipherSuite.TLS_AES_128_GCM_SHA256.spec());
+		state.initialize(ks, CipherSuite.TLS_AES_128_GCM_SHA256);
+		assertTrue(state.isInitialized());
+		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, state.getCipherSuite());
+		assertSame(th1, state.getTranscriptHash());
+		state.setTranscriptHash(th2);
+		assertSame(th2, state.getTranscriptHash());
+		assertSame(ks, state.getKeySchedule());
+	}
+	
+	@Test
+	public void testGetters() {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+		ClientHello ch = clientHello(111);
+		CertificateCriteria cc = new CertificateCriteria(CertificateType.X509, null, null, null);
+		ISession session = new TestSession(1,100);
+		EarlyDataContext ctx = new EarlyDataContext(100);
+		
+		assertNull(state.getHostName());
+		state.setHostName("host");
+		assertEquals("host", state.getHostName());
+		assertEquals(0, state.getVersion());
+		state.setVersion(111);
+		assertEquals(111, state.getVersion());
+		assertNull(state.getClientHello());
+		state.setClientHello(ch);
+		assertSame(ch, state.getClientHello());
+		assertNull(state.getCertCryteria());
+		state.setCertCryteria(cc);
+		assertSame(cc, state.getCertCryteria());
+		assertSame(NoneEarlyDataContext.INSTANCE, state.getEarlyDataContext());
+		state.setEarlyDataContext(ctx);
+		assertSame(ctx, state.getEarlyDataContext());
+		state.setEarlyDataContext(null);
+		assertSame(NoneEarlyDataContext.INSTANCE, state.getEarlyDataContext());
+		assertNull(state.getNamedGroup());
+		state.setNamedGroup(NamedGroup.FFDHE3072);
+		assertSame(NamedGroup.FFDHE3072, state.getNamedGroup());
+		assertNull(state.getSession());
+		state.setSession(session);
+		assertSame(session, state.getSession());
+	}
+
+	@Test
+	public void testGetSessionInfo() {
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				new TestHandshakeHandler());
+		
+		assertNotNull(state.getSessionInfo());
+		assertSame(state.getSessionInfo(), state.getSessionInfo());
 	}
 	
 	@Test
@@ -154,7 +355,7 @@ public class EngineStateTest {
 		assertEquals(0, state.getProduced().length);
 
 		state.prepare(handshake(5));
-		state.prepare(handshake(6));
+		state.produce(handshake(6));
 		produced = state.getProduced();
 		assertEquals(2, produced.length);
 		assertEquals(5, id(produced[0]));

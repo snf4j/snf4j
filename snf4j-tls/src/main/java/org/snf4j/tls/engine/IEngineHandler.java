@@ -42,6 +42,14 @@ public interface IEngineHandler {
 	
 	long getKeyLimit(CipherSuite cipher, long defaultValue);
 	
+	long getMaxEarlyDataSize();
+	
+	TicketInfo[] createNewTickets();
+	
+	boolean hasEarlyData();
+	
+	byte[] nextEarlyData();
+	
 	ISessionManager getSessionManager();
 
 }

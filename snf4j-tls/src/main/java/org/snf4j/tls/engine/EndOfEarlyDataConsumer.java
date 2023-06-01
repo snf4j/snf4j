@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,38 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-public interface IEndOfEarlyData  extends IHandshake {
+import java.nio.ByteBuffer;
+
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.record.RecordType;
+
+public class EndOfEarlyDataConsumer implements IHandshakeConsumer {
+
+	@Override
+	public HandshakeType getType() {
+		return HandshakeType.END_OF_EARLY_DATA;
+	}
+
+	@Override
+	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
+		if (state.getState() != MachineState.SRV_WAIT_EOED) {
+			throw new UnexpectedMessageAlert("Unexpected EndOfEarlyData");
+		}
+		
+		state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);
+		try {
+			ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+		} catch (Exception e) {
+			throw new InternalErrorAlert("Failed to compute server verify data", e);
+		}
+		state.getEarlyDataContext().complete();
+		state.changeState(MachineState.SRV_WAIT_FINISHED);
+	}
 
 }

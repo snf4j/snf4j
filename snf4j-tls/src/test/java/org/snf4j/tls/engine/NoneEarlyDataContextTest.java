@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,26 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-public interface IEndOfEarlyData  extends IHandshake {
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import org.junit.Test;
 
+public class NoneEarlyDataContextTest {
+
+	@Test
+	public void testAll() {
+		IEarlyDataContext ctx = NoneEarlyDataContext.INSTANCE;
+		
+		assertSame(EarlyDataState.NONE, ctx.getState());
+		assertFalse(ctx.isSizeLimitExceeded());
+		ctx.incProcessedBytes(Integer.MAX_VALUE);
+		ctx.incProcessedBytes(Integer.MAX_VALUE);
+		assertFalse(ctx.isSizeLimitExceeded());
+		ctx.reject();
+		assertSame(EarlyDataState.NONE, ctx.getState());
+		ctx.complete();
+		assertSame(EarlyDataState.NONE, ctx.getState());
+	}
 }

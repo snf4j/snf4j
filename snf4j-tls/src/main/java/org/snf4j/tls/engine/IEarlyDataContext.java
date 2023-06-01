@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,38 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-public interface IEndOfEarlyData  extends IHandshake {
+public interface IEarlyDataContext {
+	
+	/**
+	 * Gets the status of an early data processing.
+	 * 
+	 * @return the status
+	 */
+	EarlyDataState getState();
+	
+	/**
+	 * Marks the processing of an early data as completed successfully.
+	 */
+	void complete();
 
+	/**
+	 * Marks the processing of an early data as rejected.
+	 */
+	void reject();
+		
+	/**
+	 * Increments the number of already processed early-data bytes.
+	 * 
+	 * @param amount the amount of bytes to increment
+	 */
+	void incProcessedBytes(int amount);
+	
+	/**
+	 * Tells if the maximum size limit of processed bytes has been exceeded.
+	 * 
+	 * @return {@code if the maximum size limit has been exceeded
+	 */
+	boolean isSizeLimitExceeded();
 }

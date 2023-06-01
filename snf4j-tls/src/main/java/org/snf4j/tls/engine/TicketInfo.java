@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,25 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-public interface IEndOfEarlyData  extends IHandshake {
+import org.snf4j.tls.Args;
 
+public class TicketInfo {
+	
+	private final long maxEarlyDataSize;
+
+	public TicketInfo() {
+		this.maxEarlyDataSize = -1;
+	}
+
+	public TicketInfo(long maxEarlyDataSize) {
+		Args.checkRange(maxEarlyDataSize, 0L, 0xffff_ffffL, "maxEarlyDataSize");
+		this.maxEarlyDataSize = maxEarlyDataSize;
+	}
+	
+	public long getMaxEarlyDataSize() {
+		return maxEarlyDataSize;
+	}
+	
 }

@@ -54,9 +54,7 @@ public class EngineState implements IEngineState, IEngineProducer {
 	private final Queue<IEngineTask> tasks = new LinkedList<IEngineTask>();
 	
 	private final Queue<IEngineTask> runningTasks = new LinkedList<IEngineTask>();
-	
-	private final List<KeySharePrivateKey> privateKeys = new ArrayList<KeySharePrivateKey>();
-	
+		
 	private final SessionInfo sessionInfo = new SessionInfo();
 
 	private final IEngineParameters parameters;
@@ -77,6 +75,8 @@ public class EngineState implements IEngineState, IEngineProducer {
 		
 	private IClientHello clientHello;
 	
+	private List<KeySharePrivateKey> privateKeys;
+
 	private List<PskContext> psks;
 	
 	private int pskModes;
@@ -94,6 +94,8 @@ public class EngineState implements IEngineState, IEngineProducer {
 	private int maxFragmentLength = 16384;
 		
 	private CertificateCriteria certCryteria;
+	
+	private IEarlyDataContext earlyDataContext = NoneEarlyDataContext.INSTANCE;
 	
 	public EngineState(MachineState state, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener) {
 		this.state = state;
@@ -326,21 +328,29 @@ public class EngineState implements IEngineState, IEngineProducer {
 		}
 	}
 	
-	public void storePrivateKey(NamedGroup group, PrivateKey key) {
+	public void addPrivateKey(NamedGroup group, PrivateKey key) {
+		if (privateKeys == null) {
+			privateKeys = new ArrayList<KeySharePrivateKey>();
+		}
 		privateKeys.add(new KeySharePrivateKey(group, key));
 	}
 
 	public PrivateKey getPrivateKey(NamedGroup group) {
-		for (KeySharePrivateKey privateKey: privateKeys) {
-			if (privateKey.getGroup().equals(group)) {
-				return privateKey.getKey();
+		if (privateKeys != null) {
+			for (KeySharePrivateKey privateKey: privateKeys) {
+				if (privateKey.getGroup().equals(group)) {
+					return privateKey.getKey();
+				}
 			}
 		}
 		return null;
 	}
 
 	public void clearPrivateKeys() {
-		privateKeys.clear();
+		if (privateKeys != null) {
+			privateKeys.clear();
+			privateKeys = null;
+		}
 	}
 	
 	@Override
@@ -348,6 +358,15 @@ public class EngineState implements IEngineState, IEngineProducer {
 		return maxFragmentLength;
 	}
 	
+	@Override
+	public IEarlyDataContext getEarlyDataContext() {
+		return earlyDataContext;
+	}
+	
+	public void setEarlyDataContext(IEarlyDataContext context) {
+		earlyDataContext = context == null ? NoneEarlyDataContext.INSTANCE : context;
+	}
+
 	public void addPskContext(PskContext psk) {
 		if (psks == null) {
 			psks = new LinkedList<PskContext>();

@@ -33,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.snf4j.tls.CommonTest;
-import org.snf4j.tls.cipher.HashSpec;
+import org.snf4j.tls.cipher.CipherSuite;
 
 public class SessionTicketTest extends CommonTest {
 
@@ -42,19 +42,19 @@ public class SessionTicketTest extends CommonTest {
 		byte[] psk = new byte[10];
 		byte[] ticket = new byte[5];
 		
-		SessionTicket st = new SessionTicket(HashSpec.SHA256, psk, ticket, 100, 111, 1000);
-		assertSame(HashSpec.SHA256, st.getHashSpec());
+		SessionTicket st = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, psk, ticket, 100, 111, 666, 1000);
+		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, st.getCipherSuite());
 		assertArrayEquals(psk, st.getPsk());
 		assertArrayEquals(ticket, st.getTicket());
 		assertEquals(111, st.getAgeAdd());
 		assertEquals(1000L, st.getCreationTime());
-		assertEquals(-1, st.getMaxEarlyDataSize());
+		assertEquals(666, st.getMaxEarlyDataSize());
 		assertTrue(st.isValid(1000-1+100000));
 		assertFalse(st.isValid(1000+100000));
 		
 		long time = System.currentTimeMillis();
-		st = new SessionTicket(HashSpec.SHA384, psk, ticket, 1, 111111);
-		assertSame(HashSpec.SHA384, st.getHashSpec());
+		st = new SessionTicket(CipherSuite.TLS_AES_256_GCM_SHA384, psk, ticket, 1, 111111, -1);
+		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, st.getCipherSuite());
 		assertTrue(st.getCreationTime() >= time);
 		assertEquals(111111, st.getAgeAdd());
 		assertTrue(st.isValid());
@@ -62,5 +62,6 @@ public class SessionTicketTest extends CommonTest {
 		assertTrue(st.isValid());
 		waitFor(600);
 		assertFalse(st.isValid());
+		assertEquals(-1, st.getMaxEarlyDataSize());
 	}
 }

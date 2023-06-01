@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,18 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.alert;
 
-public interface IEndOfEarlyData  extends IHandshake {
+public class BadRecordMacAlert extends Alert {
+
+	private static final long serialVersionUID = 1L;
+
+	public BadRecordMacAlert(String message) {
+		super(message, AlertDescription.BAD_RECORD_MAC);
+	}
+	
+	public BadRecordMacAlert(String message, Throwable cause) {
+		super(message, AlertDescription.BAD_RECORD_MAC, cause);
+	}
 
 }

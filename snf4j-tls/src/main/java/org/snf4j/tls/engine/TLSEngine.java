@@ -46,6 +46,7 @@ import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.tls.alert.AlertDescription;
 import org.snf4j.tls.alert.AlertLevel;
+import org.snf4j.tls.alert.BadRecordMacAlert;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.CloseNotifyAlert;
 import org.snf4j.tls.alert.DecodeErrorAlert;
@@ -493,15 +494,36 @@ public class TLSEngine implements IEngine {
 		return wrap(src, null, dst);
 	}
 
-	private IEngineResult unwrapAppData(ByteBuffer src, int length) throws Alert {
+	private IEngineResult unwrapAppData(ByteBuffer src, int length, boolean rejectEarlyData) throws Alert {
 		Decryptor decryptor = listener.getDecryptor();
 		byte[] plaintext = new byte[length - decryptor.getExpansion()];		
+		int remaining;
 		
-		int remaining = Record.unprotect(
-				src, 
-				length, 
-				decryptor, 
-				ByteBuffer.wrap(plaintext)) - 1;
+		try {
+			remaining = Record.unprotect(
+					src, 
+					length, 
+					decryptor, 
+					ByteBuffer.wrap(plaintext)) - 1;
+		}
+		catch (BadRecordMacAlert e) {
+			if (rejectEarlyData) {
+				IEarlyDataContext ctx = handshaker.getState().getEarlyDataContext();
+				
+				ctx.incProcessedBytes(plaintext.length);
+				if (!ctx.isSizeLimitExceeded()) {
+					int consumed = Record.HEADER_LENGTH + length;
+
+					src.position(src.position() + consumed);
+					return new EngineResult(
+							OK, 
+							getHandshakeStatus(), 
+							consumed, 
+							0);		
+				}
+			}
+			throw e;
+		}
 
 		if (remaining > handshaker.getState().getMaxFragmentLength()) {
 			throw new RecordOverflowAlert("Encrypted record is too big");
@@ -537,7 +559,7 @@ public class TLSEngine implements IEngine {
 		throw new UnexpectedMessageAlert("Received unexpected record content type (" + type + ")");
 	}
 
-	private IEngineResult unwrapAppData(ByteBuffer src, ByteBuffer dst) throws Alert {
+	private IEngineResult unwrapAppData(ByteBuffer src, ByteBuffer dst, boolean earlyData) throws Alert {
 		int remaining = src.remaining();
 		
 		if (remaining >= Record.HEADER_LENGTH) {
@@ -615,9 +637,17 @@ public class TLSEngine implements IEngine {
 				produced -= padding;
 				
 				if (type == ContentType.APPLICATION_DATA.value()) {
+					if (earlyData) {
+						IEarlyDataContext ctx = handshaker.getState().getEarlyDataContext();
+						
+						ctx.incProcessedBytes(produced);
+						if (ctx.isSizeLimitExceeded()) {
+							throw new UnexpectedMessageAlert("Early data is too big");
+						}
+					}
 					return checkKeyLimit(decryptor, new EngineResult(
 							OK,
-							NOT_HANDSHAKING,
+							getHandshakeStatus(),
 							length + Record.HEADER_LENGTH,
 							produced));
 				}
@@ -729,7 +759,7 @@ public class TLSEngine implements IEngine {
 		throw new UnexpectedMessageAlert("Invalid change_cipher_spec message");
 	}
 	
-	private IEngineResult unwrap(ByteBuffer src) throws Alert {
+	private IEngineResult unwrap(ByteBuffer src, boolean rejectEarlyData) throws Alert {
 		int remaining = src.remaining();
 		
 		if (remaining >= Record.HEADER_LENGTH) {
@@ -742,7 +772,7 @@ public class TLSEngine implements IEngine {
 					if (len > handshaker.getState().getMaxFragmentLength() + 256) {
 						throw new RecordOverflowAlert("Encrypted record is too big");
 					}
-					return unwrapAppData(src, len);
+					return unwrapAppData(src, len, rejectEarlyData);
 				}
 				if (len > handshaker.getState().getMaxFragmentLength()) {
 					throw new RecordOverflowAlert("Record fragment is too big");
@@ -804,7 +834,7 @@ public class TLSEngine implements IEngine {
 						0);
 
 			case NOT_HANDSHAKING:
-				return unwrapAppData(src, dst);
+				return unwrapAppData(src, dst, false);
 
 			default:
 				if (handshaker.updateTasks()) {
@@ -850,7 +880,18 @@ public class TLSEngine implements IEngine {
 				default:
 				}
 			}
-			return unwrap(src);
+			
+			if (!handshaker.getState().isClientMode()) {
+				IEarlyDataContext ctx = handshaker.getState().getEarlyDataContext();
+				
+				if (ctx.getState() == EarlyDataState.IN_PROGRESS) {
+					return unwrapAppData(src, dst, true);
+				}
+				if (ctx.getState() == EarlyDataState.REJECTED) {
+					return unwrap(src, true);
+				}
+			}
+			return unwrap(src, false);
 		}
 		catch (Exception e) {
 			dst.reset();

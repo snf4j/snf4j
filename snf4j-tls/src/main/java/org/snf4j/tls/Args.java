@@ -71,7 +71,22 @@ public final class Args {
 		}
 	}
 
+	public static void checkRange(long value, long min, long max, String name) {
+		if (value < min) {
+			throw new IllegalArgumentException(name + " is less than " + min);
+		}
+		if (value > max) {
+			throw new IllegalArgumentException(name + " is greater than " + max);
+		}
+	}
+	
 	public static void checkMax(int value, int max, String name) {
+		if (value > max) {
+			throw new IllegalArgumentException(name + " is greater than " + max);
+		}
+	}
+
+	public static void checkMax(long value, long max, String name) {
 		if (value > max) {
 			throw new IllegalArgumentException(name + " is greater than " + max);
 		}

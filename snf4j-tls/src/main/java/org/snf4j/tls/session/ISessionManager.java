@@ -26,7 +26,7 @@
 package org.snf4j.tls.session;
 
 import org.snf4j.tls.cipher.IHashSpec;
-import org.snf4j.tls.engine.EngineState;
+import org.snf4j.tls.engine.IEngineState;
 import org.snf4j.tls.extension.OfferedPsk;
 import org.snf4j.tls.handshake.NewSessionTicket;
 
@@ -48,5 +48,5 @@ public interface ISessionManager {
 	
 	SessionTicket[] getTickets(ISession session);
 	
-	NewSessionTicket newTicket(EngineState state) throws Exception;
+	NewSessionTicket newTicket(IEngineState state, long maxEarlyDataSize) throws Exception;
 }

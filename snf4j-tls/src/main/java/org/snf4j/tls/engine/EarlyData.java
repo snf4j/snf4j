@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,66 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.handshake;
+package org.snf4j.tls.engine;
 
-public interface IEndOfEarlyData  extends IHandshake {
+import java.nio.ByteBuffer;
+import java.util.List;
+
+import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
+
+public class EarlyData implements IHandshake {
+
+	private final byte[] data;
+	
+	public EarlyData(byte[] data) {
+		this.data = data;
+	}
+	
+	@Override
+	public HandshakeType getType() {
+		return null;
+	}
+
+	@Override
+	public void getBytes(ByteBuffer buffer) {
+		buffer.put(data);
+	}
+
+	@Override
+	public int getLength() {
+		return data.length;
+	}
+
+	@Override
+	public int getDataLength() {
+		return data.length;
+	}
+
+	@Override
+	public boolean isKnown() {
+		return true;
+	}
+
+	@Override
+	public boolean isPrepared() {
+		return true;
+	}
+
+	@Override
+	public byte[] prepare() {
+		return data;
+	}
+
+	@Override
+	public byte[] getPrepared() {
+		return prepare();
+	}
+
+	@Override
+	public List<IExtension> getExtensions() {
+		return null;
+	}
 
 }

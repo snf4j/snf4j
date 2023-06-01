@@ -45,6 +45,7 @@ import org.snf4j.tls.crypto.IHkdf;
 import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.crypto.TranscriptHash;
+import org.snf4j.tls.extension.EarlyDataExtension;
 import org.snf4j.tls.extension.ExtensionValidator;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionValidator;
@@ -98,6 +99,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 		addConsumer(CONSUMERS, new FinishedConsumer());
 		addConsumer(CONSUMERS, new NewSessionTicketConsumer());
 		addConsumer(CONSUMERS, new KeyUpdateConsumer());
+		addConsumer(CONSUMERS, new EndOfEarlyDataConsumer());
 	}
 	
 	private final IHandshakeDecoder decoder;
@@ -336,7 +338,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 				
 				for (int i=0; i<offered; ++i) {
 					entries[i] = new KeyShareEntry(namedGroups[i], pairs[i].getPublic());
-					state.storePrivateKey(namedGroups[i], pairs[i].getPrivate());
+					state.addPrivateKey(namedGroups[i], pairs[i].getPrivate());
 				}
 				extensions.add(new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries));
 			} catch (Exception e) {
@@ -345,14 +347,16 @@ public class HandshakeEngine implements IHandshakeEngine {
 			
 			SessionTicket[] tickets = EMPTY;
 			OfferedPsk[] psks = null;
+			boolean earlyData = false;
 			
 			if (modes.length > 0) {
 				extensions.add(new PskKeyExchangeModesExtension(modes));
 				ISession session = state.getSession();
+				IEngineHandler handler = state.getHandler();
 				ISessionManager manager;
 				
 				if (session == null) {
-					manager = state.getHandler().getSessionManager();
+					manager = handler.getSessionManager();
 					if (peerHost != null) {
 						session = manager.getSession(peerHost, params.getPeerPort());
 						state.setSession(session);
@@ -369,18 +373,41 @@ public class HandshakeEngine implements IHandshakeEngine {
 					if (ticketsLen > 0) {
 						int offerHashes = 0;
 						int offered = 0;
+						int earlyDataTicket = -1;
 						
 						for (CipherSuite cipherSuite: cipherSuites) {
 							offerHashes |= 1 << cipherSuite.spec().getHashSpec().getOrdinal();
 						}
 						
 						for (int i=0; i<ticketsLen; ++i) {
-							if ((offerHashes & (1 << tickets[i].getHashSpec().getOrdinal())) == 0) {
+							SessionTicket ticket = tickets[i];
+							
+							if ((offerHashes & (1 << ticket.getCipherSuite().spec().getHashSpec().getOrdinal())) == 0) {
 								tickets[i] = null;
 							}
 							else {
 								++offered;
+								if (earlyDataTicket == -1 && ticket.getMaxEarlyDataSize() > 0) {
+									for (CipherSuite cipherSuite: cipherSuites) {
+										if (ticket.getCipherSuite().equals(cipherSuite)) {
+											earlyDataTicket = i;
+											break;
+										}
+									}
+								}
 							}
+						}
+						
+						if (earlyDataTicket != -1 && handler.hasEarlyData()) {
+							earlyData = true;
+							extensions.add(new EarlyDataExtension());
+							if (earlyDataTicket > 0) {
+								SessionTicket tmp = tickets[0];
+
+								tickets[0] = tickets[earlyDataTicket];
+								tickets[earlyDataTicket] = tmp;
+							}
+							state.setEarlyDataContext(new EarlyDataContext(tickets[0].getMaxEarlyDataSize()));
 						}
 						
 						if (offered > 0) {
@@ -393,7 +420,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 
 									psks[i++] = new OfferedPsk(
 											new PskIdentity(ticket.getTicket(), obfuscatedAge), 
-											new byte[ticket.getHashSpec().getHashLength()]);
+											new byte[ticket.getCipherSuite().spec().getHashSpec().getHashLength()]);
 								}
 							}
 							extensions.add(new PreSharedKeyExtension(psks));
@@ -417,10 +444,10 @@ public class HandshakeEngine implements IHandshakeEngine {
 				
 				try {
 					for (SessionTicket ticket: tickets) {
-						IHash hash = ticket.getHashSpec().getHash();
+						IHash hash = ticket.getCipherSuite().spec().getHashSpec().getHash();
 						ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
 						IHkdf hkdf = new Hkdf(hash.createMac());
-						KeySchedule keyScheduler = new KeySchedule(hkdf, th, ticket.getHashSpec());
+						KeySchedule keyScheduler = new KeySchedule(hkdf, th, ticket.getCipherSuite().spec().getHashSpec());
 						
 						keyScheduler.deriveEarlySecret(ticket.getPsk(), false);
 						keyScheduler.deriveBinderKey();
@@ -436,7 +463,40 @@ public class HandshakeEngine implements IHandshakeEngine {
 			}
 			
 			state.setClientHello(clientHello);
-			state.produce(new ProducedHandshake(clientHello, RecordType.INITIAL));
+			
+			if (earlyData) {
+				try {
+					PskContext psk = state.getPskContexts().get(0);
+					IHash hash = psk.getTicket().getCipherSuite().spec().getHashSpec().getHash();
+					ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
+					IHkdf hkdf = new Hkdf(hash.createMac());
+					KeySchedule keySchedule = new KeySchedule(hkdf, th, psk.getTicket().getCipherSuite().spec().getHashSpec());
+					
+					keySchedule.setCipherSuiteSpec(psk.getTicket().getCipherSuite().spec());
+					keySchedule.deriveEarlySecret(psk.getTicket().getPsk(), false);
+					keySchedule.getTranscriptHash().update(HandshakeType.CLIENT_HELLO, clientHello.getPrepared());
+					keySchedule.deriveEarlyTrafficSecret();
+					state.getListener().onNewTrafficSecrets(new EngineStateWrapper(state, keySchedule),	RecordType.ZERO_RTT);
+				}
+				catch (Exception e) {
+					throw new InternalErrorAlert("Failed to derive early traffic secret", e);
+				}
+				state.produce(new ProducedHandshake(clientHello, RecordType.INITIAL, RecordType.ZERO_RTT));
+				
+				//CCS after first ClientHello (early data offered)
+				if (params.isCompatibilityMode()) {
+					state.getListener().produceChangeCipherSpec(state);
+				}
+				
+				byte[] data;
+				while ((data = state.getHandler().nextEarlyData()) != null) {
+					state.produce(new ProducedHandshake(new EarlyData(data), RecordType.ZERO_RTT));
+				}
+			}
+			else {
+				state.produce(new ProducedHandshake(clientHello, RecordType.INITIAL));
+			}
+			
 			state.changeState(MachineState.CLI_WAIT_1_SH);
 		}
 

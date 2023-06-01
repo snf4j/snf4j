@@ -314,13 +314,6 @@ public class ServerHelloConsumerTest extends EngineTest {
 	@Test(expected = InternalErrorAlert.class)
 	public void testConsumeEx1() throws Exception {
 		ServerHello sh = serverHello(0x0303);
-		handler.onETSException = new InternalErrorAlert("");
-		new ServerHelloConsumer().consume(state, sh, data(sh), false);
-	}
-
-	@Test(expected = InternalErrorAlert.class)
-	public void testConsumeEx2() throws Exception {
-		ServerHello sh = serverHello(0x0303);
 		handler.onHTSException = new InternalErrorAlert("");
 		new ServerHelloConsumer().consume(state, sh, data(sh), false);
 	}
@@ -407,7 +400,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 
 		assertNull(ServerHelloConsumer.removeNoPskKeySchedule(state));
 		
-		SessionTicket st = new SessionTicket(HashSpec.SHA256, bytes(1), bytes(2), 0, 0);
+		SessionTicket st = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, bytes(1), bytes(2), 0, 0, -1);
 		state.addPskContext(new PskContext(ks1, st));
 		state.addPskContext(new PskContext(ks2, st));
 		
