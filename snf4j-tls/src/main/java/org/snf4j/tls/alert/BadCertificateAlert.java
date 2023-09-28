@@ -23,42 +23,18 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.alert;
 
-import org.snf4j.tls.cipher.CipherSuite;
+public class BadCertificateAlert extends Alert {
+	
+	private static final long serialVersionUID = 1L;
 
-public interface IEarlyDataContext {
+	public BadCertificateAlert(String message) {
+		super(message, AlertDescription.BAD_CERTIFICATE);
+	}
 	
-	/**
-	 * Gets the status of an early data processing.
-	 * 
-	 * @return the status
-	 */
-	EarlyDataState getState();
-	
-	/**
-	 * Marks the processing of an early data as completed.
-	 */
-	void complete();
+	public BadCertificateAlert(String message, Throwable cause) {
+		super(message, AlertDescription.BAD_CERTIFICATE, cause);
+	}
 
-	/**
-	 * Marks the processing of an early data as rejecting.
-	 */
-	void rejecting();
-		
-	/**
-	 * Increments the number of already processed early-data bytes.
-	 * 
-	 * @param amount the amount of bytes to increment
-	 */
-	void incProcessedBytes(int amount);
-	
-	/**
-	 * Tells if the maximum size limit of processed bytes has been exceeded.
-	 * 
-	 * @return {@code if the maximum size limit has been exceeded
-	 */
-	boolean isSizeLimitExceeded();
-	
-	CipherSuite getCipherSuite();
 }

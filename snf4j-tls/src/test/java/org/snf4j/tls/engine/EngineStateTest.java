@@ -249,7 +249,7 @@ public class EngineStateTest extends CommonTest {
 		ClientHello ch = clientHello(111);
 		CertificateCriteria cc = new CertificateCriteria(CertificateType.X509, null, null, null);
 		ISession session = new TestSession(1,100);
-		EarlyDataContext ctx = new EarlyDataContext(100);
+		EarlyDataContext ctx = new EarlyDataContext(CipherSuite.TLS_AES_128_GCM_SHA256,100);
 		
 		assertNull(state.getHostName());
 		state.setHostName("host");

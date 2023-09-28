@@ -116,6 +116,16 @@ public class AbstractExtensionsParserTest extends ExtensionTest {
 		assertTrue(p.isComplete());
 		assertEquals(2, p.getExtensions().size());
 		assertEquals(10, p.getConsumedBytes());
+		
+		p = new Parser(0, 0xffff, new TestExtensionParser(ExtensionType.SERVER_NAME));
+		p.parse(HandshakeType.CLIENT_HELLO, array(bytes(0,8,0,0,0,0,0,1,0,0,-1,-1), 0),12);
+		assertTrue(p.isComplete());
+		assertEquals(10, p.getConsumedBytes());	
+
+		p = new Parser(0, 0xffff, new TestExtensionParser(ExtensionType.SERVER_NAME));
+		p.parse(HandshakeType.CLIENT_HELLO, array(bytes(0,0,-1,-1), 0),4);
+		assertTrue(p.isComplete());
+		assertEquals(2, p.getConsumedBytes());	
 	}
 	
 	@Test

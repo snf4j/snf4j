@@ -72,7 +72,9 @@ import org.snf4j.tls.extension.ParsedKey;
 import org.snf4j.tls.extension.PreSharedKeyExtension;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.ServerNameExtension;
+import org.snf4j.tls.extension.SignatureAlgorithmsCertExtension;
 import org.snf4j.tls.extension.SignatureAlgorithmsExtension;
+import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
 import org.snf4j.tls.extension.SupportedVersionsExtension;
 import org.snf4j.tls.handshake.Certificate;
@@ -188,7 +190,10 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			if (!state.hasPskMode(PskKeyExchangeMode.PSK_DHE_KE)) {
 				preSharedKey = null;
 				if (earlyData) {
-					state.setEarlyDataContext(new EarlyDataContext(true, state.getHandler().getMaxEarlyDataSize()));
+					state.setEarlyDataContext(new EarlyDataContext(
+							cipherSuite, 
+							true, 
+							state.getHandler().getMaxEarlyDataSize()));
 					earlyData = false;
 				}
 			}
@@ -218,6 +223,13 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			if (namedGroup == null) {
 				throw new IllegalParameterAlert("KeyShareEntry not correspond with supported_groups extension");
 			}
+		}
+		else if (earlyData) {
+			state.setEarlyDataContext(new EarlyDataContext(
+					cipherSuite, 
+					true, 
+					state.getHandler().getMaxEarlyDataSize()));
+			earlyData = false;
 		}
 		if (namedGroup == null) {
 			namedGroup = findMatch(
@@ -265,7 +277,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				
 				if (partInitialization) {
 					state.setTranscriptHash(th);
-					ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+					state.getTranscriptHash().update(handshake.getType(), data);
 				}
 				else {
 					IHkdf hkdf = new Hkdf(hash.createMac());
@@ -307,12 +319,15 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					}
 					else {
 						if (earlyData) {
-							state.setEarlyDataContext(new EarlyDataContext(true, state.getHandler().getMaxEarlyDataSize()));
+							state.setEarlyDataContext(new EarlyDataContext(
+									cipherSuite, 
+									true, 
+									state.getHandler().getMaxEarlyDataSize()));
 							earlyData = false;
 						}
 						state.getKeySchedule().deriveEarlySecret();
 					}
-					ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+					state.getTranscriptHash().update(handshake.getType(), data);
 					if (earlyData) {
 						SessionTicket ticket = resumed.getTicket();
 						
@@ -322,10 +337,15 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 							state.getKeySchedule().deriveEarlyTrafficSecret();
 							state.getListener().onNewTrafficSecrets(state, RecordType.ZERO_RTT);
 							state.getListener().onNewReceivingTraficKey(state, RecordType.ZERO_RTT);
-							state.setEarlyDataContext(new EarlyDataContext(ticket.getMaxEarlyDataSize()));
+							state.setEarlyDataContext(new EarlyDataContext(
+									ticket.getCipherSuite(), 
+									ticket.getMaxEarlyDataSize()));
 						}
 						else {
-							state.setEarlyDataContext(new EarlyDataContext(true, state.getHandler().getMaxEarlyDataSize()));
+							state.setEarlyDataContext(new EarlyDataContext(
+									cipherSuite, 
+									true, 
+									state.getHandler().getMaxEarlyDataSize()));
 							earlyData = false;
 						}
 					}
@@ -337,7 +357,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			}			
 		}
 		else {
-			ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+			state.getTranscriptHash().update(handshake.getType(), data);
 		}
 		
 		if (keyShareEntry == null) {
@@ -501,7 +521,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			if (hostName != null)  {
 				extensions.add(new ServerNameExtension());
 			}
-			if (state.getEarlyDataContext().getState() == EarlyDataState.IN_PROGRESS) {
+			if (state.getEarlyDataContext().getState() == EarlyDataState.PROCESSING) {
 				extensions.add(new EarlyDataExtension());
 				state.getListener().onNewReceivingTraficKey(state, RecordType.ZERO_RTT);
 			}
@@ -526,7 +546,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		
 		@Override
 		public void finish(EngineState state) throws Alert {
-			MachineState nextState = state.getEarlyDataContext().getState() == EarlyDataState.IN_PROGRESS 
+			MachineState nextState = state.getEarlyDataContext().getState() == EarlyDataState.PROCESSING 
 					? MachineState.SRV_WAIT_EOED 
 					: MachineState.SRV_WAIT_FINISHED;
 			
@@ -535,8 +555,13 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				
 				if (params.getClientAuth() != ClientAuth.NONE) {
 					List<IExtension> extensions = new ArrayList<IExtension>();
+					SignatureScheme[] signSchemes;
 					
 					extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
+					signSchemes = params.getSignatureSchemesCert();
+					if (signSchemes != null) {
+						extensions.add(new SignatureAlgorithmsCertExtension(signSchemes));
+					}
 					CertificateRequest certificateRequest = new CertificateRequest(extensions);
 					ConsumerUtil.prepare(state, certificateRequest, RecordType.HANDSHAKE);
 					nextState = MachineState.SRV_WAIT_CERT;

@@ -178,7 +178,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		}
 				
 		IEarlyDataContext ctx = state.getEarlyDataContext();
-		if (ctx.getState() == EarlyDataState.IN_PROGRESS) {
+		if (ctx.getState() == EarlyDataState.PROCESSING) {
 			int typeValue = ExtensionType.EARLY_DATA.value();
 			
 			for (Iterator<IExtension> i=extensions.iterator(); i.hasNext();) {
@@ -187,7 +187,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 					break;
 				}
 			}
-			ctx.reject();
+			ctx.rejecting();
 		}
 		
 		if (namedGroup == null) {
@@ -405,7 +405,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			return;
 		}
 		
-		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+		state.getTranscriptHash().update(handshake.getType(), data);
 		
 		NamedGroup namedGroup = keyShare.getEntries()[0].getNamedGroup();
 		PrivateKey privateKey = state.getPrivateKey(namedGroup);

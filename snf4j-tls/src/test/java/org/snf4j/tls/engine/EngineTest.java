@@ -121,6 +121,15 @@ public class EngineTest extends CommonTest {
 		return new SignatureAlgorithmsCertExtension(schemes);
 	}
 	
+	static ByteBuffer[] data(IHandshake h, int... sizes) {
+		ByteBuffer buffer = ByteBuffer.allocate(10000);
+		h.getBytes(buffer);
+		buffer.flip();
+		byte[] data = new byte[buffer.remaining()];
+		buffer.get(data);
+		return array(data,0,sizes);
+	}
+
 	static void replace(List<IExtension> extensions, IExtension extension) {
 		for (int i=0; i<extensions.size(); ++i) {
 			IExtension e = extensions.get(i);

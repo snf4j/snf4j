@@ -45,6 +45,8 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	
 	public volatile TestCertificateSelector certificateSelector = new TestCertificateSelector();
 	
+	public RuntimeException certificateSelectorException;
+	
 	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
 	
 	public volatile ISessionManager sessionManager = new SessionManager();
@@ -58,6 +60,8 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	public final Queue<byte[]> earlyData = new LinkedList<byte[]>();
 	
 	public int padding;
+	
+	public RuntimeException paddingException;
 	
 	public long keyLimit = -1;
 	
@@ -84,6 +88,9 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	@Override
 	public ICertificateSelector getCertificateSelector() {
 		trace("CS");
+		if (certificateSelectorException != null) {
+			throw certificateSelectorException;
+		}
 		return certificateSelector;
 	}
 
@@ -154,17 +161,20 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	}
 
 	@Override
-	public 	void onNewReceivingTraficKey(IEngineState state, RecordType recordType) {
+	public 	void onNewReceivingTraficKey(IEngineState state, RecordType recordType) throws Alert {
 		trace("RTS(" + recordType.name() + ")");
 	}
 	
 	@Override
-	public void onNewSendingTraficKey(IEngineState state, RecordType recordType) {
+	public void onNewSendingTraficKey(IEngineState state, RecordType recordType) throws Alert {
 		trace("STS(" + recordType.name() + ")");
 	}
 		
 	@Override
 	public int calculatePadding(ContentType type, int contentLength) {
+		if (paddingException != null) {
+			throw paddingException;
+		}
 		return padding;
 	}
 	

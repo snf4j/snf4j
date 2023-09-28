@@ -89,7 +89,7 @@ public class EngineDefaults {
 	
 	public final static int LEGACY_VERSION = 0x0303;
 	
-	private static CipherSuite[] implemented(CipherSuite[] suites) {
+	static CipherSuite[] implemented(CipherSuite[] suites) {
 		CipherSuite[] implemented = new CipherSuite[suites.length];
 		int i=0;
 		
@@ -106,7 +106,7 @@ public class EngineDefaults {
 		return implemented;
 	}
 
-	private static NamedGroup[] implemented(NamedGroup[] groups) {
+	static NamedGroup[] implemented(NamedGroup[] groups) {
 		NamedGroup[] implemented = new NamedGroup[groups.length];
 		int i=0;
 		
@@ -123,7 +123,7 @@ public class EngineDefaults {
 		return implemented;
 	}
 
-	private static SignatureScheme[] implemented(SignatureScheme[] schemes) {
+	static SignatureScheme[] implemented(SignatureScheme[] schemes) {
 		SignatureScheme[] implemented = new SignatureScheme[schemes.length];
 		int i=0;
 		
@@ -140,19 +140,19 @@ public class EngineDefaults {
 		return implemented;
 	}
 
-	static CipherSuite[] getDefaultCipherSuites() {
+	public static CipherSuite[] getDefaultCipherSuites() {
 		return IMPLEMENTED_CIPHER_SUITES.clone();
 	}
 
-	static NamedGroup[] getDefaultNamedGroups() {
+	public static NamedGroup[] getDefaultNamedGroups() {
 		return IMPLEMENTED_NAMED_GROUPS.clone();
 	}
 	
-	static SignatureScheme[] getDefaulSignatureSchemes() {
+	public static SignatureScheme[] getDefaulSignatureSchemes() {
 		return IMPLEMENTED_SIGNATURE_SCHEMES.clone();
 	}
 
-	static PskKeyExchangeMode[] getDefaultPskKeyExchangeModes() {
+	public static PskKeyExchangeMode[] getDefaultPskKeyExchangeModes() {
 		return IMPLEMENTED_PSK_KEY_EXCHANGE_MODES.clone();
 	}
 

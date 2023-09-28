@@ -99,11 +99,6 @@ abstract public class AbstractHandshakeFragmenter {
 		}
 		
 		Encryptor encryptor = encryptors.getEncryptor(recordType);
-		
-		if (dst.remaining() < maxFragmentLength + calculateExpansionLength(encryptor)) {
-			return -1;
-		}
-
 		int remaining = maxFragmentLength;
 		int length = 0;
 		int count = 0;
@@ -137,6 +132,10 @@ abstract public class AbstractHandshakeFragmenter {
 				break;
 			}
 		}
+
+		if (dst.remaining() < length + calculateExpansionLength(encryptor)) {
+			return -1;
+		}
 		
 		ByteBuffer content = prepareForContent(dst, length, maxFragmentLength, type, encryptor);
 		
@@ -169,20 +168,18 @@ abstract public class AbstractHandshakeFragmenter {
 		Type type = pendingType;
 		int expansion = calculateExpansionLength(pendingEncryptor);
 		int remaining = dst.remaining();
-
-		if (remaining < maxFragmentLength + expansion) {
-			return -1;
-		}
-		
-		int length = pending.remaining();
+		int length = Math.min(pending.remaining(), maxFragmentLength) ;
 		boolean keepPending;
 		
 		if (remaining < length + expansion) {
-			length = remaining - expansion;
-			keepPending = true;
+			//if (length < maxFragmentLength) {
+				return -1;
+			//}
+			//length = remaining - expansion;
+			//keepPending = true;
 		}
 		else {
-			keepPending = false;
+			keepPending = pending.remaining() > length;
 		}
 		
 		ByteBuffer content = prepareForContent(dst, length, maxFragmentLength, type, encryptor);

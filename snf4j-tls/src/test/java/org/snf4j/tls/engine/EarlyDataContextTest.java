@@ -30,17 +30,19 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.snf4j.tls.cipher.CipherSuite;
 
 public class EarlyDataContextTest {
 
 	@Test
 	public void testAll() {
-		EarlyDataContext ctx = new EarlyDataContext(100);
-		assertSame(EarlyDataState.IN_PROGRESS, ctx.getState());
+		EarlyDataContext ctx = new EarlyDataContext(CipherSuite.TLS_AES_128_GCM_SHA256, 100);
+		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, ctx.getCipherSuite());
+		assertSame(EarlyDataState.PROCESSING, ctx.getState());
 		ctx.complete();
-		assertSame(EarlyDataState.COMPLETED, ctx.getState());
-		ctx.reject();
-		assertSame(EarlyDataState.COMPLETED, ctx.getState());
+		assertSame(EarlyDataState.PROCESSED, ctx.getState());
+		ctx.rejecting();
+		assertSame(EarlyDataState.PROCESSED, ctx.getState());
 		assertFalse(ctx.isSizeLimitExceeded());
 		ctx.incProcessedBytes(99);
 		assertFalse(ctx.isSizeLimitExceeded());
@@ -49,17 +51,18 @@ public class EarlyDataContextTest {
 		ctx.incProcessedBytes(1);
 		assertTrue(ctx.isSizeLimitExceeded());
 		
-		ctx = new EarlyDataContext(true, 100);
-		assertSame(EarlyDataState.REJECTED, ctx.getState());
+		ctx = new EarlyDataContext(CipherSuite.TLS_AES_256_GCM_SHA384, true, 100);
+		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, ctx.getCipherSuite());
+		assertSame(EarlyDataState.REJECTING, ctx.getState());
 		ctx.complete();
 		assertSame(EarlyDataState.REJECTED, ctx.getState());
-		ctx.reject();
+		ctx.rejecting();
 		assertSame(EarlyDataState.REJECTED, ctx.getState());
 
-		ctx = new EarlyDataContext(false, 100);
-		assertSame(EarlyDataState.IN_PROGRESS, ctx.getState());
-		ctx.reject();
-		assertSame(EarlyDataState.REJECTED, ctx.getState());
+		ctx = new EarlyDataContext(CipherSuite.TLS_AES_256_GCM_SHA384, false, 100);
+		assertSame(EarlyDataState.PROCESSING, ctx.getState());
+		ctx.rejecting();
+		assertSame(EarlyDataState.REJECTING, ctx.getState());
 		ctx.complete();
 		assertSame(EarlyDataState.REJECTED, ctx.getState());		
 	}

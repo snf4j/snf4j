@@ -57,6 +57,7 @@ import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.engine.Status;
+import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.core.session.ssl.SSLContextBuilder;
 import org.snf4j.core.session.ssl.SSLEngineBuilder;
@@ -384,11 +385,34 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertArrayEquals(data, out());
 		clear(data);
 		ssl.wrap(in, out);
-		
+
 		flip();
 		assertResult(tls.unwrap(in, out), Status.OK, HandshakeStatus.NOT_HANDSHAKING, in.position(), 10);
 		assertEngine(tls, NOT_HANDSHAKING);
 		assertInOut(in.limit(), 10);
+		assertArrayEquals(data, out());
+		
+		//biggest application data
+		data = new byte[16384];
+		clear(data);
+		assertResult(tls.wrap(in, out), OK, NOT_HANDSHAKING, 16384, 16384+5+1+16);
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(16384, 16384+5+1+16);
+		
+		flip();
+		ssl.unwrap(in, out);
+		assertArrayEquals(data, out());
+		clear(data);
+		ssl.wrap(in, out);
+		ssl.wrap(in, out);
+
+		flip();
+		assertResult(tls.unwrap(in, out), Status.OK, HandshakeStatus.NOT_HANDSHAKING, in.position(), out.position());
+		int ipos = in.position();
+		int opos = out.position();
+		assertResult(tls.unwrap(in, out), Status.OK, HandshakeStatus.NOT_HANDSHAKING, in.position()-ipos, out.position()-opos);
+		assertEngine(tls, NOT_HANDSHAKING);
+		assertInOut(in.limit(), out.position());
 		assertArrayEquals(data, out());
 		
 		//closing
@@ -2056,4 +2080,31 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertTrue(keyUpdates > 10);
 	}
 	
+	@Test
+	public void testCloseInbound() throws Exception {
+		Assume.assumeTrue(JAVA11);
+		
+		SSLEngine ssl = sslClient();
+		ssl.beginHandshake();
+
+		TLSEngine tls = prepareForSerer(ssl);
+		
+		try {
+			tls.closeInbound();
+			fail();
+		}
+		catch (SessionIncidentException e) {
+		}
+		assertEngine(tls, NEED_WRAP, true, false);
+		clear();
+		assertResult(tls.wrap(in, out), CLOSED, NOT_HANDSHAKING,0, out.position());
+		assertEngine(tls, NOT_HANDSHAKING, true, true);
+		flip();
+		try {
+			ssl.unwrap(in, out);
+			fail();
+		}
+		catch (SSLException e) {
+		}
+	}
 }

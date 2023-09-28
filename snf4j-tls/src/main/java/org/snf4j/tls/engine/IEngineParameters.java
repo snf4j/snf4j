@@ -41,6 +41,8 @@ public interface IEngineParameters {
 
 	SignatureScheme[] getSignatureSchemes();
 
+	SignatureScheme[] getSignatureSchemesCert();
+
 	PskKeyExchangeMode[] getPskKeyExchangeModes();
 	
 	SecureRandom getSecureRandom();

@@ -50,7 +50,7 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 			throw new DecryptErrorAlert("Failed to verify certificate");
 		}
 		
-		ConsumerUtil.updateTranscriptHash(state, certificateVerify.getType(), data);
+		state.getTranscriptHash().update(certificateVerify.getType(), data);
 		state.changeState(MachineState.CLI_WAIT_FINISHED);
 	}
 
@@ -64,7 +64,7 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 			throw new DecryptErrorAlert("Failed to verify certificate");
 		}
 		
-		ConsumerUtil.updateTranscriptHash(state, certificateVerify.getType(), data);
+		state.getTranscriptHash().update(certificateVerify.getType(), data);
 		state.changeState(MachineState.SRV_WAIT_FINISHED);
 	}
 	

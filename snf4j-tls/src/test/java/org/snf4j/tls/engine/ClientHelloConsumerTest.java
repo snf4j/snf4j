@@ -38,7 +38,6 @@ import static org.junit.Assert.fail;
 import static org.snf4j.tls.cipher.CipherSuite.TLS_AES_128_CCM_8_SHA256;
 
 import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -95,13 +94,6 @@ public class ClientHelloConsumerTest extends EngineTest {
 		state = new EngineState(MachineState.SRV_WAIT_1_CH,params, handler, handler);
 	}
 	
-	ByteBuffer[] data(ClientHello ch, int... sizes) {
-		ch.getBytes(buffer);
-		byte[] data = buffer();
-		buffer.clear();
-		return array(data,0,sizes);
-	}
-
 	ClientHello clientHello() {
 		return new ClientHello(0x0303, random, legacySessionId, suites(TLS_AES_128_GCM_SHA256), new byte[1], extensions);
 	}

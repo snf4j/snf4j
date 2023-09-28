@@ -25,23 +25,29 @@
  */
 package org.snf4j.tls.engine;
 
-import static org.snf4j.tls.engine.EarlyDataState.COMPLETED;
-import static org.snf4j.tls.engine.EarlyDataState.IN_PROGRESS;
+import static org.snf4j.tls.engine.EarlyDataState.PROCESSED;
+import static org.snf4j.tls.engine.EarlyDataState.PROCESSING;
 import static org.snf4j.tls.engine.EarlyDataState.REJECTED;
+import static org.snf4j.tls.engine.EarlyDataState.REJECTING;
+
+import org.snf4j.tls.cipher.CipherSuite;
 
 public class EarlyDataContext implements IEarlyDataContext {
 	
+	private final CipherSuite cipherSuite;
+
 	private EarlyDataState state;
 	
 	private long sizeCountdown;
-	
-	public EarlyDataContext(boolean rejected, long maxSize) {
-		state = rejected ? REJECTED	: IN_PROGRESS;
+		
+	public EarlyDataContext(CipherSuite cipherSuite, boolean rejecting, long maxSize) {
+		state = rejecting ? REJECTING : PROCESSING;
 		this.sizeCountdown = maxSize;
+		this.cipherSuite = cipherSuite;
 	}
 
-	public EarlyDataContext(long maxSize) {
-		this(false, maxSize);
+	public EarlyDataContext(CipherSuite cipherSuite, long maxSize) {
+		this(cipherSuite, false, maxSize);
 	}
 	
 	@Override
@@ -51,15 +57,18 @@ public class EarlyDataContext implements IEarlyDataContext {
 	
 	@Override
 	public void complete() {
-		if (state == IN_PROGRESS) {
-			state = COMPLETED;
+		if (state == PROCESSING) {
+			state = PROCESSED;
+		}
+		else if (state == REJECTING) {
+			state= REJECTED;
 		}
 	}
 	
 	@Override
-	public void reject() {
-		if (state == IN_PROGRESS) {
-			state = REJECTED;
+	public void rejecting() {
+		if (state == PROCESSING) {
+			state = REJECTING;
 		}
 	}
 	
@@ -71,6 +80,11 @@ public class EarlyDataContext implements IEarlyDataContext {
 	@Override
 	public boolean isSizeLimitExceeded() {
 		return sizeCountdown < 0;
+	}
+
+	@Override
+	public CipherSuite getCipherSuite() {
+		return cipherSuite;
 	}
 
 }

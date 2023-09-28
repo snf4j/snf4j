@@ -46,9 +46,9 @@ public class AlertUtilTest {
 			}
 			else {
 				assertEquals("Alert", alert.getClass().getSimpleName());
-				assertEquals("Received 'unknown' error alert from peer", alert.getMessage());
+				assertEquals("Received 'unknown' error alert", alert.getMessage());
 			}
 		}
-		assertEquals(14, count);
+		assertEquals(15, count);
 	}
 }

@@ -49,13 +49,14 @@ public class EncryptedExtensionsConsumer  implements IHandshakeConsumer {
 		}
 		
 		IEarlyDataContext ctx = state.getEarlyDataContext();
-		if (ctx.getState() == EarlyDataState.IN_PROGRESS) {
+		if (ctx.getState() == EarlyDataState.PROCESSING) {
 			if (find(handshake, ExtensionType.EARLY_DATA) == null) {
-				ctx.reject();
+				ctx.rejecting();
+				ctx.complete();
 			}
 		}
 		
-		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
+		state.getTranscriptHash().update(handshake.getType(), data);
 		state.changeState(state.getKeySchedule().isUsingPsk() 
 				? MachineState.CLI_WAIT_FINISHED 
 				: MachineState.CLI_WAIT_CERT_CR);

@@ -186,7 +186,7 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		assertFalse(wrapper.needWrap());
 		
 		dst.clear().position(1);
-		add(handshake(1, 100), RecordType.INITIAL);
+		add(handshake(1, 1000), RecordType.INITIAL);
 		assertEquals(-1, wrapper.wrap(dst));
 		assertEquals(1, dst.position());
 		assertFalse(wrapper.isPending());
@@ -203,12 +203,27 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		assertTrue(wrapper.isPending());
 		assertTrue(wrapper.needWrap());
 		
-		dst.clear().position(1);
+		dst.clear().position(900);
+		assertEquals(105, wrapper.wrap(dst));
+		assertFalse(wrapper.isPending());
+		assertFalse(wrapper.needWrap());
+		
+		dst.clear();
+		add(handshake(1, 1100), RecordType.INITIAL);
+		assertEquals(1005, wrapper.wrap(dst));
+		assertTrue(wrapper.isPending());
+		assertTrue(wrapper.needWrap());
+		
+		dst.clear().position(901);
 		assertEquals(-1, wrapper.wrap(dst));
-		assertEquals(1, dst.position());
+		assertEquals(901, dst.position());
 		assertTrue(wrapper.isPending());
 		assertTrue(wrapper.needWrap());
 		assertEquals("", trace());
+		dst.clear().position(900);
+		assertEquals(105, wrapper.wrap(dst));
+		assertFalse(wrapper.isPending());
+		assertFalse(wrapper.needWrap());
 	}
 
 	@Test

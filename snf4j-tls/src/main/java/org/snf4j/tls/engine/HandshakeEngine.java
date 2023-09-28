@@ -60,7 +60,9 @@ import org.snf4j.tls.extension.PskIdentity;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.PskKeyExchangeModesExtension;
 import org.snf4j.tls.extension.ServerNameExtension;
+import org.snf4j.tls.extension.SignatureAlgorithmsCertExtension;
 import org.snf4j.tls.extension.SignatureAlgorithmsExtension;
+import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
 import org.snf4j.tls.extension.SupportedVersionsExtension;
 import org.snf4j.tls.handshake.ClientHello;
@@ -323,6 +325,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 			String peerHost = params.getPeerHost();
 			NamedGroup[] groups = params.getNamedGroups();
 			CipherSuite[] cipherSuites = params.getCipherSuites();
+			SignatureScheme[] signSchemes;
 			
 			if (peerHost != null) {
 				extensions.add(new ServerNameExtension(peerHost));
@@ -330,6 +333,11 @@ public class HandshakeEngine implements IHandshakeEngine {
 			extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, 0x0304));
 			extensions.add(new SupportedGroupsExtension(groups));
 			extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
+			signSchemes = params.getSignatureSchemesCert();
+			if (signSchemes != null) {
+				extensions.add(new SignatureAlgorithmsCertExtension(signSchemes));
+			}
+			
 			PskKeyExchangeMode[] modes = PskKeyExchangeMode.implemented(params.getPskKeyExchangeModes());
 			
 			try {
@@ -407,7 +415,9 @@ public class HandshakeEngine implements IHandshakeEngine {
 								tickets[0] = tickets[earlyDataTicket];
 								tickets[earlyDataTicket] = tmp;
 							}
-							state.setEarlyDataContext(new EarlyDataContext(tickets[0].getMaxEarlyDataSize()));
+							state.setEarlyDataContext(new EarlyDataContext(
+									tickets[0].getCipherSuite(),
+									tickets[0].getMaxEarlyDataSize()));
 						}
 						
 						if (offered > 0) {

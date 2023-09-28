@@ -40,6 +40,8 @@ public class EngineParameters implements IEngineParameters {
 	private final NamedGroup[] namedGroups;
 	
 	private final SignatureScheme[] signatureSchemes;
+
+	private final SignatureScheme[] signatureSchemesCert;
 	
 	private final PskKeyExchangeMode[] pskKeyExchangeModes;
 	
@@ -60,13 +62,14 @@ public class EngineParameters implements IEngineParameters {
 	private final ClientAuth clientAuth;
 	
 	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
-			PskKeyExchangeMode[] pskKeyExchangeModes,
+			SignatureScheme[] signatureSchemesCert, PskKeyExchangeMode[] pskKeyExchangeModes,
 			boolean compatibilityMode, int numberOfOfferedSharedKeys, SecureRandom secureRandom, String peerHost,
 			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode,ClientAuth clientAuth) {
 		super();
 		this.cipherSuites = cipherSuites;
 		this.namedGroups = namedGroups;
 		this.signatureSchemes = signatureSchemes;
+		this.signatureSchemesCert = signatureSchemesCert;
 		this.pskKeyExchangeModes = pskKeyExchangeModes;
 		this.compatibilityMode = compatibilityMode;
 		this.numberOfOfferedSharedKeys = numberOfOfferedSharedKeys;
@@ -93,6 +96,11 @@ public class EngineParameters implements IEngineParameters {
 		return signatureSchemes;
 	}
 
+	@Override
+	public SignatureScheme[] getSignatureSchemesCert() {
+		return signatureSchemesCert;
+	}
+	
 	@Override
 	public PskKeyExchangeMode[] getPskKeyExchangeModes() {
 		return pskKeyExchangeModes;

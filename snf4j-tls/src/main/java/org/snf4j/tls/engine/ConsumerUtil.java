@@ -25,7 +25,6 @@
  */
 package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -36,7 +35,6 @@ import java.util.Arrays;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.extension.SignatureScheme;
-import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.record.RecordType;
 
@@ -53,14 +51,6 @@ public class ConsumerUtil {
 	}
 	
 	private ConsumerUtil() {}
-	
-	static void updateTranscriptHash(EngineState state, HandshakeType type, ByteBuffer[] message) {
-		state.getTranscriptHash().update(type, message);
-	}
-
-	static void updateHRRTranscriptHash(EngineState state, ByteBuffer[] message) {
-		state.getTranscriptHash().updateHelloRetryRequest(message);
-	}
 	
 	static void produce(EngineState state, IHandshake handshake, RecordType recordType, RecordType nextRecordType) {
 		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());

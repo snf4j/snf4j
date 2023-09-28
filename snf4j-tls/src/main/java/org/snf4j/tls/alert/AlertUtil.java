@@ -35,7 +35,7 @@ class AlertUtil {
 	private final static Map<Integer, Alert> ALERTS = new HashMap<Integer, Alert>();
 	
 	private static String message(AlertDescription description) {
-		return "Received '" + description.name() + "' error alert from peer";
+		return "Received '" + description.name() + "' error alert";
 	}
 	
 	private static void put(Alert alert) {

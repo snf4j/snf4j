@@ -25,36 +25,44 @@
  */
 package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
-
-import org.snf4j.tls.alert.Alert;
+import org.junit.Test;
 import org.snf4j.tls.alert.InternalErrorAlert;
-import org.snf4j.tls.alert.UnexpectedMessageAlert;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
+import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.record.RecordType;
 
-public class EndOfEarlyDataConsumer implements IHandshakeConsumer {
+public class TLSEngineStateListenerTest extends EngineTest {
 
-	@Override
-	public HandshakeType getType() {
-		return HandshakeType.END_OF_EARLY_DATA;
+	@Test
+	public void testOnNewTrafficSecretsWithNextGen() throws Exception {
+		new TLSEngineStateListener().onNewTrafficSecrets(null, RecordType.NEXT_GEN);
 	}
 
-	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
-		if (state.getState() != MachineState.SRV_WAIT_EOED) {
-			throw new UnexpectedMessageAlert("Unexpected EndOfEarlyData");
-		}
-		
-		state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);
-		try {
-			state.getTranscriptHash().update(handshake.getType(), data);
-		} catch (Exception e) {
-			throw new InternalErrorAlert("Failed to complete early data", e);
-		}
-		state.getEarlyDataContext().complete();
-		state.changeState(MachineState.SRV_WAIT_FINISHED);
+	@Test(expected = InternalErrorAlert.class)
+	public void testOnNewTrafficSecretsException() throws Exception {
+		new TLSEngineStateListener().onNewTrafficSecrets(null, RecordType.HANDSHAKE);
 	}
-
+	
+	@Test(expected = InternalErrorAlert.class)
+	public void testOnNewReceivingTraficKeyException() throws Exception {
+		EngineState state = new EngineState(MachineState.SRV_CONNECTED, params, handler, handler) {
+			
+			@Override
+			public KeySchedule getKeySchedule() {
+				throw new NullPointerException();
+			}
+		};
+		new TLSEngineStateListener().onNewReceivingTraficKey(state, RecordType.NEXT_GEN);
+	}
+	
+	@Test(expected = InternalErrorAlert.class)
+	public void testOnNewSendingTraficKeyException() throws Exception {
+		EngineState state = new EngineState(MachineState.SRV_CONNECTED, params, handler, handler) {
+			
+			@Override
+			public KeySchedule getKeySchedule() {
+				throw new NullPointerException();
+			}
+		};
+		new TLSEngineStateListener().onNewSendingTraficKey(state, RecordType.NEXT_GEN);
+	}
 }

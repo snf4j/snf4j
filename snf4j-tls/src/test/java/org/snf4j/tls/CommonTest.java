@@ -75,7 +75,7 @@ public class CommonTest {
 		return subbytes;
 	}
 
-	protected byte[] bytes(int... values) {
+	protected static byte[] bytes(int... values) {
 		byte[] bytes = new byte[values.length];
 		int i = 0;
 		
@@ -85,7 +85,7 @@ public class CommonTest {
 		return bytes;
 	}
 		
-	protected byte[] bytes(String hexString) {
+	protected static byte[] bytes(String hexString) {
 		byte[] bytes = new byte[hexString.length()/2];
 		
 		for (int i=0; i<bytes.length; ++i) {
@@ -94,14 +94,14 @@ public class CommonTest {
 		return bytes;
 	}
 	
-	protected byte[] bytes(byte[] array, int off, int len) {
+	protected static byte[] bytes(byte[] array, int off, int len) {
 		byte[] bytes = new byte[len];
 		
 		System.arraycopy(array, off, bytes, 0, len);
 		return bytes;
 	}
 	
-	protected byte[] bytes(int len, byte first, byte mid, byte last) {
+	protected static byte[] bytes(int len, byte first, byte mid, byte last) {
 		byte[] bytes = new byte[len];
 		
 		Arrays.fill(bytes, mid);
@@ -110,7 +110,7 @@ public class CommonTest {
 		return bytes;
 	}
 	
-	protected byte[] cat(byte[]... arrays) {
+	protected static byte[] cat(byte[]... arrays) {
 		int len = 0;
 		for (byte[] array: arrays) {
 			len += array.length;
@@ -124,7 +124,7 @@ public class CommonTest {
 		return bytes;
 	}
 
-	protected byte[][] split(byte[] array, int... sizes) {
+	protected static byte[][] split(byte[] array, int... sizes) {
 		byte[][] splitted = new byte[sizes.length+1][];
 		byte[] b;
 		int remaining = array.length;
@@ -147,7 +147,7 @@ public class CommonTest {
 		return splitted;
 	}
 	
-	protected ByteBuffer[] array(byte[] bytes, int off, int... sizes) {
+	protected static ByteBuffer[] array(byte[] bytes, int off, int... sizes) {
 		ByteBuffer[] array = new ByteBuffer[sizes.length + 1];
 		int len = bytes.length;
 		int i=0;
@@ -164,7 +164,7 @@ public class CommonTest {
 		return array;
 	}
 	
-	protected byte[] random(int len) {
+	protected static byte[] random(int len) {
 		byte[] data = new byte[len];
 		
 		RANDOM.nextBytes(data);

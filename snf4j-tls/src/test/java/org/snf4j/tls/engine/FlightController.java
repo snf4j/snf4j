@@ -144,7 +144,7 @@ public class FlightController {
 				trace("U");
 				r = engine.unwrap(in, out);
 				trace(engine, r);
-				if (in.hasRemaining()) {
+				if ((in.hasRemaining() && r.bytesConsumed() > 0) || r.getHandshakeStatus() == HandshakeStatus.NEED_WRAP) {
 					break;
 				}
 			}

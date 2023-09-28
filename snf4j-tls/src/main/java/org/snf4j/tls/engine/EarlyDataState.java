@@ -31,10 +31,13 @@ public enum EarlyDataState {
 	NONE, 
 	
 	/** Processing of the early data is in progress */
-	IN_PROGRESS, 
+	PROCESSING, 
+	
+	/** Rejecting of the early data is in progress */
+	REJECTING,
 	
 	/** Processing of the early data is completed successfully */
-	COMPLETED, 
+	PROCESSED, 
 	
 	/** Processing of the early data has been rejected */
 	REJECTED

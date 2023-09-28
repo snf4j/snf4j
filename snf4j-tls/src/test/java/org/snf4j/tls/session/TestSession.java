@@ -35,6 +35,10 @@ public class TestSession implements ISession {
 	
 	public byte[] data;
 	
+	public boolean valid = true;
+	
+	public ISessionManager manager;
+	
 	public TestSession(long id, int size) {
 		this.id = id;
 		data = new byte[size];
@@ -67,7 +71,7 @@ public class TestSession implements ISession {
 
 	@Override
 	public ISessionManager getManager() {
-		return null;
+		return manager;
 	}
 
 	@Override
@@ -76,7 +80,7 @@ public class TestSession implements ISession {
 
 	@Override
 	public boolean isValid() {
-		return true;
+		return valid;
 	}
 
 	@Override

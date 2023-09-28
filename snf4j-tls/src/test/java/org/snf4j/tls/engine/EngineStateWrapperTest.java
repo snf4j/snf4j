@@ -60,7 +60,7 @@ public class EngineStateWrapperTest {
 		Hkdf h = new Hkdf(Mac.getInstance("HmacSHA256"));
 		KeySchedule ks1 = new KeySchedule(h, th1, CipherSuite.TLS_AES_128_GCM_SHA256.spec());
 		KeySchedule ks2 = new KeySchedule(h, th2, CipherSuite.TLS_AES_128_GCM_SHA256.spec());
-		EarlyDataContext ctx = new EarlyDataContext(100);
+		EarlyDataContext ctx = new EarlyDataContext(CipherSuite.TLS_AES_128_GCM_SHA256,100);
 		
 		EngineStateWrapper w = new EngineStateWrapper(s, null);
 		assertNotNull(s.getParameters());

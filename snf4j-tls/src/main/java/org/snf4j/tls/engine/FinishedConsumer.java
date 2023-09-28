@@ -57,14 +57,14 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		
 		state.getListener().onNewReceivingTraficKey(state, RecordType.APPLICATION);
 		try {
-			ConsumerUtil.updateTranscriptHash(state, finished.getType(), data);
+			state.getTranscriptHash().update(finished.getType(), data);
 			state.getKeySchedule().deriveResumptionMasterSecret();
 			verifyData = state.getKeySchedule().computeClientVerifyData();
 		} catch (Exception e) {
-			throw new InternalErrorAlert("Failed to compute server verify data", e);
+			throw new InternalErrorAlert("Failed to compute client verify data", e);
 		}
 		if (!Arrays.equals(finished.getVerifyData(), verifyData)) {
-			throw new DecryptErrorAlert("Failed to verify server verify data");
+			throw new DecryptErrorAlert("Failed to verify client verify data");
 		}
 		
 		ISession session = state.getSession();
@@ -111,15 +111,16 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			throw new DecryptErrorAlert("Failed to verify server verify data");
 		}
 		
-		ConsumerUtil.updateTranscriptHash(state, finished.getType(), data);
+		state.getTranscriptHash().update(finished.getType(), data);
 		
-		if (state.getEarlyDataContext().getState() == EarlyDataState.IN_PROGRESS) {
+		IEarlyDataContext ctx = state.getEarlyDataContext();
+		if (ctx.getState() == EarlyDataState.PROCESSING) {
 			ConsumerUtil.prepare(state, new EndOfEarlyData(), RecordType.ZERO_RTT, RecordType.HANDSHAKE);
-			state.getEarlyDataContext().complete();
 		}
 		else {
 			state.getListener().onNewSendingTraficKey(state, RecordType.HANDSHAKE);
 		}
+		ctx.complete();
 		
 		DelegatedTaskMode taskMode = state.getParameters().getDelegatedTaskMode();
 		CertificateCriteria criteria = state.getCertCryteria();

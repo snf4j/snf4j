@@ -51,6 +51,8 @@ public class TestParameters implements IEngineParameters {
 			SignatureScheme.ECDSA_SECP256R1_SHA256,
 			SignatureScheme.ECDSA_SECP384R1_SHA384
 			};
+
+	SignatureScheme[] signatureSchemesCert = null;
 	
 	PskKeyExchangeMode[] pskKeyExchangeModes = new PskKeyExchangeMode[] {
 			PskKeyExchangeMode.PSK_DHE_KE
@@ -85,6 +87,11 @@ public class TestParameters implements IEngineParameters {
 		return signatureSchemes;
 	}
 
+	@Override
+	public SignatureScheme[] getSignatureSchemesCert() {
+		return signatureSchemesCert;
+	}
+	
 	@Override
 	public boolean isCompatibilityMode() {
 		return compatibilityMode;

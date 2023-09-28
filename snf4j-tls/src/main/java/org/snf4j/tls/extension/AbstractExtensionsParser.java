@@ -99,7 +99,7 @@ public abstract class AbstractExtensionsParser implements IExtensionsParser {
 		}
 		
 		if (remaining > 0) {
-			while (remaining >= 4) {
+			while (remaining >= 4 && this.remaining > 0) {
 				int len = srcs.getUnsignedShort(srcs.position()+2)+4;
 				
 				if (len <= remaining) {

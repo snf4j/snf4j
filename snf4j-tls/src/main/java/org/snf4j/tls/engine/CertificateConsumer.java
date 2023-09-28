@@ -52,7 +52,7 @@ public class CertificateConsumer implements IHandshakeConsumer {
 			throw new DecodeErrorAlert("Empty server certificate message");
 		}
 		
-		ConsumerUtil.updateTranscriptHash(state, certificate.getType(), data);
+		state.getTranscriptHash().update(certificate.getType(), data);
 		
 		AbstractEngineTask task = new CertificateTask(
 				state.getHandler().getCertificateValidator(),
@@ -68,7 +68,7 @@ public class CertificateConsumer implements IHandshakeConsumer {
 	}
 
 	private void consumeServer(EngineState state, ICertificate certificate, ByteBuffer[] data) throws Alert {
-		ConsumerUtil.updateTranscriptHash(state, certificate.getType(), data);
+		state.getTranscriptHash().update(certificate.getType(), data);
 
 		if (certificate.getEntries().length == 0) {
 			if (state.getParameters().getClientAuth() == ClientAuth.REQUIRED) {

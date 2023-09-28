@@ -117,7 +117,9 @@ public class AlertTest {
 		Exception cause = new Exception();
 		Alert[] alerts = new Alert[] {
 				new InternalErrorAlert("Text1",cause),
-				new DecryptErrorAlert("Text1", cause)
+				new DecryptErrorAlert("Text1", cause),
+				new BadRecordMacAlert("Text1", cause),
+				new BadCertificateAlert("Text1", cause)
 		};
 		for (Alert alert: alerts) {
 			assertErrorAlert(alert, "Text1", cause);
@@ -127,6 +129,7 @@ public class AlertTest {
 				new InternalErrorAlert("Text1"),
 				new DecodeErrorAlert("Text1"),
 				new BadRecordMacAlert("Text1"),
+				new BadCertificateAlert("Text1"),
 				new UnsupportedExtensionAlert("Text1"),
 				new HandshakeFailureAlert("Text1"),
 				new IllegalParameterAlert("Text1"),

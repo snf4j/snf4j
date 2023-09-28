@@ -62,8 +62,8 @@ public class CertificateRequestConsumer implements IHandshakeConsumer {
 		ISignatureAlgorithmsExtension signAlgorithmsCert = find(handshake, ExtensionType.SIGNATURE_ALGORITHMS_CERT);
 
 		
-		ConsumerUtil.updateTranscriptHash(state, handshake.getType(), data);
-
+		state.getTranscriptHash().update(handshake.getType(), data);
+		
 		state.setCertCryteria(new CertificateCriteria(
 				CertificateType.X509,
 				state.getSessionInfo().peerHost(),

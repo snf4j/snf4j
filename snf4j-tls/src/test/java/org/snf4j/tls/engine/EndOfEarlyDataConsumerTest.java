@@ -25,36 +25,58 @@
  */
 package org.snf4j.tls.engine;
 
-import java.nio.ByteBuffer;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-import org.snf4j.tls.alert.Alert;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.Test;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
-import org.snf4j.tls.handshake.HandshakeType;
-import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.crypto.ITranscriptHash;
+import org.snf4j.tls.handshake.EndOfEarlyData;
 
-public class EndOfEarlyDataConsumer implements IHandshakeConsumer {
+public class EndOfEarlyDataConsumerTest extends EngineTest {
 
-	@Override
-	public HandshakeType getType() {
-		return HandshakeType.END_OF_EARLY_DATA;
-	}
-
-	@Override
-	public void consume(EngineState state, IHandshake handshake, ByteBuffer[] data, boolean isHRR) throws Alert {
-		if (state.getState() != MachineState.SRV_WAIT_EOED) {
-			throw new UnexpectedMessageAlert("Unexpected EndOfEarlyData");
-		}
+	@Test
+	public void testUnexpectedMessage() throws Exception {
+		EndOfEarlyDataConsumer c = new EndOfEarlyDataConsumer();
+		List<MachineState> validStates = Arrays.asList(
+				MachineState.SRV_WAIT_EOED);
+		EndOfEarlyData eoed = new EndOfEarlyData();
 		
-		state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);
-		try {
-			state.getTranscriptHash().update(handshake.getType(), data);
-		} catch (Exception e) {
-			throw new InternalErrorAlert("Failed to complete early data", e);
+		for (MachineState s: MachineState.values()) {
+			if (validStates.contains(s)) {
+				continue;
+			}
+			try {
+				c.consume(new EngineState(s, null, null, null), eoed, new ByteBuffer[0], false);
+				fail();
+			}
+			catch (UnexpectedMessageAlert e) {
+				assertEquals("Unexpected EndOfEarlyData", e.getMessage());
+			}
 		}
-		state.getEarlyDataContext().complete();
-		state.changeState(MachineState.SRV_WAIT_FINISHED);
 	}
-
+	
+	@Test
+	public void testTranscriptHashException() throws Exception {
+		EndOfEarlyDataConsumer c = new EndOfEarlyDataConsumer();
+		EndOfEarlyData eoed = new EndOfEarlyData();
+		EngineState state = new EngineState(MachineState.SRV_WAIT_EOED, params, handler, handler) {
+			public ITranscriptHash getTranscriptHash() {
+				throw new NullPointerException();
+			}
+		};
+		
+		try {
+			c.consume(state, eoed, new ByteBuffer[0], false);
+			fail();
+		}
+		catch (InternalErrorAlert e) {
+			assertEquals("Failed to complete early data", e.getMessage());
+		}
+	}	
 }

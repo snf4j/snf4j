@@ -26,6 +26,7 @@
 package org.snf4j.tls.engine;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import org.junit.Test;
 
@@ -40,9 +41,10 @@ public class NoneEarlyDataContextTest {
 		ctx.incProcessedBytes(Integer.MAX_VALUE);
 		ctx.incProcessedBytes(Integer.MAX_VALUE);
 		assertFalse(ctx.isSizeLimitExceeded());
-		ctx.reject();
+		ctx.rejecting();
 		assertSame(EarlyDataState.NONE, ctx.getState());
 		ctx.complete();
 		assertSame(EarlyDataState.NONE, ctx.getState());
+		assertNull(ctx.getCipherSuite());
 	}
 }

@@ -25,6 +25,8 @@
  */
 package org.snf4j.tls.engine;
 
+import org.snf4j.tls.cipher.CipherSuite;
+
 public class NoneEarlyDataContext implements IEarlyDataContext {
 
 	public static final IEarlyDataContext INSTANCE = new NoneEarlyDataContext();
@@ -41,7 +43,7 @@ public class NoneEarlyDataContext implements IEarlyDataContext {
 	}
 	
 	@Override
-	public void reject() {
+	public void rejecting() {
 	}
 
 	@Override
@@ -53,4 +55,8 @@ public class NoneEarlyDataContext implements IEarlyDataContext {
 		return false;
 	}
 
+	@Override
+	public CipherSuite getCipherSuite() {
+		return null;
+	}
 }
