@@ -36,6 +36,7 @@ import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.RecordType;
 import org.snf4j.tls.session.ISessionManager;
 import org.snf4j.tls.session.SessionManager;
+import org.snf4j.tls.session.TestSessionManager;
 
 public class TestHandshakeHandler implements IEngineHandler, IEngineStateListener {
 
@@ -49,7 +50,7 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	
 	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
 	
-	public volatile ISessionManager sessionManager = new SessionManager();
+	public volatile TestSessionManager sessionManager = new TestSessionManager();
 	
 	public Alert onETSException;
 

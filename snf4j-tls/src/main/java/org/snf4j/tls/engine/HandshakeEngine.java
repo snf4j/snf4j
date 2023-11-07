@@ -114,13 +114,31 @@ public class HandshakeEngine implements IHandshakeEngine {
 		this(clientMode, parameters, handler, listener, HandshakeDecoder.DEFAULT);
 	}
 
+	public HandshakeEngine(ISession session, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener) {
+		this(session, parameters, handler, listener, HandshakeDecoder.DEFAULT);
+	}
+	
 	public HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener, IHandshakeDecoder decoder) {
-		this.decoder = decoder;
-		state = new EngineState(
+		this(clientMode, parameters, handler, listener, null, decoder);
+	}
+
+	public HandshakeEngine(ISession session, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener, IHandshakeDecoder decoder) {
+		this(true, parameters, handler, listener, session, decoder);
+	}
+	
+	HandshakeEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener, ISession session, IHandshakeDecoder decoder) {
+		this(new EngineState(
 				clientMode ? MachineState.CLI_INIT : MachineState.SRV_INIT, 
 				parameters, 
 				handler,
-				listener);
+				listener),
+				decoder);
+		state.setSession(session);
+	}
+
+	HandshakeEngine(EngineState state, IHandshakeDecoder decoder) {
+		this.decoder = decoder;
+		this.state = state;
 		extensionValidator = ExtensionValidator.DEFAULT;
 	}
 	
@@ -339,19 +357,14 @@ public class HandshakeEngine implements IHandshakeEngine {
 			}
 			
 			PskKeyExchangeMode[] modes = PskKeyExchangeMode.implemented(params.getPskKeyExchangeModes());
-			
-			try {
-				int offered = pairs.length;
-				KeyShareEntry[] entries = new KeyShareEntry[offered];
+			int offered = pairs.length;
+			KeyShareEntry[] entries = new KeyShareEntry[offered];
 				
-				for (int i=0; i<offered; ++i) {
-					entries[i] = new KeyShareEntry(namedGroups[i], pairs[i].getPublic());
-					state.addPrivateKey(namedGroups[i], pairs[i].getPrivate());
-				}
-				extensions.add(new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries));
-			} catch (Exception e) {
-				throw new InternalErrorAlert("Failed to generate exchange key", e);
+			for (int i=0; i<offered; ++i) {
+				entries[i] = new KeyShareEntry(namedGroups[i], pairs[i].getPublic());
+				state.addPrivateKey(namedGroups[i], pairs[i].getPrivate());
 			}
+			extensions.add(new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entries));
 			
 			SessionTicket[] tickets = EMPTY;
 			OfferedPsk[] psks = null;
@@ -363,10 +376,14 @@ public class HandshakeEngine implements IHandshakeEngine {
 				IEngineHandler handler = state.getHandler();
 				ISessionManager manager;
 				
-				if (session == null) {
+				if (session == null || !session.isValid()) {
 					manager = handler.getSessionManager();
 					if (peerHost != null) {
 						session = manager.getSession(peerHost, params.getPeerPort());
+						state.setSession(session);
+					}
+					else if (session != null) {
+						session = null;
 						state.setSession(session);
 					}
 				}
@@ -374,15 +391,15 @@ public class HandshakeEngine implements IHandshakeEngine {
 					manager = session.getManager();
 				}
 				
-				if (session != null && session.isValid()) {
+				if (session != null) {
 					tickets = session.getManager().getTickets(session);
 					int ticketsLen = tickets.length;
 					
 					if (ticketsLen > 0) {
 						int offerHashes = 0;
-						int offered = 0;
 						int earlyDataTicket = -1;
 						
+						offered = 0;
 						for (CipherSuite cipherSuite: cipherSuites) {
 							offerHashes |= 1 << cipherSuite.spec().getHashSpec().getOrdinal();
 						}
@@ -454,16 +471,18 @@ public class HandshakeEngine implements IHandshakeEngine {
 				
 				try {
 					for (SessionTicket ticket: tickets) {
-						IHash hash = ticket.getCipherSuite().spec().getHashSpec().getHash();
-						ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
-						IHkdf hkdf = new Hkdf(hash.createMac());
-						KeySchedule keyScheduler = new KeySchedule(hkdf, th, ticket.getCipherSuite().spec().getHashSpec());
-						
-						keyScheduler.deriveEarlySecret(ticket.getPsk(), false);
-						keyScheduler.deriveBinderKey();
-						byte[] binder = keyScheduler.computePskBinder(truncated, truncatedLength);
-						System.arraycopy(binder, 0, psks[i++].getBinder(), 0, binder.length);
-						state.addPskContext(new PskContext(keyScheduler, ticket));
+						if (ticket != null) {
+							IHash hash = ticket.getCipherSuite().spec().getHashSpec().getHash();
+							ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
+							IHkdf hkdf = new Hkdf(hash.createMac());
+							KeySchedule keyScheduler = new KeySchedule(hkdf, th, ticket.getCipherSuite().spec().getHashSpec());
+
+							keyScheduler.deriveEarlySecret(ticket.getPsk(), false);
+							keyScheduler.deriveBinderKey();
+							byte[] binder = keyScheduler.computePskBinder(truncated, truncatedLength);
+							System.arraycopy(binder, 0, psks[i++].getBinder(), 0, binder.length);
+							state.addPskContext(new PskContext(keyScheduler, ticket));
+						}
 					}
 					PreSharedKeyExtension.updateBinders(truncated, truncatedLength, psks);
 				}

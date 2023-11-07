@@ -362,7 +362,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		
 		if (keyShareEntry == null) {
 			if (state.getState() == MachineState.SRV_WAIT_2_CH) {
-				throw new UnexpectedMessageAlert("Unexpected third ClientHello");
+				throw new InternalErrorAlert("Unexpected second HelloRetryRquest");
 			}
 
 			List<IExtension> extensions = new ArrayList<IExtension>();

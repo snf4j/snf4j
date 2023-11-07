@@ -31,6 +31,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.snf4j.tls.cipher.CipherSuite.TLS_AES_128_GCM_SHA256;
 
 import java.lang.reflect.Field;
@@ -61,9 +62,13 @@ import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IKeyShareExtension;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.PreSharedKeyExtension;
 import org.snf4j.tls.handshake.ClientHello;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.handshake.ServerHelloRandom;
+import org.snf4j.tls.session.ISession;
 import org.snf4j.tls.session.SessionTicket;
 
 public class ServerHelloConsumerTest extends EngineTest {
@@ -147,6 +152,69 @@ public class ServerHelloConsumerTest extends EngineTest {
 		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
 		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
+		assertSame(MachineState.CLI_WAIT_1_SH, state.getState());
+		ProducedHandshake[] produced = state.getProduced();
+		assertEquals(1, produced.length);
+		assertNull(state.getPrivateKey(NamedGroup.SECP256R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		ClientHello ch = (ClientHello) produced[0].getHandshake();
+		IKeyShareExtension keyShare = ExtensionsUtil.find(ch, ExtensionType.KEY_SHARE);
+		assertEquals(1, keyShare.getEntries().length);
+		assertSame(NamedGroup.SECP384R1, keyShare.getEntries()[0].getNamedGroup());
+		assertSame(this.ch, ch);
+	}
+
+	@Test
+	public void testConsumeHRRMoreSharedGroupsWithCompatibilityMode() throws Exception {
+		params.numberOfOfferedSharedKeys = 2;
+		params.compatibilityMode = true;
+		engine = new HandshakeEngine(true, params, handler, handler);
+		engine.start();
+		ch = (ClientHello) engine.produce()[0].getHandshake();
+		state = state(engine);
+		
+		params.delegatedTaskMode = DelegatedTaskMode.ALL;
+		random = ServerHelloRandom.getHelloRetryRequestRandom();
+		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
+		legacySessionId = ch.getLegacySessionId().clone();
+		ServerHello sh = serverHello(0x0303);
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertEquals("", handler.trace());
+		new ServerHelloConsumer().consume(state, sh, data(sh), true);
+		assertEquals("prodCCS|", handler.trace());
+		assertSame(MachineState.CLI_WAIT_1_SH, state.getState());
+		ProducedHandshake[] produced = state.getProduced();
+		assertEquals(1, produced.length);
+		assertNull(state.getPrivateKey(NamedGroup.SECP256R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		ClientHello ch = (ClientHello) produced[0].getHandshake();
+		IKeyShareExtension keyShare = ExtensionsUtil.find(ch, ExtensionType.KEY_SHARE);
+		assertEquals(1, keyShare.getEntries().length);
+		assertSame(NamedGroup.SECP384R1, keyShare.getEntries()[0].getNamedGroup());
+		assertSame(this.ch, ch);
+	}
+
+	@Test
+	public void testConsumeHRRMoreSharedGroupsWithCompatibilityModeAndEarlyData() throws Exception {
+		params.numberOfOfferedSharedKeys = 2;
+		params.compatibilityMode = true;
+		engine = new HandshakeEngine(true, params, handler, handler);
+		engine.start();
+		ch = (ClientHello) engine.produce()[0].getHandshake();
+		state = state(engine);
+		
+		params.delegatedTaskMode = DelegatedTaskMode.ALL;
+		random = ServerHelloRandom.getHelloRetryRequestRandom();
+		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
+		legacySessionId = ch.getLegacySessionId().clone();
+		ServerHello sh = serverHello(0x0303);
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertEquals("", handler.trace());
+		state.setEarlyDataContext(new EarlyDataContext(sh.getCipherSuite(), 100));
+		new ServerHelloConsumer().consume(state, sh, data(sh), true);
+		assertEquals("", handler.trace());
 		assertSame(MachineState.CLI_WAIT_1_SH, state.getState());
 		ProducedHandshake[] produced = state.getProduced();
 		assertEquals(1, produced.length);
@@ -243,6 +311,28 @@ public class ServerHelloConsumerTest extends EngineTest {
 	}
 
 	@Test
+	public void testConsumeHRRWithNoKeyShareInStoredClientHello() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.ALL;
+		random = ServerHelloRandom.getHelloRetryRequestRandom();
+		extensions.add(new CookieExtension(bytes(1,2,3,4,5,6,7,8,9,10)));
+		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
+		ServerHello sh = serverHello(0x0303);
+		new ServerHelloConsumer().consume(state, sh, data(sh), true);
+		AbstractEngineTask task = (AbstractEngineTask) state.getTask();
+		assertEquals("Key exchange", task.name());
+		assertTrue(task.isProducing());
+		remove(state.getClientHello().getExtensions(), ExtensionType.KEY_SHARE);
+		task.run();
+		try {
+			state.getProduced();
+			fail();
+		}
+		catch (InternalErrorAlert e) {
+			assertEquals("No key share extension in stored ClientHello", e.getMessage());
+		}
+	}
+	
+	@Test
 	public void testConsumeHRRAndSH() throws Exception {
 		params.delegatedTaskMode = DelegatedTaskMode.ALL;
 		random = ServerHelloRandom.getHelloRetryRequestRandom();
@@ -288,6 +378,14 @@ public class ServerHelloConsumerTest extends EngineTest {
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
 	}
 	
+	@Test(expected = InternalErrorAlert.class)
+	public void testConsumeHRRNoKeyShareInStoredClientHello() throws Exception {
+		random = ServerHelloRandom.getHelloRetryRequestRandom();
+		ServerHello sh = serverHello(0x0303);
+		remove(state.getClientHello().getExtensions(), ExtensionType.KEY_SHARE);
+		new ServerHelloConsumer().consume(state, sh, data(sh), true);
+	}
+	
 	@Test(expected = IllegalParameterAlert.class)
 	public void testConsumeHRRNoChange() throws Exception {
 		random = ServerHelloRandom.getHelloRetryRequestRandom();
@@ -315,6 +413,13 @@ public class ServerHelloConsumerTest extends EngineTest {
 	public void testConsumeEx1() throws Exception {
 		ServerHello sh = serverHello(0x0303);
 		handler.onHTSException = new InternalErrorAlert("");
+		new ServerHelloConsumer().consume(state, sh, data(sh), false);
+	}
+
+	@Test(expected = InternalErrorAlert.class)
+	public void testConsumeEx2() throws Exception {
+		ServerHello sh = serverHello(0x0303);
+		params.getSecureRandomException = new NullPointerException();
 		new ServerHelloConsumer().consume(state, sh, data(sh), false);
 	}
 	
@@ -416,4 +521,320 @@ public class ServerHelloConsumerTest extends EngineTest {
 		assertSame(ks1, state.getPskContexts().get(0).getKeySchedule());
 		assertSame(ks2, state.getPskContexts().get(1).getKeySchedule());
 	}
+	
+	@Test
+	public void testEarlyDataWithHRRAndNoEarlyDataInFirstClientHello() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.earlyData.add(bytes(1,2));
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+		
+		TestParameters params2 = new TestParameters();
+		params2.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params2.namedGroups = new NamedGroup[] {
+				NamedGroup.SECP384R1
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params2, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, HandshakeType.SERVER_HELLO);
+		IHandshake h = c.get(false);
+		assertNotNull(h);
+		remove(((EngineState)cli.getState()).getClientHello().getExtensions(), ExtensionType.EARLY_DATA);
+		h.prepare();
+		session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+		assertEquals("client_hello|EarlyData|", c.trace(false));
+		c.run(false, null);
+		assertEquals("client_hello|finished|", c.trace(false));
+	}
+
+	@Test
+	public void testPskWithHRR() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.numberOfOfferedSharedKeys = 2;
+		params.namedGroups = new NamedGroup[] {
+				NamedGroup.SECP256R1, NamedGroup.SECP384R1
+				};
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+		
+		TestParameters params2 = new TestParameters();
+		params2.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params2.namedGroups = new NamedGroup[] {
+				NamedGroup.SECP384R1
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params2, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, HandshakeType.SERVER_HELLO);
+		ClientHello ch1 = (ClientHello)((EngineState)cli.getState()).getClientHello();
+		assertNotNull(ch1);
+		ServerHello h = (ServerHello) c.get(false);
+		assertNotNull(h);
+		List<IExtension> extensions = new ArrayList<IExtension>();
+		
+		ServerHello hrr = new ServerHello(
+				h.getLegacyVersion(), 
+				ServerHelloRandom.getHelloRetryRequestRandom(),
+				h.getLegacySessionId(),
+				h.getCipherSuite(),
+				h.getLegacyCompressionMethod(),
+				extensions);
+		extensions.add(ExtensionsUtil.find(h, ExtensionType.SUPPORTED_VERSIONS));
+		extensions.add(new KeyShareExtension(NamedGroup.SECP384R1));
+		extensions.add(new CookieExtension(bytes(1,2,3,4,5)));
+		c.clear(false);
+		c.add(false, hrr);
+		c.run(true, HandshakeType.CLIENT_HELLO);
+		ClientHello ch2 = (ClientHello) c.get(true);
+		assertNotNull(ch2);
+		
+		assertNotNull(ExtensionsUtil.find(ch2, ExtensionType.PRE_SHARED_KEY));
+		assertNotNull(ExtensionsUtil.find(ch2, ExtensionType.COOKIE));
+	}
+	
+	@Test
+	public void testEarlyDataWithHRR2() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.numberOfOfferedSharedKeys = 1;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.earlyData.add(bytes(1,2));
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+		
+		TestParameters params2 = new TestParameters();
+		params2.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params2.namedGroups = new NamedGroup[] {
+				NamedGroup.SECP384R1
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params2, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, HandshakeType.SERVER_HELLO);
+		IHandshake h = c.get(false);
+		assertNotNull(h);
+		remove(((EngineState)cli.getState()).getClientHello().getExtensions(), ExtensionType.EARLY_DATA);
+		h.prepare();
+		session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+		assertEquals("client_hello|EarlyData|", c.trace(false));
+		c.run(false, null);
+		assertEquals("client_hello|finished|", c.trace(false));
+	}
+	
+	@Test
+	public void testFailingPskBinding() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.numberOfOfferedSharedKeys = 1;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.earlyData.add(bytes(1,2));
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+		
+		TestParameters params2 = new TestParameters();
+		params2.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params2.namedGroups = new NamedGroup[] {
+				NamedGroup.SECP384R1
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params2, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, HandshakeType.SERVER_HELLO);
+		IHandshake h = c.get(false);
+		assertNotNull(h);
+		List<PskContext> psks = ((EngineState)cli.getState()).getPskContexts();
+		assertEquals(1, psks.size());
+		PskContext psk = psks.get(0);
+		PskContext newPsk = new PskContext(psk.getKeySchedule(), psk.getTicket()) {
+			int count = 3;
+			
+			@Override
+			public KeySchedule getKeySchedule() {
+				if (count-- == 0) {
+					throw new NullPointerException();
+				}
+				return super.getKeySchedule();
+			}
+		};
+		psks.set(0, newPsk);
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (InternalErrorAlert e) {
+			assertEquals("Failed to bind PSK", e.getCause().getMessage());
+		}
+	}	
+
+	@Test
+	public void testUnexpectedPskExtension() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, HandshakeType.SERVER_HELLO);
+		ServerHello sh = (ServerHello) c.get(false);
+		assertNotNull(sh);
+		sh.getExtensions().add(new PreSharedKeyExtension(0));
+		sh.prepare();
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (IllegalParameterAlert e) {
+			assertEquals("Unexpected pre_shared_key extension", e.getMessage());
+		}
+	}
+	
+	@Test
+	public void testInvalidSelectedIdentity() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.earlyData.add(bytes(1,2));
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+		
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, HandshakeType.SERVER_HELLO);
+		IHandshake h = c.get(false);
+		assertNotNull(h);
+		PreSharedKeyExtension psk = ExtensionsUtil.find(h, ExtensionType.PRE_SHARED_KEY);
+		assertNotNull(psk);
+		remove(h.getExtensions(), ExtensionType.PRE_SHARED_KEY);
+		h.getExtensions().add(new PreSharedKeyExtension(psk.getSelectedIdentity()+1));
+		h.prepare();
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (IllegalParameterAlert e) {
+			assertEquals("Invalid selected identity", e.getMessage());
+		}
+	}	
+
+	@Test
+	public void testIncompatibleHashAssociatedWithPsk() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+		
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, HandshakeType.SERVER_HELLO);
+		ServerHello sh = (ServerHello)c.get(false);
+		assertNotNull(sh);
+		ServerHello newSh = new ServerHello(
+				sh.getLegacyVersion(),
+				sh.getRandom(),
+				sh.getLegacySessionId(),
+				CipherSuite.TLS_AES_128_GCM_SHA256,
+				sh.getLegacyCompressionMethod(),
+				sh.getExtensions());
+		c.set(false, newSh);
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (IllegalParameterAlert e) {
+			assertEquals("Incompatible Hash associated with PSK", e.getMessage());
+		}
+	}	
+
+	@Test
+	public void testNoMatchingHashForExistingPskAndHRR() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_256_GCM_SHA384};
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+
+		params.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_256_GCM_SHA384, CipherSuite.TLS_AES_128_GCM_SHA256};
+		TestParameters params2 = new TestParameters();
+		params2.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params2.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
+		params2.namedGroups = new NamedGroup[] {NamedGroup.SECP384R1};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params2, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(true, HandshakeType.CLIENT_HELLO);
+		IHandshake h = c.get(true);
+		assertNotNull(h);
+		assertNotNull(ExtensionsUtil.find(h, ExtensionType.PRE_SHARED_KEY));
+		c.run(false, HandshakeType.SERVER_HELLO);
+		h = c.get(false);
+		assertNotNull(h);
+		c.run(true, HandshakeType.CLIENT_HELLO);
+		h = c.get(true);
+		assertNotNull(h);
+		assertSame(HandshakeType.CLIENT_HELLO, h.getType());
+		assertNull(ExtensionsUtil.find(h, ExtensionType.PRE_SHARED_KEY));
+	}	
+	
 }

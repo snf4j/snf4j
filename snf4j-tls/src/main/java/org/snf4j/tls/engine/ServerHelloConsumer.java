@@ -130,6 +130,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		if (keyShare != null) {
 			int size = extensions.size();
 			NamedGroup group = keyShare.getNamedGroup();
+			boolean keyShareFound = false;
 			
 			for (int i=0; i<size; ++i) {
 				IExtension extension = extensions.get(i);
@@ -137,6 +138,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 				if (extension.getType().equals(ExtensionType.KEY_SHARE)) {
 					PrivateKey key = state.getPrivateKey(group);
 					
+					keyShareFound = true;
 					state.clearPrivateKeys();
 					if (key == null) {
 						ISupportedGroupsExtension suppGroups = find(clientHello, ExtensionType.SUPPORTED_GROUPS);
@@ -145,7 +147,6 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 							throw new IllegalParameterAlert("Unexpected supported group in HelloRetryRequest");
 						}
 						namedGroup = group;
-						break;
 					}
 					else {
 						KeyShareEntry[] entries = ((IKeyShareExtension)extension).getEntries();
@@ -167,10 +168,15 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 							changed = true;
 						}
 					}
+					break;
 				}
 			}
-		}
+			if (!keyShareFound) {
+				throw new InternalErrorAlert("No key share extension in stored ClientHello");
+			}
 
+		}
+		
 		ICookieExtension cookie = find(serverHello, ExtensionType.COOKIE);
 		if (cookie != null) {
 			extensions.add(0, cookie);
@@ -461,18 +467,26 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			List<IExtension> extensions = clientHello.getExtensions();
 			int size = extensions.size();
 			KeyShareEntry entry = new KeyShareEntry(namedGroup, pair.getPublic());
-
+			boolean keyShareFound = false;
+			
 			state.addPrivateKey(namedGroup, pair.getPrivate());
 			for (int i=0; i<size; ++i) {
 				if (extensions.get(i).getType().equals(ExtensionType.KEY_SHARE)) {
+					keyShareFound = true;
 					extensions.set(i, new KeyShareExtension(IKeyShareExtension.Mode.CLIENT_HELLO, entry));
 					break;
 				}
+			}
+			if (!keyShareFound) {
+				throw new InternalErrorAlert("No key share extension in stored ClientHello");
 			}
 			if (psk) {
 				produceWithBinders(state, RecordType.INITIAL, RecordType.HANDSHAKE);
 			}
 			else {
+				if (extensions.get(size-1).getType().equals(ExtensionType.PRE_SHARED_KEY)) {
+					extensions.remove(size-1);
+				}
 				ConsumerUtil.produce(state, clientHello, RecordType.INITIAL, RecordType.HANDSHAKE);
 			}
 			state.changeState(MachineState.CLI_WAIT_2_SH);

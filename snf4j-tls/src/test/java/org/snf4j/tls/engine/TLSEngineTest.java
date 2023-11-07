@@ -28,6 +28,7 @@ package org.snf4j.tls.engine;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -36,6 +37,7 @@ import static org.junit.Assert.fail;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
@@ -59,6 +61,8 @@ import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.SignatureScheme;
+import org.snf4j.tls.handshake.HandshakeType;
+import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Cryptor;
 import org.snf4j.tls.record.Encryptor;
@@ -87,6 +91,20 @@ public class TLSEngineTest extends EngineTest {
 		
 		f.setAccessible(true);
 		return (IHandshakeEngine) f.get(e);
+	}
+	
+	static HandshakeAggregator aggregator(TLSEngine e) throws Exception {
+		Field f = TLSEngine.class.getDeclaredField("aggregator");
+		
+		f.setAccessible(true);
+		return (HandshakeAggregator) f.get(e);
+	}
+	
+	static void handshakeStatus(TLSEngine e, HandshakeStatus status) throws Exception {
+		Field f = TLSEngine.class.getDeclaredField("status");
+		
+		f.setAccessible(true);
+		f.set(e, status);
 	}
 	
 	void clear() {
@@ -3048,5 +3066,191 @@ public class TLSEngineTest extends EngineTest {
 		assertNull(((ISession)srv.getSession()).getPeerCertificates());
 		assertEquals(1, ((ISession)cli.getSession()).getPeerCertificates().length);
 	}	
+	
+	@Test
+	public void testUnwrapHandshakeUnexpectedMessage() throws Exception {
+		cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine s = new HandshakeEngine(false, params, handler, handler);
+		HandshakeEngine c = (HandshakeEngine) handshaker(cli);
+		
+		HandshakeController ctl = new HandshakeController(c, s);
+		ctl.run(false, HandshakeType.FINISHED);
+		IHandshake h = ctl.get(false);
+		assertNotNull(h);
+		buffer.clear();
+		h.getBytes(buffer);
+		buffer.put((byte) 0);
+		buffer.flip();
+		try {
+			cli.unwrapHandshake(buffer, 0, buffer.remaining(), 111);
+			fail();
+		}
+		catch (UnexpectedMessageAlert e) {
+			assertEquals("Received unexpected data after finished handshake", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testUnwrapHandshakeFinished() throws Exception {
+		handler.ticketInfos = new TicketInfo[0];
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.clientAuth(ClientAuth.NONE)
+				.build(), 
+				handler);
+		
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine c = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine s = (HandshakeEngine) handshaker(srv);
+		
+		HandshakeController ctl = new HandshakeController(c, s);
+		ctl.run(true, HandshakeType.FINISHED);
+		IHandshake h = ctl.get(true);
+		assertNotNull(h);
+		buffer.clear();
+		h.getBytes(buffer);
+		buffer.flip();
+		assertResult(srv.unwrapHandshake(buffer, 0, buffer.remaining(), 111), 
+				Status.OK,
+				HandshakeStatus.FINISHED,
+				111,
+				0);
+		assertSame(HandshakeStatus.NOT_HANDSHAKING, srv.getHandshakeStatus());
+	}
+
+	@Test
+	public void testUnwrapHandshakeNeedWrap() throws Exception {
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.clientAuth(ClientAuth.NONE)
+				.build(), 
+				handler);
+		
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine c = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine s = (HandshakeEngine) handshaker(srv);
+		
+		HandshakeController ctl = new HandshakeController(c, s);
+		ctl.run(true, HandshakeType.FINISHED);
+		IHandshake h = ctl.get(true);
+		assertNotNull(h);
+		buffer.clear();
+		h.getBytes(buffer);
+		buffer.flip();
+		assertResult(srv.unwrapHandshake(buffer, 0, buffer.remaining(), 111), 
+				Status.OK,
+				HandshakeStatus.NEED_WRAP,
+				111,
+				0);
+		assertSame(HandshakeStatus.NEED_WRAP, srv.getHandshakeStatus());
+	}
+
+	private void fillAggregator(TLSEngine engine) throws Exception {
+		HandshakeAggregator aggr = aggregator(engine);
+		Field f = HandshakeAggregator.class.getDeclaredField("remaining");
+		f.setAccessible(true);
+		@SuppressWarnings("unchecked")
+		Queue<ByteBuffer> remaining = (Queue<ByteBuffer>) f.get(aggr); 
+		remaining.add(buffer);
+	}
+	
+	@Test
+	public void testUnwrapRemainingUnexpectedMessage() throws Exception {
+		cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine s = new HandshakeEngine(false, params, handler, handler);
+		HandshakeEngine c = (HandshakeEngine) handshaker(cli);
+		
+		HandshakeController ctl = new HandshakeController(c, s);
+		ctl.run(false, HandshakeType.FINISHED);
+		IHandshake h = ctl.get(false);
+		assertNotNull(h);
+		buffer.clear();
+		h.getBytes(buffer);
+		buffer.put((byte) 0);
+		buffer.flip();
+		fillAggregator(cli);
+		handshakeStatus(cli, HandshakeStatus.NEED_UNWRAP);
+		assertSame(HandshakeStatus.NEED_UNWRAP, cli.getHandshakeStatus());
+		
+		try {
+			clear();
+			cli.unwrap(in, out);
+			fail();
+		}
+		catch (UnexpectedMessageAlert e) {
+			assertEquals("Received unexpected data after finished handshake", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testUnwrapRemainingFinished() throws Exception {
+		handler.ticketInfos = new TicketInfo[0];
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.clientAuth(ClientAuth.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+		
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine c = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine s = (HandshakeEngine) handshaker(srv);
+		
+		HandshakeController ctl = new HandshakeController(c, s);
+		ctl.run(true, HandshakeType.FINISHED);
+		IHandshake h = ctl.get(true);
+		assertNotNull(h);
+		buffer.clear();
+		h.getBytes(buffer);
+		buffer.flip();
+		fillAggregator(srv);
+		
+		clear();
+		assertResult(srv.unwrap(in, out), 
+				Status.OK,
+				HandshakeStatus.FINISHED,
+				0,
+				0);
+		assertSame(HandshakeStatus.NOT_HANDSHAKING, srv.getHandshakeStatus());
+	}
+
+	@Test
+	public void testUnwrapRemainingNeedWrap() throws Exception {
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.clientAuth(ClientAuth.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+		
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine c = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine s = (HandshakeEngine) handshaker(srv);
+		
+		HandshakeController ctl = new HandshakeController(c, s);
+		ctl.run(true, HandshakeType.FINISHED);
+		IHandshake h = ctl.get(true);
+		assertNotNull(h);
+		buffer.clear();
+		h.getBytes(buffer);
+		buffer.flip();
+		fillAggregator(srv);
+		
+		clear();
+		assertResult(srv.unwrap(in, out), 
+				Status.OK,
+				HandshakeStatus.NEED_WRAP,
+				0,
+				0);
+		assertSame(HandshakeStatus.NEED_WRAP, srv.getHandshakeStatus());
+	}
 	
 }

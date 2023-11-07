@@ -37,6 +37,8 @@ public class HandshakeController {
 
 	final Context[] ctxs = new Context[2];
 	
+	final StringBuilder[] traces = new StringBuilder[] {new StringBuilder(), new StringBuilder()};
+	
 	public HandshakeController(HandshakeEngine cli, HandshakeEngine srv) {
 		ctxs[0] = new Context(cli);
 		ctxs[1] = new Context(srv);
@@ -71,6 +73,15 @@ public class HandshakeController {
 		}		
 	}
 	
+	public String trace(boolean client) {
+		int i = idx(client);
+		StringBuilder sb = traces[i];
+		
+		String s = sb.toString();
+		sb.setLength(0);
+		return s;
+	}
+	
 	void consume(int idx, boolean client, HandshakeType type) throws Exception {
 		int findIdx = idx(!client);
 		int consumeIdx = other(idx);
@@ -78,6 +89,15 @@ public class HandshakeController {
 		
 		for (Iterator<IHandshake> i = ctxs[idx].produced.iterator(); i.hasNext();) {
 			IHandshake h = i.next();
+			
+			if (h.getType() == null) {
+				traces[consumeIdx].append(h.getClass().getSimpleName()).append('|');
+				i.remove();
+				continue;
+			}
+			else {
+				traces[consumeIdx].append(h.getType().name()).append('|');
+			}
 			
 			if (consumeIdx == findIdx && h.getType().equals(type)) {
 				return;
@@ -103,6 +123,38 @@ public class HandshakeController {
 		}
 		return ctx.produced.get(0);
 	}
+
+	void remove(boolean client) {
+		Context ctx = ctxs[other(idx(!client))];
+
+		ctx.produced.remove(0);
+	}
+	
+	void clear(boolean client) {
+		Context ctx = ctxs[other(idx(!client))];
+
+		ctx.produced.clear();
+	}
+	
+	void add(boolean client, IHandshake h) {
+		Context ctx = ctxs[other(idx(!client))];
+
+		ctx.produced.add(h);
+	}
+	
+	void set(boolean client, IHandshake h) {
+		Context ctx = ctxs[other(idx(!client))];
+		
+		if (!ctx.produced.isEmpty()) {
+			ctx.produced.set(0, h);
+		}
+	}
+	
+	void start(boolean client) throws Exception {
+		Context ctx = ctxs[other(idx(!client))];
+
+		ctx.start();
+	}
 	
 	static class Context {
 		
@@ -116,11 +168,15 @@ public class HandshakeController {
 			this.engine = engine;
 		}
 		
-		void produce() throws Exception {
+		void start() throws Exception {
 			if (!started) {
 				engine.start();
 				started = true;
 			}
+		}
+		
+		void produce() throws Exception {
+			start();
 			for (ProducedHandshake produced: engine.produce()) {
 				this.produced.add(produced.getHandshake());
 			}

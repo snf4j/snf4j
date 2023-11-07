@@ -72,6 +72,8 @@ public class TestParameters implements IEngineParameters {
 	
 	ClientAuth clientAuth = ClientAuth.NONE;
 	
+	RuntimeException getSecureRandomException;
+	
 	@Override
 	public CipherSuite[] getCipherSuites() {
 		return cipherSuites;
@@ -99,6 +101,9 @@ public class TestParameters implements IEngineParameters {
 
 	@Override
 	public SecureRandom getSecureRandom() {
+		if (getSecureRandomException != null) {
+			throw getSecureRandomException;
+		}
 		return SECURE_RANDOM;
 	}
 

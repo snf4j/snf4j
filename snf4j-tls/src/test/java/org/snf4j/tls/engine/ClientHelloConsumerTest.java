@@ -38,11 +38,13 @@ import static org.junit.Assert.fail;
 import static org.snf4j.tls.cipher.CipherSuite.TLS_AES_128_CCM_8_SHA256;
 
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
+import org.snf4j.tls.alert.DecryptErrorAlert;
 import org.snf4j.tls.alert.HandshakeFailureAlert;
 import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
@@ -51,11 +53,18 @@ import org.snf4j.tls.alert.ProtocolVersionAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.alert.UnrecognizedNameAlert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.EarlyDataExtension;
+import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.ExtensionsUtil;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.OfferedPsk;
+import org.snf4j.tls.extension.PreSharedKeyExtension;
+import org.snf4j.tls.extension.PskIdentity;
+import org.snf4j.tls.extension.PskKeyExchangeMode;
+import org.snf4j.tls.extension.PskKeyExchangeModesExtension;
 import org.snf4j.tls.extension.ServerNameExtension;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.extension.SupportedGroupsExtension;
@@ -68,9 +77,11 @@ import org.snf4j.tls.handshake.ICertificate;
 import org.snf4j.tls.handshake.ICertificateEntry;
 import org.snf4j.tls.handshake.ICertificateVerify;
 import org.snf4j.tls.handshake.IFinished;
+import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.SessionTicket;
 
 public class ClientHelloConsumerTest extends EngineTest {
 
@@ -375,6 +386,14 @@ public class ClientHelloConsumerTest extends EngineTest {
 		ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
 		consumer.consume(state, ch, data(ch), false);
 	}
+
+	@Test(expected=InternalErrorAlert.class)
+	public void testSecondHelloRetryRequest() throws Exception {
+		replace(extensions, keyShare());
+		ClientHello ch = clientHelloCS(TLS_AES_128_GCM_SHA256);
+		state.changeState(MachineState.SRV_WAIT_2_CH);
+		consumer.consume(state, ch, data(ch), false);
+	}
 	
 	@Test
 	public void testProducedHelloRetryRequest() throws Exception {
@@ -557,4 +576,236 @@ public class ClientHelloConsumerTest extends EngineTest {
 		ClientHello ch = clientHelloCS(new CipherSuite("xxx", 6666, null) {});
 		consumer.consume(state, ch, data(ch), false);
 	}
+	
+	@Test(expected=IllegalParameterAlert.class)
+	public void testEarlyDataInSecondClientHello() throws Exception {
+		extensions.add(new EarlyDataExtension());
+		state.changeState(MachineState.SRV_WAIT_2_CH);
+		ClientHello ch = clientHello(0x0303);
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=IllegalParameterAlert.class)
+	public void testPskExtensionNotTheLastOne() throws Exception {
+		OfferedPsk psk = new OfferedPsk(new PskIdentity(bytes(1,2,3,4),100), bytes(1,2,3,4));
+		extensions.add(new PreSharedKeyExtension(psk));
+		extensions.add(new PskKeyExchangeModesExtension(PskKeyExchangeMode.PSK_DHE_KE));
+		ClientHello ch = clientHello(0x0303);
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=MissingExtensionAlert.class)
+	public void testPskExtensionWithoutKeyExchangeModes() throws Exception {
+		OfferedPsk psk = new OfferedPsk(new PskIdentity(bytes(1,2,3,4),100), bytes(1,2,3,4));
+		extensions.add(new PreSharedKeyExtension(psk));
+		ClientHello ch = clientHello(0x0303);
+		consumer.consume(state, ch, data(ch), false);
+	}
+
+	@Test(expected=MissingExtensionAlert.class)
+	public void testEarlyDataWithoutPsk() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		extensions.add(new EarlyDataExtension());
+		extensions.add(new PskKeyExchangeModesExtension(PskKeyExchangeMode.PSK_DHE_KE));
+		ClientHello ch = clientHello(0x0303);
+		consumer.consume(state, ch, data(ch), false);
+	}
+	
+	@Test
+	public void testUnsupportedKeyExchangeModeWithEarlyData() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		OfferedPsk psk = new OfferedPsk(new PskIdentity(bytes(1,2,3,4),100), bytes(1,2,3,4));
+		extensions.add(new EarlyDataExtension());
+		extensions.add(new PskKeyExchangeModesExtension(PskKeyExchangeMode.PSK_KE));
+		extensions.add(new PreSharedKeyExtension(psk));
+		ClientHello ch = clientHello(0x0303);
+		consumer.consume(state, ch, data(ch), false);
+		assertSame(EarlyDataState.REJECTING, state.getEarlyDataContext().getState());
+	}
+
+	@Test
+	public void testUnsupportedKeyExchangeModeWithoutEarlyData() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		OfferedPsk psk = new OfferedPsk(new PskIdentity(bytes(1,2,3,4),100), bytes(1,2,3,4));
+		extensions.add(new PskKeyExchangeModesExtension(PskKeyExchangeMode.PSK_KE));
+		extensions.add(new PreSharedKeyExtension(psk));
+		ClientHello ch = clientHello(0x0303);
+		consumer.consume(state, ch, data(ch), false);
+		assertSame(EarlyDataState.NONE, state.getEarlyDataContext().getState());
+	}
+
+	@Test
+	public void testInvalidPskBinder() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 99;
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		
+		c.run(true, null);
+		assertTrue(cli.getState().isConnected());
+		assertTrue(srv.getState().isConnected());
+
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		
+		c = new HandshakeController(cli, srv);
+		c.run(true, HandshakeType.CLIENT_HELLO);
+		IHandshake h = c.get(true);
+		assertNotNull(h);
+		PreSharedKeyExtension psk = ExtensionsUtil.find(h, ExtensionType.PRE_SHARED_KEY);
+		assertNotNull(psk);
+		psk.getOfferedPsks()[0].getBinder()[0] ^= 0xaa;
+		h.prepare();
+		try {
+			c.run(true, null);
+			fail();
+		}
+		catch (DecryptErrorAlert e) {
+			assertEquals("Invalid PSK binder", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testFailedComputationOfServerVerifyData() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.CERTIFICATES;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 99;
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		
+		c.run(true, null);
+		IEngineTask task = (IEngineTask) srv.getTask();
+		task.run();
+		EngineState state = (EngineState) srv.getState();
+		Field f = EngineState.class.getDeclaredField("keySchedule");
+		f.setAccessible(true);
+		f.set(state, null);
+		try {
+			task.finish((EngineState) srv.getState());
+			fail();
+		}
+		catch (InternalErrorAlert e) {
+			assertEquals("Failed to compute server verify data", e.getMessage());
+		}
+	}
+	
+	@Test
+	public void testUnacceptedResumedSessionDueSelectedIdentity() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 99;
+		handler.earlyData.add(bytes(1,2,3,4));
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.sessionManager.selectedIdentity = 1;
+		handler.sessionManager.selectedIdentityCounter = 2;
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		
+		c.run(true, null);
+		assertTrue(cli.getState().isConnected());
+		assertTrue(srv.getState().isConnected());
+
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		
+		c = new HandshakeController(cli, srv);
+		c.run(true, HandshakeType.CLIENT_HELLO);
+		IHandshake h = c.get(true);
+		assertNotNull(h);
+		PreSharedKeyExtension psk = ExtensionsUtil.find(h, ExtensionType.PRE_SHARED_KEY);
+		assertNotNull(psk);
+		c.run(true, null);
+		assertSame(MachineState.CLI_CONNECTED, cli.getState().getState());
+		assertSame(MachineState.SRV_CONNECTED, srv.getState().getState());
+		assertSame(EarlyDataState.REJECTED, ((EngineState)cli.getState()).getEarlyDataContext().getState());
+	}
+
+	@Test
+	public void testUnacceptedResumedSessionDueCipherSuite() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 99;
+		params.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
+		handler.earlyData.add(bytes(1,2,3,4));
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.sessionManager.sessionTicket = new SessionTicket(CipherSuite.TLS_AES_256_GCM_SHA384, bytes(1), bytes(1), 1000, 1000, 1000);
+		handler.sessionManager.sessionTicketCounter = 2;
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		
+		c.run(true, null);
+		assertTrue(cli.getState().isConnected());
+		assertTrue(srv.getState().isConnected());
+
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		
+		c = new HandshakeController(cli, srv);
+		c.run(true, HandshakeType.CLIENT_HELLO);
+		IHandshake h = c.get(true);
+		assertNotNull(h);
+		PreSharedKeyExtension psk = ExtensionsUtil.find(h, ExtensionType.PRE_SHARED_KEY);
+		assertNotNull(psk);
+		params.delegatedTaskMode = DelegatedTaskMode.CERTIFICATES;
+		c.run(true, null);
+		assertSame(MachineState.CLI_CONNECTED, cli.getState().getState());
+		assertSame(MachineState.SRV_CONNECTED, srv.getState().getState());
+		assertSame(EarlyDataState.REJECTED, ((EngineState)cli.getState()).getEarlyDataContext().getState());
+	}
+
+	@Test
+	public void testUnacceptedResumedSessionDueMaxDataSize() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 99;
+		params.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
+		handler.earlyData.add(bytes(1,2,3,4));
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.sessionManager.sessionTicket = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, bytes(1), bytes(1), 1000, 1000, 0);
+		handler.sessionManager.sessionTicketCounter = 2;
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		
+		c.run(true, null);
+		assertTrue(cli.getState().isConnected());
+		assertTrue(srv.getState().isConnected());
+
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		
+		c = new HandshakeController(cli, srv);
+		c.run(true, HandshakeType.CLIENT_HELLO);
+		IHandshake h = c.get(true);
+		assertNotNull(h);
+		PreSharedKeyExtension psk = ExtensionsUtil.find(h, ExtensionType.PRE_SHARED_KEY);
+		assertNotNull(psk);
+		params.delegatedTaskMode = DelegatedTaskMode.ALL;
+		c.start(false);
+		buffer.clear();
+		h.getBytes(buffer);
+		buffer.flip();
+		buffer.position(4);
+		h = ClientHello.getParser().parse(new ByteBuffer[] {buffer}, buffer.remaining(), ExtensionDecoder.DEFAULT);
+		new ClientHelloConsumer().consume((EngineState)srv.getState(), h, new ByteBuffer[] {ByteBuffer.wrap(h.getPrepared().clone())}, false);
+		srv.getTask().run();
+		srv.getTask().run();
+		srv.updateTasks();
+		c.remove(true);
+		c.run(true, null);
+		assertSame(MachineState.CLI_CONNECTED, cli.getState().getState());
+		assertSame(MachineState.SRV_CONNECTED, srv.getState().getState());
+		assertSame(EarlyDataState.REJECTED, ((EngineState)cli.getState()).getEarlyDataContext().getState());
+	}
+	
 }

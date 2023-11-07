@@ -63,7 +63,7 @@ public class SessionManagerTest extends CommonTest {
 	
 	TestHandshakeHandler handshakeHandler;
 	
-	SessionManager mgr;
+	TestSessionManager mgr;
 	
 	static KeySchedule keySchedule(IHashSpec hashSpec) throws Exception {
 		return new KeySchedule(
@@ -97,7 +97,7 @@ public class SessionManagerTest extends CommonTest {
 	
 	@Before
 	public void before() {
-		mgr = new SessionManager();
+		mgr = new TestSessionManager();
 		parameters = new TestParameters();
 		handler = new TestHandler();
 		handshakeHandler = new TestHandshakeHandler();
@@ -190,7 +190,7 @@ public class SessionManagerTest extends CommonTest {
 		assertSame(s2, mgr.getSession(s2.getId(), 1000));
 		assertNull(mgr.getSession(null, 101, 1000));
 		
-		mgr = new SessionManager(1, 2000);
+		mgr = new TestSessionManager(1, 2000);
 		handshakeHandler.sessionManager = mgr;
 		long time = System.currentTimeMillis();
 		s1 = mgr.newSession(sinfo);
@@ -234,7 +234,7 @@ public class SessionManagerTest extends CommonTest {
 		assertNotNull(mgr.getSession("xxx",101, 1000 + 86400*1000));
 		assertNull(mgr.getSession("xxx",101, 1000 + 1 + 86400*1000));
 
-		mgr = new SessionManager(1, 2000);
+		mgr = new TestSessionManager(1, 2000);
 		handshakeHandler.sessionManager = mgr;
 		long time = System.currentTimeMillis();
 
@@ -289,7 +289,7 @@ public class SessionManagerTest extends CommonTest {
 		assertTrue(ticket.getCreationTime() >= time);
 		
 		time = System.currentTimeMillis();
-		mgr = new SessionManager(1, 2000);
+		mgr = new TestSessionManager(1, 2000);
 		handshakeHandler.sessionManager = mgr;
 		session = (Session) mgr.newSession(info);
 		assertTrue(session.getCreationTime() >= time);
@@ -355,7 +355,7 @@ public class SessionManagerTest extends CommonTest {
 		assertEquals(1, mgr.getTickets(session1, 1000-1+86400*1000).length);
 		assertEquals(0, mgr.getTickets(session1, 1000+86400*1000).length);
 
-		mgr = new SessionManager(1, 2000);
+		mgr = new TestSessionManager(1, 2000);
 		handshakeHandler.sessionManager = mgr;
 		session1 = (Session) mgr.newSession(info);
 		state1 = state(session1, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
@@ -408,7 +408,7 @@ public class SessionManagerTest extends CommonTest {
 		assertEquals(1, mgr.getTickets(session, 1000 + 86400*1000).length);
 		assertEquals(0, mgr.getTickets(session, 1000 + 1 + 86400*1000).length);
 		
-		mgr = new SessionManager(1, 2000);
+		mgr = new TestSessionManager(1, 2000);
 		handshakeHandler.sessionManager = mgr;
 		session = (Session) mgr.newSession(info);
 		state = state(session, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
@@ -428,7 +428,7 @@ public class SessionManagerTest extends CommonTest {
 	public void testCheckSessionDifferentManager() {
 		SessionInfo info = new SessionInfo().cipher(CipherSuite.TLS_AES_128_GCM_SHA256);
 		Session session = (Session) mgr.newSession(info, 1000);
-		mgr = new SessionManager();
+		mgr = new TestSessionManager();
 		mgr.checkSession(session);
 	}
 

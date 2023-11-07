@@ -29,6 +29,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -43,9 +45,12 @@ import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.cipher.CipherSuiteSpec;
 import org.snf4j.tls.extension.CookieExtension;
 import org.snf4j.tls.extension.ExtensionDecoder;
+import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.ServerNameExtension;
@@ -57,6 +62,9 @@ import org.snf4j.tls.handshake.ServerHello;
 import org.snf4j.tls.handshake.ServerHelloRandom;
 import org.snf4j.tls.handshake.TestHandshakeParser;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.ISession;
+import org.snf4j.tls.session.SessionInfo;
+import org.snf4j.tls.session.SessionManager;
 
 public class HandshakeEngineTest extends EngineTest {
 
@@ -144,12 +152,24 @@ public class HandshakeEngineTest extends EngineTest {
 			}
 		}
 		assertTrue(count > 0);
-
+		
 		params.namedGroups = new NamedGroup[] {new NamedGroup("XXX", 32, null) {}};
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
 		he = new HandshakeEngine(true, params, handler, handler);
 		try {
 			he.start();
-		} catch (InternalErrorAlert e) {}		
+			fail();
+		} catch (InternalErrorAlert e) {}
+		
+		params.namedGroups = new NamedGroup[] {NamedGroup.SECP256R1};
+		params.numberOfOfferedSharedKeys = 0;
+		he = new HandshakeEngine(true, params, handler, handler);
+		he.start();
+		produced = he.produce();
+		assertEquals(1, produced.length);
+		ch = (ClientHello) produced[0].getHandshake();
+		KeyShareExtension e = findExtension(ch, ExtensionType.KEY_SHARE);
+		assertEquals(0, e.getEntries().length);
 	}
 	
 	@Test
@@ -157,8 +177,17 @@ public class HandshakeEngineTest extends EngineTest {
 		TestParameters params = new TestParameters();
 		HandshakeEngine he = new HandshakeEngine(true, params, handler, handler);
 		he.start();
-		he.getTask().run();
+		assertTrue(he.hasTask());
+		assertFalse(he.hasRunningTask());
+		Runnable task = he.getTask();
+		assertFalse(he.hasTask());
+		assertTrue(he.hasRunningTask());
+		task.run();
+		assertFalse(he.hasTask());
+		assertTrue(he.hasRunningTask());
 		ClientHello ch = (ClientHello) he.produce()[0].getHandshake();
+		assertFalse(he.hasTask());
+		assertFalse(he.hasRunningTask());
 		ch.getBytes(buffer);
 		byte[] data = buffer();
 		ByteBuffer[] array;
@@ -348,4 +377,266 @@ public class HandshakeEngineTest extends EngineTest {
 		} catch (IllegalParameterAlert e) {}
 		
 	}
+	
+	@Test
+	public void testInitiatedWithSession() throws Exception {
+		SessionManager mgr = new SessionManager(100, 100);
+		ISession session = mgr.newSession(new SessionInfo());
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine cli = new HandshakeEngine(session, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		assertEquals(1, session.getManager().getTickets(session).length);
+	}
+
+	@Test
+	public void testInitiatedWithInvalidSession() throws Exception {
+		SessionManager mgr = new SessionManager(100, 100);
+		ISession session = mgr.newSession(new SessionInfo());
+		session.invalidate();
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		HandshakeEngine cli = new HandshakeEngine(session, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		assertSame(session, cli.getState().getSession());
+		c.run(false, null);
+		assertNotSame(session, cli.getState().getSession());
+	}
+	
+	@Test
+	public void testTicketForDifferentCipher() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_128_GCM_SHA256,
+				};
+
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		assertSame(session, cli.getState().getSession());
+		assertEquals(2, session.getManager().getTickets(session).length);
+	}
+
+	@Test
+	public void testManyTickets() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100), new TicketInfo(100)};
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(2, session.getManager().getTickets(session).length);
+
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		assertSame(session, cli.getState().getSession());
+		assertEquals(3, session.getManager().getTickets(session).length);
+	}
+
+	@Test
+	public void testManyTicketsForManyCiphers() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_128_GCM_SHA256,
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		assertSame(session, cli.getState().getSession());
+		assertEquals(2, session.getManager().getTickets(session).length);
+		
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_128_GCM_SHA256,
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		assertSame(session, cli.getState().getSession());
+		assertEquals(2, session.getManager().getTickets(session).length);
+	}
+
+	@Test
+	public void testManyTicketsForManyCiphersWithEarlyData() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.earlyData.add(bytes(1,2));
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_128_GCM_SHA256,
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		assertSame(session, cli.getState().getSession());
+		assertEquals(2, session.getManager().getTickets(session).length);
+		
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_128_GCM_SHA256,
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		assertSame(session, cli.getState().getSession());
+		assertEquals(2, session.getManager().getTickets(session).length);
+		assertEquals("client_hello|EarlyData|end_of_early_data|finished|", c.trace(false));
+	}
+
+	@Test
+	public void testNoCipherforTicketHash() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.earlyData.add(bytes(1,2));
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+
+		params.cipherSuites = new CipherSuite[] {
+				new CipherSuite("TLS_AES_256_GCM_SHA384",0x1309,CipherSuiteSpec.TLS_AES_256_GCM_SHA384) {},
+				};
+		cli = new HandshakeEngine(true, params, handler, handler);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		assertSame(session, cli.getState().getSession());
+		assertEquals(1, session.getManager().getTickets(session).length);
+		assertEquals("client_hello|finished|", c.trace(false));
+	}
+	
+	@Test
+	public void testFailingPskBinding() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.earlyData.add(bytes(1,2));
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+
+		EngineState state = new EngineState(MachineState.CLI_INIT, params, handler,	handler) {
+			@Override
+			public void addPskContext(PskContext psk) {
+				throw new NullPointerException("x");
+			}
+		};
+		
+		cli = new HandshakeEngine(state, HandshakeDecoder.DEFAULT);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (InternalErrorAlert e) {
+			assertEquals("Failed to bind PSK", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testFailingDeriveEarlyTrafficSecret() throws Exception {
+		params.delegatedTaskMode = DelegatedTaskMode.NONE;
+		params.peerHost = "snf4j.org";
+		params.peerPort = 80;
+		params.cipherSuites = new CipherSuite[] {
+				CipherSuite.TLS_AES_256_GCM_SHA384,
+				};
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		handler.earlyData.add(bytes(1,2));
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+
+		HandshakeController c = new HandshakeController(cli, srv);
+		c.run(false, null);
+		ISession session = cli.getState().getSession();
+		assertEquals(1, session.getManager().getTickets(session).length);
+
+		EngineState state = new EngineState(MachineState.CLI_INIT, params, handler,	handler) {
+			@Override
+			public List<PskContext> getPskContexts() {
+				throw new NullPointerException("x");
+			}
+		};
+		
+		cli = new HandshakeEngine(state, HandshakeDecoder.DEFAULT);
+		srv = new HandshakeEngine(false, params, handler, handler);
+		c = new HandshakeController(cli, srv);
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (InternalErrorAlert e) {
+			assertEquals("Failed to derive early traffic secret", e.getMessage());
+		}
+	}
+	
 }

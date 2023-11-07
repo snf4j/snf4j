@@ -624,7 +624,6 @@ public class TLSEngine implements IEngine {
 			int length = src.getShort(src.position() + 3);
 			
 			if (type != ContentType.APPLICATION_DATA.value()) {
-				System.out.println("" + earlyData + " " + (type == ContentType.CHANGE_CIPHER_SPEC.value()));
 				if (earlyData && type == ContentType.CHANGE_CIPHER_SPEC.value()) {
 					return unwrapChangeCipherSpec(
 							src,
@@ -751,7 +750,7 @@ public class TLSEngine implements IEngine {
 				0);		
 	}
 	
-	private IEngineResult unwrapHandshake(ByteBuffer src, int off, int length, int consumed) throws Alert {
+	IEngineResult unwrapHandshake(ByteBuffer src, int off, int length, int consumed) throws Alert {
 		boolean connected = handshaker.getState().isConnected();
 		
 		src.position(src.position() + off);
