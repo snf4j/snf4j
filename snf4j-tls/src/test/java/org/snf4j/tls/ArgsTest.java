@@ -168,4 +168,25 @@ public class ArgsTest {
 			assertEquals("name is null", e.getMessage());		
 		}
 	}
+	
+	static void assertOutOfBoundException(int size, int offset, int length) {
+		try {
+			Args.checkBounds(offset, length, size);
+			fail();
+		}
+		catch (IndexOutOfBoundsException e) {
+		}
+	}
+	
+	@Test
+	public void testCheckBounds() {
+		assertOutOfBoundException(10, -1, 4);
+		assertOutOfBoundException(10, 10, 1);
+		assertOutOfBoundException(10, 0, -1);
+		assertOutOfBoundException(10, 5, 6);
+		assertOutOfBoundException(10, 0x7fffffff, 1);
+		Args.checkBounds(0, 10, 10);
+		Args.checkBounds(0, 9, 10);
+		Args.checkBounds(1, 9, 10);
+	}
 }

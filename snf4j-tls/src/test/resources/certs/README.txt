@@ -77,3 +77,11 @@ openssl genpkey -algorithm ED448 -out ed448.pem
 openssl req -new -key ed448.pem -x509 -nodes -days 10000 -out ed448.crt
 openssl x509 -text -in ed448.crt
 openssl pkey -in ed448.pem -out ed448.key
+
+---------------------------------------------------
+
+openssl req -newkey rsa:1024 -keyout rsa_sub1.key -nodes -keyform PEM -out sub1req.pem -outform PEM -config openssl.cnf
+openssl ca -in sub1req.pem -notext -out rsasha256_sub1.crt -config openssl.cnf -extensions v3_intermediate_ca
+
+openssl req -newkey rsa:1024 -keyout rsa_sub2.key -nodes -keyform PEM -out sub2req.pem -outform PEM -config openssl.cnf
+openssl ca -in sub2req.pem -notext -out rsasha256_sub2.crt -config openssl.cnf -extensions v3_intermediate_ca

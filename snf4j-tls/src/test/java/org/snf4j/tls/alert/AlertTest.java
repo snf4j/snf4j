@@ -119,7 +119,14 @@ public class AlertTest {
 				new InternalErrorAlert("Text1",cause),
 				new DecryptErrorAlert("Text1", cause),
 				new BadRecordMacAlert("Text1", cause),
-				new BadCertificateAlert("Text1", cause)
+				new BadCertificateAlert("Text1", cause),
+				new UnsupportedCertificateAlert("Text1", cause),
+				new CertificateRevokedAlert("Text1", cause),
+				new CertificateExpiredAlert("Text1", cause),
+				new CertificateUnknownAlert("Text1", cause),
+				new UnknownCaAlert("Text1", cause),
+				new AccessDeniedAlert("Text1", cause),
+				new BadCertificateStatusResponseAlert("Text1", cause)
 		};
 		for (Alert alert: alerts) {
 			assertErrorAlert(alert, "Text1", cause);
@@ -130,6 +137,13 @@ public class AlertTest {
 				new DecodeErrorAlert("Text1"),
 				new BadRecordMacAlert("Text1"),
 				new BadCertificateAlert("Text1"),
+				new UnsupportedCertificateAlert("Text1"),
+				new CertificateRevokedAlert("Text1"),
+				new CertificateExpiredAlert("Text1"),
+				new CertificateUnknownAlert("Text1"),
+				new UnknownCaAlert("Text1"),
+				new AccessDeniedAlert("Text1"),
+				new BadCertificateStatusResponseAlert("Text1"),
 				new UnsupportedExtensionAlert("Text1"),
 				new HandshakeFailureAlert("Text1"),
 				new IllegalParameterAlert("Text1"),
@@ -139,7 +153,11 @@ public class AlertTest {
 				new UnrecognizedNameAlert("Text1"),
 				new DecryptErrorAlert("Text1"),
 				new CertificateRequiredAlert("Text1"),
-				new RecordOverflowAlert("Text1")
+				new RecordOverflowAlert("Text1"),
+				new InsufficientSecurityAlert("Text1"),
+				new InappropriateFallbackAlert("Text1"),
+				new UnknownPskIdentityAlert("Text1"),
+				new NoApplicationProtocolAlert("Text1")
 		};
 		for (Alert alert: alerts) {
 			assertErrorAlert(alert, "Text1", null);
@@ -147,7 +165,8 @@ public class AlertTest {
 		}
 		
 		alerts = new Alert[] {
-				new CloseNotifyAlert("Text1")
+				new CloseNotifyAlert("Text1"),
+				new UserCanceledAlert("Text1")
 		};
 		for (Alert alert: alerts) {
 			assertClosureAlert(alert, "Text1", null);

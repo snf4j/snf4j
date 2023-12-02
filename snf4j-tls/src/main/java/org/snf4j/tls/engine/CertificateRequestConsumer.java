@@ -65,10 +65,12 @@ public class CertificateRequestConsumer implements IHandshakeConsumer {
 		state.getTranscriptHash().update(handshake.getType(), data);
 		
 		state.setCertCryteria(new CertificateCriteria(
+				false,
 				CertificateType.X509,
 				state.getSessionInfo().peerHost(),
 				signAlgorithms.getSchemes(),
-				signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes()
+				signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes(),
+				state.getParameters().getSignatureSchemes().clone()
 				));
 		
 		state.changeState(MachineState.CLI_WAIT_CERT);

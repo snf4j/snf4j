@@ -38,8 +38,16 @@ class AlertUtil {
 		return "Received '" + description.name() + "' error alert";
 	}
 	
-	private static void put(Alert alert) {
-		ALERTS.put(alert.getDescription().value(), alert);
+	static void put(String className, AlertDescription desc) {
+		try {
+			Alert alert = (Alert) Class.forName(className)
+					.getConstructor(String.class)
+					.newInstance(message(desc));
+			
+			ALERTS.put(alert.getDescription().value(), alert);
+		} catch (Exception e) {
+			//Ignore
+		}
 	}
 	
 	private static String className(AlertDescription desc) {
@@ -69,18 +77,7 @@ class AlertUtil {
 			AlertDescription desc = AlertDescription.of(i);
 			
 			if (desc.isKnown()) {
-				String className = alertClassName.replace("Alert", className(desc));
-				
-				
-				try {
-					Alert alert = (Alert) Class.forName(className)
-							.getConstructor(String.class)
-							.newInstance(message(desc));
-					
-					put(alert);
-				} catch (Exception e) {
-					//Ignore
-				}
+				put(alertClassName.replace("Alert", className(desc)), desc);
 			}
 		}
 	}

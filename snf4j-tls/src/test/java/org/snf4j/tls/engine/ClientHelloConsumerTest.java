@@ -238,6 +238,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		assertEquals("VSN(snf4j.org)|CS|HTS|RTS(HANDSHAKE)|ATS|", handler.trace());
 		CertificateCriteria criteria = handler.certificateSelector.criteria;
 		assertEquals("snf4j.org", criteria.getHostName());
+		assertTrue(criteria.isServer());
 		assertSame(CertificateType.X509, criteria.getType());
 		assertNull(criteria.getCertSchemes());
 		assertEquals(2, criteria.getSchemes().length);

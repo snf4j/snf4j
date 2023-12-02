@@ -50,11 +50,14 @@ import org.snf4j.tls.extension.CookieExtension;
 import org.snf4j.tls.extension.ExtensionDecoder;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.IExtension;
+import org.snf4j.tls.extension.ISupportedVersionsExtension;
 import org.snf4j.tls.extension.KeyShareExtension;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
 import org.snf4j.tls.extension.ServerNameExtension;
 import org.snf4j.tls.extension.SignatureScheme;
+import org.snf4j.tls.extension.SupportedVersionsExtension;
+import org.snf4j.tls.extension.UnknownExtension;
 import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.HandshakeDecoder;
 import org.snf4j.tls.handshake.HandshakeType;
@@ -637,6 +640,51 @@ public class HandshakeEngineTest extends EngineTest {
 		catch (InternalErrorAlert e) {
 			assertEquals("Failed to derive early traffic secret", e.getMessage());
 		}
+	}
+	
+	@Test
+	public void testMultipleExtensionsOfSameType() throws Exception {
+		List<IExtension> extensions = new ArrayList<IExtension>();
+		
+		extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.SERVER_HELLO, 0x0304));
+		extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.SERVER_HELLO, 0x0305));
+		extensions.add(new UnknownExtension(new ExtensionType("xxx", 1000000) {}, bytes(1,2,3)));
+		
+		ServerHello sh = new ServerHello(
+				0x0303,  
+				new byte[32], 
+				new byte[0],
+				CipherSuite.TLS_AES_128_GCM_SHA256,
+				(byte)0, extensions);
+		sh.getBytes(buffer);
+		byte[] data = buffer();
+		buffer.clear();
+		
+		TestParameters params = new TestParameters();
+		HandshakeEngine he = new HandshakeEngine(false, params, handler, handler);
+		try {
+			he.consume(array(data,0), data.length);
+			fail();
+		} catch (IllegalParameterAlert e) {
+			assertEquals("Multiple of same supported_versions extensions in server_hello", e.getMessage());
+		}
+
+		extensions.clear();
+		extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.SERVER_HELLO, 0x0304));
+		extensions.add(new UnknownExtension(new ExtensionType("xxx", 1000000) {}, bytes(1,2,3)));
+		extensions.add(new UnknownExtension(new ExtensionType("xxx", 1000000) {}, bytes(1,2,3)));
+		sh.prepare();
+		sh.getBytes(buffer);
+		data = buffer();
+		buffer.clear();
+		
+		try {
+			he.consume(array(data,0), data.length);
+			fail();
+		} catch (IllegalParameterAlert e) {
+			assertEquals("Multiple of same unknown extensions in server_hello", e.getMessage());
+		}
+
 	}
 	
 }

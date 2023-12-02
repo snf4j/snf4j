@@ -26,6 +26,7 @@
 package org.snf4j.tls.crypto;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -48,12 +49,17 @@ public class ECDSASignatureTest extends SignatureTest {
 		KeyPair pair = keyGen.generateKeyPair();
 		assertTrue(ECDSASignature.ECDSA_SECP256R1_SHA256.isImplemented());
 		assertVerify(ECDSASignature.ECDSA_SECP256R1_SHA256, pair.getPrivate(), pair.getPublic());
+		assertEquals("SHA256withECDSA", ECDSASignature.ECDSA_SECP256R1_SHA256.algorithm());
 		
 		X509Certificate cert = cert("secp256r1");
 		assertNotNull(cert);
 		assertEquals("SHA256withECDSA", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(ECDSASignature.ECDSA_SECP256R1_SHA256, ecKey("secp256r1"), cert.getPublicKey());
+		assertTrue(ECDSASignature.ECDSA_SECP256R1_SHA256.matches(cert));
+		assertTrue(ECDSASignature.ECDSA_SECP256R1_SHA256.matchesByKey(cert));
+		assertFalse(ECDSASignature.ECDSA_SECP384R1_SHA384.matches(cert));
+		assertFalse(ECDSASignature.ECDSA_SECP384R1_SHA384.matchesByKey(cert));
 		
 		assertEquals("EC", ECDSASignature.ECDSA_SECP256R1_SHA256.keyAlgorithm());
 		assertX509Encoding("EC", pair.getPublic());
@@ -66,12 +72,18 @@ public class ECDSASignatureTest extends SignatureTest {
 		KeyPair pair = keyGen.generateKeyPair();
 		assertTrue(ECDSASignature.ECDSA_SECP384R1_SHA384.isImplemented());
 		assertVerify(ECDSASignature.ECDSA_SECP384R1_SHA384, pair.getPrivate(), pair.getPublic());
+		assertEquals("SHA384withECDSA", ECDSASignature.ECDSA_SECP384R1_SHA384.algorithm());
 
 		X509Certificate cert = cert("secp384r1");
 		assertNotNull(cert);
 		assertEquals("SHA384withECDSA", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(ECDSASignature.ECDSA_SECP384R1_SHA384, ecKey("secp384r1"), cert.getPublicKey());
+		assertTrue(ECDSASignature.ECDSA_SECP384R1_SHA384.matches(cert));
+		assertTrue(ECDSASignature.ECDSA_SECP384R1_SHA384.matchesByKey(cert));
+		assertFalse(ECDSASignature.ECDSA_SECP256R1_SHA256.matches(cert));
+		assertFalse(ECDSASignature.ECDSA_SECP256R1_SHA256.matchesByKey(cert));
+		
 		
 		assertEquals("EC", ECDSASignature.ECDSA_SECP384R1_SHA384.keyAlgorithm());
 		assertX509Encoding("EC", pair.getPublic());
@@ -84,12 +96,17 @@ public class ECDSASignatureTest extends SignatureTest {
 		KeyPair pair = keyGen.generateKeyPair();
 		assertTrue(ECDSASignature.ECDSA_SECP521R1_SHA512.isImplemented());
 		assertVerify(ECDSASignature.ECDSA_SECP521R1_SHA512, pair.getPrivate(), pair.getPublic());
+		assertEquals("SHA512withECDSA", ECDSASignature.ECDSA_SECP521R1_SHA512.algorithm());
 
 		X509Certificate cert = cert("secp521r1");
 		assertNotNull(cert);
 		assertEquals("SHA512withECDSA", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(ECDSASignature.ECDSA_SECP521R1_SHA512, ecKey("secp521r1"), cert.getPublicKey());
+		assertTrue(ECDSASignature.ECDSA_SECP521R1_SHA512.matches(cert));
+		assertTrue(ECDSASignature.ECDSA_SECP521R1_SHA512.matchesByKey(cert));
+		assertFalse(ECDSASignature.ECDSA_SECP256R1_SHA256.matches(cert));
+		assertFalse(ECDSASignature.ECDSA_SECP256R1_SHA256.matchesByKey(cert));
 		
 		assertEquals("EC", ECDSASignature.ECDSA_SECP521R1_SHA512.keyAlgorithm());
 		assertX509Encoding("EC", pair.getPublic());
@@ -102,12 +119,17 @@ public class ECDSASignatureTest extends SignatureTest {
 		KeyPair pair = keyGen.generateKeyPair();
 		assertTrue(ECDSASignature.ECDSA_SHA1.isImplemented());
 		assertVerify(ECDSASignature.ECDSA_SHA1, pair.getPrivate(), pair.getPublic());
+		assertEquals("SHA1withECDSA", ECDSASignature.ECDSA_SHA1.algorithm());
 
 		X509Certificate cert = cert("ecdsasha1");
 		assertNotNull(cert);
 		assertEquals("SHA1withECDSA", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(ECDSASignature.ECDSA_SHA1, ecKey("ecdsasha1"), cert.getPublicKey());
+		assertTrue(ECDSASignature.ECDSA_SHA1.matches(cert));
+		assertTrue(ECDSASignature.ECDSA_SHA1.matchesByKey(cert));
+		assertFalse(ECDSASignature.ECDSA_SECP256R1_SHA256.matches(cert));
+		assertFalse(ECDSASignature.ECDSA_SECP256R1_SHA256.matchesByKey(cert));
 		
 		assertEquals("EC", ECDSASignature.ECDSA_SHA1.keyAlgorithm());
 		assertX509Encoding("EC", pair.getPublic());

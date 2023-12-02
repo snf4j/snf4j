@@ -47,7 +47,8 @@ public class ConsumerUtilTest extends CommonTest {
 
 	@Test
 	public void testSign() throws Exception {
-		SelectedCertificates certs = new TestCertificateSelector().selectCertificates(new CertificateCriteria(CertificateType.X509, "", null, null));
+		SelectedCertificates certs = new TestCertificateSelector().selectCertificates(
+				new CertificateCriteria(true, CertificateType.X509, "", new SignatureScheme[0], null, new SignatureScheme[0]));
 		
 		Signature s = certs.getAlgorithm().spec().getSignature().createSignature();
 		byte[] octets = new byte[64];

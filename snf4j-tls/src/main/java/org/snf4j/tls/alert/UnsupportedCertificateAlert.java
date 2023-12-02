@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,26 +23,18 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.crypto;
+package org.snf4j.tls.alert;
 
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.security.Signature;
-import java.security.cert.X509Certificate;
-
-public interface ISignature {
-
-	boolean isImplemented();
-
-	String algorithm();
+public class UnsupportedCertificateAlert extends Alert {
 	
-	String keyAlgorithm();
+	private static final long serialVersionUID = 1L;
 	
-	int minKeySize();
-	
-	boolean matches(X509Certificate cert);
+	public UnsupportedCertificateAlert(String message) {
+		super(message, AlertDescription.UNSUPPORTED_CERTIFICATE);
+	}
 
-	boolean matchesByKey(X509Certificate cert);
+	public UnsupportedCertificateAlert(String message, Throwable cause) {
+		super(message, AlertDescription.UNSUPPORTED_CERTIFICATE, cause);
+	}
 	
-	Signature createSignature() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException;
 }

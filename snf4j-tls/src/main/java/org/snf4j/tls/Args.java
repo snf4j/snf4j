@@ -128,4 +128,10 @@ public final class Args {
 		}
 	}
 	
+    public static void checkBounds(int offset, int length, int size) {
+        if ((offset | length | (offset + length) | (size - (offset + length))) < 0) {
+        	throw new IndexOutOfBoundsException();        	
+        }
+    } 
+
 }

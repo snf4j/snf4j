@@ -2765,6 +2765,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.peerHost("host")
 				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512)
 				.build(), 
 				handler);
@@ -2810,10 +2811,16 @@ public class TLSEngineTest extends EngineTest {
 		CertificateCriteria criteria = handler2.certificateSelector.criteria;
 		assertEquals(1, criteria.getSchemes().length);
 		assertNull(criteria.getCertSchemes());
+		assertTrue(criteria.isServer());
+		assertTrue(handler2.certificateValidator.criteria.isServer());
+		assertEquals("host", handler2.certificateValidator.criteria.getHostName());
 		
 		criteria = handler.certificateSelector.criteria;
 		assertEquals(1, criteria.getSchemes().length);
 		assertNull(criteria.getCertSchemes());
+		assertFalse(criteria.isServer());
+		assertFalse(handler.certificateValidator.criteria.isServer());
+		assertEquals("host", handler.certificateValidator.criteria.getHostName());
 	}	
 
 	@Test

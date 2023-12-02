@@ -51,6 +51,7 @@ import org.snf4j.tls.crypto.TranscriptHash;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
+import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.CertificateType;
 import org.snf4j.tls.handshake.ClientHello;
 import org.snf4j.tls.handshake.ServerHello;
@@ -247,7 +248,7 @@ public class EngineStateTest extends CommonTest {
 				new TestHandshakeHandler(),
 				new TestHandshakeHandler());
 		ClientHello ch = clientHello(111);
-		CertificateCriteria cc = new CertificateCriteria(CertificateType.X509, null, null, null);
+		CertificateCriteria cc = new CertificateCriteria(true, CertificateType.X509, null, new SignatureScheme[0], null, new SignatureScheme[0]);
 		ISession session = new TestSession(1,100);
 		EarlyDataContext ctx = new EarlyDataContext(CipherSuite.TLS_AES_128_GCM_SHA256,100);
 		

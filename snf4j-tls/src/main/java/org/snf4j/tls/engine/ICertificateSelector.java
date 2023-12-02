@@ -34,7 +34,8 @@ public interface ICertificateSelector {
 	 * @return the selected certificates. If no certificate could be found it should
 	 *         return the {@link SelectedCertificates} object with empty lists of
 	 *         certificates and certificate entries.
-	 * @throws Exception if an error occurred
+	 * @throws CertificateSelectorException if a certificate selection error occurred
+	 * @throws Exception if an unknown error occurred
 	 */
-	SelectedCertificates selectCertificates(CertificateCriteria criteria) throws Exception;
+	SelectedCertificates selectCertificates(CertificateCriteria criteria) throws CertificateSelectorException, Exception;
 }

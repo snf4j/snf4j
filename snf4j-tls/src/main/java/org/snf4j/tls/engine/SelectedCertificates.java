@@ -27,7 +27,10 @@ package org.snf4j.tls.engine;
 
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
+import java.util.ArrayList;
 
+import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.CertificateEntry;
 
@@ -48,6 +51,19 @@ public class SelectedCertificates {
 		this.certs = certs;
 	}
 
+	public SelectedCertificates(SignatureScheme algorithm, PrivateKey privateKey, Certificate[] certs) throws CertificateEncodingException {
+		this(algorithm, entries(certs), privateKey, certs);
+	}
+	
+	private static CertificateEntry[] entries(Certificate[] certs) throws CertificateEncodingException {
+		CertificateEntry[] entries = new CertificateEntry[certs.length];
+
+		for (int i=0; i<certs.length; ++i) {
+			entries[i] = new CertificateEntry(certs[i].getEncoded(), new ArrayList<IExtension>(0));
+		}
+		return entries;
+	}
+	
 	public SignatureScheme getAlgorithm() {
 		return algorithm;
 	}

@@ -32,6 +32,11 @@ import org.junit.Test;
 public class AlertUtilTest {
 
 	@Test
+	public void testPut() {
+		AlertUtil.put("xxx", new AlertDescription("xxx", 999999));
+	}
+	
+	@Test
 	public void testOf() {
 		int count = 0;
 		
@@ -49,6 +54,6 @@ public class AlertUtilTest {
 				assertEquals("Received 'unknown' error alert", alert.getMessage());
 			}
 		}
-		assertEquals(15, count);
+		assertEquals(27, count);
 	}
 }

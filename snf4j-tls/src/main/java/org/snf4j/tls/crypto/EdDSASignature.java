@@ -28,6 +28,7 @@ package org.snf4j.tls.crypto;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
+import java.security.cert.X509Certificate;
 
 public class EdDSASignature implements ISignature {
 
@@ -62,10 +63,25 @@ public class EdDSASignature implements ISignature {
 	}
 
 	@Override
-	public String keyAlgorithm() {
+	public String algorithm() {
 		return algorithm;
 	}
+	
+	@Override
+	public String keyAlgorithm() {
+		return "EdDSA";
+	}
 
+	@Override
+	public boolean matches(X509Certificate cert) {
+		return algorithm.equals(cert.getSigAlgName());
+	}
+		
+	@Override
+	public boolean matchesByKey(X509Certificate cert) {
+		return matches(cert);
+	}
+	
 	@Override
 	public int minKeySize() {
 		return -1;

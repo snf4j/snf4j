@@ -25,7 +25,10 @@
  */
 package org.snf4j.tls.extension;
 
+import java.util.BitSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.snf4j.tls.handshake.IHandshake;
 
@@ -60,6 +63,33 @@ public final class ExtensionsUtil {
 		
 		if (index >= 0) {
 			return (T) handshake.getExtensions().get(index);
+		}
+		return null;
+	}
+	
+	public static IExtension findAnyMultiple(List<IExtension> extensions) {
+		BitSet existing = new BitSet(256);
+		Set<Integer> existing2 = null;
+		boolean multipleFound = false;
+		int size = existing.size();
+		
+		for (IExtension extension: extensions) {
+			int id = extension.getType().value();
+			
+			if (id < size) {
+				multipleFound |= existing.get(id);
+				existing.set(id);
+			}
+			else {
+				if (existing2 == null) {
+					existing2 = new HashSet<Integer>();
+				}
+				multipleFound |= existing2.contains(id);
+				existing2.add(id);
+			}
+			if (multipleFound) {
+				return extension;
+			}		
 		}
 		return null;
 	}

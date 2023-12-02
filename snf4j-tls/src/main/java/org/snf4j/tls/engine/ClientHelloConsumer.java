@@ -415,10 +415,12 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			task = new CertificateTask(
 					state.getHandler().getCertificateSelector(),
 					new CertificateCriteria(
+							true,
 							CertificateType.X509,
 							state.getHostName(),
 							signAlgorithms.getSchemes(),
-							signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes()
+							signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes(),
+							state.getParameters().getSignatureSchemes().clone()
 							));
 		}
 		if (taskMode.certificates()) {

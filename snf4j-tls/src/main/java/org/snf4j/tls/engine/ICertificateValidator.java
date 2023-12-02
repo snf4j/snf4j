@@ -32,7 +32,7 @@ import org.snf4j.tls.alert.Alert;
 
 public interface ICertificateValidator {
 
-	Alert validateCertificates(X509Certificate[] certs) throws Exception;
+	Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Exception;
 	
-	Alert validateRawKey(PublicKey key) throws Exception;
+	Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Exception;
 }

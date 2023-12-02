@@ -35,7 +35,6 @@ import org.snf4j.tls.handshake.KeyUpdateRequest;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.RecordType;
 import org.snf4j.tls.session.ISessionManager;
-import org.snf4j.tls.session.SessionManager;
 import org.snf4j.tls.session.TestSessionManager;
 
 public class TestHandshakeHandler implements IEngineHandler, IEngineStateListener {

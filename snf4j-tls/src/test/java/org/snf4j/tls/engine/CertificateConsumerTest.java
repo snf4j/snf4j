@@ -43,7 +43,7 @@ public class CertificateConsumerTest {
 
 	@Test
 	public void testTask() {
-		CertificateConsumer.CertificateTask task = new CertificateConsumer.CertificateTask(null, null);
+		CertificateConsumer.CertificateTask task = new CertificateConsumer.CertificateTask(null, null, null);
 		
 		assertEquals("Certificate", task.name());
 		assertFalse(task.isProducing());

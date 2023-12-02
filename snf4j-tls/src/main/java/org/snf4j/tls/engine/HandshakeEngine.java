@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.IllegalParameterAlert;
@@ -47,6 +46,7 @@ import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.crypto.TranscriptHash;
 import org.snf4j.tls.extension.EarlyDataExtension;
 import org.snf4j.tls.extension.ExtensionValidator;
+import org.snf4j.tls.extension.ExtensionsUtil;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.IExtensionValidator;
 import org.snf4j.tls.extension.IKeyShareExtension;
@@ -207,6 +207,16 @@ public class HandshakeEngine implements IHandshakeEngine {
 				}
 			}
 			if (extensions != null) {
+				IExtension multipleFound = ExtensionsUtil.findAnyMultiple(extensions);
+				
+				if (multipleFound != null) {
+					throw new IllegalParameterAlert(
+							"Multiple of same " + 
+							multipleFound.getType().name() + 
+							" extensions in " +
+							type.name());
+				}
+				
 				if (isHRR) {
 					for (IExtension extension: extensions) {
 						if (!extensionValidator.isAllowedInHelloRetryRequest(extension.getType())) {

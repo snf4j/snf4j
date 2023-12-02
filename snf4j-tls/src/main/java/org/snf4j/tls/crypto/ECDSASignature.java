@@ -28,6 +28,7 @@ package org.snf4j.tls.crypto;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
+import java.security.cert.X509Certificate;
 
 public class ECDSASignature implements ISignature {
 	
@@ -56,10 +57,25 @@ public class ECDSASignature implements ISignature {
 	}
 
 	@Override
+	public String algorithm() {
+		return algorithm;
+	}
+	
+	@Override
 	public String keyAlgorithm() {
 		return "EC";
 	}
 
+	@Override
+	public boolean matches(X509Certificate cert) {
+		return algorithm.equals(cert.getSigAlgName());
+	}
+		
+	@Override
+	public boolean matchesByKey(X509Certificate cert) {
+		return matches(cert);
+	}
+	
 	@Override
 	public int minKeySize() {
 		return -1;

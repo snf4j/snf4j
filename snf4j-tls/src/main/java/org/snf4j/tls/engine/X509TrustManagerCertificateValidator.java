@@ -26,28 +26,58 @@
 package org.snf4j.tls.engine;
 
 import java.security.PublicKey;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateExpiredException;
+import java.security.cert.CertificateNotYetValidException;
+import java.security.cert.CertificateRevokedException;
 import java.security.cert.X509Certificate;
 
+import javax.net.ssl.X509TrustManager;
+
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.BadCertificateAlert;
+import org.snf4j.tls.alert.CertificateExpiredAlert;
+import org.snf4j.tls.alert.CertificateRevokedAlert;
+import org.snf4j.tls.alert.UnsupportedCertificateAlert;
 
-public class TestCertificateValidator implements ICertificateValidator {
+public class X509TrustManagerCertificateValidator implements ICertificateValidator {
 
-	Alert certificatesAlert;
+	private final static String UNKNOWN = "UNKNOWN";
 	
-	Alert rawKeyAlert;
+	private final X509TrustManager trustManager;
 	
-	CertificateValidateCriteria criteria;
+	public X509TrustManagerCertificateValidator(X509TrustManager trustManager) {
+		this.trustManager = trustManager;
+	}
 	
 	@Override
 	public Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Exception {
-		this.criteria = criteria;
-		return certificatesAlert;
+		try {
+			if (criteria.isServer()) {
+				trustManager.checkClientTrusted(certs, UNKNOWN);
+			}
+			else {
+				trustManager.checkServerTrusted(certs, UNKNOWN);
+			}
+		}
+		catch (CertificateExpiredException e) {
+			return new CertificateExpiredAlert("Certificate expired", e);
+		}
+		catch (CertificateNotYetValidException e) {
+			return new CertificateExpiredAlert("Certificate not yet valid", e);
+		}
+		catch (CertificateRevokedException e) {
+			return new CertificateRevokedAlert("Certificate revoked", e);
+		}
+		catch (CertificateException e) {
+			return new BadCertificateAlert("Bad certificate", e);
+		}
+		return null;
 	}
 
 	@Override
 	public Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Exception {
-		this.criteria = criteria;
-		return rawKeyAlert;
+		return new UnsupportedCertificateAlert("Unsupported raw key");
 	}
 
 }

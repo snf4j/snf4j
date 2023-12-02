@@ -31,9 +31,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Method;
+import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -42,10 +45,10 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAKey;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PSSParameterSpec;
-
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -80,6 +83,16 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_PSS_SHA384.keyAlgorithm());
 		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_PSS_SHA512.keyAlgorithm());
 	}
+
+	@Test
+	public void testAlgorithm() {
+		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.algorithm());
+		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.algorithm());
+		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.algorithm());
+		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_PSS_SHA256.algorithm());
+		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_PSS_SHA384.algorithm());
+		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_PSS_SHA512.algorithm());
+	}
 	
 	@Test
 	public void testCreateParameter() {
@@ -99,8 +112,14 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 	}
 	
 	@Test
+	public void testMethod() {
+		assertNotNull(RSASSAPSSSignature.method(Object.class.getName(), "toString"));
+		assertNull(RSASSAPSSSignature.method(Object.class.getName(), "XXX"));
+	}
+	
+	@Test
 	public void testCreateSignature() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-		RSASSAPSSSignature signature = new RSASSAPSSSignature("RSA", 528, "SHA-256", 32) {
+		RSASSAPSSSignature signature = new RSASSAPSSSignature("RSASSA-PSS", "RSA", 528, "SHA-256", 32) {
 			
 			String algorithm;
 			
@@ -179,6 +198,14 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 		assertEquals("RSASSA-PSS", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256, rsaKey("rsa2048"), cert.getPublicKey());
+		assertTrue(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matches(cert));
+		assertTrue(RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.matchesByKey(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matchesByKey(cert));
+		assertTrue(RSAPKCS1Signature.RSA_PKCS1_SHA256.matchesByKey(cert));
+		assertTrue(RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.matchesByKey(cert("rsasha256")));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.matchesByKey(cert("rsasha256")));
 		
 		assertEquals("RSA", RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.keyAlgorithm());
 		assertX509Encoding("RSA", pair.getPublic());	
@@ -191,12 +218,15 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 		keyGen.initialize(784);
 		KeyPair pair = keyGen.generateKeyPair();
 		assertVerify(RSASSAPSSSignature.RSA_PSS_RSAE_SHA384, pair.getPrivate(), pair.getPublic());
-
+		
 		X509Certificate cert = cert("rsapsssha384");
 		assertNotNull(cert);
 		assertEquals("RSASSA-PSS", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(RSASSAPSSSignature.RSA_PSS_RSAE_SHA384, rsaKey("rsa2048"), cert.getPublicKey());
+		assertTrue(RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.matches(cert));
 
 		assertEquals("RSA", RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.keyAlgorithm());
 		assertX509Encoding("RSA", pair.getPublic());	
@@ -215,6 +245,9 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 		assertEquals("RSASSA-PSS", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(RSASSAPSSSignature.RSA_PSS_RSAE_SHA512, rsaKey("rsa2048"), cert.getPublicKey());
+		assertTrue(RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA512.matches(cert));
 
 		assertEquals("RSA", RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.keyAlgorithm());
 		assertX509Encoding("RSA", pair.getPublic());	
@@ -233,6 +266,15 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 		assertEquals("RSASSA-PSS", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(RSASSAPSSSignature.RSA_PSS_PSS_SHA256, key("RSASSA-PSS", "rsapsssha256"), cert.getPublicKey());
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.matches(cert));
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matchesByKey(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.matchesByKey(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.matchesByKey(cert));
+		assertFalse(RSAPKCS1Signature.RSA_PKCS1_SHA256.matchesByKey(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matchesByKey(cert("rsapsssha256")));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matchesByKey(cert("rsasha256")));
 
 		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_PSS_SHA256.keyAlgorithm());
 		assertX509Encoding("RSASSA-PSS", pair.getPublic());	
@@ -251,6 +293,9 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 		assertEquals("RSASSA-PSS", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(RSASSAPSSSignature.RSA_PSS_PSS_SHA384, key("RSASSA-PSS", "rsapsssha384"), cert.getPublicKey());
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.matches(cert));
 
 		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_PSS_SHA384.keyAlgorithm());
 		assertX509Encoding("RSASSA-PSS", pair.getPublic());	
@@ -269,6 +314,9 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 		assertEquals("RSASSA-PSS", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(RSASSAPSSSignature.RSA_PSS_PSS_SHA512, key("RSASSA-PSS", "rsapsssha512"), cert.getPublicKey());
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA512.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.matches(cert));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.matches(cert));
 
 		assertEquals("RSASSA-PSS", RSASSAPSSSignature.RSA_PSS_PSS_SHA512.keyAlgorithm());
 		assertX509Encoding("RSASSA-PSS", pair.getPublic());	
@@ -278,5 +326,153 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 	public void testImplemented() {
 		assertTrue(RSASSAPSSSignature.implemented("SHA1withECDSA"));
 		assertFalse(RSASSAPSSSignature.implemented("XXXSignature"));
+	}
+	
+	@Test
+	public void testKeyMatches() throws Exception {
+		Method m1 = TestKey.class.getDeclaredMethod("getParams");
+		PSSParameterSpec pss = new PSSParameterSpec("SHA-256", "MGF1", new MGF1ParameterSpec("SHA-256"), 32, 1);
+		
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.keyMatches(new TestKey("SHA-256", pss), m1));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.keyMatches(new TestKey("SHA-256", pss), m1));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.keyMatches(new TestKey("SHA-256", pss), m1));
+
+		assertTrue(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.keyMatches(new TestKey(null), m1));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.keyMatches(new TestKey(null), m1));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.keyMatches(new TestKey(null), m1));
+
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.keyMatches(new TestKey(null), String.class.getDeclaredMethod("toString")));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.keyMatches(new TestKey(null), null));	
+				
+		X509Certificate cert = cert("rsasha256");
+		RSASSAPSSSignature s = new RSASSAPSSSignature("SHA256withRSA", "RSA", 1024, "RSA", 16);
+		assertTrue(s.keyMatches(cert, cert.getPublicKey(), m1));
+		s = new RSASSAPSSSignature("SHA256withRSA", "RSA", 1025, "RSA", 16);
+		assertFalse(s.keyMatches(cert, cert.getPublicKey(), m1));
+
+		s = new RSASSAPSSSignature("RSASSA-PSS", "RSASSA-PSS", 1024, "SHA-256", 16);
+		assertTrue(s.keyMatches(cert, new TestKey("RSASSA-PSS", pss, (RSAKey) cert.getPublicKey()), m1));
+		s = new RSASSAPSSSignature("RSASSA-PSS", "RSASSA-PSS", 1024, "SHA-384", 16);
+		assertFalse(s.keyMatches(cert, new TestKey("RSASSA-PSS", pss, (RSAKey) cert.getPublicKey()), m1));
+	}
+	
+	@Test
+	public void testPssParamsMatches() throws Exception {
+		byte[] sha256 = new byte[] {48, 48, -96, 13, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2, 1, -95, 26, 48, 24, 6, 9, 42, -122, 72, -122, -9, 13, 1, 1, 8, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2, 1, -94, 3, 2, 1, 32};
+		byte[] sha384 = new byte[] {48, 48, -96, 13, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2, 2, -95, 26, 48, 24, 6, 9, 42, -122, 72, -122, -9, 13, 1, 1, 8, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2, 2, -94, 3, 2, 1, 48};
+		byte[] sha512 = new byte[] {48, 48, -96, 13, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2, 3, -95, 26, 48, 24, 6, 9, 42, -122, 72, -122, -9, 13, 1, 1, 8, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2, 3, -94, 3, 2, 1, 64};
+
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(sha256));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.pssParamsMatches(sha256));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA512.pssParamsMatches(sha256));
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.pssParamsMatches(sha384));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(sha384));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA512.pssParamsMatches(sha384));
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA512.pssParamsMatches(sha512));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA384.pssParamsMatches(sha512));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(sha512));
+		
+		sha256 = new byte[] {-96, 13, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2, 1};
+		assertTrue(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(sha256));
+		sha256 = new byte[] {-96, 13, 48, 11, 6, 9, 96, -122, 72, 1, 101, 4, 4, 2, 1};
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(sha256));
+		sha256 = new byte[] {-96, 13, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2, 9};
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(sha256));
+		sha256 = new byte[] {-96, 13, 48, 11, 6, 9, 96, -122, 72, 1, 101, 3, 4, 2};
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(sha256));
+
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(bytes()));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(bytes(1)));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(bytes(1)));
+
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.pssParamsMatches(null));
+		assertTrue(RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.pssParamsMatches(null));
+	}
+	
+	@Test
+	public void testCertMatches() throws Exception {
+		Method m1 = Key.class.getDeclaredMethod("getAlgorithm");
+		
+		X509Certificate cert = cert("rsasha256");
+		RSASSAPSSSignature s = new RSASSAPSSSignature("SHA256withRSA", "RSA", 1024, "RSA", 16) {
+			boolean pssParamsMatches(byte[] pssParams) { return true;}
+		};
+		assertTrue(s.certMatches(cert, null, m1));
+		s = new RSASSAPSSSignature("SHA256withRSA", "RSA", 1024, "RSA", 16) {
+			boolean pssParamsMatches(byte[] pssParams) { return false;}
+		};
+		assertFalse(s.certMatches(cert, null, m1));
+		s = new RSASSAPSSSignature("SHA256withRSA", "RSA", 1025, "RSA", 16) {
+			boolean pssParamsMatches(byte[] pssParams) { return true;}
+		};
+		assertFalse(s.certMatches(cert, null, m1));
+		s = new RSASSAPSSSignature("SHA256withRSA2", "RSA", 1024, "RSA", 16) {
+			boolean pssParamsMatches(byte[] pssParams) { return true;}
+		};
+		assertFalse(s.certMatches(cert, null, m1));
+		s = new RSASSAPSSSignature("SHA256withRSA", "RSA2", 1024, "RSA", 16) {
+			boolean pssParamsMatches(byte[] pssParams) { return true;}
+		};
+		assertFalse(s.certMatches(cert, null, m1));
+	}
+
+	@Test
+	public void testKeyMatche2s() throws Exception {
+	}
+	
+	@Test
+	public void testMatches() throws Exception { 
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matches(cert("rsapsssha384")));
+		assertFalse(RSASSAPSSSignature.RSA_PSS_PSS_SHA256.matchesByKey(cert("rsapsssha384")));
+	}
+	
+	class TestKey implements Key, RSAKey {
+
+		private static final long serialVersionUID = 1L;
+
+		String algorithm;
+		
+		PSSParameterSpec params;
+		
+		RSAKey key;
+		
+		TestKey(String algorithm) {
+			this.algorithm = algorithm;
+		}
+
+		TestKey(String algorithm, PSSParameterSpec params) {
+			this.algorithm = algorithm;
+			this.params = params;
+		}
+
+		TestKey(String algorithm, PSSParameterSpec params, RSAKey key) {
+			this.algorithm = algorithm;
+			this.params = params;
+			this.key = key;
+		}
+		
+		@Override
+		public String getAlgorithm() {
+			return algorithm;
+		}
+
+		@Override
+		public String getFormat() {
+			return null;
+		}
+
+		@Override
+		public byte[] getEncoded() {
+			return null;
+		}
+		
+		public PSSParameterSpec getParams() {
+			return params;
+		}
+
+		@Override
+		public BigInteger getModulus() {
+			return key.getModulus();
+		}
 	}
 }

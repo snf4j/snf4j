@@ -56,6 +56,7 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		
 		AbstractEngineTask task = new CertificateTask(
 				state.getHandler().getCertificateValidator(),
+				new CertificateValidateCriteria(false, state.getParameters().getPeerHost()),
 				certificate.getEntries());
 		
 		if (state.getParameters().getDelegatedTaskMode().certificates()) {
@@ -80,6 +81,7 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		
 		AbstractEngineTask task = new CertificateTask(
 				state.getHandler().getCertificateValidator(),
+				new CertificateValidateCriteria(true, state.getHostName()),
 				certificate.getEntries());
 		if (state.getParameters().getDelegatedTaskMode().certificates()) {
 			state.changeState(MachineState.SRV_WAIT_TASK);
@@ -113,12 +115,15 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		
 		private final ICertificateEntry[] entries;
 		
+		private final CertificateValidateCriteria criteria;
+		
 		private volatile X509Certificate[] certs;
 		
 		private volatile Alert alert;
 		
-		CertificateTask(ICertificateValidator validator, ICertificateEntry[] entries) {
+		CertificateTask(ICertificateValidator validator, CertificateValidateCriteria criteria, ICertificateEntry[] entries) {
 			this.validator = validator;
+			this.criteria = criteria;
 			this.entries = entries;
 		}
 		
@@ -152,7 +157,7 @@ public class CertificateConsumer implements IHandshakeConsumer {
 			for (int i=0; i<certs.length; ++i) {
 				certs[i] = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(entries[i].getData()));
 			}
-			alert = validator.validateCertificates(certs);
+			alert = validator.validateCertificates(criteria, certs);
 			if (alert == null) {
 				this.certs = certs;
 			}

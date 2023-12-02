@@ -46,9 +46,15 @@ public class EdDSASignatureTest extends SignatureTest {
 	}
 	
 	@Test
+	public void testAlgorithm() {
+		assertEquals("Ed25519", EdDSASignature.ED25519.algorithm());
+		assertEquals("Ed448", EdDSASignature.ED448.algorithm());
+	}
+	
+	@Test
 	public void testKeyAlgorithm() {
-		assertEquals("Ed25519", EdDSASignature.ED25519.keyAlgorithm());
-		assertEquals("Ed448", EdDSASignature.ED448.keyAlgorithm());
+		assertEquals("EdDSA", EdDSASignature.ED25519.keyAlgorithm());
+		assertEquals("EdDSA", EdDSASignature.ED448.keyAlgorithm());
 	}
 	
 	@Test
@@ -59,6 +65,12 @@ public class EdDSASignatureTest extends SignatureTest {
 	@Test
 	public void testMinKeySize() {
 		assertEquals(-1, EdDSASignature.ED25519.minKeySize());		
+	}
+	
+	@Test
+	public void testMatches() throws Exception {
+		assertFalse(EdDSASignature.ED448.matches(cert("ed25519")));
+		assertFalse(EdDSASignature.ED448.matchesByKey(cert("ed25519")));
 	}
 	
 	@Test
@@ -74,8 +86,12 @@ public class EdDSASignatureTest extends SignatureTest {
 		assertEquals("Ed25519", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(EdDSASignature.ED25519, key("Ed25519", "ed25519"), cert.getPublicKey());
+		assertTrue(EdDSASignature.ED25519.matches(cert));
+		assertTrue(EdDSASignature.ED25519.matchesByKey(cert));
+		assertFalse(EdDSASignature.ED448.matches(cert));
+		assertFalse(EdDSASignature.ED448.matchesByKey(cert));
 		
-		assertEquals("Ed25519", EdDSASignature.ED25519.keyAlgorithm());
+		assertEquals("EdDSA", EdDSASignature.ED25519.keyAlgorithm());
 		assertX509Encoding("Ed25519", pair.getPublic());
 	}
 
@@ -92,8 +108,12 @@ public class EdDSASignatureTest extends SignatureTest {
 		assertEquals("Ed448", cert.getSigAlgName());
 		cert.verify(cert.getPublicKey());
 		assertVerify(EdDSASignature.ED448, key("Ed448", "ed448"), cert.getPublicKey());
-
-		assertEquals("Ed448", EdDSASignature.ED448.keyAlgorithm());
+		assertTrue(EdDSASignature.ED448.matches(cert));
+		assertTrue(EdDSASignature.ED448.matchesByKey(cert));
+		assertFalse(EdDSASignature.ED25519.matches(cert));
+		assertFalse(EdDSASignature.ED25519.matchesByKey(cert));
+		
+		assertEquals("EdDSA", EdDSASignature.ED448.keyAlgorithm());
 		assertX509Encoding("Ed448", pair.getPublic());
 	}
 	
