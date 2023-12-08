@@ -35,7 +35,7 @@ import org.snf4j.tls.record.IDecryptorHolder;
 import org.snf4j.tls.record.IEncryptorHolder;
 import org.snf4j.tls.record.RecordType;
 
-public class TLSEngineStateListener implements IEngineStateListener, IEncryptorHolder, IDecryptorHolder {
+public class EngineStateListener implements IEngineStateListener, IEncryptorHolder, IDecryptorHolder {
 
 	private final Encryptor[] encryptors = new Encryptor[RecordType.values().length];
 

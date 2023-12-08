@@ -23,38 +23,56 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.longevity;
 
-import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.Alert;
+public class Average {
 
-public interface IHandshakeEngine {
-
-	IEngineHandler getHandler();
+	long bytes;
 	
-	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
+	long time;
 	
-	void consume(ByteBufferArray srcs, int remaining) throws Alert;
+	final AtomicLong value = new AtomicLong(0);
 	
-	boolean needProduce();
+	final LinkedList<Record> records = new LinkedList<Record>();
 	
-	ProducedHandshake[] produce() throws Alert;
+	final int size;
 	
-	boolean updateTasks() throws Alert;
-
-	boolean hasProducingTask();
-
-	boolean hasRunningTask(boolean onlyUndone);
+	public Average(int size) {
+		this.size = size;
+	}
 	
-	boolean hasTask();
+	public void add(long bytes, long time) {
+		Record r = new Record(bytes, time);
+		
+		synchronized (records) {
+			this.bytes += bytes;
+			this.time += time;
+			records.add(r);
+			if (records.size() > size) {
+				r = records.pollFirst();
+				this.bytes -= r.bytes;
+				this.time -= r.time;
+			}
+			value.set(this.bytes * 1000 / this.time);
+		}
+	}
 	
-	Runnable getTask();
+	public long value() {
+		return value.get();
+	}
 	
-	void start() throws Alert;
-	
-	IEngineState getState();
-	
-	void updateKeys() throws Alert;
+	static class Record {
+		
+		final long time;
+		
+		final long bytes;
+		
+		Record(long bytes, long time) {
+			this.bytes = bytes;
+			this.time = time;
+		}
+	}
 }

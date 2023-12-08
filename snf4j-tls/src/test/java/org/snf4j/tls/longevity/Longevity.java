@@ -23,38 +23,10 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.longevity;
 
-import java.nio.ByteBuffer;
-
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.Alert;
-
-public interface IHandshakeEngine {
-
-	IEngineHandler getHandler();
-	
-	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
-	
-	void consume(ByteBufferArray srcs, int remaining) throws Alert;
-	
-	boolean needProduce();
-	
-	ProducedHandshake[] produce() throws Alert;
-	
-	boolean updateTasks() throws Alert;
-
-	boolean hasProducingTask();
-
-	boolean hasRunningTask(boolean onlyUndone);
-	
-	boolean hasTask();
-	
-	Runnable getTask();
-	
-	void start() throws Alert;
-	
-	IEngineState getState();
-	
-	void updateKeys() throws Alert;
+public class Longevity {
+	public static void main(String[] args) throws Exception {
+		Controller.start();
+	}
 }

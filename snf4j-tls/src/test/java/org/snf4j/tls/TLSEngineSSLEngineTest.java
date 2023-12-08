@@ -23,11 +23,12 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -41,7 +42,6 @@ import static org.snf4j.core.engine.Status.CLOSED;
 import static org.snf4j.core.engine.Status.OK;
 
 import java.nio.ByteBuffer;
-import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 
@@ -61,8 +61,10 @@ import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.core.session.ssl.SSLContextBuilder;
 import org.snf4j.core.session.ssl.SSLEngineBuilder;
-import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.CertificateRequiredAlert;
+import org.snf4j.tls.engine.DelegatedTaskMode;
+import org.snf4j.tls.engine.EngineParametersBuilder;
+import org.snf4j.tls.engine.EngineTest;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.session.ISession;
 
@@ -87,9 +89,6 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		out = ByteBuffer.allocate(100000);
 		in0 = in.duplicate();
 		out0 = out.duplicate();
-		Security.setProperty("jdk.tls.keyLimits", "AES/GCM/NoPadding KeyUpdate 2^16");
-		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
-
 	}
 	
 	void clear() {
@@ -341,15 +340,15 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		
 		Runnable task = tls.getDelegatedTask();
-		assertEngine(tls, HandshakeStatus.NEED_UNWRAP);
+		assertEngine(tls, HandshakeStatus.NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 
 		clear();
-		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, 0, 0);
-		assertEngine(tls, NEED_UNWRAP);
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
-		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, 0);
-		assertEngine(tls, NEED_UNWRAP);
+		assertResult(tls.wrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
 		
 		task.run();
@@ -486,7 +485,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		
 		Runnable task = tls.getDelegatedTask();
-		assertEngine(tls, HandshakeStatus.NEED_UNWRAP);
+		assertEngine(tls, HandshakeStatus.NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 		task.run();
 		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
@@ -562,7 +561,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		
 		Runnable task = tls.getDelegatedTask();
-		assertEngine(tls, HandshakeStatus.NEED_UNWRAP);
+		assertEngine(tls, HandshakeStatus.NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 		task.run();
 		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
@@ -639,7 +638,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		
 		Runnable task = tls.getDelegatedTask();
-		assertEngine(tls, HandshakeStatus.NEED_UNWRAP);
+		assertEngine(tls, HandshakeStatus.NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 		task.run();
 		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
@@ -669,7 +668,9 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 			assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
 			fail();
 		}
-		catch (Alert e) {}
+		catch (TLSException e) {
+			assertNotNull(e.getAlert());
+		}
 		assertEngine(tls, NOT_HANDSHAKING, true, true);
 	}
 	
@@ -699,15 +700,15 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		
 		Runnable task = tls.getDelegatedTask();
-		assertEngine(tls, NEED_WRAP);
+		assertEngine(tls, NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 
 		clear();
-		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
-		assertEngine(tls, NEED_WRAP);
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
-		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 0);
-		assertEngine(tls, NEED_WRAP);
+		assertResult(tls.wrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
 		
 		//ServerHello ->
@@ -948,7 +949,8 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 			assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position()-6, 0);
 			fail();
 		}
-		catch (CertificateRequiredAlert e) {
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof CertificateRequiredAlert);
 		}
 
 		assertEngine(tls, NEED_WRAP, true, false);
@@ -1060,15 +1062,15 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		
 		Runnable task = tls.getDelegatedTask();
-		assertEngine(tls, NEED_WRAP);
+		assertEngine(tls, NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 
 		clear();
-		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
-		assertEngine(tls, NEED_WRAP);
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
-		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 0);
-		assertEngine(tls, NEED_WRAP);
+		assertResult(tls.wrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
 		
 		//ServerHello ->
@@ -1374,15 +1376,15 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		
 		Runnable task = tls.getDelegatedTask();
-		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+		assertEngine(tls, HandshakeStatus.NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 
 		clear();
-		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 0);
-		assertEngine(tls, NEED_WRAP);
+		assertResult(tls.wrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
-		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 0);
-		assertEngine(tls, NEED_WRAP);
+		assertResult(tls.wrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
 		
 		task.run();
@@ -1535,16 +1537,16 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		Runnable task1 = tls.getDelegatedTask();
 		assertEngine(tls, NEED_TASK);
 		Runnable task2 = tls.getDelegatedTask();
-		assertEngine(tls, NEED_WRAP);
+		assertEngine(tls, NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 
 		task1.run();
 		clear();
-		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
-		assertEngine(tls, NEED_WRAP);
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
-		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, 0);
-		assertEngine(tls, NEED_WRAP);
+		assertResult(tls.wrap(in, out), OK, NEED_TASK, 0, 0);
+		assertEngine(tls, NEED_TASK);
 		assertInOut(0, 0);
 		task2.run();
 		

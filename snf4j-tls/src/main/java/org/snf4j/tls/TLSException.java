@@ -23,38 +23,43 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
 
-import org.snf4j.core.ByteBufferArray;
 import org.snf4j.tls.alert.Alert;
 
-public interface IHandshakeEngine {
+public class TLSException extends IOException {
 
-	IEngineHandler getHandler();
+	private static final long serialVersionUID = 1L;
 	
-	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
-	
-	void consume(ByteBufferArray srcs, int remaining) throws Alert;
-	
-	boolean needProduce();
-	
-	ProducedHandshake[] produce() throws Alert;
-	
-	boolean updateTasks() throws Alert;
+	private final Alert alert;
 
-	boolean hasProducingTask();
+	public TLSException() {
+		alert = null;
+	}
+	
+	public TLSException(Throwable cause) {
+		super(cause);
+		this.alert = cause instanceof Alert ? (Alert)cause : null; 
+	}
 
-	boolean hasRunningTask(boolean onlyUndone);
+	public TLSException(String message, Throwable cause) {
+		super(message, cause);
+		this.alert = cause instanceof Alert ? (Alert)cause : null; 
+	}
 	
-	boolean hasTask();
+	public TLSException(Alert alert) {
+		super(alert);
+		this.alert = alert;
+	}
+
+	public TLSException(String message, Alert alert) {
+		super(message, alert);
+		this.alert = alert;
+	}
 	
-	Runnable getTask();
-	
-	void start() throws Alert;
-	
-	IEngineState getState();
-	
-	void updateKeys() throws Alert;
+	public Alert getAlert() {
+		return alert;
+	}
 }

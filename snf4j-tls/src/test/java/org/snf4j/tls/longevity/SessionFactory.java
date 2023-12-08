@@ -23,38 +23,51 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.longevity;
 
-import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.Alert;
+import org.snf4j.core.StreamSession;
+import org.snf4j.core.factory.AbstractSessionFactory;
+import org.snf4j.core.handler.IStreamHandler;
+import org.snf4j.tls.TLSSession;
+import org.snf4j.tls.engine.DelegatedTaskMode;
+import org.snf4j.tls.engine.EngineHandler;
+import org.snf4j.tls.engine.EngineParametersBuilder;
 
-public interface IHandshakeEngine {
+public class SessionFactory extends AbstractSessionFactory {
 
-	IEngineHandler getHandler();
-	
-	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
-	
-	void consume(ByteBufferArray srcs, int remaining) throws Alert;
-	
-	boolean needProduce();
-	
-	ProducedHandshake[] produce() throws Alert;
-	
-	boolean updateTasks() throws Alert;
+	static final ExecutorService executor = Executors.newFixedThreadPool(10);
 
-	boolean hasProducingTask();
+	protected SessionFactory(boolean ssl) {
+		super(ssl);
+	}
+	
+	@Override
+	public StreamSession create(SocketChannel channel) throws Exception {
+		EngineParametersBuilder builder = new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.ALL);
 
-	boolean hasRunningTask(boolean onlyUndone);
+		return new TLSSession(
+				builder.build(),
+				new EngineHandler(SessionConfig.km, SessionConfig.tm),
+				new ServerHandler(),
+				false
+				);
+		
+//		StreamSession s = super.create(channel);
+		
+//		if (s instanceof IEngineSession) {
+//			((IEngineSession)s).setExecutor(executor);
+//		}
+//		return s;
+	}
 	
-	boolean hasTask();
-	
-	Runnable getTask();
-	
-	void start() throws Alert;
-	
-	IEngineState getState();
-	
-	void updateKeys() throws Alert;
+	@Override
+	protected IStreamHandler createHandler(SocketChannel channel) {
+		return new ServerHandler();
+	}
+
 }

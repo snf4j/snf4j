@@ -82,7 +82,7 @@ public class HandshakeController {
 		return s;
 	}
 	
-	void consume(int idx, boolean client, HandshakeType type) throws Exception {
+	public void consume(int idx, boolean client, HandshakeType type) throws Exception {
 		int findIdx = idx(!client);
 		int consumeIdx = other(idx);
 		Context consumeCtx = ctxs[consumeIdx];
@@ -115,7 +115,7 @@ public class HandshakeController {
 		}
 	}
 	
-	IHandshake get(boolean client) {
+	public IHandshake get(boolean client) {
 		Context ctx = ctxs[other(idx(!client))];
 		
 		if (ctx.produced.isEmpty()) {
@@ -124,25 +124,25 @@ public class HandshakeController {
 		return ctx.produced.get(0);
 	}
 
-	void remove(boolean client) {
+	public void remove(boolean client) {
 		Context ctx = ctxs[other(idx(!client))];
 
 		ctx.produced.remove(0);
 	}
 	
-	void clear(boolean client) {
+	public void clear(boolean client) {
 		Context ctx = ctxs[other(idx(!client))];
 
 		ctx.produced.clear();
 	}
 	
-	void add(boolean client, IHandshake h) {
+	public void add(boolean client, IHandshake h) {
 		Context ctx = ctxs[other(idx(!client))];
 
 		ctx.produced.add(h);
 	}
 	
-	void set(boolean client, IHandshake h) {
+	public void set(boolean client, IHandshake h) {
 		Context ctx = ctxs[other(idx(!client))];
 		
 		if (!ctx.produced.isEmpty()) {
@@ -150,7 +150,7 @@ public class HandshakeController {
 		}
 	}
 	
-	void start(boolean client) throws Exception {
+	public void start(boolean client) throws Exception {
 		Context ctx = ctxs[other(idx(!client))];
 
 		ctx.start();

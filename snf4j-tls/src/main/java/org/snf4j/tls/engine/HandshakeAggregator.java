@@ -46,15 +46,15 @@ public class HandshakeAggregator {
 	
 	private ByteBuffer pendingHeader;
 		
-	HandshakeAggregator(IHandshakeEngine handshaker) {
+	public HandshakeAggregator(IHandshakeEngine handshaker) {
 		this.handshaker = handshaker;
 	}
 	
-	boolean isEmpty() {
+	public boolean isEmpty() {
 		return neededBytes == 0 && pendingHeader == null && remaining.isEmpty();
 	}
 		
-	boolean hasRemaining() {
+	public boolean hasRemaining() {
 		return !remaining.isEmpty();
 	}
 	
@@ -67,7 +67,7 @@ public class HandshakeAggregator {
 	 *         new handshake messages are ready to be wrapped
 	 * @throws Alert if an alert has occurred
 	 */
-	boolean unwrapRemaining() throws Alert {
+	public boolean unwrapRemaining() throws Alert {
 		boolean continueUnwrap = true;
 		ByteBuffer src;
 		
@@ -90,7 +90,7 @@ public class HandshakeAggregator {
 	 *         new handshake messages are ready to be wrapped
 	 * @throws Alert if an alert has occurred
 	 */
-	boolean unwrap(ByteBuffer src, int remaining) throws Alert {
+	public boolean unwrap(ByteBuffer src, int remaining) throws Alert {
 		return unwrap(src, remaining, false);
 	}	
 

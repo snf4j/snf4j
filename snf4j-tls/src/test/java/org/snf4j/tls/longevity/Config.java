@@ -23,38 +23,45 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.longevity;
 
-import java.nio.ByteBuffer;
+public interface Config {
+	
+	static final String HOST = "127.0.0.1";
+	
+	static final boolean ENABLE_METRIC = true;
+	
+	static final boolean ENABLE_ALLOCATOR_METRIC = true;
+	
+	static final boolean ENABLE_METRIC_PRINT = true;
+	
+	static final boolean ENABLE_THREAD_LOCAL_ALLOCATOR = true;
+	
+	static final boolean SINGLE_ALLOCATOR = true;
+	
+	static final int ALLOCATOR_MIN_CAPACITY = 128;
+	
+	static final boolean SSL = true;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.Alert;
-
-public interface IHandshakeEngine {
-
-	IEngineHandler getHandler();
+	static final int FIRST_PORT = 7000;
 	
-	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
+	static final int SERVER_LOOP_COUNT = 1;
 	
-	void consume(ByteBufferArray srcs, int remaining) throws Alert;
+	static final int SERVER_LOOP_POOL_SIZE = 32;
 	
-	boolean needProduce();
+	static final int CLIENT_LOOP_COUNT = 32;
 	
-	ProducedHandshake[] produce() throws Alert;
+	static final int LISTENER_COUNT = 1;
 	
-	boolean updateTasks() throws Alert;
-
-	boolean hasProducingTask();
-
-	boolean hasRunningTask(boolean onlyUndone);
+	static final int FIRST_LISTENING_PORT = 7000;
 	
-	boolean hasTask();
+	static final int PACKET_SIZE = 1024;
 	
-	Runnable getTask();
+	static final long SESSION_SIZE = 1024*1024;
 	
-	void start() throws Alert;
+	static final int MAX_SESSIONS = 100;
 	
-	IEngineState getState();
+	static final int CLIENT_RESPONSE_DELAY = 0;
 	
-	void updateKeys() throws Alert;
+	static final int SERVER_SLEEP_TIME = 0;
 }

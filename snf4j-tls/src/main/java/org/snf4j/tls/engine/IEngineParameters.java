@@ -25,8 +25,6 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.SecureRandom;
-
 import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
@@ -45,8 +43,6 @@ public interface IEngineParameters {
 
 	PskKeyExchangeMode[] getPskKeyExchangeModes();
 	
-	SecureRandom getSecureRandom();
-
 	boolean isCompatibilityMode();
 	
 	String getPeerHost();

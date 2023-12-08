@@ -23,7 +23,7 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls;
 
 import static org.snf4j.core.engine.HandshakeStatus.FINISHED;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_TASK;
@@ -53,6 +53,15 @@ import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.RecordOverflowAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.engine.EarlyDataState;
+import org.snf4j.tls.engine.EngineStateListener;
+import org.snf4j.tls.engine.HandshakeAggregator;
+import org.snf4j.tls.engine.HandshakeEngine;
+import org.snf4j.tls.engine.HandshakeFragmenter;
+import org.snf4j.tls.engine.IEarlyDataContext;
+import org.snf4j.tls.engine.IEngineHandler;
+import org.snf4j.tls.engine.IEngineParameters;
+import org.snf4j.tls.engine.IHandshakeEngine;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Cryptor;
 import org.snf4j.tls.record.Decryptor;
@@ -63,13 +72,13 @@ public class TLSEngine implements IEngine {
 	
 	private final IHandshakeEngine handshaker;
 
-	private final TLSEngineStateListener listener;
+	private final EngineStateListener listener;
 	
 	private final IEngineHandler handler;
 
 	private final HandshakeAggregator aggregator; 
 	
-	private final TLSHandshakeFragmenter fragmenter;
+	private final HandshakeFragmenter fragmenter;
 	
 	private final int maxAppBufferSizeRatio;
 
@@ -88,7 +97,7 @@ public class TLSEngine implements IEngine {
 	}
 
 	public TLSEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler, int maxAppBufferSizeRatio, int maxNetBufferSizeRatio) {
-		listener = new TLSEngineStateListener();
+		listener = new EngineStateListener();
 		this.handler = handler;
 		handshaker = new HandshakeEngine(
 				clientMode, 
@@ -96,7 +105,7 @@ public class TLSEngine implements IEngine {
 				this.handler,
 				listener);
 		aggregator = new HandshakeAggregator(handshaker);
-		fragmenter = new TLSHandshakeFragmenter(handshaker, listener, listener);
+		fragmenter = new HandshakeFragmenter(handshaker, listener, listener);
 		this.maxAppBufferSizeRatio = Math.max(100, maxAppBufferSizeRatio);
 		this.maxNetBufferSizeRatio = Math.max(100, maxNetBufferSizeRatio);
 	}
@@ -118,7 +127,7 @@ public class TLSEngine implements IEngine {
 	}
 	
 	@Override
-	public void beginHandshake() throws Exception {
+	public void beginHandshake() throws TLSException {
 		if (!handshaker.getState().isStarted()  && alert == null) {
 			beginStatus();
 		}
@@ -202,7 +211,7 @@ public class TLSEngine implements IEngine {
 	@Override
 	public HandshakeStatus getHandshakeStatus() {
 		if (status != NOT_HANDSHAKING) {
-			if (handshaker.hasTask()) {
+			if (handshaker.hasTask() || handshaker.hasRunningTask(true)) {
 				return NEED_TASK;
 			}
 		}
@@ -426,7 +435,7 @@ public class TLSEngine implements IEngine {
 				produced);
 	}
 	
-	private IEngineResult wrap(ByteBuffer src, ByteBuffer[] srcs, ByteBuffer dst) throws Exception {
+	private IEngineResult wrap(ByteBuffer src, ByteBuffer[] srcs, ByteBuffer dst) throws TLSException {
 		int produced;
 		
 		dst.mark();
@@ -500,7 +509,7 @@ public class TLSEngine implements IEngine {
 				outboundDone = true;
 				this.status = NOT_HANDSHAKING;
 			}
-			throw e;
+			throw new TLSException(e);
 		}
 		
 		if (handshaker.getState().isConnected()) {
@@ -520,12 +529,12 @@ public class TLSEngine implements IEngine {
 	}
 	
 	@Override
-	public IEngineResult wrap(ByteBuffer[] srcs, ByteBuffer dst) throws Exception {
+	public IEngineResult wrap(ByteBuffer[] srcs, ByteBuffer dst) throws TLSException {
 		return wrap(null, srcs, dst);
 	}
 
 	@Override
-	public IEngineResult wrap(ByteBuffer src, ByteBuffer dst) throws Exception {
+	public IEngineResult wrap(ByteBuffer src, ByteBuffer dst) throws TLSException {
 		return wrap(src, null, dst);
 	}
 
@@ -877,7 +886,7 @@ public class TLSEngine implements IEngine {
 	}	
 	
 	@Override
-	public IEngineResult unwrap(ByteBuffer src, ByteBuffer dst) throws Exception {
+	public IEngineResult unwrap(ByteBuffer src, ByteBuffer dst) throws TLSException {
 		dst.mark();
 		try {
 			beginHandshake0();
@@ -959,6 +968,9 @@ public class TLSEngine implements IEngine {
 					return unwrap(src, true);
 				}
 			}
+			if (handshaker.getState().isConnected()) {
+				return unwrapAppData(src, dst, false);
+			}
 			return unwrap(src, false);
 		}
 		catch (Exception e) {
@@ -967,7 +979,7 @@ public class TLSEngine implements IEngine {
 				e = alert(e);
 				this.status = NEED_WRAP;
 			}
-			throw e;
+			throw new TLSException(e);
 		}
 	}
 	

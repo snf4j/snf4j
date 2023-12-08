@@ -346,7 +346,7 @@ public class HandshakeAggregatorTest extends CommonTest {
 		}
 
 		@Override
-		public boolean hasRunningTask() {
+		public boolean hasRunningTask(boolean onlyUndone) {
 			return false;
 		}
 

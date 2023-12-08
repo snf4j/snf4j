@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.engine;
 
+import java.security.SecureRandom;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -51,6 +52,8 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	
 	public volatile TestSessionManager sessionManager = new TestSessionManager();
 	
+	public volatile SecureRandom secureRandom = new SecureRandom();
+
 	public Alert onETSException;
 
 	public Alert onHTSException;
@@ -69,6 +72,8 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	
 	public TicketInfo[] ticketInfos = new TicketInfo[] {new TicketInfo()};
 	
+	RuntimeException getSecureRandomException;
+
 	public void trace(String msg) {
 		synchronized (trace) {
 			trace.append(msg).append('|');
@@ -196,6 +201,14 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	@Override
 	public void onKeyUpdate(IEngineState state, KeyUpdateRequest request) {
 		trace("KU(" + request.name() +")");
+	}
+
+	@Override
+	public SecureRandom getSecureRandom() {
+		if (getSecureRandomException != null) {
+			throw getSecureRandomException;
+		}
+		return secureRandom;
 	}
 	
 }

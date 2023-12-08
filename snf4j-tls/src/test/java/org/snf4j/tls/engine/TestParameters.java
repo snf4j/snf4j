@@ -25,8 +25,6 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.SecureRandom;
-
 import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
@@ -35,44 +33,40 @@ import org.snf4j.tls.extension.SignatureScheme;
 
 public class TestParameters implements IEngineParameters {
 
-	private final static SecureRandom SECURE_RANDOM = new SecureRandom();
-
-	CipherSuite[] cipherSuites = new CipherSuite[] {
+	public CipherSuite[] cipherSuites = new CipherSuite[] {
 			CipherSuite.TLS_AES_256_GCM_SHA384,
 			CipherSuite.TLS_AES_128_GCM_SHA256
 			};
 	
-	NamedGroup[] namedGroups = new NamedGroup[] {
+	public NamedGroup[] namedGroups = new NamedGroup[] {
 			NamedGroup.SECP256R1,
 			NamedGroup.SECP384R1
 			};
 	
-	SignatureScheme[] signatureSchemes = new SignatureScheme[] {
+	public SignatureScheme[] signatureSchemes = new SignatureScheme[] {
 			SignatureScheme.ECDSA_SECP256R1_SHA256,
 			SignatureScheme.ECDSA_SECP384R1_SHA384
 			};
 
-	SignatureScheme[] signatureSchemesCert = null;
+	public SignatureScheme[] signatureSchemesCert = null;
 	
-	PskKeyExchangeMode[] pskKeyExchangeModes = new PskKeyExchangeMode[] {
+	public PskKeyExchangeMode[] pskKeyExchangeModes = new PskKeyExchangeMode[] {
 			PskKeyExchangeMode.PSK_DHE_KE
 			};
 
-	boolean compatibilityMode;
+	public boolean compatibilityMode;
 	
-	int numberOfOfferedSharedKeys = 1;
+	public int numberOfOfferedSharedKeys = 1;
 	
-	String peerHost;
+	public String peerHost;
 
-	int peerPort;
+	public int peerPort;
 	
-	boolean serverNameRequired;
+	public boolean serverNameRequired;
 
-	DelegatedTaskMode delegatedTaskMode = DelegatedTaskMode.ALL;
+	public DelegatedTaskMode delegatedTaskMode = DelegatedTaskMode.ALL;
 	
-	ClientAuth clientAuth = ClientAuth.NONE;
-	
-	RuntimeException getSecureRandomException;
+	public ClientAuth clientAuth = ClientAuth.NONE;
 	
 	@Override
 	public CipherSuite[] getCipherSuites() {
@@ -97,14 +91,6 @@ public class TestParameters implements IEngineParameters {
 	@Override
 	public boolean isCompatibilityMode() {
 		return compatibilityMode;
-	}
-
-	@Override
-	public SecureRandom getSecureRandom() {
-		if (getSecureRandomException != null) {
-			throw getSecureRandomException;
-		}
-		return SECURE_RANDOM;
 	}
 
 	@Override

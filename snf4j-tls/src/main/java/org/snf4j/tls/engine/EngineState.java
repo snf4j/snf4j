@@ -306,8 +306,18 @@ public class EngineState implements IEngineState, IEngineProducer {
 		return !tasks.isEmpty();
 	}
 	
-	public boolean hasRunningTasks() {
-		return !runningTasks.isEmpty();
+	public boolean hasRunningTasks(boolean onlyUndone) {
+		boolean has = !runningTasks.isEmpty();
+		
+		if (has && onlyUndone) {
+			for (IEngineTask task: runningTasks) {
+				if (!task.isDone()) {
+					return true;
+				}
+			}
+			has = false;
+		}
+		return has;
 	}
 	
 	public Runnable getTask() {

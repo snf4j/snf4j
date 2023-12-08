@@ -25,6 +25,8 @@
  */
 package org.snf4j.tls.engine;
 
+import java.security.SecureRandom;
+
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
@@ -40,6 +42,8 @@ public class TestHandler implements IEngineHandler {
 	public volatile TestCertificateValidator certificateValidator = new TestCertificateValidator();
 
 	public volatile ISessionManager sessionManager = new SessionManager();
+	
+	public volatile SecureRandom secureRandom = new SecureRandom();
 	
 	public long maxEarlyDataSize = 1000;
 	
@@ -91,5 +95,10 @@ public class TestHandler implements IEngineHandler {
 	@Override
 	public byte[] nextEarlyData() {
 		return null;
+	}
+
+	@Override
+	public SecureRandom getSecureRandom() {
+		return secureRandom;
 	}
 }

@@ -44,20 +44,20 @@ public class X509TrustManagerCertificateValidator implements ICertificateValidat
 
 	private final static String UNKNOWN = "UNKNOWN";
 	
-	private final X509TrustManager trustManager;
+	private final X509TrustManager manager;
 	
-	public X509TrustManagerCertificateValidator(X509TrustManager trustManager) {
-		this.trustManager = trustManager;
+	public X509TrustManagerCertificateValidator(X509TrustManager manager) {
+		this.manager = manager;
 	}
 	
 	@Override
 	public Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Exception {
 		try {
 			if (criteria.isServer()) {
-				trustManager.checkClientTrusted(certs, UNKNOWN);
+				manager.checkClientTrusted(certs, UNKNOWN);
 			}
 			else {
-				trustManager.checkServerTrusted(certs, UNKNOWN);
+				manager.checkServerTrusted(certs, UNKNOWN);
 			}
 		}
 		catch (CertificateExpiredException e) {

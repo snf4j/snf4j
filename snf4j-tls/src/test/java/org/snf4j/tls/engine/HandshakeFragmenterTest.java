@@ -55,9 +55,9 @@ import org.snf4j.tls.record.IEncryptorHolder;
 import org.snf4j.tls.record.RecordType;
 import org.snf4j.tls.session.ISession;
 
-public class TLSHandshakeFragmenterTest extends EngineTest {
+public class HandshakeFragmenterTest extends EngineTest {
 
-	private TLSHandshakeFragmenter wrapper;
+	private HandshakeFragmenter wrapper;
 	
 	private int maxFragmentLength;
 	
@@ -72,7 +72,7 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 	@Override
 	public void before() throws Exception {
 		super.before();
-		wrapper = new TLSHandshakeFragmenter(new TestEngine(), new TestEncryptors(), new TestListener());
+		wrapper = new HandshakeFragmenter(new TestEngine(), new TestEncryptors(), new TestListener());
 		maxFragmentLength = 1000;
 		produced = new ArrayList<ProducedHandshake>();
 		dst = ByteBuffer.allocate(1000+5);
@@ -523,7 +523,7 @@ public class TLSHandshakeFragmenterTest extends EngineTest {
 		}
 
 		@Override
-		public boolean hasRunningTask() {
+		public boolean hasRunningTask(boolean onlyUndone) {
 			return false;
 		}
 

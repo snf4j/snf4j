@@ -30,16 +30,16 @@ import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.record.RecordType;
 
-public class TLSEngineStateListenerTest extends EngineTest {
+public class EngineStateListenerTest extends EngineTest {
 
 	@Test
 	public void testOnNewTrafficSecretsWithNextGen() throws Exception {
-		new TLSEngineStateListener().onNewTrafficSecrets(null, RecordType.NEXT_GEN);
+		new EngineStateListener().onNewTrafficSecrets(null, RecordType.NEXT_GEN);
 	}
 
 	@Test(expected = InternalErrorAlert.class)
 	public void testOnNewTrafficSecretsException() throws Exception {
-		new TLSEngineStateListener().onNewTrafficSecrets(null, RecordType.HANDSHAKE);
+		new EngineStateListener().onNewTrafficSecrets(null, RecordType.HANDSHAKE);
 	}
 	
 	@Test(expected = InternalErrorAlert.class)
@@ -51,7 +51,7 @@ public class TLSEngineStateListenerTest extends EngineTest {
 				throw new NullPointerException();
 			}
 		};
-		new TLSEngineStateListener().onNewReceivingTraficKey(state, RecordType.NEXT_GEN);
+		new EngineStateListener().onNewReceivingTraficKey(state, RecordType.NEXT_GEN);
 	}
 	
 	@Test(expected = InternalErrorAlert.class)
@@ -63,6 +63,6 @@ public class TLSEngineStateListenerTest extends EngineTest {
 				throw new NullPointerException();
 			}
 		};
-		new TLSEngineStateListener().onNewSendingTraficKey(state, RecordType.NEXT_GEN);
+		new EngineStateListener().onNewSendingTraficKey(state, RecordType.NEXT_GEN);
 	}
 }

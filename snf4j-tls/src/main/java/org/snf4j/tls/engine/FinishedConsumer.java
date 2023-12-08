@@ -191,7 +191,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 							certificates.getAlgorithm(), 
 							certificates.getPrivateKey(), 
 							true,
-							params.getSecureRandom());
+							state.getHandler().getSecureRandom());
 					CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
 					ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);
 				}

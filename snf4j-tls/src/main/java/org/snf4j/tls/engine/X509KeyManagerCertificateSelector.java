@@ -38,13 +38,13 @@ import org.snf4j.tls.extension.SignatureScheme;
 
 public class X509KeyManagerCertificateSelector implements ICertificateSelector {
 
-	private final X509KeyManager keyManager;
+	private final X509KeyManager manager;
 	
 	private final String alias;
 		
-	public X509KeyManagerCertificateSelector(X509KeyManager keyManager, String alias) {
-		Args.checkNull(keyManager, "keyManager");
-		this.keyManager = keyManager;
+	public X509KeyManagerCertificateSelector(X509KeyManager manager, String alias) {
+		Args.checkNull(manager, "manager");
+		this.manager = manager;
 		this.alias = alias;
 	}
 
@@ -53,7 +53,7 @@ public class X509KeyManagerCertificateSelector implements ICertificateSelector {
 	}
 	
 	SelectedCertificates selectCertificates(CertificateCriteria criteria, String alias) throws CertificateSelectorException, Exception {
-		X509Certificate[] certs = keyManager.getCertificateChain(alias);
+		X509Certificate[] certs = manager.getCertificateChain(alias);
 		
 		if (certs == null) {
 			throw new CertificateSelectorException("No certificate chain found for " + alias + " alias");
@@ -69,7 +69,7 @@ public class X509KeyManagerCertificateSelector implements ICertificateSelector {
 			throw new CertificateSelectorException("Chain has certificate(s) with sign algorithm not in offered signature schemes");
 		}
 		
-		PrivateKey key = keyManager.getPrivateKey(alias);
+		PrivateKey key = manager.getPrivateKey(alias);
 		if (key == null) {
 			throw new CertificateSelectorException("No key found for " + alias + " alias");
 		}
@@ -94,8 +94,8 @@ public class X509KeyManagerCertificateSelector implements ICertificateSelector {
 					processed.add(keyType);
 					
 					String[] aliases = criteria.isServer() 
-						? keyManager.getServerAliases(keyType, null)
-						: keyManager.getClientAliases(keyType, null);
+						? manager.getServerAliases(keyType, null)
+						: manager.getClientAliases(keyType, null);
 					
 					if (aliases != null) {
 						for (String alias: aliases) {

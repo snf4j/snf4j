@@ -28,6 +28,8 @@ package org.snf4j.tls.engine;
 import org.snf4j.tls.Args;
 
 public class TicketInfo {
+
+	public final static TicketInfo NO_MAX_EARLY_DATA_SIZE = new TicketInfo();
 	
 	private final long maxEarlyDataSize;
 

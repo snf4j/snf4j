@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.engine.Status;
+import org.snf4j.tls.TLSEngine;
 
 public class FlightController {
 	
@@ -37,17 +38,17 @@ public class FlightController {
 	
 	public byte[] earlyData;
 	
-	void trace(String s) {
+	public void trace(String s) {
 		trace.append(s).append('|');
 	}
 	
-	String trace() {
+	public String trace() {
 		String s = trace.toString();
 		trace.setLength(0);
 		return s;
 	}
 	
-	void trace(TLSEngine engine, IEngineResult r) {
+	public void trace(TLSEngine engine, IEngineResult r) {
 		String h = r == null ? null : toString(r.getHandshakeStatus());
 		String s = r == null ? null : toString(r.getStatus());
 		String hs = toString(engine.getHandshakeStatus());
@@ -60,7 +61,7 @@ public class FlightController {
 		}
 	}
 	
-	String toString(Status s) {
+	public String toString(Status s) {
 		switch (s) {
 		case BUFFER_OVERFLOW:
 			return "O";
@@ -75,7 +76,7 @@ public class FlightController {
 		}
 	}
 	
-	String toString(HandshakeStatus s) {
+	public String toString(HandshakeStatus s) {
 		switch (s) {
 		case NEED_WRAP:
 			return "W";
@@ -94,7 +95,7 @@ public class FlightController {
 		}
 	}
 	
-	void fly(TLSEngine engine, ByteBuffer in, ByteBuffer out) throws Exception {
+	public void fly(TLSEngine engine, ByteBuffer in, ByteBuffer out) throws Exception {
 		IEngineResult r;
 		int pos;
 		int earlyData;

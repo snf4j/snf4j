@@ -25,6 +25,8 @@
  */
 package org.snf4j.tls.engine;
 
+import java.security.SecureRandom;
+
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
@@ -51,5 +53,7 @@ public interface IEngineHandler {
 	byte[] nextEarlyData();
 	
 	ISessionManager getSessionManager();
+	
+	SecureRandom getSecureRandom();
 
 }

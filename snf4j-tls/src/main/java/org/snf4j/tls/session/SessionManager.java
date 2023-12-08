@@ -266,7 +266,7 @@ public class SessionManager implements ISessionManager {
 	NewSessionTicket newTicket(IEngineState state, long maxEarlyDataSize, long currentTime) throws InvalidKeyException {
 		Session checkedSession = checkSession(state.getSession());
 		long nonce = nextNonce.incrementAndGet();
-		SecureRandom random = state.getParameters().getSecureRandom();
+		SecureRandom random = state.getHandler().getSecureRandom();
 		byte[] ticketNonce = nonce(nonce);
 		byte[] psk = state.getKeySchedule().computePsk(ticketNonce);
 		long ageAdd = random.nextLong();

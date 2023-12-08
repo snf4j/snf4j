@@ -23,7 +23,7 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -39,6 +39,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
@@ -59,6 +60,18 @@ import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.RecordOverflowAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.engine.CertificateCriteria;
+import org.snf4j.tls.engine.DelegatedTaskMode;
+import org.snf4j.tls.engine.EngineParametersBuilder;
+import org.snf4j.tls.engine.EngineStateListener;
+import org.snf4j.tls.engine.EngineTest;
+import org.snf4j.tls.engine.FlightController;
+import org.snf4j.tls.engine.HandshakeAggregator;
+import org.snf4j.tls.engine.HandshakeController;
+import org.snf4j.tls.engine.HandshakeEngine;
+import org.snf4j.tls.engine.IHandshakeEngine;
+import org.snf4j.tls.engine.TestHandshakeHandler;
+import org.snf4j.tls.engine.TicketInfo;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.HandshakeType;
@@ -264,8 +277,8 @@ public class TLSEngineTest extends EngineTest {
 	static Encryptor[] encryptors(TLSEngine e) throws Exception {
 		Field f = TLSEngine.class.getDeclaredField("listener");
 		f.setAccessible(true);
-		TLSEngineStateListener listener = (TLSEngineStateListener) f.get(e);
-		f = TLSEngineStateListener.class.getDeclaredField("encryptors");
+		EngineStateListener listener = (EngineStateListener) f.get(e);
+		f = EngineStateListener.class.getDeclaredField("encryptors");
 		f.setAccessible(true);
 		return (Encryptor[]) f.get(listener);
 	}
@@ -379,7 +392,8 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 	}
 	
@@ -661,8 +675,9 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Early data is too big", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Early data is too big", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 	}
 
@@ -695,8 +710,9 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Early data is too big", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Early data is too big", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 	}
 
@@ -728,7 +744,8 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 
 		handler.earlyData.add(data);
@@ -794,7 +811,8 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 
 		data = random(1000);
@@ -822,7 +840,9 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {}	
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
+		}
 	}
 
 	@Test
@@ -846,7 +866,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
+		}
 	}
 	
 	@Test
@@ -1141,7 +1163,12 @@ public class TLSEngineTest extends EngineTest {
 		prepareConnection();
 		
 		clear(bytes(20,3,3, 0, 1, 1));
-		srv.unwrap(in, out);
+		try {
+			srv.unwrap(in, out);
+		}
+		catch (TLSException e) {
+			throw e.getAlert();
+		}
 	}
 	
 	@Test
@@ -1166,7 +1193,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		assertClosing(srv,true,true);
 		
 		prepareEngines();
@@ -1188,7 +1217,10 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
+
 		assertClosing(srv,true,true);
 	}
 	
@@ -1277,7 +1309,10 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (BadRecordMacAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadRecordMacAlert);
+		}
+
 		assertClosing(srv,true,false);
 		FlightController fc = new FlightController();
 		clear();
@@ -1289,7 +1324,9 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(cli, in, out);
 			fail();
 		}
-		catch (BadRecordMacAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadRecordMacAlert);
+		}
 		assertClosing(cli,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
@@ -1305,7 +1342,9 @@ public class TLSEngineTest extends EngineTest {
 			cli.wrap(in, out);
 			fail();
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		handler.paddingException = null;
 		assertClosing(cli,true,false);
 		FlightController fc = new FlightController();
@@ -1318,7 +1357,9 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		assertClosing(cli,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
@@ -1348,7 +1389,9 @@ public class TLSEngineTest extends EngineTest {
 			cli.wrap(in, out);
 			fail();
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		cli.beginHandshake();
 		assertClosing(cli,true,false);
 		assertInOut(0,0);
@@ -1362,7 +1405,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		assertClosing(srv,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
@@ -1388,7 +1433,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (DecodeErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof DecodeErrorAlert);
+		}
 		assertClosing(srv,true,false);
 		FlightController fc = new FlightController();
 		clear();
@@ -1400,7 +1447,9 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(cli, in, out);
 			fail();
 		}
-		catch (DecodeErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof DecodeErrorAlert);
+		}
 		assertClosing(srv,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
@@ -1430,7 +1479,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (DecodeErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof DecodeErrorAlert);
+		}
 		assertClosing(srv,true,false);
 		clear();
 		fc.fly(srv, in, out);
@@ -1441,7 +1492,9 @@ public class TLSEngineTest extends EngineTest {
 			cli.unwrap(in, out);
 			fail();
 		}
-		catch (DecodeErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof DecodeErrorAlert);
+		}
 		assertClosing(cli,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
@@ -1474,7 +1527,9 @@ public class TLSEngineTest extends EngineTest {
 			cli.unwrap(in, out);
 			fail();
 		}
-		catch (DecodeErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof DecodeErrorAlert);
+		}
 		assertClosing(cli,true,false);
 		clear();
 		fc.fly(cli, in, out);
@@ -1485,7 +1540,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (DecodeErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof DecodeErrorAlert);
+		}
 		assertClosing(srv,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
@@ -1519,7 +1576,9 @@ public class TLSEngineTest extends EngineTest {
 			cli.unwrap(in, out);
 			fail();
 		}
-		catch (BadRecordMacAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadRecordMacAlert);
+		}
 		assertClosing(cli,true,false);
 		clear();
 		fc.fly(cli, in, out);
@@ -1530,7 +1589,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (BadRecordMacAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadRecordMacAlert);
+		}
 		assertClosing(srv,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
@@ -1560,7 +1621,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		assertClosing(srv,true,false);
 		clear();
 		fc.fly(srv, in, out);
@@ -1571,7 +1634,9 @@ public class TLSEngineTest extends EngineTest {
 			cli.unwrap(in, out);
 			fail();
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		assertClosing(cli,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
@@ -1817,12 +1882,54 @@ public class TLSEngineTest extends EngineTest {
 	public void testOverflow() throws Exception {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.cipherSuites(
+						CipherSuite.TLS_AES_256_GCM_SHA384,
+						CipherSuite.TLS_AES_128_GCM_SHA256)
+				.namedGroups(
+						NamedGroup.SECP256R1,
+						NamedGroup.SECP521R1,
+						NamedGroup.SECP384R1,
+						NamedGroup.FFDHE2048,
+						NamedGroup.FFDHE3072,
+						NamedGroup.FFDHE4096,
+						NamedGroup.FFDHE6144,
+						NamedGroup.FFDHE8192)
+				.signatureSchemes(
+						SignatureScheme.ECDSA_SECP256R1_SHA256,
+						SignatureScheme.ECDSA_SECP384R1_SHA384,
+						SignatureScheme.ECDSA_SECP521R1_SHA512,
+						SignatureScheme.RSA_PKCS1_SHA256,
+						SignatureScheme.RSA_PKCS1_SHA384,
+						SignatureScheme.RSA_PKCS1_SHA512,
+						SignatureScheme.ECDSA_SHA1,
+						SignatureScheme.RSA_PKCS1_SHA1)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.cipherSuites(
+						CipherSuite.TLS_AES_256_GCM_SHA384,
+						CipherSuite.TLS_AES_128_GCM_SHA256)
+				.namedGroups(
+						NamedGroup.SECP256R1,
+						NamedGroup.SECP521R1,
+						NamedGroup.SECP384R1,
+						NamedGroup.FFDHE2048,
+						NamedGroup.FFDHE3072,
+						NamedGroup.FFDHE4096,
+						NamedGroup.FFDHE6144,
+						NamedGroup.FFDHE8192)
+				.signatureSchemes(
+						SignatureScheme.ECDSA_SECP256R1_SHA256,
+						SignatureScheme.ECDSA_SECP384R1_SHA384,
+						SignatureScheme.ECDSA_SECP521R1_SHA512,
+						SignatureScheme.RSA_PKCS1_SHA256,
+						SignatureScheme.RSA_PKCS1_SHA384,
+						SignatureScheme.RSA_PKCS1_SHA512,
+						SignatureScheme.ECDSA_SHA1,
+						SignatureScheme.RSA_PKCS1_SHA1)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -1933,14 +2040,18 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (HandshakeFailureAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof HandshakeFailureAlert);
+		}
 		assertOverflow(srv, 7, Status.CLOSED);
 		flip();
 		try {
 			cli.unwrap(in, out);
 			fail();
 		}
-		catch (HandshakeFailureAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof HandshakeFailureAlert);
+		}
 		assertInOut(0,0);
 		
 		prepareConnection();
@@ -1952,14 +2063,18 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (BadRecordMacAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadRecordMacAlert);
+		}
 		assertOverflow(srv, 5+2+1+16, Status.CLOSED);
 		flip();
 		try {
 			cli.unwrap(in, out);
 			fail();
 		}
-		catch (BadRecordMacAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadRecordMacAlert);
+		}
 		assertInOut(0,0);
 
 		prepareConnection();
@@ -1971,7 +2086,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (BadRecordMacAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadRecordMacAlert);
+		}
 		handler.padding = 100;
 		assertOverflow(srv, 5+2+1+100+16, Status.CLOSED);
 		flip();
@@ -1979,7 +2096,9 @@ public class TLSEngineTest extends EngineTest {
 			cli.unwrap(in, out);
 			fail();
 		}
-		catch (BadRecordMacAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadRecordMacAlert);
+		}
 		assertInOut(0,0);
 		
 	}
@@ -2055,9 +2174,64 @@ public class TLSEngineTest extends EngineTest {
 		clear();
 		cli.wrap(in, out);
 		assertSame(NEED_TASK, cli.getHandshakeStatus());
+		Runnable task = cli.getDelegatedTask();
+		assertSame(NEED_TASK, cli.getHandshakeStatus());
+		assertSame(NEED_TASK, cli.wrap(in, out).getHandshakeStatus());
+		assertInOut(0, 0);
+		task.run();
+		assertSame(NEED_WRAP, cli.getHandshakeStatus());
+		assertSame(NEED_UNWRAP, cli.wrap(in, out).getHandshakeStatus());
+		assertInOut(0, out.position());
+		
+		final AtomicReference<HandshakeStatus> ref = new AtomicReference<HandshakeStatus>();
+		cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.ALL)
+				.build(), 
+				handler) {
+			
+			@Override
+			public HandshakeStatus getHandshakeStatus() {
+				if (ref.get() != null) {
+					return ref.get();
+				}
+				return super.getHandshakeStatus();
+			}
+		};
+		cli.beginHandshake();
+		clear();
+		cli.wrap(in, out);
+		assertSame(NEED_TASK, cli.getHandshakeStatus());
 		cli.getDelegatedTask();
+		ref.set(NEED_WRAP);
 		assertSame(NEED_WRAP, cli.getHandshakeStatus());
 		assertSame(NEED_WRAP, cli.wrap(in, out).getHandshakeStatus());
+		assertInOut(0, 0);
+	}
+
+	@Test
+	public void testUnwrapWithPendingTasks() throws Exception {
+		final AtomicReference<HandshakeStatus> ref = new AtomicReference<HandshakeStatus>();
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.ALL)
+				.build(), 
+				handler) {
+			
+			@Override
+			public HandshakeStatus getHandshakeStatus() {
+				if (ref.get() != null) {
+					return ref.get();
+				}
+				return super.getHandshakeStatus();
+			}
+		};
+		cli.beginHandshake();
+		clear();
+		cli.wrap(in, out);
+		assertSame(NEED_TASK, cli.getHandshakeStatus());
+		cli.getDelegatedTask();
+		ref.set(NEED_UNWRAP);
+		assertSame(NEED_UNWRAP, cli.getHandshakeStatus());
+		assertSame(NEED_UNWRAP, cli.unwrap(in, out).getHandshakeStatus());
 		assertInOut(0, 0);
 	}
 	
@@ -2081,7 +2255,9 @@ public class TLSEngineTest extends EngineTest {
 		try {
 			cli.wrap(in, out);
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		exception.set(false);
 		assertInOut(0, 0);
 		assertClosing(cli, true, false);
@@ -2090,7 +2266,9 @@ public class TLSEngineTest extends EngineTest {
 		try {
 			cli.wrap(in, out);
 		}
-		catch (InternalErrorAlert e) {}
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof InternalErrorAlert);
+		}
 		exception.set(false);
 		assertInOut(0, 0);
 		assertClosing(cli, true, true);
@@ -2118,8 +2296,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (RecordOverflowAlert e) {
-			assertEquals("Encrypted record is too big", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Encrypted record is too big", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof RecordOverflowAlert);
 		}
 		
 		cli = new TLSEngine(true, new EngineParametersBuilder()
@@ -2155,9 +2334,10 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (RecordOverflowAlert e) {
-			assertEquals("Encrypted record is too big", e.getMessage());
-		}	
+		catch (TLSException e) {
+			assertEquals("Encrypted record is too big", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof RecordOverflowAlert);
+		}
 	}
 
 	@Test
@@ -2174,8 +2354,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (RecordOverflowAlert e) {
-			assertEquals("Encrypted record is too big", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Encrypted record is too big", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof RecordOverflowAlert);
 		}
 		
 		cli = new TLSEngine(true, new EngineParametersBuilder()
@@ -2211,9 +2392,10 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (RecordOverflowAlert e) {
-			assertEquals("Encrypted record is too big", e.getMessage());
-		}	
+		catch (TLSException e) {
+			assertEquals("Encrypted record is too big", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof RecordOverflowAlert);
+		}
 	}
 	
 	@Test
@@ -2228,8 +2410,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (RecordOverflowAlert e) {
-			assertEquals("Record fragment is too big", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Record fragment is too big", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof RecordOverflowAlert);
 		}
 	}
 
@@ -2247,8 +2430,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("No non-zero octet in cleartext", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("No non-zero octet in cleartext", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 		
 		cli = new TLSEngine(true, new EngineParametersBuilder()
@@ -2284,9 +2468,10 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("No non-zero octet in cleartext", e.getMessage());
-		}	
+		catch (TLSException e) {
+			assertEquals("No non-zero octet in cleartext", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
+		}
 	}
 
 	@Test
@@ -2303,8 +2488,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Received unexpected record content type (20)", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Received unexpected record content type (20)", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 		
 		cli = new TLSEngine(true, new EngineParametersBuilder()
@@ -2340,8 +2526,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Received unexpected record content type (20)", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Received unexpected record content type (20)", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 		
 		srv = new TLSEngine(false, new EngineParametersBuilder()
@@ -2354,8 +2541,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Received unexpected record content type (100)", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Received unexpected record content type (100)", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 
 	}
@@ -2375,8 +2563,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Unexpected encrypted record content type (22)", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Unexpected encrypted record content type (22)", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 	}
 	
@@ -2427,8 +2616,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("No non-zero octet in cleartext", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("No non-zero octet in cleartext", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 
 	}
@@ -2448,8 +2638,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (DecodeErrorAlert e) {
-			assertEquals("Invalid length of alert content", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Invalid length of alert content", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof DecodeErrorAlert);
 		}
 
 		prepareConnection();
@@ -2465,8 +2656,9 @@ public class TLSEngineTest extends EngineTest {
 			srv.unwrap(in, out);
 			fail();
 		}
-		catch (DecodeErrorAlert e) {
-			assertEquals("Invalid length of alert content", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Invalid length of alert content", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof DecodeErrorAlert);
 		}
 		
 	}
@@ -2494,7 +2686,9 @@ public class TLSEngineTest extends EngineTest {
 
 		assertResult(cli.unwrap(in, out), Status.OK, NEED_TASK, 0, 0);
 		Runnable t = cli.getDelegatedTask();
-		assertSame(NEED_WRAP, cli.getHandshakeStatus());
+		assertSame(NEED_TASK, cli.getHandshakeStatus());
+		assertNull(cli.getDelegatedTask());
+		assertSame(NEED_TASK, cli.getHandshakeStatus());
 		t.run();
 		assertSame(NEED_WRAP, cli.getHandshakeStatus());
 		cli.wrap(in, out);
@@ -2506,7 +2700,9 @@ public class TLSEngineTest extends EngineTest {
 		t.run();
 		assertSame(NEED_TASK, srv.getHandshakeStatus());
 		t = srv.getDelegatedTask();
-		assertSame(NEED_WRAP, srv.getHandshakeStatus());
+		assertSame(NEED_TASK, srv.getHandshakeStatus());
+		assertNull(cli.getDelegatedTask());
+		assertSame(NEED_TASK, srv.getHandshakeStatus());
 		t.run();
 		assertSame(NEED_WRAP, srv.getHandshakeStatus());
 		clear();
@@ -2517,8 +2713,12 @@ public class TLSEngineTest extends EngineTest {
 		assertSame(NEED_UNWRAP, cli.unwrap(in, out).getHandshakeStatus());
 		assertSame(NEED_TASK, cli.unwrap(in, out).getHandshakeStatus());
 		t = cli.getDelegatedTask();
+		assertSame(NEED_TASK, cli.getHandshakeStatus());
+		assertNull(cli.getDelegatedTask());
+		assertSame(NEED_TASK, cli.getHandshakeStatus());
+		t.run();
 		assertSame(NEED_UNWRAP, cli.getHandshakeStatus());
-		assertSame(NEED_UNWRAP, cli.unwrap(in, out).getHandshakeStatus());
+		assertSame(NEED_WRAP, cli.unwrap(in, out).getHandshakeStatus());
 	}
 	
 	@Test
@@ -2545,8 +2745,9 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Invalid change_cipher_spec message", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Invalid change_cipher_spec message", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 		
 		cli = new TLSEngine(true, new EngineParametersBuilder()
@@ -2571,8 +2772,9 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Invalid change_cipher_spec message", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Invalid change_cipher_spec message", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 
 	}
@@ -2751,7 +2953,8 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(cli, in, out);
 			fail();
 		}
-		catch (BadCertificateAlert e) {
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadCertificateAlert);
 			assertEquals("U|OK:uu|U|OK:uu|", fc.trace());
 		}
 	}	
@@ -2913,7 +3116,8 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (BadCertificateAlert e) {
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadCertificateAlert);
 			assertEquals("U|OK:uu|", fc.trace());
 		}
 
@@ -2949,7 +3153,8 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (CertificateRequiredAlert e) {
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof CertificateRequiredAlert);
 			assertEquals("U|OK:uu|", fc.trace());
 		}	
 	}	
@@ -2989,7 +3194,8 @@ public class TLSEngineTest extends EngineTest {
 			fc.fly(srv, in, out);
 			fail();
 		}
-		catch (BadCertificateAlert e) {
+		catch (TLSException e) {
+			assertTrue(e.getAlert() instanceof BadCertificateAlert);
 			assertEquals("U|OK:uu|", fc.trace());
 		}
 
@@ -3192,8 +3398,9 @@ public class TLSEngineTest extends EngineTest {
 			cli.unwrap(in, out);
 			fail();
 		}
-		catch (UnexpectedMessageAlert e) {
-			assertEquals("Received unexpected data after finished handshake", e.getMessage());
+		catch (TLSException e) {
+			assertEquals("Received unexpected data after finished handshake", e.getAlert().getMessage());
+			assertTrue(e.getAlert() instanceof UnexpectedMessageAlert);
 		}
 	}
 

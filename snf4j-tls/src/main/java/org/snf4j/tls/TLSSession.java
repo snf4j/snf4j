@@ -23,38 +23,43 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls;
 
-import java.nio.ByteBuffer;
+import org.snf4j.core.EngineStreamSession;
+import org.snf4j.core.handler.IStreamHandler;
+import org.snf4j.core.logger.ILogger;
+import org.snf4j.core.logger.LoggerFactory;
+import org.snf4j.tls.engine.IEngineHandler;
+import org.snf4j.tls.engine.IEngineParameters;
+import org.snf4j.tls.session.ISession;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.Alert;
+public class TLSSession extends EngineStreamSession {
 
-public interface IHandshakeEngine {
+	private final static ILogger LOGGER = LoggerFactory.getLogger(TLSSession.class);
+	
+	public TLSSession(String name, IEngineParameters tlsParameters, IEngineHandler tlsHandler, IStreamHandler handler, boolean clientMode) {
+		super(name, new TLSEngine(
+				clientMode, 
+				tlsParameters, 
+				tlsHandler, 
+				handler.getConfig().getMaxSSLApplicationBufferSizeRatio(),
+				handler.getConfig().getMaxSSLNetworkBufferSizeRatio()), 
+			handler, LOGGER);
+	}
 
-	IEngineHandler getHandler();
+	public TLSSession(IEngineParameters tlsParameters, IEngineHandler tlsHandler, IStreamHandler handler, boolean clientMode) {
+		super(new TLSEngine(
+				clientMode, 
+				tlsParameters, 
+				tlsHandler, 
+				handler.getConfig().getMaxSSLApplicationBufferSizeRatio(),
+				handler.getConfig().getMaxSSLNetworkBufferSizeRatio()), 
+			handler, LOGGER);
+	}
 	
-	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
+	@Override
+	public ISession getEngineSession() {
+		return (ISession) super.getEngineSession();
+	}
 	
-	void consume(ByteBufferArray srcs, int remaining) throws Alert;
-	
-	boolean needProduce();
-	
-	ProducedHandshake[] produce() throws Alert;
-	
-	boolean updateTasks() throws Alert;
-
-	boolean hasProducingTask();
-
-	boolean hasRunningTask(boolean onlyUndone);
-	
-	boolean hasTask();
-	
-	Runnable getTask();
-	
-	void start() throws Alert;
-	
-	IEngineState getState();
-	
-	void updateKeys() throws Alert;
 }

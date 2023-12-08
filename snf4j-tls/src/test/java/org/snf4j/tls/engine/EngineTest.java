@@ -60,9 +60,9 @@ import org.snf4j.tls.record.RecordType;
 
 public class EngineTest extends CommonTest {
 
-	TestHandshakeHandler handler;
+	public TestHandshakeHandler handler;
 	
-	TestParameters params;
+	public TestParameters params;
 
 	byte[] random;
 	

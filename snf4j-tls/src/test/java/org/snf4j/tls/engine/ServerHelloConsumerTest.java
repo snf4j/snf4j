@@ -419,7 +419,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 	@Test(expected = InternalErrorAlert.class)
 	public void testConsumeEx2() throws Exception {
 		ServerHello sh = serverHello(0x0303);
-		params.getSecureRandomException = new NullPointerException();
+		handler.getSecureRandomException = new NullPointerException();
 		new ServerHelloConsumer().consume(state, sh, data(sh), false);
 	}
 	

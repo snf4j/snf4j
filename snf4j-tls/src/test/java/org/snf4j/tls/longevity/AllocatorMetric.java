@@ -23,38 +23,24 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.longevity;
 
-import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.snf4j.core.ByteBufferArray;
-import org.snf4j.tls.alert.Alert;
+import org.snf4j.core.allocator.DefaultAllocatorMetric;
 
-public interface IHandshakeEngine {
-
-	IEngineHandler getHandler();
+public class AllocatorMetric extends DefaultAllocatorMetric {
 	
-	void consume(ByteBuffer[] srcs, int remaining) throws Alert;
+	AtomicLong allocatedSize = new AtomicLong(0);
 	
-	void consume(ByteBufferArray srcs, int remaining) throws Alert;
+	@Override
+	public void allocated(int capacity) {
+		allocatedSize.addAndGet(capacity);
+		super.allocated(capacity);
+	}
 	
-	boolean needProduce();
+	public long getAllocatedSize() {
+		return allocatedSize.get();
+	}
 	
-	ProducedHandshake[] produce() throws Alert;
-	
-	boolean updateTasks() throws Alert;
-
-	boolean hasProducingTask();
-
-	boolean hasRunningTask(boolean onlyUndone);
-	
-	boolean hasTask();
-	
-	Runnable getTask();
-	
-	void start() throws Alert;
-	
-	IEngineState getState();
-	
-	void updateKeys() throws Alert;
 }

@@ -32,11 +32,11 @@ import org.snf4j.tls.alert.Alert;
 
 public class TestCertificateValidator implements ICertificateValidator {
 
-	Alert certificatesAlert;
+	public Alert certificatesAlert;
 	
-	Alert rawKeyAlert;
+	public Alert rawKeyAlert;
 	
-	CertificateValidateCriteria criteria;
+	public CertificateValidateCriteria criteria;
 	
 	@Override
 	public Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Exception {

@@ -25,8 +25,6 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.SecureRandom;
-
 import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
@@ -44,9 +42,7 @@ public class EngineParametersBuilder {
 	private SignatureScheme[] signatureSchemesCert = null;
 	
 	private PskKeyExchangeMode[] pskKeyExchangeModes = EngineDefaults.getDefaultPskKeyExchangeModes();
-	
-	private SecureRandom secureRandom = new SecureRandom();
-	
+		
 	private boolean compatibilityMode;
 	
 	private int numberOfOfferedSharedKeys = 1;
@@ -62,11 +58,7 @@ public class EngineParametersBuilder {
 	private ClientAuth clientAuth = ClientAuth.NONE;
 	
 	public EngineParametersBuilder() {}
-	
-	public EngineParametersBuilder(SecureRandom secureRandom) {
-		this.secureRandom = secureRandom;
-	}
-	
+		
 	public EngineParametersBuilder cipherSuites(CipherSuite... cipherSuites) {
 		this.cipherSuites = cipherSuites.clone();
 		return this;
@@ -110,15 +102,6 @@ public class EngineParametersBuilder {
 	
 	public PskKeyExchangeMode[] getPskKeyExchangeModes() {
 		return pskKeyExchangeModes;
-	}
-
-	public EngineParametersBuilder secureRandom(SecureRandom secureRandom) {
-		this.secureRandom = secureRandom;
-		return this;
-	}
-
-	public SecureRandom getSecureRandom() {
-		return secureRandom;
 	}
 
 	public EngineParametersBuilder compatibilityMode(boolean compatibilityMode) {
@@ -197,7 +180,6 @@ public class EngineParametersBuilder {
 				pskKeyExchangeModes.clone(),
 				compatibilityMode,
 				numberOfOfferedSharedKeys,
-				secureRandom,
 				peerHost,
 				peerPort,
 				serverNameRequired,

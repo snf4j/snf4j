@@ -396,7 +396,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				keyShareEntry.getParsedKey(), 
 				clientHello.getLegacySessionId(),
 				resumed != null ? resumed.getSelectedIdentity() : -1,
-				state.getParameters().getSecureRandom()); 
+				state.getHandler().getSecureRandom()); 
 		if (taskMode.all()) {
 			state.addTask(task);
 		}
@@ -493,7 +493,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			
 			byte[] random = new byte[32];
 			
-			state.getParameters().getSecureRandom().nextBytes(random);
+			state.getHandler().getSecureRandom().nextBytes(random);
 
 			ServerHello serverHello = new ServerHello(
 					EngineDefaults.LEGACY_VERSION,
@@ -577,7 +577,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 						certificates.getAlgorithm(), 
 						certificates.getPrivateKey(), 
 						false,
-						params.getSecureRandom());
+						state.getHandler().getSecureRandom());
 				CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
 				ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);	
 			}

@@ -214,7 +214,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			}
 		}
 		else {
-			KeyExchangeTask task = new KeyExchangeTask(namedGroup, psk, state.getParameters().getSecureRandom());
+			KeyExchangeTask task = new KeyExchangeTask(namedGroup, psk, state.getHandler().getSecureRandom());
 			if (state.getParameters().getDelegatedTaskMode().all()) {
 				state.changeState(MachineState.CLI_WAIT_TASK);
 				state.addTask(task);
@@ -421,7 +421,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		try {
 			IKeyExchange keyExchange = namedGroup.spec().getKeyExchange();
 			PublicKey publicKey = namedGroup.spec().generateKey(keyShare.getEntries()[0].getParsedKey());
-			byte[] secret = keyExchange.generateSecret(privateKey, publicKey, state.getParameters().getSecureRandom());
+			byte[] secret = keyExchange.generateSecret(privateKey, publicKey, state.getHandler().getSecureRandom());
 			
 			state.getKeySchedule().deriveHandshakeSecret(secret);
 			state.getKeySchedule().deriveHandshakeTrafficSecrets();

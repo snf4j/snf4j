@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
+import java.security.Security;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -195,6 +196,8 @@ public class CommonTest {
 	@Before
 	public void before() throws Exception {
 		buffer.clear();
+		Security.setProperty("jdk.tls.keyLimits", "AES/GCM/NoPadding KeyUpdate 2^16");
+		System.setProperty("jdk.tls.acknowledgeCloseNotify", "true");
 	}
 
 }

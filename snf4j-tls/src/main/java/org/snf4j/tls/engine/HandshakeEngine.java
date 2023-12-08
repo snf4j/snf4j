@@ -267,8 +267,8 @@ public class HandshakeEngine implements IHandshakeEngine {
 	}
 
 	@Override
-	public boolean hasRunningTask() {
-		return state.hasRunningTasks();
+	public boolean hasRunningTask(boolean onlyUndone) {
+		return state.hasRunningTasks(onlyUndone);
 	}
 	
 	@Override
@@ -295,7 +295,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 		NamedGroup[] groups = params.getNamedGroups();
 		groups = Arrays.copyOf(groups, Math.min(groups.length, params.getNumberOfOfferedSharedKeys()));
 		
-		KeyExchangeTask task = new KeyExchangeTask(groups, params.getSecureRandom());
+		KeyExchangeTask task = new KeyExchangeTask(groups, state.getHandler().getSecureRandom());
 		if (groups.length > 0 && params.getDelegatedTaskMode().all()) {
 			state.changeState(MachineState.CLI_WAIT_TASK);
 			state.addTask(task);
@@ -339,7 +339,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 			byte[] legacySessionId;
 			IEngineParameters params = state.getParameters();
 			
-			params.getSecureRandom().nextBytes(random);
+			state.getHandler().getSecureRandom().nextBytes(random);
 			if (params.isCompatibilityMode()) {
 				legacySessionId = new byte[32];
 				RANDOM.nextBytes(legacySessionId);

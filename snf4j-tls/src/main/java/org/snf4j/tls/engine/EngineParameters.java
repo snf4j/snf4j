@@ -25,8 +25,6 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.SecureRandom;
-
 import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.NamedGroup;
@@ -49,8 +47,6 @@ public class EngineParameters implements IEngineParameters {
 	
 	private final int numberOfOfferedSharedKeys;// = 1;
 	
-	private final SecureRandom secureRandom;// = new SecureRandom();
-	
 	private final String peerHost;
 	
 	private final int peerPort;
@@ -63,7 +59,7 @@ public class EngineParameters implements IEngineParameters {
 	
 	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
 			SignatureScheme[] signatureSchemesCert, PskKeyExchangeMode[] pskKeyExchangeModes,
-			boolean compatibilityMode, int numberOfOfferedSharedKeys, SecureRandom secureRandom, String peerHost,
+			boolean compatibilityMode, int numberOfOfferedSharedKeys, String peerHost,
 			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode,ClientAuth clientAuth) {
 		super();
 		this.cipherSuites = cipherSuites;
@@ -73,7 +69,6 @@ public class EngineParameters implements IEngineParameters {
 		this.pskKeyExchangeModes = pskKeyExchangeModes;
 		this.compatibilityMode = compatibilityMode;
 		this.numberOfOfferedSharedKeys = numberOfOfferedSharedKeys;
-		this.secureRandom = secureRandom;
 		this.peerHost = peerHost;
 		this.peerPort = peerPort;
 		this.serverNameRequired = serverNameRequired;
@@ -109,11 +104,6 @@ public class EngineParameters implements IEngineParameters {
 	@Override
 	public boolean isCompatibilityMode() {
 		return compatibilityMode;
-	}
-
-	@Override
-	public SecureRandom getSecureRandom() {
-		return secureRandom;
 	}
 
 	@Override

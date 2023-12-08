@@ -28,12 +28,9 @@ package org.snf4j.tls.engine;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-
-import java.security.SecureRandom;
 
 import org.junit.Test;
 import org.snf4j.core.session.ssl.ClientAuth;
@@ -61,9 +58,6 @@ public class EngineParametersBuilderTest {
 		assertArrayEquals(EngineDefaults.getDefaultPskKeyExchangeModes(), b.getPskKeyExchangeModes());
 		assertFalse(p.isCompatibilityMode());
 		assertFalse(b.getCompatibilityMode());
-		assertNotNull(p.getSecureRandom());
-		assertNotNull(b.getSecureRandom());
-		assertSame(p.getSecureRandom(), b.build().getSecureRandom());
 		assertNull(p.getPeerHost());
 		assertNull(b.getPeerHost());
 		assertEquals(-1, p.getPeerPort());
@@ -78,23 +72,6 @@ public class EngineParametersBuilderTest {
 		assertSame(ClientAuth.NONE, b.getClientAuth());
 	}
 	
-	@Test
-	public void testSecureRandom() {
-		SecureRandom random1 = new SecureRandom();
-		SecureRandom random2 = new SecureRandom();
-		EngineParametersBuilder b = new EngineParametersBuilder(random1);
-		EngineParameters p = b.build();
-		
-		assertSame(random1, b.getSecureRandom());
-		assertSame(random1, p.getSecureRandom());
-		assertSame(random1, b.build().getSecureRandom());
-		b.secureRandom(random2);
-		p = b.build();
-		assertSame(random2, b.getSecureRandom());
-		assertSame(random2, p.getSecureRandom());
-		assertSame(random2, b.build().getSecureRandom());
-	}	
-
 	@Test
 	public void testModifications() {
 		EngineParametersBuilder b = new EngineParametersBuilder();

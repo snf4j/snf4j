@@ -36,15 +36,15 @@ import org.snf4j.tls.handshake.CertificateEntry;
 
 public class TestCertificateSelector implements ICertificateSelector {
 
-	volatile String keyAlgorithm = "RSA"; 
+	public volatile String keyAlgorithm = "RSA"; 
 	
-	volatile String keyName = "rsa";
+	public volatile String keyName = "rsa";
 	
-	volatile String[] certNames = new String[] {"rsasha256"};
+	public volatile String[] certNames = new String[] {"rsasha256"};
 	
-	volatile SignatureScheme signatureScheme = SignatureScheme.RSA_PKCS1_SHA256;
+	public volatile SignatureScheme signatureScheme = SignatureScheme.RSA_PKCS1_SHA256;
 	
-	volatile CertificateCriteria criteria;
+	public volatile CertificateCriteria criteria;
 	
 	@Override
 	public SelectedCertificates selectCertificates(CertificateCriteria criteria)  throws Exception {
