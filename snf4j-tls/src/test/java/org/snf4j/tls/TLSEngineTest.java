@@ -57,6 +57,7 @@ import org.snf4j.tls.alert.CertificateRequiredAlert;
 import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.alert.HandshakeFailureAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.NoApplicationProtocolAlert;
 import org.snf4j.tls.alert.RecordOverflowAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
@@ -3466,5 +3467,189 @@ public class TLSEngineTest extends EngineTest {
 				0);
 		assertSame(HandshakeStatus.NEED_WRAP, srv.getHandshakeStatus());
 	}
+
+	@Test
+	public void testALPN() throws Exception {
+		TestHandshakeHandler handler2 = new TestHandshakeHandler();
+		handler.protocol = "xxx";
+		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.applicationProtocols("yyy","xxx")
+				.build(), 
+				handler2);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.applicationProtocols("xxx","yyy")
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|", fc.trace());
+		flip();
+		assertInOut(0,0);		
+		HandshakeEngine s = (HandshakeEngine) handshaker(srv);
+		HandshakeEngine c = (HandshakeEngine) handshaker(cli);
+		assertEquals("xxx", c.getState().getApplicationProtocol());
+		assertEquals("xxx", s.getState().getApplicationProtocol());
+		assertEquals("ALPN(yyy|xxx|)|VSN(snf4j.org)|CS|PN(xxx)|", handler.trace());
+		assertEquals("CV|PN(xxx)|", handler2.trace());
+		
+		//Early data accepted
+		byte[] data = random(90);
+		handler2.earlyData.add(data);
+		cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.applicationProtocols("xxx")
+				.build(), 
+				handler2);
+		cli.beginHandshake();
+
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.applicationProtocols("xxx","yyy")
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|Ued(90)|OK:uu|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|", fc.trace());
+		flip();
+		assertInOut(0,0);
+		s = (HandshakeEngine) handshaker(srv);
+		c = (HandshakeEngine) handshaker(cli);
+		assertEquals("xxx", c.getState().getApplicationProtocol());
+		assertEquals("xxx", s.getState().getApplicationProtocol());
+		assertEquals("ALPN(xxx|)|VSN(snf4j.org)|PN(xxx)|", handler.trace());
+		assertEquals("PN(xxx)|", handler2.trace());
+
+		//Early data rejected
+		handler.protocol = "yyy";
+		data = random(80);
+		handler2.earlyData.add(data);
+		cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.applicationProtocols("yyy")
+				.build(), 
+				handler2);
+		cli.beginHandshake();
+
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.applicationProtocols("xxx","yyy")
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|U|OK:uu|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		in.compact();
+		in.put(bytes(1,2,3));
+		in.flip();
+		srv.wrap(in, out);
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|U|OK:nhnh|", fc.trace());
+		flip();
+		assertInOut(3,0);
+		s = (HandshakeEngine) handshaker(srv);
+		c = (HandshakeEngine) handshaker(cli);
+		assertEquals("yyy", c.getState().getApplicationProtocol());
+		assertEquals("yyy", s.getState().getApplicationProtocol());
+		assertEquals("ALPN(yyy|)|VSN(snf4j.org)|PN(yyy)|", handler.trace());
+		assertEquals("PN(yyy)|", handler2.trace());	
+	}
 	
+	@Test
+	public void testALPNRejected() throws Exception {
+		TestHandshakeHandler handler2 = new TestHandshakeHandler();
+		handler.selectProtocolAlert = new NoApplicationProtocolAlert("XXX");
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.applicationProtocols("yyy","xxx")
+				.build(), 
+				handler2);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.applicationProtocols("xxx","yyy")
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:uu|", fc.trace());
+		flip();
+		try {
+			fc.fly(srv, in, out);
+			fail();
+		}
+		catch (TLSException e) {
+		}
+		assertEquals("", fc.trace());
+		fc.fly(srv, in, out);
+		assertEquals("W|C:nhnh|NH|", fc.trace());
+		flip();
+		try {
+			fc.fly(cli, in, out);
+			fail();
+		}
+		catch (TLSException e) {
+		}
+		assertEquals("", fc.trace());
+		assertClosed(cli,srv);
+	}
 }

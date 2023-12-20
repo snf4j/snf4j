@@ -461,6 +461,11 @@ public class HandshakeFragmenterTest extends EngineTest {
 		}
 
 		@Override
+		public String getApplicationProtocol() {
+			return null;
+		}
+		
+		@Override
 		public String getHostName() {
 			return null;
 		}

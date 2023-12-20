@@ -68,6 +68,8 @@ public class TestParameters implements IEngineParameters {
 	
 	public ClientAuth clientAuth = ClientAuth.NONE;
 	
+	public String[] applicationProtocols = new String[0];
+	
 	@Override
 	public CipherSuite[] getCipherSuites() {
 		return cipherSuites;
@@ -128,4 +130,9 @@ public class TestParameters implements IEngineParameters {
 		return clientAuth;
 	}
 
+	@Override
+	public String[] getApplicationProtocols() {
+		return applicationProtocols;
+	}
+	
 }

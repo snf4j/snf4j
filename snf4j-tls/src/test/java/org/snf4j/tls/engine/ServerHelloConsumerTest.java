@@ -505,7 +505,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 
 		assertNull(ServerHelloConsumer.removeNoPskKeySchedule(state));
 		
-		SessionTicket st = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, bytes(1), bytes(2), 0, 0, -1);
+		SessionTicket st = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, null, bytes(1), bytes(2), 0, 0, -1);
 		state.addPskContext(new PskContext(ks1, st));
 		state.addPskContext(new PskContext(ks2, st));
 		

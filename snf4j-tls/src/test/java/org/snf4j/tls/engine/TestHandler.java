@@ -27,7 +27,9 @@ package org.snf4j.tls.engine;
 
 import java.security.SecureRandom;
 
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.IALPNExtension;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.session.ISessionManager;
@@ -47,11 +49,26 @@ public class TestHandler implements IEngineHandler {
 	
 	public long maxEarlyDataSize = 1000;
 	
+	public String protocol;
+	
 	@Override
 	public boolean verify(IServerNameExtension serverName) {
 		return verifyServerName;
 	}
 
+	@Override
+	public String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert {
+		return protocol;
+	}
+	
+	@Override
+	public void verifyApplicationProtocol(String protocol) throws Alert {
+	}
+	
+	@Override
+	public void connected(String protocol) {
+	}
+	
 	@Override
 	public ICertificateSelector getCertificateSelector() {
 		return certificateSelector;

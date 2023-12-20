@@ -25,7 +25,7 @@
  */
 package org.snf4j.tls.session;
 
-import org.snf4j.tls.cipher.IHashSpec;
+import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.engine.IEngineState;
 import org.snf4j.tls.extension.OfferedPsk;
 import org.snf4j.tls.handshake.NewSessionTicket;
@@ -40,7 +40,7 @@ public interface ISessionManager {
 	
 	void removeSession(long sessionId);
 	
-	UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec);
+	UsedSession useSession(OfferedPsk[] psks, CipherSuite cipher, boolean earlyData, String protocol);
 	
 	void putTicket(ISession session, SessionTicket ticket);
 	

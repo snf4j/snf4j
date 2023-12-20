@@ -31,6 +31,7 @@ import java.util.Queue;
 
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.IALPNExtension;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.handshake.KeyUpdateRequest;
 import org.snf4j.tls.record.ContentType;
@@ -72,8 +73,12 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	
 	public TicketInfo[] ticketInfos = new TicketInfo[] {new TicketInfo()};
 	
-	RuntimeException getSecureRandomException;
+	public RuntimeException getSecureRandomException;
+	
+	public String protocol;
 
+	public Alert selectProtocolAlert;
+	
 	public void trace(String msg) {
 		synchronized (trace) {
 			trace.append(msg).append('|');
@@ -114,6 +119,35 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	public boolean verify(IServerNameExtension serverName) {
 		trace("VSN(" + serverName.getHostName() +")");
 		return verifyServerName;
+	}
+	
+	@Override
+	public String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert {
+		String protocols = null;
+		
+		if (alpn != null) {
+			StringBuilder sb = new StringBuilder();
+			
+			for (String protocol: alpn.getProtocolNames()) {
+				sb.append(protocol);
+				sb.append('|');
+			}
+			protocols = sb.toString();
+		}
+		trace("ALPN(" + protocols +")");
+		if (selectProtocolAlert != null) {
+			throw selectProtocolAlert;
+		}
+		return protocol;
+	}
+
+	@Override
+	public void verifyApplicationProtocol(String protocol) throws Alert {
+	}
+	
+	@Override
+	public void connected(String protocol) {
+		trace("PN(" + protocol +")");
 	}
 	
 	@Override

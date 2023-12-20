@@ -52,6 +52,8 @@ public interface IEngineState {
 	
 	CipherSuite getCipherSuite();
 	
+	String getApplicationProtocol();
+	
 	String getHostName();
 	
 	int getVersion();

@@ -232,6 +232,7 @@ public class EngineStateTest extends CommonTest {
 		TranscriptHash th2 = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
 		KeySchedule ks = new KeySchedule(h, th1, CipherSuite.TLS_AES_128_GCM_SHA256.spec());
 		state.initialize(ks, CipherSuite.TLS_AES_128_GCM_SHA256);
+		assertNull(state.getApplicationProtocol());
 		assertTrue(state.isInitialized());
 		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, state.getCipherSuite());
 		assertSame(th1, state.getTranscriptHash());

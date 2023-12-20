@@ -70,6 +70,7 @@ public class NewSessionTicketConsumer implements IHandshakeConsumer {
 				session.getManager().putTicket(session, 
 						new SessionTicket(
 								state.getCipherSuite(),
+								state.getApplicationProtocol(),
 								state.getKeySchedule().computePsk(nst.getNonce()), 
 								nst.getTicket(), 
 								nst.getLifetime(), 

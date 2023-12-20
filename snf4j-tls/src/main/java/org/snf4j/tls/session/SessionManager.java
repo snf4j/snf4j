@@ -34,7 +34,7 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.snf4j.tls.cipher.IHashSpec;
+import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.engine.IEngineState;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.OfferedPsk;
@@ -195,34 +195,70 @@ public class SessionManager implements ISessionManager {
 		}
 		return null;
 	}
-	
-	UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec, long currentTime) {
-		int hashOrdinal = hashSpec.getOrdinal();
+
+	UsedSession useSession(OfferedPsk[] psks, CipherSuite cipher, boolean earlyData, String protocol, long currentTime) {
+		int hashOrdinal = cipher.spec().getHashSpec().getOrdinal();
+		OfferedPsk[] localPsks = psks.clone();
 		
-		for (int i=0; i<psks.length; ++i) {
-			OfferedPsk psk = psks[i];
-			byte[] identity = psk.getIdentity().getIdentity();
-			Session session = getSession(identity, currentTime);
+		for (int i=0; i<localPsks.length; ++i) {
+			OfferedPsk psk = localPsks[i];
+			
+			if (psk == null) {
+				continue;
+			}
+			
+			Session session = getSession(psk.getIdentity().getIdentity(), currentTime);
 			
 			if (session != null) {
 				synchronized (session.getTicketsLock()) {
-					for (SessionTicket ticket: session.getTickets(currentTime)) {
-						if (ticket.getCipherSuite().spec().getHashSpec().getOrdinal() == hashOrdinal) {
-							if (Arrays.equals(identity, ticket.getTicket())) {
-								session.removeTicket(ticket);
-								return new UsedSession(session, ticket, i);
-							}
+					UsedSession candidate = null;
+					boolean done = false;
+					
+					for (int j=i; j<localPsks.length && !done; ++j) {
+						psk = localPsks[j];
+						
+						//early data can be only processed by the first PSK
+						if (earlyData && j > 0) {
+							earlyData = false;
 						}
+						
+						if (psk == null) {
+							continue;
+						}
+						
+						for (SessionTicket ticket: session.getTickets(currentTime)) {
+							if (Arrays.equals(psk.getIdentity().getIdentity(), ticket.getTicket())) {
+								localPsks[j] = null;
+								if (ticket.getCipherSuite().spec().getHashSpec().getOrdinal() == hashOrdinal) {
+									if (ticket.forEarlyData()) {
+										if (earlyData && ticket.forEarlyData(protocol)) {
+											done = true;
+										}
+									}
+									else if (!earlyData) {
+										done = true;
+									}
+									if (done || candidate == null) {
+										candidate = new UsedSession(session, ticket, j);
+									}
+									break;
+								}
+							}							
+						}
+					}
+					if (candidate != null) {
+						session.removeTicket(candidate.getTicket());
+						return candidate;
 					}
 				}
 			}
 		}
 		return null;
 	}
-
+	
 	@Override
-	public UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec) {
-		return useSession(psks, hashSpec, System.currentTimeMillis());
+	public UsedSession useSession(OfferedPsk[] psks, CipherSuite cipher, boolean earlyData, String protocol) {
+		return useSession(psks, cipher, earlyData, protocol, System.currentTimeMillis());
 	}
 	
 	Session checkSession(ISession session) {
@@ -281,6 +317,7 @@ public class SessionManager implements ISessionManager {
 		
 		SessionTicket ticket = new SessionTicket(
 				state.getCipherSuite(),
+				state.getApplicationProtocol(),
 				psk, 
 				ticketIdentity, 
 				lifetime, 

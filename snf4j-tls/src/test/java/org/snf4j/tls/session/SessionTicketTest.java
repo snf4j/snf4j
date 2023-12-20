@@ -28,6 +28,7 @@ package org.snf4j.tls.session;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -42,7 +43,7 @@ public class SessionTicketTest extends CommonTest {
 		byte[] psk = new byte[10];
 		byte[] ticket = new byte[5];
 		
-		SessionTicket st = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, psk, ticket, 100, 111, 666, 1000);
+		SessionTicket st = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, null, psk, ticket, 100, 111, 666, 1000);
 		assertSame(CipherSuite.TLS_AES_128_GCM_SHA256, st.getCipherSuite());
 		assertArrayEquals(psk, st.getPsk());
 		assertArrayEquals(ticket, st.getTicket());
@@ -51,9 +52,10 @@ public class SessionTicketTest extends CommonTest {
 		assertEquals(666, st.getMaxEarlyDataSize());
 		assertTrue(st.isValid(1000-1+100000));
 		assertFalse(st.isValid(1000+100000));
+		assertNull(st.getProtocol());
 		
 		long time = System.currentTimeMillis();
-		st = new SessionTicket(CipherSuite.TLS_AES_256_GCM_SHA384, psk, ticket, 1, 111111, -1);
+		st = new SessionTicket(CipherSuite.TLS_AES_256_GCM_SHA384, "proto", psk, ticket, 1, 111111, -1);
 		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, st.getCipherSuite());
 		assertTrue(st.getCreationTime() >= time);
 		assertEquals(111111, st.getAgeAdd());
@@ -63,5 +65,38 @@ public class SessionTicketTest extends CommonTest {
 		waitFor(600);
 		assertFalse(st.isValid());
 		assertEquals(-1, st.getMaxEarlyDataSize());
+		assertEquals("proto", st.getProtocol());
+	}
+	
+	@Test
+	public void testForEarlyData() {
+			SessionTicket t = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, null, null, null, 1, 1, 1, 1);
+			
+			assertTrue(t.forEarlyData(null));
+			assertFalse(t.forEarlyData("proto"));
+			assertTrue(t.forEarlyData());
+			
+			t = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, "proto", null, null, 1, 1, 1, 1);
+			assertFalse(t.forEarlyData(null));
+			assertTrue(t.forEarlyData("proto"));
+
+			t = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, null, null, null, 1, 1, 0, 1);
+			assertFalse(t.forEarlyData(null));
+			assertFalse(t.forEarlyData("proto"));
+			assertFalse(t.forEarlyData());
+			
+			t = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, "proto", null, null, 1, 1, 0, 1);
+			assertFalse(t.forEarlyData(null));
+			assertFalse(t.forEarlyData("proto"));
+
+			t = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, null, null, null, 1, 1, -1, 1);
+			assertFalse(t.forEarlyData(null));
+			assertFalse(t.forEarlyData("proto"));
+			assertFalse(t.forEarlyData());
+			
+			t = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, "proto", null, null, 1, 1, -1, 1);
+			assertFalse(t.forEarlyData(null));
+			assertFalse(t.forEarlyData("proto"));
+		
 	}
 }

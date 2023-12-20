@@ -41,6 +41,7 @@ import static org.snf4j.core.engine.HandshakeStatus.NOT_HANDSHAKING;
 import static org.snf4j.core.engine.Status.CLOSED;
 import static org.snf4j.core.engine.Status.OK;
 
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -49,6 +50,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLPeerUnverifiedException;
 
 import org.junit.Assume;
@@ -2109,4 +2111,153 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		catch (SSLException e) {
 		}
 	}
+	
+	static String appicationProtocol(SSLEngine engine) throws Exception {
+		Method m = SSLEngine.class.getDeclaredMethod("getApplicationProtocol");
+		m.setAccessible(true);
+		return (String) m.invoke(engine);
+	}
+	
+	static void appicationProtocol(SSLEngine engine, String... names) throws Exception {
+		SSLParameters params = engine.getSSLParameters();
+		Method m = SSLParameters.class.getDeclaredMethod("setApplicationProtocols", String[].class);
+		m.setAccessible(true);
+		m.invoke(params, new Object[] {names});
+		engine.setSSLParameters(params);
+	}
+	
+	void prepareForClient(TLSEngine cli, SSLEngine srv) throws Exception {
+		srv.beginHandshake();
+		assertEngine(cli, NOT_HANDSHAKING);
+		cli.beginHandshake();
+		assertEngine(cli, HandshakeStatus.NEED_WRAP);
+
+		//ClientHello ->
+		clear();
+		assertResult(cli.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		//ClientHello <-
+		flip();
+		assertResult(srv.unwrap(in, out), OK, NEED_TASK);
+		runTasks(srv);
+		assertEngine(srv, NEED_WRAP);
+		//ServerHello ->
+		clear();
+		assertResult(srv.wrap(in, out), OK, NEED_WRAP);;
+		//ServerHello <-
+		flip();
+		assertResult(cli.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		assertEngine(cli, NEED_UNWRAP);
+		//EncryptedExtensions... ->
+		clear();
+		assertResult(srv.wrap(in, out), OK, NEED_UNWRAP);
+		flip();
+		assertResult(cli.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		assertEngine(cli, NEED_TASK);
+		Runnable task = cli.getDelegatedTask();
+		assertEngine(cli, HandshakeStatus.NEED_TASK);
+		assertNull(cli.getDelegatedTask());
+		clear();
+		task.run();
+		assertResult(cli.unwrap(in, out), OK, NEED_WRAP, 0, 0);
+		assertEngine(cli, NEED_WRAP);
+		clear();
+		assertResult(cli.wrap(in, out), OK, FINISHED, 0, out.position());
+		assertEngine(cli, HandshakeStatus.NOT_HANDSHAKING);
+		flip();
+		assertResult(srv.unwrap(in, out), OK, NEED_WRAP);
+		//new session ticket ->
+		clear();
+		assertResult(srv.wrap(in, out), OK, FINISHED);
+		flip();
+		//new session ticket <-
+		assertResult(cli.unwrap(in, out), OK, NOT_HANDSHAKING, in.position(), 0);
+	}
+	
+	@Test
+	public void testClientWithALPNIgnoredByServer() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		SSLEngine ssl = sslServer();
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.applicationProtocols("xxx")
+				.build(), 
+				handler);
+		prepareForClient(tls, ssl);
+		assertEquals("", appicationProtocol(ssl));
+		assertEquals("CV|PN(null)|", handler.trace());
+
+		ssl = sslServer();
+		appicationProtocol(ssl, "xxx");
+		tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.build(), 
+				handler);
+		prepareForClient(tls, ssl);
+		assertEquals("", appicationProtocol(ssl));
+		assertEquals("CV|PN(null)|", handler.trace());
+	}
+
+	@Test
+	public void testClientWithALPNAcceptedByServer() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		SSLEngine ssl = sslServer();
+		appicationProtocol(ssl, "xxx");
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.applicationProtocols("yyy","xxx")
+				.build(), 
+				handler);
+		prepareForClient(tls, ssl);
+		assertEquals("xxx", appicationProtocol(ssl));
+		assertEquals("CV|PN(xxx)|", handler.trace());
+
+		ssl = sslServer();
+		appicationProtocol(ssl, "xxx");
+		tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.applicationProtocols("xxx")
+				.build(), 
+				handler);
+		prepareForClient(tls, ssl);
+		assertEquals("xxx", appicationProtocol(ssl));
+		assertEquals("CV|PN(xxx)|", handler.trace());
+	}
+
+	@Test
+	public void testClientWithALPNRejectedByServer() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		SSLEngine ssl = sslServer();
+		appicationProtocol(ssl, "yyy");
+		ssl.beginHandshake();
+		
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.applicationProtocols("xxx")
+				.build(), 
+				handler);
+		assertEngine(tls, NOT_HANDSHAKING);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		assertEngine(tls, NEED_UNWRAP);
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP, true, false);
+		clear();
+		try {
+			ssl.wrap(in, out);
+			fail();
+		}
+		catch(SSLException e) {
+		}
+	}
+
 }

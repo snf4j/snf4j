@@ -70,6 +70,8 @@ public class EngineParametersBuilderTest {
 		assertSame(DelegatedTaskMode.NONE, b.getDelegatedTaskMode());
 		assertSame(ClientAuth.NONE, p.getClientAuth());
 		assertSame(ClientAuth.NONE, b.getClientAuth());
+		assertEquals(0, p.getApplicationProtocols().length);
+		assertNull(b.getApplicationProtocols());
 	}
 	
 	@Test
@@ -107,5 +109,13 @@ public class EngineParametersBuilderTest {
 		assertSame(DelegatedTaskMode.ALL, b.build().getDelegatedTaskMode());
 		b.clientAuth(ClientAuth.REQUESTED);
 		assertSame(ClientAuth.REQUESTED, b.build().getClientAuth());		
+		b.applicationProtocols("h2", "proto");
+		assertArrayEquals(new String[] {"h2", "proto"}, b.build().getApplicationProtocols());
+		b.applicationProtocols();
+		assertNull(b.getApplicationProtocols());
+		assertEquals(0, b.build().getApplicationProtocols().length);
+		b.applicationProtocols((String[])null);
+		assertNull(b.getApplicationProtocols());
+		assertEquals(0, b.build().getApplicationProtocols().length);
 	}
 }

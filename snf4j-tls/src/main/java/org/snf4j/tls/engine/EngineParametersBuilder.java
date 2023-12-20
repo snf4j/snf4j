@@ -39,7 +39,7 @@ public class EngineParametersBuilder {
 	
 	private SignatureScheme[] signatureSchemes = EngineDefaults.getDefaulSignatureSchemes();
 
-	private SignatureScheme[] signatureSchemesCert = null;
+	private SignatureScheme[] signatureSchemesCert;
 	
 	private PskKeyExchangeMode[] pskKeyExchangeModes = EngineDefaults.getDefaultPskKeyExchangeModes();
 		
@@ -56,6 +56,8 @@ public class EngineParametersBuilder {
 	private DelegatedTaskMode delegatedTaskMode = DelegatedTaskMode.NONE;
 	
 	private ClientAuth clientAuth = ClientAuth.NONE;
+	
+	private String[] applicationProtocols;
 	
 	public EngineParametersBuilder() {}
 		
@@ -96,7 +98,7 @@ public class EngineParametersBuilder {
 	}
 	
 	public EngineParametersBuilder pskKeyExchangeModes(PskKeyExchangeMode... pskKeyExchangeModes) {
-		this.pskKeyExchangeModes = pskKeyExchangeModes;
+		this.pskKeyExchangeModes = pskKeyExchangeModes.clone();
 		return this;
 	}
 	
@@ -167,8 +169,20 @@ public class EngineParametersBuilder {
 		return clientAuth;
 	}
 
-	private static <T> T[] safeClone(T[] signatureSchemes) {
-		return signatureSchemes == null ? null : signatureSchemes.clone();
+	public EngineParametersBuilder applicationProtocols(String... protocols) {
+		if (protocols != null && protocols.length == 0) {
+			protocols = null;
+		}
+		this.applicationProtocols = safeClone(protocols);
+		return this;
+	}
+	
+	public String[] getApplicationProtocols() {
+		return applicationProtocols;
+	}
+	
+	private static <T> T[] safeClone(T[] array) {
+		return array == null ? null : array.clone();
 	}
 	
 	public EngineParameters build() {
@@ -184,7 +198,8 @@ public class EngineParametersBuilder {
 				peerPort,
 				serverNameRequired,
 				delegatedTaskMode,
-				clientAuth
+				clientAuth,
+				safeClone(applicationProtocols)
 				);
 	}
 

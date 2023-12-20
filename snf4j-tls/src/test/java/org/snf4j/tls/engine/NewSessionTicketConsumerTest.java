@@ -36,7 +36,7 @@ import java.util.List;
 import org.junit.Test;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
-import org.snf4j.tls.cipher.IHashSpec;
+import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.OfferedPsk;
 import org.snf4j.tls.handshake.NewSessionTicket;
 import org.snf4j.tls.session.ISession;
@@ -130,7 +130,7 @@ public class NewSessionTicketConsumerTest {
 		}
 
 		@Override
-		public UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec) {
+		public UsedSession useSession(OfferedPsk[] psks, CipherSuite cipher, boolean earlyData, String protocol) {
 			return null;
 		}
 

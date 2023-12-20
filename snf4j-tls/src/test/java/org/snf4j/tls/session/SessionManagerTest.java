@@ -41,7 +41,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.tls.CommonTest;
 import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.cipher.HashSpec;
 import org.snf4j.tls.cipher.IHashSpec;
 import org.snf4j.tls.crypto.Hkdf;
 import org.snf4j.tls.crypto.KeySchedule;
@@ -71,17 +70,33 @@ public class SessionManagerTest extends CommonTest {
 				new TranscriptHash(hashSpec.getHash().createMessageDigest()), 
 				hashSpec);
 	}
-	
+
 	EngineState state(ISession session, MachineState machineState, CipherSuite cipher) throws Exception {
+		return state(session, machineState, cipher, null);
+	}
+	
+	EngineState state(ISession session, MachineState machineState, CipherSuite cipher, String protocol) throws Exception {
 		EngineState state = new EngineState(machineState, parameters, handler, handshakeHandler);
 		
 		state.initialize(keySchedule(cipher.spec().getHashSpec()), cipher);
+		state.setApplicationProtocol(protocol);
 		state.getKeySchedule().deriveEarlySecret();
 		state.getKeySchedule().deriveHandshakeSecret(new byte[cipher.spec().getHashSpec().getHashLength()]);
 		state.getKeySchedule().deriveMasterSecret();
 		state.getKeySchedule().deriveResumptionMasterSecret();
 		state.setSession(session);
 		return state;
+	}
+
+	OfferedPsk[] psks(NewSessionTicket... tickets) {
+		byte[][] psks = new byte[tickets.length][];
+		
+		for (int i=0; i<tickets.length; ++i) {
+			if (tickets[i] != null) {
+				psks[i] = tickets[i].getTicket().clone();
+			}
+		}
+		return psks(psks);
 	}
 	
 	OfferedPsk[] psks(byte[]... tickets) {
@@ -299,7 +314,7 @@ public class SessionManagerTest extends CommonTest {
 		ticket2 = mgr.newTicket(state,-1);
 		assertEquals(1L, ticket1.getLifetime());
 		assertEquals(2, mgr.getTickets(session).length);
-		UsedSession used = mgr.useSession(psks(ticket1.getTicket()), HashSpec.SHA256);
+		UsedSession used = mgr.useSession(psks(ticket1.getTicket()), CipherSuite.TLS_AES_128_GCM_SHA256, false, null);
 		assertTrue(used.getTicket().isValid());
 		assertEquals(0, used.getSelectedIdentity());
 		assertEquals(1, mgr.getTickets(session).length);
@@ -337,21 +352,21 @@ public class SessionManagerTest extends CommonTest {
 		byte[] identity = ticket2.getTicket().clone();
 		for (int i=0; i<identity.length; ++i) {
 			identity[i]++;
-			assertNull("i=" + i, mgr.useSession(psks(identity), HashSpec.SHA256, 1000));
+			assertNull("i=" + i, mgr.useSession(psks(identity), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000));
 			identity[i]--;
 		}
-		assertNull(mgr.useSession(psks(identity), HashSpec.SHA384, 1000));
-		assertNull(mgr.useSession(psks(Arrays.copyOf(identity, identity.length+1)), HashSpec.SHA256, 1000));
-		assertNull(mgr.useSession(psks(Arrays.copyOf(identity, identity.length-1)), HashSpec.SHA256, 1000));
-		UsedSession used = mgr.useSession(psks(new byte[10], identity), HashSpec.SHA256, 1000);
+		assertNull(mgr.useSession(psks(identity), CipherSuite.TLS_AES_256_GCM_SHA384, false, null, 1000));
+		assertNull(mgr.useSession(psks(Arrays.copyOf(identity, identity.length+1)), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000));
+		assertNull(mgr.useSession(psks(Arrays.copyOf(identity, identity.length-1)), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000));
+		UsedSession used = mgr.useSession(psks(new byte[10], identity), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000);
 		assertNotNull(used);
 		assertSame(session2, used.getSession());
 		assertEquals(1, used.getSelectedIdentity());
-		assertNull(mgr.useSession(psks(identity), HashSpec.SHA256, 1000));
+		assertNull(mgr.useSession(psks(identity), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000));
 		
 		assertEquals(1, mgr.getTickets(session1, 1000).length);
 		identity = ticket1.getTicket().clone();
-		assertNull(mgr.useSession(psks(identity), HashSpec.SHA256));
+		assertNull(mgr.useSession(psks(identity), CipherSuite.TLS_AES_128_GCM_SHA256, false, null));
 		assertEquals(1, mgr.getTickets(session1, 1000-1+86400*1000).length);
 		assertEquals(0, mgr.getTickets(session1, 1000+86400*1000).length);
 
@@ -364,11 +379,112 @@ public class SessionManagerTest extends CommonTest {
 		state2 = state(session2, MachineState.SRV_INIT, CipherSuite.TLS_AES_128_GCM_SHA256);
 		ticket2 = mgr.newTicket(state2,-1);
 		
-		used = mgr.useSession(psks(ticket1.getTicket()), HashSpec.SHA256);
+		used = mgr.useSession(psks(ticket1.getTicket()), CipherSuite.TLS_AES_128_GCM_SHA256, false, null);
 		assertNotNull(used);
 		assertSame(session1, used.getSession());
 		waitFor(1100);
-		assertNull(mgr.useSession(psks(ticket2.getTicket()), HashSpec.SHA256));
+		assertNull(mgr.useSession(psks(ticket2.getTicket()), CipherSuite.TLS_AES_128_GCM_SHA256, false, null));
+	}
+
+	EngineState state(CipherSuite cipher, String protocol) throws Exception {
+		SessionInfo info = new SessionInfo().cipher(cipher);
+		Session session = (Session) mgr.newSession(info, 1000);
+		EngineState state = state(session, MachineState.SRV_INIT, cipher, protocol);
+		return state;
+	}
+	
+	
+	@Test
+	public void testUseSessionWithEarlyData() throws Exception {
+		EngineState state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		NewSessionTicket t1 = mgr.newTicket(state, 100, 1000);
+		NewSessionTicket t2 = mgr.newTicket(state, -1, 1000);
+		assertEquals(1, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, -1, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		assertEquals(0, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		assertEquals(0, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		NewSessionTicket t3 = mgr.newTicket(state, -1, 1000);
+		assertEquals(0, mgr.useSession(psks(t1,t2,t3), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		state = state(CipherSuite.TLS_AES_256_GCM_SHA384, null);
+		t3 = mgr.newTicket(state, -1, 1000);
+		assertEquals(2, mgr.useSession(psks(t1,t2,t3), CipherSuite.TLS_AES_256_GCM_SHA384, false, null, 1000).getSelectedIdentity());
+		
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		assertNull(mgr.useSession(psks(bytes(1)), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000));
+		assertNull(mgr.useSession(psks(bytes(1), bytes(2)), CipherSuite.TLS_AES_128_GCM_SHA256, false, null, 1000));
+		
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		assertEquals(0, mgr.useSession(psks(t1), CipherSuite.TLS_AES_128_GCM_SHA256, true, null, 1000).getSelectedIdentity());
+		
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		assertEquals(0, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, true, null, 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, -1, 1000);
+		assertEquals(0, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, true, null, 1000).getSelectedIdentity());
+		
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, -1, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		assertEquals(0, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, true, null, 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, -1, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		assertEquals(0, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, true, null, 1000).getSelectedIdentity());
+
+		NewSessionTicket t0 = t1;
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, 100, 1000);
+		state = state(CipherSuite.TLS_AES_256_GCM_SHA384, null);
+		t3 = mgr.newTicket(state, -1, 1000);
+		OfferedPsk[] psks = psks(t1,t2,t2,t3);
+		psks[1] = psks(t0)[0];
+		assertEquals(3, mgr.useSession(psks, CipherSuite.TLS_AES_256_GCM_SHA384, false, null, 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, null);
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, -1, 1000);
+		assertEquals(1, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, true, "proto", 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, "proto");
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, -1, 1000);
+		assertEquals(1, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, true, null, 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, "proto");
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, -1, 1000);
+		assertEquals(1, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, true, "proto2", 1000).getSelectedIdentity());
+
+		state = state(CipherSuite.TLS_AES_128_GCM_SHA256, "proto");
+		t1 = mgr.newTicket(state, 100, 1000);
+		t2 = mgr.newTicket(state, -1, 1000);
+		assertEquals(0, mgr.useSession(psks(t1,t2), CipherSuite.TLS_AES_128_GCM_SHA256, true, "proto", 1000).getSelectedIdentity());
+		
 	}
 	
 	@Test

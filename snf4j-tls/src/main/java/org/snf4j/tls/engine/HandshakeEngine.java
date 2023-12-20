@@ -44,6 +44,7 @@ import org.snf4j.tls.crypto.IHkdf;
 import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.crypto.TranscriptHash;
+import org.snf4j.tls.extension.ALPNExtension;
 import org.snf4j.tls.extension.EarlyDataExtension;
 import org.snf4j.tls.extension.ExtensionValidator;
 import org.snf4j.tls.extension.ExtensionsUtil;
@@ -366,6 +367,13 @@ public class HandshakeEngine implements IHandshakeEngine {
 				extensions.add(new SignatureAlgorithmsCertExtension(signSchemes));
 			}
 			
+			String[] protocols = params.getApplicationProtocols();
+			String firstProtocol = null;
+			if (protocols.length > 0) {
+				firstProtocol = protocols[0];
+				extensions.add(new ALPNExtension(protocols));
+			}	
+			
 			PskKeyExchangeMode[] modes = PskKeyExchangeMode.implemented(params.getPskKeyExchangeModes());
 			int offered = pairs.length;
 			KeyShareEntry[] entries = new KeyShareEntry[offered];
@@ -422,11 +430,13 @@ public class HandshakeEngine implements IHandshakeEngine {
 							}
 							else {
 								++offered;
-								if (earlyDataTicket == -1 && ticket.getMaxEarlyDataSize() > 0) {
+								if (earlyDataTicket == -1 && ticket.forEarlyData()) {
 									for (CipherSuite cipherSuite: cipherSuites) {
 										if (ticket.getCipherSuite().equals(cipherSuite)) {
 											earlyDataTicket = i;
-											break;
+											if (ticket.forEarlyData(firstProtocol)) {
+												break;
+											}
 										}
 									}
 								}

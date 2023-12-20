@@ -59,7 +59,6 @@ public enum MachineState {
 	SRV_WAIT_TASK(false),
 
 	SRV_WAIT_EOED(false),
-	SRV_WAIT_FLIGHT2(false),
 	SRV_WAIT_CERT(false),
 	SRV_WAIT_CV(false),
 	SRV_WAIT_FINISHED(false),

@@ -30,8 +30,10 @@ import static org.snf4j.tls.extension.ExtensionsUtil.find;
 import java.nio.ByteBuffer;
 
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.extension.ExtensionType;
+import org.snf4j.tls.extension.IALPNExtension;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IHandshake;
 
@@ -47,6 +49,30 @@ public class EncryptedExtensionsConsumer  implements IHandshakeConsumer {
 		if (state.getState() != MachineState.CLI_WAIT_EE) {
 			throw new UnexpectedMessageAlert("Unexpected EncryptedExtensions");
 		}
+		
+		String selectedProtocol = null;
+		IALPNExtension alpn = find(handshake, ExtensionType.APPLICATION_LAYER_PROTOCOL_NEGOTIATION);
+		if (alpn != null) {
+			String[] protocols = state.getParameters().getApplicationProtocols();
+			
+			if (protocols.length == 0) {
+				throw new IllegalParameterAlert("Unexpected ALPN extension");
+			}
+			
+			selectedProtocol = alpn.getProtocolNames()[0];
+			boolean expected = false;
+			for(String protocol: protocols) {
+				if (selectedProtocol.equals(protocol)) {
+					expected = true;
+					break;
+				}
+			}
+			if (!expected) {
+				throw new IllegalParameterAlert("Unexpected selected application protocol (" + selectedProtocol + ")");
+			}
+		}
+		state.setApplicationProtocol(selectedProtocol);
+		state.getHandler().verifyApplicationProtocol(selectedProtocol);
 		
 		IEarlyDataContext ctx = state.getEarlyDataContext();
 		if (ctx.getState() == EarlyDataState.PROCESSING) {

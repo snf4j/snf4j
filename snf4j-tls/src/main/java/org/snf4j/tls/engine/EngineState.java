@@ -83,6 +83,8 @@ public class EngineState implements IEngineState, IEngineProducer {
 	
 	private CipherSuite cipherSuite;
 	
+	private String applicationProtocol;
+	
 	private NamedGroup namedGroup;
 	
 	private String hostName;
@@ -200,6 +202,15 @@ public class EngineState implements IEngineState, IEngineProducer {
 		this.namedGroup = namedGroup;
 	}
 
+	@Override
+	public String getApplicationProtocol() {
+		return applicationProtocol;
+	}
+
+	public void setApplicationProtocol(String protocol) {
+		applicationProtocol = protocol;
+	}
+	
 	@Override
 	public String getHostName() {
 		return hostName;

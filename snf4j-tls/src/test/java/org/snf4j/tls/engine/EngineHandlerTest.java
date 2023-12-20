@@ -45,6 +45,8 @@ import javax.net.ssl.X509TrustManager;
 
 import org.junit.Test;
 import org.snf4j.tls.CommonTest;
+import org.snf4j.tls.alert.NoApplicationProtocolAlert;
+import org.snf4j.tls.extension.ALPNExtension;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.session.ISessionManager;
 import org.snf4j.tls.session.SessionManager;
@@ -244,4 +246,32 @@ public class EngineHandlerTest extends CommonTest {
 		assertFalse(h.hasEarlyData());
 		assertNull(h.nextEarlyData());
 	}
+	
+	String[] names(String... names) {
+		return names.clone();
+	}
+	
+	@Test
+	public void testSelectApplicationProtocol() throws Exception {
+		EngineHandler h = new EngineHandler(km, "key", tm, random, sm, 16);
+		ALPNExtension alpn = new ALPNExtension("xxx", "yyy");
+		
+		assertNull(h.selectApplicationProtocol(alpn, names()));
+		assertEquals("yyy", h.selectApplicationProtocol(alpn, names("yyy")));
+		assertEquals("yyy", h.selectApplicationProtocol(alpn, names("yyy","xxx")));
+		assertEquals("xxx", h.selectApplicationProtocol(alpn, names("yy","xxx")));
+		assertEquals("xxx", h.selectApplicationProtocol(alpn, names("xxx", "yyy")));
+		assertEquals("xxx", h.selectApplicationProtocol(alpn, names("xxx")));
+		assertNull(h.selectApplicationProtocol(null, names()));
+		assertNull(h.selectApplicationProtocol(null, names("xxx")));
+		assertNull(h.selectApplicationProtocol(null, names("xxx","yyy")));
+	}
+	
+	@Test(expected = NoApplicationProtocolAlert.class)
+	public void testSelectApplicationProtocolAlert1() throws Exception {
+		EngineHandler h = new EngineHandler(km, "key", tm, random, sm, 16);
+		ALPNExtension alpn = new ALPNExtension("xxx", "yyy");
+		
+		assertEquals("yyy", h.selectApplicationProtocol(alpn, names("yy","xx")));
+	}	
 }

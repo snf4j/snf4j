@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,46 +23,9 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
+package org.snf4j.tls.extension;
 
-import org.snf4j.core.session.ssl.ClientAuth;
-import org.snf4j.tls.cipher.CipherSuite;
-import org.snf4j.tls.extension.NamedGroup;
-import org.snf4j.tls.extension.PskKeyExchangeMode;
-import org.snf4j.tls.extension.SignatureScheme;
-
-public interface IEngineParameters {
+public interface IALPNExtension extends IExtension {
 	
-	CipherSuite[] getCipherSuites();
-
-	NamedGroup[] getNamedGroups();
-
-	SignatureScheme[] getSignatureSchemes();
-
-	SignatureScheme[] getSignatureSchemesCert();
-
-	PskKeyExchangeMode[] getPskKeyExchangeModes();
-	
-	boolean isCompatibilityMode();
-	
-	String getPeerHost();
-	
-	int getPeerPort();
-
-	boolean isServerNameRequired();
-	
-	int getNumberOfOfferedSharedKeys();
-	
-	DelegatedTaskMode getDelegatedTaskMode();
-	
-	ClientAuth getClientAuth();
-	
-	/**
-	 * Return supported application protocols or an empty array if application
-	 * protocol negotiation (ALPN) should not be used.
-	 * 
-	 * @return supported application protocols or an empty array
-	 */
-	String[] getApplicationProtocols();
-	
+	String[] getProtocolNames();
 }

@@ -35,11 +35,13 @@ import javax.crypto.Mac;
 
 import org.junit.Test;
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.crypto.Hkdf;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.crypto.TranscriptHash;
+import org.snf4j.tls.extension.ALPNExtension;
 import org.snf4j.tls.extension.EarlyDataExtension;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.handshake.EncryptedExtensions;
@@ -115,4 +117,20 @@ public class EncryptedExtensionsConsumerTest extends EngineTest {
 		state.changeState(MachineState.CLI_WAIT_1_SH);
 		consumer.consume(state, ee, data(ee), false);
 	}
+
+	@Test(expected=IllegalParameterAlert.class)
+	public void testUnexpectedALPN() throws Exception {
+		EncryptedExtensions ee = encryptedExtensions();
+		extensions.add(new ALPNExtension("proto"));
+		consumer.consume(state, ee, data(ee), false);
+	}
+	
+	@Test(expected=IllegalParameterAlert.class)
+	public void testUnexpectedProtocolName() throws Exception {
+		EncryptedExtensions ee = encryptedExtensions();
+		extensions.add(new ALPNExtension("proto"));
+		params.applicationProtocols = new String[] {"xxx", "yyy"};
+		consumer.consume(state, ee, data(ee), false);
+	}
+
 }

@@ -55,6 +55,7 @@ import org.snf4j.tls.crypto.IKeyExchange;
 import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.crypto.TranscriptHash;
+import org.snf4j.tls.extension.ALPNExtension;
 import org.snf4j.tls.extension.EarlyDataExtension;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.IExtension;
@@ -142,8 +143,9 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			throw new IllegalParameterAlert("Invalid compression methods");
 		}
 		
+		IEngineParameters params = state.getParameters();
 		CipherSuite cipherSuite = findMatch(
-				state.getParameters().getCipherSuites(), 
+				params.getCipherSuites(), 
 				clientHello.getCipherSuites());
 		if (cipherSuite == null) {
 			throw new HandshakeFailureAlert("Failed to negotiate cipher suite");
@@ -151,6 +153,11 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		else if (state.getCipherSuite() != null && !state.getCipherSuite().equals(cipherSuite)) {
 			throw new IllegalParameterAlert("Negotiated cipher suite mismatch");
 		}
+		
+		String protocol = state.getHandler().selectApplicationProtocol(
+				find(handshake, ExtensionType.APPLICATION_LAYER_PROTOCOL_NEGOTIATION), 
+				params.getApplicationProtocols());
+		state.setApplicationProtocol(protocol);
 		
 		IKeyShareExtension keyShare = find(handshake, ExtensionType.KEY_SHARE);
 		if (keyShare == null) {
@@ -214,7 +221,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		else {
 			keyShareEntry = KeyShareEntry.findMatch(
 					keyShare.getEntries(), 
-					state.getParameters().getNamedGroups());
+					params.getNamedGroups());
 		}
 
 		NamedGroup namedGroup = null;
@@ -233,7 +240,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		}
 		if (namedGroup == null) {
 			namedGroup = findMatch(
-					state.getParameters().getNamedGroups(), 
+					params.getNamedGroups(), 
 					supportedGroups.getGroups());
 			if (namedGroup == null) {
 				throw new HandshakeFailureAlert("Failed to negotiate supported group");
@@ -242,7 +249,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		
 		IServerNameExtension serverName = find(handshake, ExtensionType.SERVER_NAME);
 		if (serverName == null) {
-			if (state.getParameters().isServerNameRequired()) {
+			if (params.isServerNameRequired()) {
 				throw new MissingExtensionAlert("Missing server_name extension in ClientHello");
 			}
 		}
@@ -259,7 +266,9 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			if (keyShareEntry != null) {
 				resumed = state.getHandler().getSessionManager().useSession(
 						preSharedKey.getOfferedPsks(),
-						cipherSuite.spec().getHashSpec());
+						cipherSuite,
+						earlyData,
+						protocol);
 			}
 			else {
 				partInitialization = true;
@@ -333,7 +342,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 						
 						if (resumed.getSelectedIdentity() == 0 
 								&& ticket.getCipherSuite().equals(state.getCipherSuite())
-								&& ticket.getMaxEarlyDataSize() > 0) {
+								&& ticket.forEarlyData(protocol)) {
 							state.getKeySchedule().deriveEarlyTrafficSecret();
 							state.getListener().onNewTrafficSecrets(state, RecordType.ZERO_RTT);
 							state.getListener().onNewReceivingTraficKey(state, RecordType.ZERO_RTT);
@@ -390,7 +399,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		}
 		state.setVersion(negotiatedVersion);
 		
-		DelegatedTaskMode taskMode = state.getParameters().getDelegatedTaskMode();
+		DelegatedTaskMode taskMode = params.getDelegatedTaskMode();
 		AbstractEngineTask task = new KeyExchangeTask(
 				namedGroup, 
 				keyShareEntry.getParsedKey(), 
@@ -420,7 +429,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 							state.getHostName(),
 							signAlgorithms.getSchemes(),
 							signAlgorithmsCert == null ? null : signAlgorithmsCert.getSchemes(),
-							state.getParameters().getSignatureSchemes().clone()
+							params.getSignatureSchemes().clone()
 							));
 		}
 		if (taskMode.certificates()) {
@@ -523,6 +532,12 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			if (hostName != null)  {
 				extensions.add(new ServerNameExtension());
 			}
+			
+			String protocol = state.getApplicationProtocol();
+			if (protocol != null) {
+				extensions.add(new ALPNExtension(protocol));
+			}
+			
 			if (state.getEarlyDataContext().getState() == EarlyDataState.PROCESSING) {
 				extensions.add(new EarlyDataExtension());
 				state.getListener().onNewReceivingTraficKey(state, RecordType.ZERO_RTT);

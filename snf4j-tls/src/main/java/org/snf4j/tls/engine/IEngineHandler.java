@@ -27,7 +27,9 @@ package org.snf4j.tls.engine;
 
 import java.security.SecureRandom;
 
+import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.IALPNExtension;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.session.ISessionManager;
@@ -36,6 +38,39 @@ public interface IEngineHandler {
 
 	boolean verify(IServerNameExtension serverName);
 	
+	/**
+	 * Called by servers to selects application protocol from the ALPN extension.
+	 * 
+	 * @param alpn               the offered ALPN extension or {@code null} if the
+	 *                           extension was not present
+	 * @param supportedProtocols the supported application protocols
+	 * @return the selected protocol name or {@code null} if no protocol is used
+	 * @throws NoApplicationProtocolAlert if the extension advertises
+	 *                                    only protocols that the server does not
+	 *                                    support
+	 * @throws Alert if some other errors occurred
+	 */
+	String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert;
+		
+	/**
+	 * Called by clients to verifies selected application protocol.
+	 * 
+	 * @param protocol the selected application protocol or {@code null} if no
+	 *                 protocol was used
+	 * @throws NoApplicationProtocolAlert if an application protocol was required
+	 *                                    but none was used
+	 * @throws Alert                      if some other errors occurred
+	 */
+	void verifyApplicationProtocol(String protocol) throws Alert;
+	
+	/**
+	 * Called after successful handshake.
+	 * 
+	 * @param protocol the name of established protocol or {@code null} if no
+	 *                 application protocol is used
+	 */
+	void connected(String protocol);
+
 	ICertificateSelector getCertificateSelector();
 	
 	ICertificateValidator getCertificateValidator();

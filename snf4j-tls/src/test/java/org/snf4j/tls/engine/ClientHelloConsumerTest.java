@@ -235,7 +235,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		state.getTask().run();
 		state.getTask().run();
 		ProducedHandshake[] produced = state.getProduced();
-		assertEquals("VSN(snf4j.org)|CS|HTS|RTS(HANDSHAKE)|ATS|", handler.trace());
+		assertEquals("ALPN(null)|VSN(snf4j.org)|CS|HTS|RTS(HANDSHAKE)|ATS|", handler.trace());
 		CertificateCriteria criteria = handler.certificateSelector.criteria;
 		assertEquals("snf4j.org", criteria.getHostName());
 		assertTrue(criteria.isServer());
@@ -302,7 +302,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		replace(extensions, keyShare());
 		ClientHello ch = clientHello();
 		consumer.consume(state, ch, data(ch), false);
-		assertEquals("VSN(snf4j.org)|", handler.trace());
+		assertEquals("ALPN(null)|VSN(snf4j.org)|", handler.trace());
 		
 		state = serverState();
 		remove(extensions, ExtensionType.SERVER_NAME);
@@ -311,13 +311,13 @@ public class ClientHelloConsumerTest extends EngineTest {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
 		} catch (MissingExtensionAlert e) {}
-		assertEquals("", handler.trace());
+		assertEquals("ALPN(null)|", handler.trace());
 		
 		state = serverState();
 		params.serverNameRequired = false;
 		ch = clientHello();
 		consumer.consume(state, ch, data(ch), false);
-		assertEquals("", handler.trace());
+		assertEquals("ALPN(null)|", handler.trace());
 		
 		extensions.add(serverName("snf4j.org"));
 		handler.verifyServerName = false;
@@ -328,7 +328,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
 		} catch (UnrecognizedNameAlert e) {}
-		assertEquals("VSN(snf4j.org)|", handler.trace());
+		assertEquals("ALPN(null)|VSN(snf4j.org)|", handler.trace());
 	}
 	
 	@Test
@@ -736,7 +736,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		params.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
 		handler.earlyData.add(bytes(1,2,3,4));
 		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
-		handler.sessionManager.sessionTicket = new SessionTicket(CipherSuite.TLS_AES_256_GCM_SHA384, bytes(1), bytes(1), 1000, 1000, 1000);
+		handler.sessionManager.sessionTicket = new SessionTicket(CipherSuite.TLS_AES_256_GCM_SHA384, null, bytes(1), bytes(1), 1000, 1000, 1000);
 		handler.sessionManager.sessionTicketCounter = 2;
 		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
 		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
@@ -771,7 +771,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		params.cipherSuites = new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256};
 		handler.earlyData.add(bytes(1,2,3,4));
 		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
-		handler.sessionManager.sessionTicket = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, bytes(1), bytes(1), 1000, 1000, 0);
+		handler.sessionManager.sessionTicket = new SessionTicket(CipherSuite.TLS_AES_128_GCM_SHA256, null, bytes(1), bytes(1), 1000, 1000, 0);
 		handler.sessionManager.sessionTicketCounter = 2;
 		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
 		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);

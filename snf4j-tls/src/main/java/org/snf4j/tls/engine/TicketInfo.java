@@ -30,7 +30,7 @@ import org.snf4j.tls.Args;
 public class TicketInfo {
 
 	public final static TicketInfo NO_MAX_EARLY_DATA_SIZE = new TicketInfo();
-	
+
 	private final long maxEarlyDataSize;
 
 	public TicketInfo() {
@@ -41,9 +41,16 @@ public class TicketInfo {
 		Args.checkRange(maxEarlyDataSize, 0L, 0xffff_ffffL, "maxEarlyDataSize");
 		this.maxEarlyDataSize = maxEarlyDataSize;
 	}
-	
+
+	/**
+	 * Gets the maximum size of the early data that can be sent when using a ticket
+	 * created from this ticket info. For creating tickets not supporting the early
+	 * data this method should return {@code -1}.
+	 * 
+	 * @return the maximum early data size or {@code -1}
+	 */
 	public long getMaxEarlyDataSize() {
 		return maxEarlyDataSize;
 	}
-	
+
 }

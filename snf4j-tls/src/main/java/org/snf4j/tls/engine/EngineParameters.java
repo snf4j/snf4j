@@ -33,6 +33,8 @@ import org.snf4j.tls.extension.SignatureScheme;
 
 public class EngineParameters implements IEngineParameters {
 	
+	private final static String[] EMPTY = new String[0];
+	
 	private final CipherSuite[] cipherSuites;
 	
 	private final NamedGroup[] namedGroups;
@@ -57,10 +59,13 @@ public class EngineParameters implements IEngineParameters {
 	
 	private final ClientAuth clientAuth;
 	
+	private final String[] applicationProtocols;
+	
 	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
 			SignatureScheme[] signatureSchemesCert, PskKeyExchangeMode[] pskKeyExchangeModes,
 			boolean compatibilityMode, int numberOfOfferedSharedKeys, String peerHost,
-			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode,ClientAuth clientAuth) {
+			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode,ClientAuth clientAuth,
+			String[] applicationProtocols) {
 		super();
 		this.cipherSuites = cipherSuites;
 		this.namedGroups = namedGroups;
@@ -74,6 +79,7 @@ public class EngineParameters implements IEngineParameters {
 		this.serverNameRequired = serverNameRequired;
 		this.delegatedTaskMode = delegatedTaskMode;
 		this.clientAuth = clientAuth;
+		this.applicationProtocols = applicationProtocols == null ? EMPTY : applicationProtocols;
 	}
 
 	@Override
@@ -136,4 +142,8 @@ public class EngineParameters implements IEngineParameters {
 		return clientAuth;
 	}
 	
+	@Override
+	public String[] getApplicationProtocols() {
+		return applicationProtocols;
+	}
 }

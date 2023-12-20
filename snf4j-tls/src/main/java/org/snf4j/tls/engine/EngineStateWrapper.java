@@ -94,6 +94,11 @@ class EngineStateWrapper implements IEngineState {
 	}
 
 	@Override
+	public String getApplicationProtocol() {
+		return state.getApplicationProtocol();
+	}
+
+	@Override
 	public String getHostName() {
 		return state.getHostName();
 	}

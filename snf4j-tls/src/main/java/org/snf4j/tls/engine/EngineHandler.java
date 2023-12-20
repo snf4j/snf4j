@@ -30,7 +30,10 @@ import java.security.SecureRandom;
 import javax.net.ssl.X509KeyManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.NoApplicationProtocolAlert;
 import org.snf4j.tls.cipher.CipherSuite;
+import org.snf4j.tls.extension.IALPNExtension;
 import org.snf4j.tls.extension.IServerNameExtension;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.session.ISessionManager;
@@ -111,6 +114,31 @@ public class EngineHandler implements IEngineHandler {
 		return true;
 	}
 
+	@Override
+	public String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert {
+		if (alpn != null && supportedProtocols.length > 0) {
+			String[] offeredProtocols = alpn.getProtocolNames();
+			
+			for (String supported: supportedProtocols) {
+				for (String offered: offeredProtocols) {
+					if (offered.equals(supported)) {
+						return offered;
+					}
+				}
+			}
+			throw new NoApplicationProtocolAlert("Offered application protocols not supported by server");
+		}
+		return null;
+	}
+
+	@Override
+	public void verifyApplicationProtocol(String protocol) throws Alert {
+	}
+	
+	@Override
+	public void connected(String protocol) {
+	}
+	
 	@Override
 	public ICertificateSelector getCertificateSelector() {
 		return certificateSelector;

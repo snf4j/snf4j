@@ -88,10 +88,15 @@ public class EngineStateWrapperTest {
 		assertSame(session, w.getSession());
 		assertNull(w.getKeySchedule());
 		assertNull(w.getCipherSuite());
+		assertNull(s.getApplicationProtocol());
+		assertNull(w.getApplicationProtocol());
 		s.initialize(ks1, CipherSuite.TLS_AES_256_GCM_SHA384);
+		s.setApplicationProtocol("proto");
 		assertSame(ks1, w.getKeySchedule());
 		assertSame(CipherSuite.TLS_AES_256_GCM_SHA384, w.getCipherSuite());
 		assertNull(w.getHostName());
+		assertEquals("proto", w.getApplicationProtocol());
+		assertEquals("proto", s.getApplicationProtocol());
 		s.setHostName("host");
 		assertEquals("host", w.getHostName());
 		assertEquals(0, w.getVersion());

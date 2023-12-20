@@ -1,6 +1,6 @@
 package org.snf4j.tls.session;
 
-import org.snf4j.tls.cipher.IHashSpec;
+import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.OfferedPsk;
 
 /*
@@ -47,8 +47,8 @@ public class TestSessionManager extends SessionManager {
 	}
 	
 	@Override
-	public UsedSession useSession(OfferedPsk[] psks, IHashSpec hashSpec, long currentTime) {
-		UsedSession used = super.useSession(psks, hashSpec, currentTime);
+	public UsedSession useSession(OfferedPsk[] psks, CipherSuite cipher, boolean earlyData, String protocol, long currentTime) {
+		UsedSession used = super.useSession(psks, cipher, earlyData, protocol, currentTime);
 		if (used != null) {
 			boolean change = false;
 			int identity = used.getSelectedIdentity();

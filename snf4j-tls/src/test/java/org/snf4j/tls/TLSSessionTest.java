@@ -64,7 +64,9 @@ import org.snf4j.core.session.ssl.SSLEngineBuilder;
 import org.snf4j.tls.engine.DelegatedTaskMode;
 import org.snf4j.tls.engine.EngineHandler;
 import org.snf4j.tls.engine.EngineParametersBuilder;
-import org.snf4j.tls.session.SessionManager;
+import org.snf4j.tls.engine.TicketInfo;
+import org.snf4j.tls.record.ContentType;
+import org.snf4j.tls.session.ISessionManager;
 
 public class TLSSessionTest extends CommonTest {
 
@@ -76,7 +78,7 @@ public class TLSSessionTest extends CommonTest {
 	
 	final static String HOST_NAME = "host.org";
 	
-	final static long TIMEOUT = 2000;
+	final static long TIMEOUT = 2000*10000;
 	
 	SelectorLoop loop;
 	
@@ -89,6 +91,8 @@ public class TLSSessionTest extends CommonTest {
 	X509TrustManager tm;
 	
 	SSLEngineBuilder cliJdk, srvJdk;
+	
+	volatile byte[] earlyData;
 	
 	final StringBuilder trace = new StringBuilder();
 	
@@ -181,14 +185,14 @@ public class TLSSessionTest extends CommonTest {
 				session = new TLSSession(
 						name,
 						builder.build(), 
-						new EngineHandler(km,tm), 
+						new TestEngineHandler(km, tm, earlyData), 
 						new ClientHandler(null), 
 						true);
 			}
 			else {
 				session = new TLSSession(
 						builder.build(), 
-						new EngineHandler(km,tm), 
+						new TestEngineHandler(km, tm, earlyData), 
 						new ClientHandler(null), 
 						true);
 			}
@@ -229,7 +233,7 @@ public class TLSSessionTest extends CommonTest {
 						throws Exception {
 					return new TLSSession(
 							builder.build(),
-							new EngineHandler(km,tm,new SessionManager()),
+							new TestEngineHandler(km,tm,earlyData),
 							new ServerHandler(null),
 							false
 							);
@@ -367,11 +371,76 @@ public class TLSSessionTest extends CommonTest {
 		assertEquals("Text2", trace());
 	}
 	
+	@Test
+	public void testEarlyData() throws Exception {
+		earlyData = bytes('a','b','c');
+		server(false, DelegatedTaskMode.NONE);
+		EngineStreamSession session = client(false, DelegatedTaskMode.NONE);
+		session.close();
+		session.getCloseFuture().sync(TIMEOUT);
+		assertEquals("", trace());
+
+		session = client(false, DelegatedTaskMode.NONE);
+		session.write("Text2".getBytes()).sync();
+		session.close();
+		session.getCloseFuture().sync(TIMEOUT);
+		assertEquals("ED(abc)Text2", trace());
+	}
+	
+	class TestEngineHandler extends EngineHandler {
+
+		byte[] earlyData;
+		
+		public TestEngineHandler(X509KeyManager km, X509TrustManager tm, ISessionManager mgr, byte[] earlyData) {
+			super(km, tm, mgr);
+			this.earlyData = earlyData == null ? null : earlyData.clone();
+		}
+		
+		public TestEngineHandler(X509KeyManager km, X509TrustManager tm, byte[] earlyData) {
+			super(km, tm);
+			this.earlyData = earlyData == null ? null : earlyData.clone();
+		}
+
+		@Override
+		public int calculatePadding(ContentType type, int contentLength) {
+			return 0;
+		}
+		
+		@Override
+		public long getMaxEarlyDataSize() {
+			return 16384;
+		}
+
+		@Override
+		public TicketInfo[] createNewTickets() {
+			if (earlyData != null) {
+				return new TicketInfo[] {new TicketInfo(earlyData.length)};
+			}
+			return new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE};
+		}
+
+		@Override
+		public boolean hasEarlyData() {
+			return earlyData != null;
+		}
+
+		@Override
+		public byte[] nextEarlyData() {
+			byte[] earlyData = this.earlyData;
+			
+			this.earlyData = null;
+			return earlyData;
+		}
+		
+	}
+	
 	class Handler extends AbstractStreamHandler {
 
 		final DefaultSessionConfig config;
 		
 		final boolean clientMode;
+		
+		boolean ready;
 		
 		Handler(boolean clientMode, DefaultSessionConfig config, SSLEngineBuilder builder) {
 			this.clientMode = clientMode;
@@ -395,6 +464,7 @@ public class TLSSessionTest extends CommonTest {
 		@Override
 		public void event(SessionEvent event) {
 			if (event == SessionEvent.READY) {
+				ready = true;
 				if (clientMode) {
 					cli.set((EngineStreamSession) getSession());
 				}
@@ -405,7 +475,12 @@ public class TLSSessionTest extends CommonTest {
 		}
 		
 		public void serverRead(byte[] msg) {
-			getSession().write(msg);
+			if (!ready) {
+				getSession().writenf(cat("ED(".getBytes(), msg, ")".getBytes()));
+			}
+			else {
+				getSession().write(msg);
+			}
 		}
 
 		public void clientRead(byte[] msg) {

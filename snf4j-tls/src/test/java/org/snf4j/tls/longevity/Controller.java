@@ -155,9 +155,6 @@ public class Controller implements Config {
 					new EngineHandler(SessionConfig.km,SessionConfig.tm), 
 					new ClientHandler(), 
 					true);
-
-			//s = new SSLSession(new ClientHandler(), true);
-			//((EngineStreamSession)s).setExecutor(SessionFactory.executor);
 		}
 		else {
 			s = new StreamSession(new ClientHandler());
