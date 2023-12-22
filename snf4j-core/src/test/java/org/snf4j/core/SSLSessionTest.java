@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2022 SNF4J contributors
+ * Copyright (c) 2019-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -2675,6 +2675,9 @@ public class SSLSessionTest {
 		s.waitForSessionReady(TIMEOUT);
 		ByteBuffer[] bufs = getBuffers((SSLSession)s.session, "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP).toBytes());
+		Field f = AbstractEngineHandler.class.getDeclaredField("appCounter");
+		f.setAccessible(true);
+		f.set(getInternal((EngineStreamSession) s.session), bufs[0].position());
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 		c.session.close();
@@ -2700,7 +2703,7 @@ public class SSLSessionTest {
 		
 		
 	}
-	
+		
 	@Test
 	public void testCopyInBuffer() throws Exception {
 		Client c = new Client(PORT);

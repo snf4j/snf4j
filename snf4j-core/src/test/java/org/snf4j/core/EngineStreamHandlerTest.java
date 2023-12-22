@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2020-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -383,10 +383,10 @@ public class EngineStreamHandlerTest {
 		waitFor(100);
 		
 		s.getRecordedData(true);
-		s.getSession().getTimer().scheduleEvent("1", 10);
-		waitFor(5);
+		s.getSession().getTimer().scheduleEvent("1", 100);
+		waitFor(80);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(6);
+		waitFor(120);
 		assertEquals("TIM;1|", s.getRecordedData(true));
 		
 		Runnable task = new Runnable() {
@@ -401,10 +401,10 @@ public class EngineStreamHandlerTest {
 			}
 		};
 		
-		s.getSession().getTimer().scheduleTask(task, 10, true);
-		waitFor(5);
+		s.getSession().getTimer().scheduleTask(task, 100, true);
+		waitFor(80);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(6);
+		waitFor(120);
 		assertEquals("TIM;t1|", s.getRecordedData(true));
 		
 		

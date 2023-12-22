@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2022 SNF4J contributors
+ * Copyright (c) 2020-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,9 +83,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		if (closing == ClosingState.FINISHING) {
 			if (!engine.isOutboundDone()) {
 				synchronized (writeLock) {
-					for (int i=outAppBuffers.length-1; i>=0; --i) {
-						outAppBuffers[i].clear();
-					}
+					outAppBuffers = StreamSession.clearBuffers(outAppBuffers, allocator, session.optimizeBuffers);
 					closeOutbound();
 					return true;
 				}
@@ -277,13 +275,18 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 					if (consumed != 0) {
 						outAppBuffers = StreamSession.compactBuffers(outAppBuffers, allocator, minAppBufferSize, session.optimizeBuffers);
 						netCounter += consumed;
-						if (outAppBuffers.length == 1 && outAppBuffers[0].position() == 0) {
+						if (outAppBuffers.length == 0 || outAppBuffers.length == 1 && outAppBuffers[0].position() == 0) {
 							if (closing == ClosingState.SENDING) {
 								closing = ClosingState.FINISHING;
 								engine.closeOutbound();
 								repeat = true;
 							}
 						}
+					}
+					else if (engine.isOutboundDone()) {
+						outAppBuffers = StreamSession.clearBuffers(outAppBuffers, allocator, session.optimizeBuffers);
+						appCounter = netCounter;
+						closing = ClosingState.FINISHING;
 					}
 					else {
 						outAppBuffers[lastIndex].compact();

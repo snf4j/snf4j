@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2022 SNF4J contributors
+ * Copyright (c) 2017-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -3688,6 +3689,77 @@ public class SessionTest {
 		assertEquals(1, a2.getReleasedCount());
 		assertTrue(data == b2[0]);
 		
+		
+	}
+	
+	@Test
+	public void testClearBuffers() throws Exception {
+		TestAllocator a = new TestAllocator(false, false);
+
+		//one not empty
+		ByteBuffer[] b = new ByteBuffer[] {ByteBuffer.allocate(10)};
+		b[0].putInt(4).flip();
+		assertEquals(4, b[0].remaining());
+		ByteBuffer[] b2 = StreamSession.clearBuffers(b, a, false);
+		assertEquals(1, b2.length);
+		assertEquals(10, b2[0].remaining());
+		assertSame(b[0], b2[0]);
+		
+		//two not empty
+		b = new ByteBuffer[] {ByteBuffer.allocate(10), ByteBuffer.allocate(11)};
+		b[0].putInt(4).flip();
+		b[1].putInt(5).put((byte) 1).flip();
+		assertEquals(4, b[0].remaining());
+		assertEquals(5, b[1].remaining());
+		b2 = StreamSession.clearBuffers(b, a, false);
+		assertEquals(0, a.getReleasedCount());
+		assertEquals(1, b2.length);
+		assertEquals(11, b2[0].remaining());
+		assertSame(b[1], b2[0]);
+		
+		//two not empty with releasing allocator
+		a = new TestAllocator(false, true);
+		b = new ByteBuffer[] {ByteBuffer.allocate(10), ByteBuffer.allocate(11)};
+		b[0].putInt(4).flip();
+		b[1].putInt(5).put((byte) 1).flip();
+		assertEquals(4, b[0].remaining());
+		assertEquals(5, b[1].remaining());
+		b2 = StreamSession.clearBuffers(b, a, false);
+		assertEquals(1, b2.length);
+		assertEquals(11, b2[0].remaining());
+		assertEquals(1, a.getReleasedCount());
+		assertSame(b[0], a.getReleased().get(0));
+		assertSame(b[1], b2[0]);
+
+		//three not empty with releasing allocator
+		a = new TestAllocator(false, true);
+		b = new ByteBuffer[] {ByteBuffer.allocate(10), ByteBuffer.allocate(11), ByteBuffer.allocate(12)};
+		b[0].putInt(4).flip();
+		b[1].putInt(5).put((byte) 1).flip();
+		b[2].putInt(6).putShort((short) 2).flip();
+		assertEquals(4, b[0].remaining());
+		assertEquals(5, b[1].remaining());
+		assertEquals(6, b[2].remaining());
+		b2 = StreamSession.clearBuffers(b, a, false);
+		assertEquals(1, b2.length);
+		assertEquals(12, b2[0].remaining());
+		assertEquals(2, a.getReleasedCount());
+		assertSame(b[0], a.getReleased().get(0));
+		assertSame(b[1], a.getReleased().get(1));
+		assertSame(b[2], b2[0]);
+		
+		//two not empty with optimized copying
+		a = new TestAllocator(false, true);
+		b = new ByteBuffer[] {ByteBuffer.allocate(10), ByteBuffer.allocate(11)};
+		b[0].putInt(4).flip();
+		b[1].putInt(5).put((byte) 1).flip();
+		assertEquals(4, b[0].remaining());
+		assertEquals(5, b[1].remaining());
+		b2 = StreamSession.clearBuffers(b, a, true);
+		assertEquals(0, b2.length);
+		assertEquals(2, a.getReleasedCount());
+		assertSame(b[0], a.getReleased().get(0));
+		assertSame(b[1], a.getReleased().get(1));
 		
 	}
 	
