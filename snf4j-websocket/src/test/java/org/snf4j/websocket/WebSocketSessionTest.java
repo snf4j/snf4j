@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1478,7 +1478,7 @@ public class WebSocketSessionTest extends HandshakeTest {
 		}
 		for (int i=0; i<100; ++i) {
 			c.session.write(new TextFrame("ABCD")).sync(TIMEOUT);
-			waitFor(20);
+			waitFor(50);
 		}
 		waitFor(100);
 		if (ssl) {
