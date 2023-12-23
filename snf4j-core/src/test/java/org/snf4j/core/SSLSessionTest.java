@@ -1984,6 +1984,7 @@ public class SSLSessionTest {
 		c.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData("RDY|", true);
+		waitFor(500);
 		c.getSession().dirtyClose();
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
