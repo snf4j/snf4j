@@ -82,9 +82,14 @@ public class SSLSessionTest {
 	
 	static {
 		double version = Double.parseDouble(System.getProperty("java.specification.version"));
+		String longerVersion = System.getProperty("java.version");
 		
 		//as of java 11 the SSLEngine works in different way
 		if (version >= 11.0) {
+			CLIENT_RDY_TAIL = "DR|";
+			TLS1_3 = true;
+		}
+		else if (version == 1.8 && upd(longerVersion) >= 392) {
 			CLIENT_RDY_TAIL = "DR|";
 			TLS1_3 = true;
 		}
@@ -92,6 +97,15 @@ public class SSLSessionTest {
 			CLIENT_RDY_TAIL = "";
 			TLS1_3 = false;
 		}
+	}
+	
+	static int upd(String fullVersion) {
+		int i = fullVersion.indexOf('_');
+		
+		if (i > -1) {
+			return Integer.parseInt(fullVersion.substring(i+1));
+		}
+		return 0;
 	}
 	
 	@Before

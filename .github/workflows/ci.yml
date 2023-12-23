@@ -27,13 +27,13 @@ jobs:
       
     steps:
     - name: Check out code    
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       
     - name: Set up Java ${{ matrix.java }}
-      uses: actions/setup-java@v2
+      uses: actions/setup-java@v4
       with:
         java-version: ${{ matrix.java }}
-        distribution: 'adopt'
+        distribution: 'temurin'
         
     - name: Install dependencies
       run: |
