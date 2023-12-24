@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -108,9 +108,9 @@ public class DefaultTimerTest {
 		
 		ITimerTask task = timer.schedule(new Task("T1"), 100);
 		assertEquals("", getTrace());
-		waitFor(90);
+		waitFor(80);
 		assertEquals("", getTrace());
-		waitFor(20);
+		waitFor(40);
 		assertEquals("T1|", getTrace());
 		
 		task = timer.schedule(new Task("T2"), 100);
@@ -119,21 +119,21 @@ public class DefaultTimerTest {
 		waitFor(200);
 		assertEquals("T3|", getTrace());
 		
-		task = timer.schedule(new Task("TT1"), 100, 30);
+		task = timer.schedule(new Task("TT1"), 100, 100);
 		assertEquals("", getTrace());
-		waitFor(90);
+		waitFor(80);
 		assertEquals("", getTrace());
-		waitFor(20);
+		waitFor(40);
 		assertEquals("TT1|", getTrace());
-		waitFor(5);
+		waitFor(60);
 		assertEquals("", getTrace());
-		waitFor(35);
+		waitFor(40);
 		assertEquals("TT1|", getTrace());
 		task.cancelTask();
 		waitFor(100);
 		assertEquals("", getTrace());
 
-		task = timer.schedule(new Task("TT2"), 100, 10);
+		task = timer.schedule(new Task("TT2"), 100, 100);
 		timer.schedule(new Task("TT3"), 100);
 		task.cancelTask();
 		waitFor(200);

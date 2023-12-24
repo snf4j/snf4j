@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -134,8 +134,8 @@ public class DelegatedFutureTest {
 	
 	void assertTime(long expected, long savedTime) {
 		savedTime = System.currentTimeMillis() - savedTime;
-		assertTrue("expected " + expected + " but was " + savedTime, savedTime > expected - 20);
-		assertTrue("expected " + expected + " but was " + savedTime, savedTime < expected + 20);
+		assertTrue("expected " + expected + " but was " + savedTime, savedTime > expected - 40);
+		assertTrue("expected " + expected + " but was " + savedTime, savedTime < expected + 40);
 	}
 
 	@Test

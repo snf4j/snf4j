@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2022 SNF4J contributors
+ * Copyright (c) 2020-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,11 +38,13 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Queue;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLSession;
 
 import org.junit.Test;
+import org.snf4j.core.EngineDatagramWrapper.EngineDatagramRecord;
 import org.snf4j.core.TestCodec.BBDEv;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.allocator.TestAllocator;
@@ -615,6 +617,67 @@ public class DTLSSessionTest extends DTLSTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		assertEquals(0, ((TestTimer)s.timer).getSize());
+	}
+
+	static EngineDatagramHandler getHandler(DTLSSession session) throws Exception {
+		Field field = InternalSession.class.getDeclaredField("handler");
+		
+		field.setAccessible(true);
+		return (EngineDatagramHandler) field.get(session);
+	}
+	
+	static Queue<?> getQueue(DTLSSession session, String name) throws Exception {
+		return getQueue(getHandler(session), name);
+	}
+	
+	static Queue<?> getQueue(EngineDatagramHandler handler, String name) throws Exception {
+		Field field = handler.getClass().getDeclaredField(name);
+		
+		field.setAccessible(true);
+		return (Queue<?>) field.get(handler);
+	}
+	
+	void counter(DTLSSession s, String name, long value) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField(name);	
+		f.setAccessible(true);
+		f.set(getHandler(s), value);
+	}
+
+	long counter(DTLSSession s, String name) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField(name);	
+		f.setAccessible(true);
+		return f.getLong(getHandler(s));
+	}
+
+	@Test
+	public void testCloseWithRecordToWrite() throws Exception {
+		s = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.timer = new TestTimer();
+		s.reopenBlockedInterval = 0;
+		s.ssl = true;
+		c = new DatagramHandler(PORT);
+		c.ssl = true;
+		
+		s.startServer();
+		c.startClient();
+		assertReady(c, s);
+		@SuppressWarnings("unchecked")
+		Queue<EngineDatagramRecord> q = (Queue<EngineDatagramRecord>) getQueue((DTLSSession)c.getSession(), "outAppBuffers");
+		EngineDatagramRecord r = new EngineDatagramRecord(s.localAddress);
+		r.holder = new SingleByteBufferHolder(ByteBuffer.wrap(new Packet(PacketType.ECHO).toBytes()));
+		q.add(r);
+		counter((DTLSSession)c.getSession(), "appCounter", 1);
+		assertEquals(1, counter((DTLSSession)c.getSession(), "appCounter"));
+		assertEquals(0, counter((DTLSSession)c.getSession(), "netCounter"));
+		getSSLEngine((DTLSSession) c.getSession()).closeOutbound();
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(0, counter((DTLSSession)c.getSession(), "appCounter"));
+		assertEquals(0, counter((DTLSSession)c.getSession(), "netCounter"));
 	}
 	
 	@Test

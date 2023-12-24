@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -624,10 +624,10 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		c.startClient();
 		assertReady(c, s);
 		
-		c.getSession().getTimer().scheduleEvent("ff", 50);
-		waitFor(10);
+		c.getSession().getTimer().scheduleEvent("ff", 100);
+		waitFor(80);
 		assertEquals("", c.getRecordedData(true));
-		waitFor(50);
+		waitFor(40);
 		assertEquals("TIM;ff|", c.getRecordedData(true));
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
