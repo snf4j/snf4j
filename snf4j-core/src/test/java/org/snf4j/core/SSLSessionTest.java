@@ -1324,7 +1324,7 @@ public class SSLSessionTest {
 		session.close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertTLSVariants("?{DS|}SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertTLSVariants("DS|DR|NOP(1234)|?{DS|}SCL|SEN|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
@@ -2666,6 +2666,18 @@ public class SSLSessionTest {
 		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE(12345)|SCL|SEN|", r);
 	}
 	
+	void counter(EngineStreamSession s, String name, long value) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField(name);	
+		f.setAccessible(true);
+		f.set(getInternal(s), value);
+	}
+
+	long counter(EngineStreamSession s, String name) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField(name);	
+		f.setAccessible(true);
+		return f.getLong(getInternal(s));
+	}
+	
 	@Test
 	public void testCloseAndWaitForCloseMessage() throws Exception {
 		s = new Server(PORT, true);
@@ -2690,9 +2702,7 @@ public class SSLSessionTest {
 		s.waitForSessionReady(TIMEOUT);
 		ByteBuffer[] bufs = getBuffers((SSLSession)s.session, "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP).toBytes());
-		Field f = AbstractEngineHandler.class.getDeclaredField("appCounter");
-		f.setAccessible(true);
-		f.set(getInternal((EngineStreamSession) s.session), bufs[0].position());
+		counter((EngineStreamSession) s.session, "appCounter", bufs[0].position());
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 		c.session.close();
@@ -2700,6 +2710,8 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+		assertEquals(3, counter((EngineStreamSession) s.session, "netCounter"));
+		assertEquals(3, counter((EngineStreamSession) s.session, "appCounter"));
 		
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
@@ -2716,7 +2728,28 @@ public class SSLSessionTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
-		
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		bufs = getBuffers((SSLSession)s.session, "outAppBuffers");
+		bufs[0].put(new Packet(PacketType.NOP).toBytes());
+		counter((EngineStreamSession) s.session, "appCounter", bufs[0].position());
+		assertEquals(0, counter((EngineStreamSession) s.session, "netCounter"));
+		assertTrue(counter((EngineStreamSession) s.session, "appCounter") > 0);
+		getSSLEngine((SSLSession) s.session).closeOutbound();
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertEquals(0, counter((EngineStreamSession) s.session, "appCounter"));
+		assertEquals(0, counter((EngineStreamSession) s.session, "netCounter"));
 	}
 		
 	@Test

@@ -637,6 +637,18 @@ public class DTLSSessionTest extends DTLSTest {
 		return (Queue<?>) field.get(handler);
 	}
 	
+	void counter(DTLSSession s, String name, long value) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField(name);	
+		f.setAccessible(true);
+		f.set(getHandler(s), value);
+	}
+
+	long counter(DTLSSession s, String name) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField(name);	
+		f.setAccessible(true);
+		return f.getLong(getHandler(s));
+	}
+
 	@Test
 	public void testCloseWithRecordToWrite() throws Exception {
 		s = new DatagramHandler(PORT);
@@ -652,19 +664,20 @@ public class DTLSSessionTest extends DTLSTest {
 		assertReady(c, s);
 		@SuppressWarnings("unchecked")
 		Queue<EngineDatagramRecord> q = (Queue<EngineDatagramRecord>) getQueue((DTLSSession)c.getSession(), "outAppBuffers");
-		EngineDatagramHandler h = getHandler((DTLSSession)c.getSession());
-		Field f = AbstractEngineHandler.class.getDeclaredField("appCounter");
-		f.setAccessible(true);
-		f.set(h, 1);
 		EngineDatagramRecord r = new EngineDatagramRecord(s.localAddress);
 		r.holder = new SingleByteBufferHolder(ByteBuffer.wrap(new Packet(PacketType.ECHO).toBytes()));
 		q.add(r);
+		counter((DTLSSession)c.getSession(), "appCounter", 1);
+		assertEquals(1, counter((DTLSSession)c.getSession(), "appCounter"));
+		assertEquals(0, counter((DTLSSession)c.getSession(), "netCounter"));
 		getSSLEngine((DTLSSession) c.getSession()).closeOutbound();
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		assertEquals(0, counter((DTLSSession)c.getSession(), "appCounter"));
+		assertEquals(0, counter((DTLSSession)c.getSession(), "netCounter"));
 	}
 	
 	@Test
