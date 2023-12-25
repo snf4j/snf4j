@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2022 SNF4J contributors
+ * Copyright (c) 2019-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -82,9 +82,14 @@ public class SSLSessionTest {
 	
 	static {
 		double version = Double.parseDouble(System.getProperty("java.specification.version"));
+		String longerVersion = System.getProperty("java.version");
 		
 		//as of java 11 the SSLEngine works in different way
 		if (version >= 11.0) {
+			CLIENT_RDY_TAIL = "DR|";
+			TLS1_3 = true;
+		}
+		else if (version == 1.8 && upd(longerVersion) >= 392) {
 			CLIENT_RDY_TAIL = "DR|";
 			TLS1_3 = true;
 		}
@@ -92,6 +97,15 @@ public class SSLSessionTest {
 			CLIENT_RDY_TAIL = "";
 			TLS1_3 = false;
 		}
+	}
+	
+	static int upd(String fullVersion) {
+		int i = fullVersion.indexOf('_');
+		
+		if (i > -1) {
+			return Integer.parseInt(fullVersion.substring(i+1));
+		}
+		return 0;
 	}
 	
 	@Before
@@ -1310,7 +1324,7 @@ public class SSLSessionTest {
 		session.close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertTLSVariants("?{DS|}SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertTLSVariants("DS|DR|NOP(1234)|?{DS|}SCL|SEN|", s.getRecordedData(true));
 
 		c.stop(TIMEOUT);
@@ -1970,6 +1984,7 @@ public class SSLSessionTest {
 		c.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData("RDY|", true);
+		waitFor(500);
 		c.getSession().dirtyClose();
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
@@ -2651,6 +2666,18 @@ public class SSLSessionTest {
 		assertEquals("SCR|SOP|RDY|WRITE_AND_CLOSE(12345)|SCL|SEN|", r);
 	}
 	
+	void counter(EngineStreamSession s, String name, long value) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField(name);	
+		f.setAccessible(true);
+		f.set(getInternal(s), value);
+	}
+
+	long counter(EngineStreamSession s, String name) throws Exception {
+		Field f = AbstractEngineHandler.class.getDeclaredField(name);	
+		f.setAccessible(true);
+		return f.getLong(getInternal(s));
+	}
+	
 	@Test
 	public void testCloseAndWaitForCloseMessage() throws Exception {
 		s = new Server(PORT, true);
@@ -2675,6 +2702,7 @@ public class SSLSessionTest {
 		s.waitForSessionReady(TIMEOUT);
 		ByteBuffer[] bufs = getBuffers((SSLSession)s.session, "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP).toBytes());
+		counter((EngineStreamSession) s.session, "appCounter", bufs[0].position());
 		s.getRecordedData(true);
 		c.getRecordedData(true);
 		c.session.close();
@@ -2682,6 +2710,8 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
+		assertEquals(3, counter((EngineStreamSession) s.session, "netCounter"));
+		assertEquals(3, counter((EngineStreamSession) s.session, "appCounter"));
 		
 		s = new Server(PORT, true);
 		c = new Client(PORT, true);
@@ -2698,9 +2728,30 @@ public class SSLSessionTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
-		
+		s = new Server(PORT, true);
+		c = new Client(PORT, true);
+		c.waitForCloseMessage = true;
+		s.start();
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		bufs = getBuffers((SSLSession)s.session, "outAppBuffers");
+		bufs[0].put(new Packet(PacketType.NOP).toBytes());
+		counter((EngineStreamSession) s.session, "appCounter", bufs[0].position());
+		assertEquals(0, counter((EngineStreamSession) s.session, "netCounter"));
+		assertTrue(counter((EngineStreamSession) s.session, "appCounter") > 0);
+		getSSLEngine((SSLSession) s.session).closeOutbound();
+		s.getRecordedData(true);
+		c.getRecordedData(true);
+		c.session.close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+		assertEquals(0, counter((EngineStreamSession) s.session, "appCounter"));
+		assertEquals(0, counter((EngineStreamSession) s.session, "netCounter"));
 	}
-	
+		
 	@Test
 	public void testCopyInBuffer() throws Exception {
 		Client c = new Client(PORT);

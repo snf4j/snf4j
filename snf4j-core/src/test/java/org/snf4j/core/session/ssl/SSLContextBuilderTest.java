@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021 SNF4J contributors
+ * Copyright (c) 2021-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -600,17 +600,17 @@ public class SSLContextBuilderTest {
 		assertTrue(eb.isForClient());
 		assertFalse(eb.isForServer());
 		e2 = eb.build();
-		assertFalse(e2.getSSLParameters().getUseCipherSuitesOrder());
+		boolean defOrder = e2.getSSLParameters().getUseCipherSuitesOrder();
 		eb = SSLContextBuilder.forClient()
-				.useCiphersOrder(true)
+				.useCiphersOrder(!defOrder)
 				.engineBuilder();
 		e2 = eb.build();
-		assertTrue(e2.getSSLParameters().getUseCipherSuitesOrder());
+		assertEquals(!defOrder, e2.getSSLParameters().getUseCipherSuitesOrder());
 		eb = SSLContextBuilder.forClient()
-				.useCiphersOrder(false)
+				.useCiphersOrder(defOrder)
 				.engineBuilder();
 		e2 = eb.build();
-		assertFalse(e2.getSSLParameters().getUseCipherSuitesOrder());
+		assertEquals(defOrder, e2.getSSLParameters().getUseCipherSuitesOrder());
 
 		//enableRetranssmision
 		eb = SSLContextBuilder.forClient().enableRetransmissions(true).engineBuilder();

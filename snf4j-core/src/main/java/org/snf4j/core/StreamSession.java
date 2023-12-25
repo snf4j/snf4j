@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2022 SNF4J contributors
+ * Copyright (c) 2017-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -203,6 +203,33 @@ public class StreamSession extends InternalSession implements IStreamSession {
 	@Override
 	public IStreamSession getParent() {
 		return null;
+	}
+	
+	static ByteBuffer[] clearBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, boolean optimize) {
+		int lastIndex = outBuffers.length - 1;
+
+		if (lastIndex > 0) {
+			if (allocator.isReleasable()) {
+				for (int i=0; i<lastIndex; ++i) {
+					allocator.release(outBuffers[i]);
+				}
+			}
+
+			ByteBuffer[] newBuffers = new ByteBuffer[1];
+			
+			newBuffers[0] = outBuffers[lastIndex];
+			lastIndex = 0;
+			outBuffers = newBuffers;
+		}
+		
+		ByteBuffer lastBuffer = outBuffers[lastIndex];
+		
+		if (optimize) {
+			allocator.release(lastBuffer);
+			return EMPTY_ARRAY;
+		}
+		lastBuffer.clear();
+		return outBuffers;
 	}
 	
 	static ByteBuffer[] compactBuffers(ByteBuffer[] outBuffers, IByteBufferAllocator allocator, int minOutBufferCapacity, boolean optimize) {

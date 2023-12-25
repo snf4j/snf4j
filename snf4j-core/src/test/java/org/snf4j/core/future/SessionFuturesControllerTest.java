@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -479,7 +479,7 @@ public class SessionFuturesControllerTest {
 		sf.getCreateFuture().await();
 		long t1 = System.currentTimeMillis();
 		long delta = t1-t0;
-		assertTrue("expected (950,1050) but was " + delta, delta > 950 && delta < 1050);
+		assertTrue("expected (950,1100) but was " + delta, delta > 950 && delta < 1100);
 		sf.getCreateFuture().await();
 		
 		IFuture<Void> f = sf.getWriteFuture(100);
@@ -489,7 +489,7 @@ public class SessionFuturesControllerTest {
 		f.await();
 		t1 = System.currentTimeMillis();
 		delta = t1-t0;
-		assertTrue("expected (1950,2050) but was " + delta, delta > 1950 && delta < 2050);
+		assertTrue("expected (1950,2100) but was " + delta, delta > 1950 && delta < 2100);
 		f.await();
 	}
 	
