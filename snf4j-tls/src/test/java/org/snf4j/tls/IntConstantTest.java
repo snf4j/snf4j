@@ -63,6 +63,7 @@ public class IntConstantTest {
 		assertEquals(Integer.hashCode(-1), v.hashCode());
 	}
 	
+	@SuppressWarnings("unlikely-arg-type")
 	@Test
 	public void testEquals() {
 		IntConstant v = new IntConstant("xxx", 45);

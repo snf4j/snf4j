@@ -25,38 +25,33 @@
  */
 package org.snf4j.tls.engine;
 
-import org.snf4j.tls.cipher.CipherSuite;
+public class NoEarlyDataHandler implements IEarlyDataHandler {
 
-public class NoneEarlyDataContext implements IEarlyDataContext {
-
-	public static final IEarlyDataContext INSTANCE = new NoneEarlyDataContext();
+	public final static IEarlyDataHandler INSTANCE = new NoEarlyDataHandler();
 	
-	private NoneEarlyDataContext() {}
+	private NoEarlyDataHandler() {}
 	
 	@Override
-	public EarlyDataState getState() {
-		return EarlyDataState.NONE;
-	}
-	
-	@Override
-	public void complete() {
-	}
-	
-	@Override
-	public void rejecting() {
+	public long getMaxEarlyDataSize() {
+		return 0;
 	}
 
 	@Override
-	public void incProcessedBytes(int amount) {
-	}
-
-	@Override
-	public boolean isSizeLimitExceeded() {
+	public boolean hasEarlyData() {
 		return false;
 	}
 
 	@Override
-	public CipherSuite getCipherSuite() {
+	public byte[] nextEarlyData(String protocol) {
 		return null;
 	}
+	
+	@Override
+	public void acceptedEarlyData() {
+	}
+	
+	@Override
+	public void rejectedEarlyData() {
+	}
+
 }

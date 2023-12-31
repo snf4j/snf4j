@@ -443,7 +443,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 							}
 						}
 						
-						if (earlyDataTicket != -1 && handler.hasEarlyData()) {
+						if (earlyDataTicket != -1 && handler.getEarlyDataHandler().hasEarlyData()) {
 							earlyData = true;
 							extensions.add(new EarlyDataExtension());
 							if (earlyDataTicket > 0) {
@@ -514,15 +514,18 @@ public class HandshakeEngine implements IHandshakeEngine {
 			state.setClientHello(clientHello);
 			
 			if (earlyData) {
+				SessionTicket ticket;
+
 				try {
 					PskContext psk = state.getPskContexts().get(0);
-					IHash hash = psk.getTicket().getCipherSuite().spec().getHashSpec().getHash();
+					ticket = psk.getTicket();
+					IHash hash = ticket.getCipherSuite().spec().getHashSpec().getHash();
 					ITranscriptHash th = new TranscriptHash(hash.createMessageDigest());
 					IHkdf hkdf = new Hkdf(hash.createMac());
-					KeySchedule keySchedule = new KeySchedule(hkdf, th, psk.getTicket().getCipherSuite().spec().getHashSpec());
+					KeySchedule keySchedule = new KeySchedule(hkdf, th, ticket.getCipherSuite().spec().getHashSpec());
 					
-					keySchedule.setCipherSuiteSpec(psk.getTicket().getCipherSuite().spec());
-					keySchedule.deriveEarlySecret(psk.getTicket().getPsk(), false);
+					keySchedule.setCipherSuiteSpec(ticket.getCipherSuite().spec());
+					keySchedule.deriveEarlySecret(ticket.getPsk(), false);
 					keySchedule.getTranscriptHash().update(HandshakeType.CLIENT_HELLO, clientHello.getPrepared());
 					keySchedule.deriveEarlyTrafficSecret();
 					state.getListener().onNewTrafficSecrets(new EngineStateWrapper(state, keySchedule),	RecordType.ZERO_RTT);
@@ -538,7 +541,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 				}
 				
 				byte[] data;
-				while ((data = state.getHandler().nextEarlyData()) != null) {
+				while ((data = state.getHandler().getEarlyDataHandler().nextEarlyData(ticket.getProtocol())) != null) {
 					state.produce(new ProducedHandshake(new EarlyData(data), RecordType.ZERO_RTT));
 				}
 			}

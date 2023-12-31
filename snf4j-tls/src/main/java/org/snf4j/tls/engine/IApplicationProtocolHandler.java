@@ -25,14 +25,10 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
-
 import org.snf4j.tls.alert.Alert;
 
-public interface ICertificateValidator {
+public interface IApplicationProtocolHandler {
 
-	Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Alert, Exception;
+	void selectedApplicationProtocol(String protocol) throws Alert;
 	
-	Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Alert, Exception;
 }

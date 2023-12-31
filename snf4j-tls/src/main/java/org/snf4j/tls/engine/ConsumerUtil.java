@@ -52,9 +52,9 @@ public class ConsumerUtil {
 	
 	private ConsumerUtil() {}
 	
-	static void produce(EngineState state, IHandshake handshake, RecordType recordType, RecordType nextRecordType) {
+	static void produce(EngineState state, IHandshake handshake, RecordType recordType) {
 		state.getTranscriptHash().update(handshake.getType(), handshake.prepare());
-		state.produce(new ProducedHandshake(handshake, recordType, nextRecordType));
+		state.produce(new ProducedHandshake(handshake, recordType));
 	}
 
 	static void prepare(EngineState state, IHandshake handshake, RecordType recordType) {

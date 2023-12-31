@@ -64,6 +64,7 @@ import org.snf4j.core.session.ssl.SSLEngineBuilder;
 import org.snf4j.tls.engine.DelegatedTaskMode;
 import org.snf4j.tls.engine.EngineHandler;
 import org.snf4j.tls.engine.EngineParametersBuilder;
+import org.snf4j.tls.engine.IEarlyDataHandler;
 import org.snf4j.tls.engine.TicketInfo;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.session.ISessionManager;
@@ -407,11 +408,6 @@ public class TLSSessionTest extends CommonTest {
 		}
 		
 		@Override
-		public long getMaxEarlyDataSize() {
-			return 16384;
-		}
-
-		@Override
 		public TicketInfo[] createNewTickets() {
 			if (earlyData != null) {
 				return new TicketInfo[] {new TicketInfo(earlyData.length)};
@@ -420,16 +416,38 @@ public class TLSSessionTest extends CommonTest {
 		}
 
 		@Override
-		public boolean hasEarlyData() {
-			return earlyData != null;
+		public IEarlyDataHandler getEarlyDataHandler() {
+			return new TestEarlyDataHandler();
 		}
+		
+		class TestEarlyDataHandler implements IEarlyDataHandler {
 
-		@Override
-		public byte[] nextEarlyData() {
-			byte[] earlyData = this.earlyData;
+			@Override
+			public long getMaxEarlyDataSize() {
+				return 16384;
+			}
+
+			@Override
+			public boolean hasEarlyData() {
+				return earlyData != null;
+			}
+
+			@Override
+			public byte[] nextEarlyData(String protocol) {
+				byte[] ed = earlyData;
+				
+				earlyData = null;
+				return ed;
+			}
 			
-			this.earlyData = null;
-			return earlyData;
+			@Override
+			public void acceptedEarlyData() {
+			}
+			
+			@Override
+			public void rejectedEarlyData() {
+			}
+
 		}
 		
 	}

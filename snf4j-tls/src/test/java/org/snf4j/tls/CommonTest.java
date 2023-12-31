@@ -51,15 +51,28 @@ public class CommonTest {
 	public static final boolean JAVA11;
 
 	public static final boolean JAVA8;
+
+	public static final boolean JAVA8_GEQ_U392;
 	
 	public static final boolean JAVA15;
 
 	static {
 		double version = Double.parseDouble(System.getProperty("java.specification.version"));
+		String longerVersion = System.getProperty("java.version");
 		
 		JAVA8 = version < 9.0;
+		JAVA8_GEQ_U392 = JAVA8 && upd(longerVersion) >= 392;
 		JAVA11 = version >= 11.0;
 		JAVA15 = version >= 15.0;
+	}
+	
+	static int upd(String fullVersion) {
+		int i = fullVersion.indexOf('_');
+		
+		if (i > -1) {
+			return Integer.parseInt(fullVersion.substring(i+1));
+		}
+		return 0;
 	}
 	
 	protected byte[] buffer() {

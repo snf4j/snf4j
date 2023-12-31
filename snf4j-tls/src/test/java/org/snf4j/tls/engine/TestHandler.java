@@ -52,7 +52,7 @@ public class TestHandler implements IEngineHandler {
 	public String protocol;
 	
 	@Override
-	public boolean verify(IServerNameExtension serverName) {
+	public boolean verifyServerName(IServerNameExtension serverName) {
 		return verifyServerName;
 	}
 
@@ -62,11 +62,11 @@ public class TestHandler implements IEngineHandler {
 	}
 	
 	@Override
-	public void verifyApplicationProtocol(String protocol) throws Alert {
+	public void selectedApplicationProtocol(String protocol) throws Alert {
 	}
 	
 	@Override
-	public void connected(String protocol) {
+	public void handshakeFinished(String protocol) {
 	}
 	
 	@Override
@@ -95,27 +95,44 @@ public class TestHandler implements IEngineHandler {
 	}
 
 	@Override
-	public long getMaxEarlyDataSize() {
-		return maxEarlyDataSize;
-	}
-	
-	@Override
 	public TicketInfo[] createNewTickets() {
 		return new TicketInfo[] {new TicketInfo()};
 	}
 
 	@Override
-	public boolean hasEarlyData() {
-		return false;
-	}
-
-	@Override
-	public byte[] nextEarlyData() {
-		return null;
-	}
-
-	@Override
 	public SecureRandom getSecureRandom() {
 		return secureRandom;
+	}
+	
+	@Override
+	public IEarlyDataHandler getEarlyDataHandler() {
+		return new TestEarlyDataHandler();
+	}
+
+	class TestEarlyDataHandler implements IEarlyDataHandler {
+
+		@Override
+		public long getMaxEarlyDataSize() {
+			return maxEarlyDataSize;
+		}
+
+		@Override
+		public boolean hasEarlyData() {
+			return false;
+		}
+
+		@Override
+		public byte[] nextEarlyData(String protocol) {
+			return null;
+		}
+		
+		@Override
+		public void acceptedEarlyData() {
+		}
+		
+		@Override
+		public void rejectedEarlyData() {
+		}
+
 	}
 }

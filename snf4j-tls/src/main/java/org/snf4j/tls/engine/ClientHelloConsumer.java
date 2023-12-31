@@ -158,6 +158,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				find(handshake, ExtensionType.APPLICATION_LAYER_PROTOCOL_NEGOTIATION), 
 				params.getApplicationProtocols());
 		state.setApplicationProtocol(protocol);
+		state.getHandler().selectedApplicationProtocol(protocol);
 		
 		IKeyShareExtension keyShare = find(handshake, ExtensionType.KEY_SHARE);
 		if (keyShare == null) {
@@ -200,7 +201,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					state.setEarlyDataContext(new EarlyDataContext(
 							cipherSuite, 
 							true, 
-							state.getHandler().getMaxEarlyDataSize()));
+							state.getHandler().getEarlyDataHandler().getMaxEarlyDataSize()));
 					earlyData = false;
 				}
 			}
@@ -235,7 +236,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			state.setEarlyDataContext(new EarlyDataContext(
 					cipherSuite, 
 					true, 
-					state.getHandler().getMaxEarlyDataSize()));
+					state.getHandler().getEarlyDataHandler().getMaxEarlyDataSize()));
 			earlyData = false;
 		}
 		if (namedGroup == null) {
@@ -253,7 +254,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				throw new MissingExtensionAlert("Missing server_name extension in ClientHello");
 			}
 		}
-		else if	(!state.getHandler().verify(serverName)) {
+		else if	(!state.getHandler().verifyServerName(serverName)) {
 			throw new UnrecognizedNameAlert("Host name '" + serverName.getHostName() + "' is unrecognized");
 		}
 		else {
@@ -331,7 +332,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 							state.setEarlyDataContext(new EarlyDataContext(
 									cipherSuite, 
 									true, 
-									state.getHandler().getMaxEarlyDataSize()));
+									state.getHandler().getEarlyDataHandler().getMaxEarlyDataSize()));
 							earlyData = false;
 						}
 						state.getKeySchedule().deriveEarlySecret();
@@ -354,7 +355,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 							state.setEarlyDataContext(new EarlyDataContext(
 									cipherSuite, 
 									true, 
-									state.getHandler().getMaxEarlyDataSize()));
+									state.getHandler().getEarlyDataHandler().getMaxEarlyDataSize()));
 							earlyData = false;
 						}
 					}
@@ -540,7 +541,6 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			
 			if (state.getEarlyDataContext().getState() == EarlyDataState.PROCESSING) {
 				extensions.add(new EarlyDataExtension());
-				state.getListener().onNewReceivingTraficKey(state, RecordType.ZERO_RTT);
 			}
 			else {
 				state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);

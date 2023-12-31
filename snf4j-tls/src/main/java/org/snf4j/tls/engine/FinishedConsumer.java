@@ -97,7 +97,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		}
 		
 		state.changeState(MachineState.SRV_CONNECTED);
-		state.getHandler().connected(state.getApplicationProtocol());
+		state.getHandler().handshakeFinished(state.getApplicationProtocol());
 	}
 
 	private void consumeClient(EngineState state, IFinished finished, ByteBuffer[] data) throws Alert {
@@ -223,7 +223,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			}
 			
 			state.changeState(MachineState.CLI_CONNECTED);
-			state.getHandler().connected(state.getApplicationProtocol());
+			state.getHandler().handshakeFinished(state.getApplicationProtocol());
 		}
 	}
 }

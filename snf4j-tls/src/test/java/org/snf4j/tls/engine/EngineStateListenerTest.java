@@ -25,9 +25,20 @@
  */
 package org.snf4j.tls.engine;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
+import java.lang.reflect.Field;
+
 import org.junit.Test;
 import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.crypto.AESAead;
+import org.snf4j.tls.crypto.AeadDecrypt;
+import org.snf4j.tls.crypto.AeadEncrypt;
 import org.snf4j.tls.crypto.KeySchedule;
+import org.snf4j.tls.record.Decryptor;
+import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.RecordType;
 
 public class EngineStateListenerTest extends EngineTest {
@@ -65,4 +76,85 @@ public class EngineStateListenerTest extends EngineTest {
 		};
 		new EngineStateListener().onNewSendingTraficKey(state, RecordType.NEXT_GEN);
 	}
+	
+	Encryptor[] encryptors(EngineStateListener l) throws Exception {
+		Field f = EngineStateListener.class.getDeclaredField("encryptors");
+		f.setAccessible(true);
+		return (Encryptor[]) f.get(l);
+	}
+	
+	Decryptor[] decryptors(EngineStateListener l) throws Exception {
+		Field f = EngineStateListener.class.getDeclaredField("decryptors");
+		f.setAccessible(true);
+		return (Decryptor[]) f.get(l);
+	}
+	
+	StringBuilder trace = new StringBuilder();
+	
+	Decryptor decryptor(String id) throws Exception {
+		AESAead aead = AESAead.AEAD_AES_128_GCM;
+		AeadDecrypt ad = new AeadDecrypt(aead.createKey(new byte[16]), aead);
+		return new Decryptor(ad, new byte[12]) {
+			@Override
+			public void erase() {
+				trace.append(id).append('|');
+			}
+		};
+	}
+
+	Encryptor encryptor(String id) throws Exception {
+		AESAead aead = AESAead.AEAD_AES_128_GCM;
+		AeadEncrypt ae = new AeadEncrypt(aead.createKey(new byte[16]), aead);
+		return new Encryptor(ae, new byte[12]) {
+			@Override
+			public void erase() {
+				trace.append(id).append('|');
+			}
+		};
+	}
+	
+	@Test
+	public void testOnNewReceivingTraficKey() throws Exception {
+		EngineStateListener l = new EngineStateListener();
+		Decryptor[] d = decryptors(l);
+		d[RecordType.HANDSHAKE.ordinal()] = decryptor("h");
+		d[RecordType.APPLICATION.ordinal()] = decryptor("a");
+		trace.setLength(0);
+		
+		l.onNewReceivingTraficKey(null, RecordType.HANDSHAKE);
+		assertNotNull(d[RecordType.HANDSHAKE.ordinal()]);
+		assertNotNull(d[RecordType.APPLICATION.ordinal()]);
+		assertEquals("", trace.toString());
+		l.onNewReceivingTraficKey(null, RecordType.HANDSHAKE);
+		assertNotNull(d[RecordType.HANDSHAKE.ordinal()]);
+		assertNotNull(d[RecordType.APPLICATION.ordinal()]);
+		assertEquals("", trace.toString());
+		l.onNewReceivingTraficKey(null, RecordType.APPLICATION);
+		assertNull(d[RecordType.HANDSHAKE.ordinal()]);
+		assertNotNull(d[RecordType.APPLICATION.ordinal()]);
+		assertEquals("h|", trace.toString());
+	}
+
+	@Test
+	public void testOnNewSendingTraficKey() throws Exception {
+		EngineStateListener l = new EngineStateListener();
+		Encryptor[] e = encryptors(l);
+		e[RecordType.HANDSHAKE.ordinal()] = encryptor("h");
+		e[RecordType.APPLICATION.ordinal()] = encryptor("a");
+		trace.setLength(0);
+		
+		l.onNewSendingTraficKey(null, RecordType.HANDSHAKE);
+		assertNotNull(e[RecordType.HANDSHAKE.ordinal()]);
+		assertNotNull(e[RecordType.APPLICATION.ordinal()]);
+		assertEquals("", trace.toString());
+		l.onNewSendingTraficKey(null, RecordType.HANDSHAKE);
+		assertNotNull(e[RecordType.HANDSHAKE.ordinal()]);
+		assertNotNull(e[RecordType.APPLICATION.ordinal()]);
+		assertEquals("", trace.toString());
+		l.onNewSendingTraficKey(null, RecordType.APPLICATION);
+		assertNull(e[RecordType.HANDSHAKE.ordinal()]);
+		assertNotNull(e[RecordType.APPLICATION.ordinal()]);
+		assertEquals("h|", trace.toString());
+	}
+
 }

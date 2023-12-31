@@ -265,11 +265,11 @@ public class EngineStateTest extends CommonTest {
 		assertNull(state.getCertCryteria());
 		state.setCertCryteria(cc);
 		assertSame(cc, state.getCertCryteria());
-		assertSame(NoneEarlyDataContext.INSTANCE, state.getEarlyDataContext());
+		assertSame(NoEarlyDataContext.INSTANCE, state.getEarlyDataContext());
 		state.setEarlyDataContext(ctx);
 		assertSame(ctx, state.getEarlyDataContext());
 		state.setEarlyDataContext(null);
-		assertSame(NoneEarlyDataContext.INSTANCE, state.getEarlyDataContext());
+		assertSame(NoEarlyDataContext.INSTANCE, state.getEarlyDataContext());
 		assertNull(state.getNamedGroup());
 		state.setNamedGroup(NamedGroup.FFDHE3072);
 		assertSame(NamedGroup.FFDHE3072, state.getNamedGroup());

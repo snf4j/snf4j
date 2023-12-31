@@ -47,6 +47,7 @@ import org.junit.Test;
 import org.snf4j.tls.CommonTest;
 import org.snf4j.tls.alert.NoApplicationProtocolAlert;
 import org.snf4j.tls.extension.ALPNExtension;
+import org.snf4j.tls.extension.ServerNameExtension;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.session.ISessionManager;
 import org.snf4j.tls.session.SessionManager;
@@ -203,7 +204,7 @@ public class EngineHandlerTest extends CommonTest {
 	
 	@Test
 	public void testVerify() {
-		assertTrue(new EngineHandler(km, tm).verify(null));
+		assertTrue(new EngineHandler(km, tm).verifyServerName(new ServerNameExtension("xxx")));
 	}
 
 	@Test
@@ -242,9 +243,9 @@ public class EngineHandlerTest extends CommonTest {
 	public void testEarlyData() {
 		EngineHandler h = new EngineHandler(km, "key", tm, random, sm, 16);
 		
-		assertEquals(0, h.getMaxEarlyDataSize());
-		assertFalse(h.hasEarlyData());
-		assertNull(h.nextEarlyData());
+		assertEquals(0, h.getEarlyDataHandler().getMaxEarlyDataSize());
+		assertFalse(h.getEarlyDataHandler().hasEarlyData());
+		assertNull(h.getEarlyDataHandler().nextEarlyData(null));
 	}
 	
 	String[] names(String... names) {

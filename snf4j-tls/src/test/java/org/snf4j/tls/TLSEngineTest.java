@@ -3556,7 +3556,7 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("xxx", c.getState().getApplicationProtocol());
 		assertEquals("xxx", s.getState().getApplicationProtocol());
 		assertEquals("ALPN(xxx|)|VSN(snf4j.org)|PN(xxx)|", handler.trace());
-		assertEquals("PN(xxx)|", handler2.trace());
+		assertEquals("AED|PN(xxx)|", handler2.trace());
 
 		//Early data rejected
 		handler.protocol = "yyy";
@@ -3605,7 +3605,7 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("yyy", c.getState().getApplicationProtocol());
 		assertEquals("yyy", s.getState().getApplicationProtocol());
 		assertEquals("ALPN(yyy|)|VSN(snf4j.org)|PN(yyy)|", handler.trace());
-		assertEquals("PN(yyy)|", handler2.trace());	
+		assertEquals("RED|PN(yyy)|", handler2.trace());	
 	}
 	
 	@Test

@@ -214,7 +214,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 		assertEquals("", handler.trace());
 		state.setEarlyDataContext(new EarlyDataContext(sh.getCipherSuite(), 100));
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
-		assertEquals("", handler.trace());
+		assertEquals("RED|", handler.trace());
 		assertSame(MachineState.CLI_WAIT_1_SH, state.getState());
 		ProducedHandshake[] produced = state.getProduced();
 		assertEquals(1, produced.length);

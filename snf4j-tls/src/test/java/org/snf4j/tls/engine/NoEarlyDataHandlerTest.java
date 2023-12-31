@@ -25,14 +25,21 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
-import org.snf4j.tls.alert.Alert;
+import org.junit.Test;
 
-public interface ICertificateValidator {
-
-	Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Alert, Exception;
+public class NoEarlyDataHandlerTest {
 	
-	Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Alert, Exception;
+	@Test
+	public void testAll() {
+		IEarlyDataHandler h = NoEarlyDataHandler.INSTANCE;
+		assertEquals(0, h.getMaxEarlyDataSize());
+		assertFalse(h.hasEarlyData());
+		assertNull(h.nextEarlyData(null));
+		h.rejectedEarlyData();
+		h.acceptedEarlyData();
+	}
 }

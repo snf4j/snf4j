@@ -25,13 +25,16 @@
  */
 package org.snf4j.tls.engine;
 
+import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 
 import javax.net.ssl.X509KeyManager;
 import javax.net.ssl.X509TrustManager;
 
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.NoApplicationProtocolAlert;
+import org.snf4j.tls.alert.UnsupportedCertificateAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IALPNExtension;
 import org.snf4j.tls.extension.IServerNameExtension;
@@ -43,9 +46,49 @@ public class EngineHandler implements IEngineHandler {
 
 	private final static SessionManager SESSION_MANAGER = new SessionManager(); 
 	
+	private final static TicketInfo[] EMPTY_TICKETS = new TicketInfo[0];
+	
 	private final static int DEFAULT_PADDING = 4096; 
 
 	private final static int MAX_CONTENT_LENGTH = 16384; 
+	
+	private final static ICertificateValidator DEFAULT_CERT_VALIDATOR = new ICertificateValidator() {
+
+		@Override
+		public Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs)
+				throws Alert, Exception {
+			return new UnsupportedCertificateAlert("Unsupported certificates");
+		}
+
+		@Override
+		public Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Alert, Exception {
+			return new UnsupportedCertificateAlert("Unsupported raw key");
+		}
+	};
+	
+	private final static ICertificateSelector DEFAULT_CERT_SELECTOR = new ICertificateSelector() {
+
+		@Override
+		public SelectedCertificates selectCertificates(CertificateCriteria criteria)
+				throws CertificateSelectorException, Exception {
+			throw new CertificateSelectorException("No certificate chain found");
+		}
+	};
+	
+	private final static IHostNameVerifier DEFAULT_HOSTNAME_VERIFIER = new IHostNameVerifier() {
+
+		@Override
+		public boolean verifyHostName(String hostname) {
+			return true;
+		}
+	};
+	
+	private final static IApplicationProtocolHandler DEFAULT_PROTOCOL_HANDLER = new IApplicationProtocolHandler() {
+
+		@Override
+		public void selectedApplicationProtocol(String protocol) throws Alert {
+		}
+	};
 	
 	private final ISessionManager manager;
 	
@@ -57,14 +100,52 @@ public class EngineHandler implements IEngineHandler {
 	
 	private final int padding;
 	
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager, int padding) {
-		certificateSelector = new X509KeyManagerCertificateSelector(km, alias);
-		certificateValidator = new X509TrustManagerCertificateValidator(tm);
+	private final IEarlyDataHandler earlyDataHandler;
+	
+	private final TicketInfo[] ticketInfos;
+	
+	private final IHostNameVerifier hostNameVerifier;
+	
+	private final IApplicationProtocolHandler protocolHandler;
+	
+	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, 
+			SecureRandom random, ISessionManager manager, int padding, IEarlyDataHandler earlyDataHandler,
+			TicketInfo[] ticketInfos, IHostNameVerifier hostNameVerifier, IApplicationProtocolHandler protocolHandler) {
+		certificateSelector = km != null 
+				? new X509KeyManagerCertificateSelector(km, alias) 
+				: DEFAULT_CERT_SELECTOR;
+		certificateValidator = tm != null 
+				? new X509TrustManagerCertificateValidator(tm) 
+				: DEFAULT_CERT_VALIDATOR;
 		this.manager = manager == null ? SESSION_MANAGER : manager;
 		this.random = random == null ? new SecureRandom() : random;
 		this.padding = padding;
+		this.earlyDataHandler = earlyDataHandler != null 
+				? earlyDataHandler 
+				: NoEarlyDataHandler.INSTANCE;
+		this.ticketInfos = ticketInfos != null 
+				? ticketInfos 
+				: EMPTY_TICKETS;
+		this.hostNameVerifier = hostNameVerifier != null
+				? hostNameVerifier
+				: DEFAULT_HOSTNAME_VERIFIER;
+		this.protocolHandler = protocolHandler != null
+				? protocolHandler
+				: DEFAULT_PROTOCOL_HANDLER;
 	}
 
+	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager, int padding) {
+		this(km, alias, 
+				tm, 
+				random, 
+				manager, 
+				padding, 
+				null, 
+				new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE}, 
+				null, 
+				null);
+	}
+	
 	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, ISessionManager manager, int padding) {
 		this(km, alias, tm, null, manager, padding);
 	}
@@ -110,11 +191,6 @@ public class EngineHandler implements IEngineHandler {
 	}
 
 	@Override
-	public boolean verify(IServerNameExtension serverName) {
-		return true;
-	}
-
-	@Override
 	public String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert {
 		if (alpn != null && supportedProtocols.length > 0) {
 			String[] offeredProtocols = alpn.getProtocolNames();
@@ -132,11 +208,17 @@ public class EngineHandler implements IEngineHandler {
 	}
 
 	@Override
-	public void verifyApplicationProtocol(String protocol) throws Alert {
+	public boolean verifyServerName(IServerNameExtension serverName) {
+		return hostNameVerifier.verifyHostName(serverName.getHostName());
 	}
 	
 	@Override
-	public void connected(String protocol) {
+	public void selectedApplicationProtocol(String protocol) throws Alert {
+		protocolHandler.selectedApplicationProtocol(protocol);
+	}
+	
+	@Override
+	public void handshakeFinished(String protocol) throws Alert{
 	}
 	
 	@Override
@@ -171,23 +253,8 @@ public class EngineHandler implements IEngineHandler {
 	}
 
 	@Override
-	public long getMaxEarlyDataSize() {
-		return 0;
-	}
-
-	@Override
 	public TicketInfo[] createNewTickets() {
-		return new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE};
-	}
-
-	@Override
-	public boolean hasEarlyData() {
-		return false;
-	}
-
-	@Override
-	public byte[] nextEarlyData() {
-		return null;
+		return ticketInfos;
 	}
 
 	@Override
@@ -200,4 +267,8 @@ public class EngineHandler implements IEngineHandler {
 		return random;
 	}
 
+	@Override
+	public IEarlyDataHandler getEarlyDataHandler() {
+		return earlyDataHandler;
+	}
 }

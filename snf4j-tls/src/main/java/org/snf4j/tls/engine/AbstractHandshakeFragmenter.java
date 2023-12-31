@@ -172,11 +172,7 @@ abstract public class AbstractHandshakeFragmenter {
 		boolean keepPending;
 		
 		if (remaining < length + expansion) {
-			//if (length < maxFragmentLength) {
-				return -1;
-			//}
-			//length = remaining - expansion;
-			//keepPending = true;
+			return -1;
 		}
 		else {
 			keepPending = pending.remaining() > length;

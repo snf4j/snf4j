@@ -103,7 +103,7 @@ public class EngineStateWrapperTest {
 		s.setVersion(100);
 		assertEquals(100, w.getVersion());
 		assertEquals(16384, w.getMaxFragmentLength());
-		assertSame(NoneEarlyDataContext.INSTANCE, w.getEarlyDataContext());
+		assertSame(NoEarlyDataContext.INSTANCE, w.getEarlyDataContext());
 		s.setEarlyDataContext(ctx);
 		assertSame(ctx, w.getEarlyDataContext());
 		

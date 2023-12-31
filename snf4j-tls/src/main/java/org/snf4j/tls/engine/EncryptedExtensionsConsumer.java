@@ -72,13 +72,17 @@ public class EncryptedExtensionsConsumer  implements IHandshakeConsumer {
 			}
 		}
 		state.setApplicationProtocol(selectedProtocol);
-		state.getHandler().verifyApplicationProtocol(selectedProtocol);
+		state.getHandler().selectedApplicationProtocol(selectedProtocol);
 		
 		IEarlyDataContext ctx = state.getEarlyDataContext();
 		if (ctx.getState() == EarlyDataState.PROCESSING) {
 			if (find(handshake, ExtensionType.EARLY_DATA) == null) {
 				ctx.rejecting();
 				ctx.complete();
+				state.getHandler().getEarlyDataHandler().rejectedEarlyData();
+			}
+			else {
+				state.getHandler().getEarlyDataHandler().acceptedEarlyData();				
 			}
 		}
 		

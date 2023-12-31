@@ -194,6 +194,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 				}
 			}
 			ctx.rejecting();
+			state.getHandler().getEarlyDataHandler().rejectedEarlyData();
 		}
 		
 		if (namedGroup == null) {
@@ -207,10 +208,10 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			}
 			
 			if (psk) {
-				produceWithBinders(state, RecordType.INITIAL, RecordType.HANDSHAKE);
+				produceWithBinders(state, RecordType.INITIAL);
 			}
 			else {
-				ConsumerUtil.produce(state, clientHello, RecordType.INITIAL, RecordType.HANDSHAKE);
+				ConsumerUtil.produce(state, clientHello, RecordType.INITIAL);
 			}
 		}
 		else {
@@ -225,7 +226,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		}
 	}
 	
-	private static void produceWithBinders(EngineState state, RecordType recordType, RecordType nextRecordType) throws Alert {
+	private static void produceWithBinders(EngineState state, RecordType recordType) throws Alert {
 		IClientHello clientHello = state.getClientHello();
 		IPreSharedKeyExtension preSharedKey = ExtensionsUtil.findLast(clientHello);
 		byte[] truncated = clientHello.prepare();
@@ -247,7 +248,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			throw new InternalErrorAlert("Failed to bind PSK", e);
 		}
 		
-		state.produce(new ProducedHandshake(clientHello, recordType, nextRecordType));
+		state.produce(new ProducedHandshake(clientHello, recordType));
 	}
 	
 	static KeySchedule removeNoPskKeySchedule(EngineState state) {
@@ -481,13 +482,13 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 				throw new InternalErrorAlert("No key share extension in stored ClientHello");
 			}
 			if (psk) {
-				produceWithBinders(state, RecordType.INITIAL, RecordType.HANDSHAKE);
+				produceWithBinders(state, RecordType.INITIAL);
 			}
 			else {
 				if (extensions.get(size-1).getType().equals(ExtensionType.PRE_SHARED_KEY)) {
 					extensions.remove(size-1);
 				}
-				ConsumerUtil.produce(state, clientHello, RecordType.INITIAL, RecordType.HANDSHAKE);
+				ConsumerUtil.produce(state, clientHello, RecordType.INITIAL);
 			}
 			state.changeState(MachineState.CLI_WAIT_2_SH);
 		}

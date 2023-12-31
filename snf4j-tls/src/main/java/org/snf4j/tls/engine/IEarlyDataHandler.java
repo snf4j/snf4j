@@ -25,14 +25,37 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
-
-import org.snf4j.tls.alert.Alert;
-
-public interface ICertificateValidator {
-
-	Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Alert, Exception;
+public interface IEarlyDataHandler {
 	
-	Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Alert, Exception;
+	/**
+	 * Determines the max size of incoming early data that was rejected by
+	 * server. This size should also include possible padding as without
+	 * cryptographic material servers will not be able to differentiate padding from
+	 * content.
+	 * 
+	 * @return the max size of incoming early data
+	 */
+	long getMaxEarlyDataSize();
+	
+	/**
+	 * Tells if client has an early data to send.
+	 * 
+	 * @return {@code true} if the client has an early data to send
+	 */
+	boolean hasEarlyData();
+	
+	/**
+	 * Called only when client is ready for sending an early data. It will not be
+	 * called when sending of an early data is not possible (e.g. lack of a proper
+	 * session ticket).
+	 * 
+	 * @param protocol the application protocol that was chosen for the early data.
+	 * @return the early data or {@code null} if no more early data is available
+	 */
+	byte[] nextEarlyData(String protocol);
+	
+	void acceptedEarlyData();
+	
+	void rejectedEarlyData();
+
 }

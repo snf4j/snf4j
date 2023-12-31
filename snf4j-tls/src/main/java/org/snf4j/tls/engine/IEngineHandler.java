@@ -36,7 +36,7 @@ import org.snf4j.tls.session.ISessionManager;
 
 public interface IEngineHandler {
 
-	boolean verify(IServerNameExtension serverName);
+	boolean verifyServerName(IServerNameExtension serverName);
 	
 	/**
 	 * Called by servers to selects application protocol from the ALPN extension.
@@ -61,15 +61,16 @@ public interface IEngineHandler {
 	 *                                    but none was used
 	 * @throws Alert                      if some other errors occurred
 	 */
-	void verifyApplicationProtocol(String protocol) throws Alert;
+	void selectedApplicationProtocol(String protocol) throws Alert;
 	
 	/**
 	 * Called after successful handshake.
 	 * 
 	 * @param protocol the name of established protocol or {@code null} if no
 	 *                 application protocol is used
+	 * @throws Alert if an error occurred
 	 */
-	void connected(String protocol);
+	void handshakeFinished(String protocol) throws Alert;
 
 	ICertificateSelector getCertificateSelector();
 	
@@ -79,16 +80,11 @@ public interface IEngineHandler {
 	
 	long getKeyLimit(CipherSuite cipher, long defaultValue);
 	
-	long getMaxEarlyDataSize();
-	
 	TicketInfo[] createNewTickets();
-	
-	boolean hasEarlyData();
-	
-	byte[] nextEarlyData();
 	
 	ISessionManager getSessionManager();
 	
 	SecureRandom getSecureRandom();
 
+	IEarlyDataHandler getEarlyDataHandler();
 }

@@ -25,14 +25,26 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import org.junit.Test;
 
-import org.snf4j.tls.alert.Alert;
+public class NoEarlyDataContextTest {
 
-public interface ICertificateValidator {
-
-	Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Alert, Exception;
-	
-	Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Alert, Exception;
+	@Test
+	public void testAll() {
+		IEarlyDataContext ctx = NoEarlyDataContext.INSTANCE;
+		
+		assertSame(EarlyDataState.NONE, ctx.getState());
+		assertFalse(ctx.isSizeLimitExceeded());
+		ctx.incProcessedBytes(Integer.MAX_VALUE);
+		ctx.incProcessedBytes(Integer.MAX_VALUE);
+		assertFalse(ctx.isSizeLimitExceeded());
+		ctx.rejecting();
+		assertSame(EarlyDataState.NONE, ctx.getState());
+		ctx.complete();
+		assertSame(EarlyDataState.NONE, ctx.getState());
+		assertNull(ctx.getCipherSuite());
+	}
 }

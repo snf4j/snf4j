@@ -25,26 +25,7 @@
  */
 package org.snf4j.tls.engine;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import org.junit.Test;
-
-public class NoneEarlyDataContextTest {
-
-	@Test
-	public void testAll() {
-		IEarlyDataContext ctx = NoneEarlyDataContext.INSTANCE;
-		
-		assertSame(EarlyDataState.NONE, ctx.getState());
-		assertFalse(ctx.isSizeLimitExceeded());
-		ctx.incProcessedBytes(Integer.MAX_VALUE);
-		ctx.incProcessedBytes(Integer.MAX_VALUE);
-		assertFalse(ctx.isSizeLimitExceeded());
-		ctx.rejecting();
-		assertSame(EarlyDataState.NONE, ctx.getState());
-		ctx.complete();
-		assertSame(EarlyDataState.NONE, ctx.getState());
-		assertNull(ctx.getCipherSuite());
-	}
+public interface IHostNameVerifier {
+	
+	boolean verifyHostName(String hostname);
 }

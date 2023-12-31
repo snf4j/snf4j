@@ -116,7 +116,7 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	}
 
 	@Override
-	public boolean verify(IServerNameExtension serverName) {
+	public boolean verifyServerName(IServerNameExtension serverName) {
 		trace("VSN(" + serverName.getHostName() +")");
 		return verifyServerName;
 	}
@@ -142,17 +142,12 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	}
 
 	@Override
-	public void verifyApplicationProtocol(String protocol) throws Alert {
+	public void selectedApplicationProtocol(String protocol) throws Alert {
 	}
 	
 	@Override
-	public void connected(String protocol) {
+	public void handshakeFinished(String protocol) {
 		trace("PN(" + protocol +")");
-	}
-	
-	@Override
-	public long getMaxEarlyDataSize() {
-		return maxEarlyDataSize;
 	}
 	
 	@Override
@@ -160,16 +155,6 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 		return ticketInfos;
 	}
 
-	@Override
-	public boolean hasEarlyData() {
-		return !earlyData.isEmpty();
-	}
-
-	@Override
-	public byte[] nextEarlyData() {
-		return earlyData.poll();
-	}
-	
 	@Override
 	public void onNewTrafficSecrets(IEngineState state, RecordType recordType) throws Alert {
 		switch (recordType) {
@@ -245,4 +230,37 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 		return secureRandom;
 	}
 	
+	@Override
+	public IEarlyDataHandler getEarlyDataHandler() {
+		return new TestEarlyDataHandler();
+	}
+	
+	class TestEarlyDataHandler implements IEarlyDataHandler {
+
+		@Override
+		public long getMaxEarlyDataSize() {
+			return maxEarlyDataSize;
+		}
+
+		@Override
+		public boolean hasEarlyData() {
+			return !earlyData.isEmpty();
+		}
+
+		@Override
+		public byte[] nextEarlyData(String protocol) {
+			return earlyData.poll();
+		}
+		
+		@Override
+		public void acceptedEarlyData() {
+			trace("AED");
+		}
+		
+		@Override
+		public void rejectedEarlyData() {
+			trace("RED");
+		}
+
+	}
 }

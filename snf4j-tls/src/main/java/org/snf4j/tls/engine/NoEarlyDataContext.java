@@ -25,14 +25,38 @@
  */
 package org.snf4j.tls.engine;
 
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
+import org.snf4j.tls.cipher.CipherSuite;
 
-import org.snf4j.tls.alert.Alert;
+public class NoEarlyDataContext implements IEarlyDataContext {
 
-public interface ICertificateValidator {
-
-	Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Alert, Exception;
+	public static final IEarlyDataContext INSTANCE = new NoEarlyDataContext();
 	
-	Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Alert, Exception;
+	private NoEarlyDataContext() {}
+	
+	@Override
+	public EarlyDataState getState() {
+		return EarlyDataState.NONE;
+	}
+	
+	@Override
+	public void complete() {
+	}
+	
+	@Override
+	public void rejecting() {
+	}
+
+	@Override
+	public void incProcessedBytes(int amount) {
+	}
+
+	@Override
+	public boolean isSizeLimitExceeded() {
+		return false;
+	}
+
+	@Override
+	public CipherSuite getCipherSuite() {
+		return null;
+	}
 }

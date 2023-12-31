@@ -34,6 +34,7 @@ import java.security.cert.X509Certificate;
 
 import javax.net.ssl.X509TrustManager;
 
+import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.BadCertificateAlert;
 import org.snf4j.tls.alert.CertificateExpiredAlert;
@@ -47,11 +48,12 @@ public class X509TrustManagerCertificateValidator implements ICertificateValidat
 	private final X509TrustManager manager;
 	
 	public X509TrustManagerCertificateValidator(X509TrustManager manager) {
+		Args.checkNull(manager, "manager");
 		this.manager = manager;
 	}
 	
 	@Override
-	public Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Exception {
+	public Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Alert {
 		try {
 			if (criteria.isServer()) {
 				manager.checkClientTrusted(certs, UNKNOWN);
@@ -76,7 +78,7 @@ public class X509TrustManagerCertificateValidator implements ICertificateValidat
 	}
 
 	@Override
-	public Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Exception {
+	public Alert validateRawKey(CertificateValidateCriteria criteria, PublicKey key) throws Alert {
 		return new UnsupportedCertificateAlert("Unsupported raw key");
 	}
 

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2023 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -48,12 +48,12 @@ public class SignatureSchemeSpecTest extends SignatureTest {
 	
 	@Test
 	public void testAll() throws Exception {
-		assertScheme("RSA_PSS_RSAE_SHA256", JAVA11, RSASSAPSSSignature.class);
-		assertScheme("RSA_PSS_RSAE_SHA384", JAVA11, RSASSAPSSSignature.class);
-		assertScheme("RSA_PSS_RSAE_SHA512", JAVA11, RSASSAPSSSignature.class);
-		assertScheme("RSA_PSS_PSS_SHA256", JAVA11, RSASSAPSSSignature.class);
-		assertScheme("RSA_PSS_PSS_SHA384", JAVA11, RSASSAPSSSignature.class);
-		assertScheme("RSA_PSS_PSS_SHA512", JAVA11, RSASSAPSSSignature.class);
+		assertScheme("RSA_PSS_RSAE_SHA256", JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.class);
+		assertScheme("RSA_PSS_RSAE_SHA384", JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.class);
+		assertScheme("RSA_PSS_RSAE_SHA512", JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.class);
+		assertScheme("RSA_PSS_PSS_SHA256", JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.class);
+		assertScheme("RSA_PSS_PSS_SHA384", JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.class);
+		assertScheme("RSA_PSS_PSS_SHA512", JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.class);
 
 		assertScheme("ECDSA_SHA1", true, ECDSASignature.class);
 		assertScheme("ECDSA_SECP256R1_SHA256", true, ECDSASignature.class);

@@ -66,12 +66,12 @@ public class RSASSAPSSSignatureTest extends SignatureTest {
 	
 	@Test
 	public void testIsImplemented() {
-		assertEquals(JAVA11, RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.isImplemented());
-		assertEquals(JAVA11, RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.isImplemented());
-		assertEquals(JAVA11, RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.isImplemented());
-		assertEquals(JAVA11, RSASSAPSSSignature.RSA_PSS_PSS_SHA256.isImplemented());
-		assertEquals(JAVA11, RSASSAPSSSignature.RSA_PSS_PSS_SHA384.isImplemented());
-		assertEquals(JAVA11, RSASSAPSSSignature.RSA_PSS_PSS_SHA512.isImplemented());
+		assertEquals(JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.RSA_PSS_RSAE_SHA256.isImplemented());
+		assertEquals(JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.RSA_PSS_RSAE_SHA384.isImplemented());
+		assertEquals(JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.RSA_PSS_RSAE_SHA512.isImplemented());
+		assertEquals(JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.RSA_PSS_PSS_SHA256.isImplemented());
+		assertEquals(JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.RSA_PSS_PSS_SHA384.isImplemented());
+		assertEquals(JAVA11 || JAVA8_GEQ_U392, RSASSAPSSSignature.RSA_PSS_PSS_SHA512.isImplemented());
 	}
 	
 	@Test

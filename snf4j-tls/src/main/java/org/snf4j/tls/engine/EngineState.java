@@ -97,7 +97,7 @@ public class EngineState implements IEngineState, IEngineProducer {
 		
 	private CertificateCriteria certCryteria;
 	
-	private IEarlyDataContext earlyDataContext = NoneEarlyDataContext.INSTANCE;
+	private IEarlyDataContext earlyDataContext = NoEarlyDataContext.INSTANCE;
 	
 	public EngineState(MachineState state, IEngineParameters parameters, IEngineHandler handler, IEngineStateListener listener) {
 		this.state = state;
@@ -385,7 +385,7 @@ public class EngineState implements IEngineState, IEngineProducer {
 	}
 	
 	public void setEarlyDataContext(IEarlyDataContext context) {
-		earlyDataContext = context == null ? NoneEarlyDataContext.INSTANCE : context;
+		earlyDataContext = context == null ? NoEarlyDataContext.INSTANCE : context;
 	}
 
 	public void addPskContext(PskContext psk) {
