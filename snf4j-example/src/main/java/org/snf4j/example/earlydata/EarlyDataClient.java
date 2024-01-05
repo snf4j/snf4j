@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -54,7 +54,9 @@ public class EarlyDataClient {
 			connect(loop, "time", "p2");
 			Logger.inf("----- connect #3 (rejected) ---------------");
 			connect(loop, "time", "p3");
-			Logger.inf("----- connect #4 (accepted) -------------");
+			Logger.inf("----- connect #4 (accepted) ---------------");
+			connect(loop, "time", "p3");
+			Logger.inf("----- connect #5 (accepted) ---------------");
 			connect(loop, "time", "p3");
 		}
 		finally {
@@ -84,7 +86,11 @@ public class EarlyDataClient {
 
 		// Register the channel
 		EarlyDataClientHandler handler = new EarlyDataClientHandler(cmd);
-		TLSSession session = new TLSSession(params, builder.build(handler, handler), handler, true);
+		TLSSession session = new TLSSession(
+				params, 
+				builder.build(handler, handler), 
+				handler, 
+				true);
 		loop.register(channel, session);
 		
 		// Wait till the session ends

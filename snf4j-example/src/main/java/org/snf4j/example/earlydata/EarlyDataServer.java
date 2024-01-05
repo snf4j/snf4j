@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,8 +36,7 @@ import org.snf4j.tls.engine.EngineParametersBuilder;
 
 public class EarlyDataServer {
 	
-	static final String PREFIX = "org.snf4j.";
-	
+	static final String PREFIX = "org.snf4j.";	
 	static final int PORT = Integer.getInteger(PREFIX+"Port", 8001);
 
 	public static void main(String[] args) throws Exception {

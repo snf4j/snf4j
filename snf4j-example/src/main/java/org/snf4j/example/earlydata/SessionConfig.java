@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2021 SNF4J contributors
+ * Copyright (c) 2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,19 +36,31 @@ public class SessionConfig extends DefaultSessionConfig {
 
 	public final static String ENCODER = "ENCODER";
 	
-	public final static String PROTOCOL = "protocol";
-	
 	@Override
 	public ICodecExecutor createCodecExecutor() {
-		return createCodecExecutor(0);
+		return createCodecExecutor(0, false);
 	}
 
-	static ICodecExecutor createCodecExecutor(int shift) {
+	static int shift(String protocol) {
+		return Integer.parseInt(protocol.substring(1));
+	}
+
+	static ICodecExecutor createCodecExecutor(String protocol, boolean onlyEncoders) {
+		return createCodecExecutor(shift(protocol), onlyEncoders);
+	}
+	
+	static ICodecExecutor createCodecExecutor(int shift, boolean onlyEncoders) {
 		DefaultCodecExecutor executor = new DefaultCodecExecutor();
 		
-		executor.getPipeline().add(DECODER, new Decoder(shift));
+		if (!onlyEncoders) {
+			executor.getPipeline().add(DECODER, new Decoder(shift));
+		}
 		executor.getPipeline().add(ENCODER, new Encoder(shift));
 		return executor;
+	}
+	
+	static void updateCodecPipeline(ICodecPipeline pipeline, String protocol) {
+		updateCodecPipeline(pipeline, shift(protocol));
 	}
 	
 	static void updateCodecPipeline(ICodecPipeline pipeline, int shift) {
