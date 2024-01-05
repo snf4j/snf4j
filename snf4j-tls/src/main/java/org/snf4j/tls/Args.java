@@ -101,6 +101,12 @@ public final class Args {
 		}
 	}
 	
+	public static void checkMin(int value, int min, String name) {
+		if (value < min) {
+			throw new IllegalArgumentException(name + " is less than " + min);
+		}
+	}
+
 	public static void checkMin(Object[] array, int min, String name) {
 		if (array == null) {
 			throw new IllegalArgumentException(name + " is null");

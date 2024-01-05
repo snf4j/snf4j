@@ -125,6 +125,19 @@ public class ArgsTest {
 	}
 	
 	@Test
+	public void testMin() {
+		Args.checkMin(1, 1, "name");
+		Args.checkMin(2, 1, "name");
+		Args.checkMin(100000, 1, "name");
+		try {
+			Args.checkMin(0, 1, "name");
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("name is less than 1", e.getMessage());		
+		}
+	}
+	
+	@Test
 	public void testMax() {
 		Args.checkMax(100, 100, "name");
 		Args.checkMax(99, 100, "name");

@@ -37,11 +37,17 @@ public class EngineHandlerBuilder {
 
 	private final static TicketInfo[] EMPTY_TICKETS = new TicketInfo[0];
 	
+	private final boolean managers;
+	
 	private final X509KeyManager km;
 	
 	private final String alias;
 	
 	private final X509TrustManager tm;
+	
+	private final ICertificateSelector selector;
+	
+	private final ICertificateValidator validator;
 	
 	private ISessionManager manager;
 	
@@ -63,6 +69,9 @@ public class EngineHandlerBuilder {
 		this.km = km;
 		this.alias = alias;
 		this.tm = tm;
+		selector = null;
+		validator = null;
+		managers = true;
 	}
 
 	public EngineHandlerBuilder(X509KeyManager km, X509TrustManager tm) {
@@ -74,6 +83,9 @@ public class EngineHandlerBuilder {
 		this.km = km;
 		this.alias = alias;
 		this.tm = null;
+		selector = null;
+		validator = null;
+		managers = true;
 	}
 
 	public EngineHandlerBuilder(X509KeyManager km) {
@@ -85,6 +97,40 @@ public class EngineHandlerBuilder {
 		this.km = null;
 		this.alias = null;
 		this.tm = tm;
+		selector = null;
+		validator = null;
+		managers = true;
+	}
+
+	public EngineHandlerBuilder(ICertificateSelector selector, ICertificateValidator validator) {
+		Args.checkNull(selector, "selector");
+		Args.checkNull(validator, "validator");
+		this.selector = selector;
+		this.validator = validator;
+		km = null;
+		alias = null;
+		tm = null;
+		managers = false;
+	}
+
+	public EngineHandlerBuilder(ICertificateSelector selector) {
+		Args.checkNull(selector, "selector");
+		this.selector = selector;
+		validator = null;
+		km = null;
+		alias = null;
+		tm = null;
+		managers = false;
+	}
+
+	public EngineHandlerBuilder(ICertificateValidator validator) {
+		Args.checkNull(validator, "validator");
+		selector = null;
+		this.validator = validator;
+		km = null;
+		alias = null;
+		tm = null;
+		managers = false;
 	}
 	
 	public EngineHandlerBuilder hostNameVerifier(IHostNameVerifier hostNameVerifier) {
@@ -97,6 +143,7 @@ public class EngineHandlerBuilder {
 	}
 	
 	public EngineHandlerBuilder padding(int padding) {
+		Args.checkMin(padding, 1, "padding");
 		this.padding = padding;
 		return this;
 	}
@@ -165,17 +212,61 @@ public class EngineHandlerBuilder {
 		return protocolHandler;
 	}
 	
-	public EngineHandler build() {
+	private static TicketInfo[] safeClone(TicketInfo[] tickets) {
+		return tickets == null || tickets.length == 0 ? tickets : tickets.clone();
+	}
+	
+	public EngineHandler build(IEarlyDataHandler earlyDataHandler, IHostNameVerifier hostNameVerifier, IApplicationProtocolHandler protocolHandler) {
+		if (managers) {
+			return new EngineHandler(
+					km, alias, 
+					tm, 
+					random, 
+					manager, 
+					padding, 
+					safeClone(tickets),
+					earlyDataHandler, 
+					hostNameVerifier,
+					protocolHandler);
+		}
 		return new EngineHandler(
-				km, alias, 
-				tm, 
+				selector, 
+				validator, 
 				random, 
 				manager, 
 				padding, 
+				safeClone(tickets),
 				earlyDataHandler, 
-				tickets == null || tickets.length == 0 ? tickets : tickets.clone(),
 				hostNameVerifier,
 				protocolHandler);
 	}
+
+	public EngineHandler build(IEarlyDataHandler earlyDataHandler, IHostNameVerifier hostNameVerifier) {
+		return build(earlyDataHandler, hostNameVerifier, protocolHandler);
+	}
+
+	public EngineHandler build(IEarlyDataHandler earlyDataHandler, IApplicationProtocolHandler protocolHandler) {
+		return build(earlyDataHandler, hostNameVerifier, protocolHandler);
+	}
 	
+	public EngineHandler build(IEarlyDataHandler earlyDataHandler) {
+		return build(earlyDataHandler, hostNameVerifier, protocolHandler);
+	}
+	
+	public EngineHandler build(IHostNameVerifier hostNameVerifier, IApplicationProtocolHandler protocolHandler) {
+		return build(earlyDataHandler, hostNameVerifier, protocolHandler);
+	}
+	
+	public EngineHandler build(IHostNameVerifier hostNameVerifier) {
+		return build(earlyDataHandler, hostNameVerifier, protocolHandler);
+	}
+	
+	public EngineHandler build(IApplicationProtocolHandler protocolHandler) {
+		return build(earlyDataHandler, hostNameVerifier, protocolHandler);
+	}
+	
+	public EngineHandler build() {
+		return build(earlyDataHandler, hostNameVerifier, protocolHandler);
+	}
+
 }

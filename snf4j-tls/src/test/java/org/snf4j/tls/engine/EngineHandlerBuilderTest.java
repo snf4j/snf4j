@@ -37,6 +37,7 @@ import static org.junit.Assert.fail;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManagerFactory;
@@ -46,6 +47,7 @@ import javax.net.ssl.X509TrustManager;
 import org.junit.Test;
 import org.snf4j.tls.CommonTest;
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.extension.ALPNExtension;
 import org.snf4j.tls.extension.ServerNameExtension;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.CertificateType;
@@ -72,6 +74,8 @@ public class EngineHandlerBuilderTest extends CommonTest {
 	SignatureScheme[] schemes = new SignatureScheme[] {SignatureScheme.ECDSA_SECP256R1_SHA256};
 	
 	X509Certificate[] certs;
+	
+	StringBuilder trace = new StringBuilder();
 	
 	@Override
 	public void before() throws Exception {
@@ -170,6 +174,30 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		}
 		assertSame(SignatureScheme.ECDSA_SECP256R1_SHA256, sc.getAlgorithm());
 		assertNull(h.getCertificateValidator().validateCertificates(vc, certs));
+		
+		X509KeyManagerCertificateSelector selector = new X509KeyManagerCertificateSelector(km, "key");
+		X509TrustManagerCertificateValidator validator = new X509TrustManagerCertificateValidator(tm);
+		b = new EngineHandlerBuilder(selector, validator);
+		h = b.build();
+		assertSame(SignatureScheme.ECDSA_SECP256R1_SHA256, sc.getAlgorithm());
+		assertNull(h.getCertificateValidator().validateCertificates(vc, certs));
+		
+		b = new EngineHandlerBuilder(selector);
+		h = b.build();
+		assertSame(SignatureScheme.ECDSA_SECP256R1_SHA256, sc.getAlgorithm());
+		assertNotNull(h.getCertificateValidator().validateCertificates(vc, certs));
+		
+		b = new EngineHandlerBuilder(validator);
+		h = b.build();
+		try {
+			h.getCertificateSelector().selectCertificates(c);
+			fail();
+		}
+		catch(CertificateSelectorException e) {
+			assertEquals("No certificate chain found", e.getMessage());
+		}
+		assertNull(h.getCertificateValidator().validateCertificates(vc, certs));
+
 	}
 	
 	@Test
@@ -210,6 +238,19 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		h = b.build();
 		assertEquals(16, b.getPadding());
 		assertEquals(15, h.calculatePadding(ContentType.APPLICATION_DATA, 1));
+		
+		b.padding(1);
+		h = b.build();
+		assertEquals(1, b.getPadding());
+		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 3));
+		
+		try {
+			b.padding(0);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("padding is less than 1", e.getMessage());
+		}			
 	}
 	
 	void assertTickets(TicketInfo[] tickets, long... sizes) {
@@ -346,17 +387,26 @@ public class EngineHandlerBuilderTest extends CommonTest {
 	public void testProtocolHandler() throws Exception {
 		EngineHandlerBuilder b = new EngineHandlerBuilder(km, "key", tm);
 		EngineHandler h = b.build();
-
+		String[] supported = new String[] {"p1", "p2"};
+		
 		assertNull(b.getProtocolHandler());
 		h.selectedApplicationProtocol(null);
 		h.selectedApplicationProtocol("xxx");
-		StringBuilder trace = new StringBuilder();
+		assertEquals("p1", h.selectApplicationProtocol(new ALPNExtension("p1"), supported));
 		
+		StringBuilder trace = new StringBuilder();
+		AtomicReference<String> selected = new AtomicReference<String>(); 
 		IApplicationProtocolHandler aph = new IApplicationProtocolHandler() {
 
 			@Override
 			public void selectedApplicationProtocol(String protocol) throws Alert {
 				trace.append(protocol).append('|');
+			}
+
+			@Override
+			public String selectApplicationProtocol(String[] offeredProtocols, String[] supportedProtocols)
+					throws Alert {
+				return selected.get();
 			}
 		};
 		b.protocolHandler(aph);
@@ -367,6 +417,11 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		assertEquals("null|", trace.toString());
 		h.selectedApplicationProtocol("yy");
 		assertEquals("null|yy|", trace.toString());
+		assertEquals("p1", h.selectApplicationProtocol(new ALPNExtension("p1"), supported));
+		selected.set("");
+		assertNull(h.selectApplicationProtocol(new ALPNExtension("p1"), supported));
+		selected.set("xx");
+		assertEquals("xx", h.selectApplicationProtocol(new ALPNExtension("p1"), supported));
 		
 		trace.setLength(0);
 		b.protocolHandler(null);
@@ -374,5 +429,105 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		assertNull(b.getProtocolHandler());
 		h.selectedApplicationProtocol(null);
 		assertEquals("", trace.toString());
+		assertEquals("p1", h.selectApplicationProtocol(new ALPNExtension("p1"), supported));
+	}
+	
+	void assertHandler(EngineHandler h, String expected) throws Exception {
+		trace.setLength(0);
+		h.getEarlyDataHandler().hasEarlyData();
+		h.verifyServerName(new ServerNameExtension("x"));
+		h.selectedApplicationProtocol("y");
+		assertEquals(expected, trace.toString());
+		
+	}
+	
+	@Test
+	public void testBuild() throws Exception {
+		EngineHandlerBuilder b = new EngineHandlerBuilder(km, "key", tm);
+		IEarlyDataHandler edh1 = new TestEarlyDataHandler("EDH");		
+		IEarlyDataHandler edh2 = new TestEarlyDataHandler("edh");
+		IHostNameVerifier hnv1 = new TestHostNameVerifier("HNV");
+		IHostNameVerifier hnv2 = new TestHostNameVerifier("hnv");
+		IApplicationProtocolHandler aph1 = new TestApplicationProtocolHandler("APH");
+		IApplicationProtocolHandler aph2 = new TestApplicationProtocolHandler("aph");
+		b.earlyDataHandler(edh1);
+		b.hostNameVerifier(hnv1);
+		b.protocolHandler(aph1);
+
+		assertHandler(b.build(), "EDH|HNV|x|APH|y|");
+		assertHandler(b.build(edh2), "edh|HNV|x|APH|y|");
+		assertHandler(b.build(hnv2), "EDH|hnv|x|APH|y|");
+		assertHandler(b.build(aph2), "EDH|HNV|x|aph|y|");
+		assertHandler(b.build(edh2, hnv2), "edh|hnv|x|APH|y|");
+		assertHandler(b.build(edh2, aph2), "edh|HNV|x|aph|y|");
+		assertHandler(b.build(hnv2, aph2), "EDH|hnv|x|aph|y|");
+		assertHandler(b.build(edh2, hnv2, aph2), "edh|hnv|x|aph|y|");		
+	}
+	
+	class TestEarlyDataHandler implements IEarlyDataHandler {
+
+		String id;
+		
+		TestEarlyDataHandler(String id) {
+			this.id = id;
+		}
+
+		@Override
+		public long getMaxEarlyDataSize() {
+			return 0;
+		}
+
+		@Override
+		public boolean hasEarlyData() {
+			trace.append(id).append('|');
+			return false;
+		}
+
+		@Override
+		public byte[] nextEarlyData(String protocol) {
+			return null;
+		}
+
+		@Override
+		public void acceptedEarlyData() {
+		}
+
+		@Override
+		public void rejectedEarlyData() {
+		}
+	}
+	
+	class TestHostNameVerifier implements IHostNameVerifier {
+
+		String id;
+		
+		TestHostNameVerifier(String id) {
+			this.id = id;
+		}
+		
+		@Override
+		public boolean verifyHostName(String hostname) {
+			trace.append(id).append('|').append(hostname).append('|');
+			return true;
+		}
+	}
+	
+	class TestApplicationProtocolHandler implements IApplicationProtocolHandler {
+
+		String id;
+		
+		TestApplicationProtocolHandler(String id) {
+			this.id = id;
+		}
+
+		@Override
+		public String selectApplicationProtocol(String[] offeredProtocols, String[] supportedProtocols) throws Alert {
+			return null;
+		}
+
+		@Override
+		public void selectedApplicationProtocol(String protocol) throws Alert {
+			trace.append(id).append('|').append(protocol).append('|');
+		}		
 	}
 }

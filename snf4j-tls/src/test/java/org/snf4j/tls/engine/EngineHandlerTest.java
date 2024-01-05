@@ -32,6 +32,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 import java.security.KeyStore;
@@ -227,7 +228,18 @@ public class EngineHandlerTest extends CommonTest {
 		assertEquals(1, h.calculatePadding(ContentType.APPLICATION_DATA, 16383));
 		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 16384));
 		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 16385));
+
+		h = new EngineHandler(km, "key", tm, random, sm, 1);
+		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 1));
+		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 2));
 		
+		try {
+			new EngineHandler(km, "key", tm, random, sm, 0);
+			fail();
+		}
+		catch (IllegalArgumentException e) {
+			assertEquals("padding is less than 1", e.getMessage());
+		}		
 	}
 	
 	@Test

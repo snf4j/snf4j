@@ -32,6 +32,7 @@ import java.security.cert.X509Certificate;
 import javax.net.ssl.X509KeyManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.snf4j.tls.Args;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.NoApplicationProtocolAlert;
 import org.snf4j.tls.alert.UnsupportedCertificateAlert;
@@ -88,6 +89,11 @@ public class EngineHandler implements IEngineHandler {
 		@Override
 		public void selectedApplicationProtocol(String protocol) throws Alert {
 		}
+
+		@Override
+		public String selectApplicationProtocol(String[] offeredProtocols, String[] supportedProtocols) throws Alert {
+			return null;
+		}
 	};
 	
 	private final ISessionManager manager;
@@ -108,14 +114,37 @@ public class EngineHandler implements IEngineHandler {
 	
 	private final IApplicationProtocolHandler protocolHandler;
 	
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, 
-			SecureRandom random, ISessionManager manager, int padding, IEarlyDataHandler earlyDataHandler,
-			TicketInfo[] ticketInfos, IHostNameVerifier hostNameVerifier, IApplicationProtocolHandler protocolHandler) {
-		certificateSelector = km != null 
-				? new X509KeyManagerCertificateSelector(km, alias) 
+	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager, int padding, 
+			TicketInfo[] ticketInfos, 
+			IEarlyDataHandler earlyDataHandler,
+			IHostNameVerifier hostNameVerifier, 
+			IApplicationProtocolHandler protocolHandler) {
+		this(km != null 
+					? new X509KeyManagerCertificateSelector(km, alias) 
+					: DEFAULT_CERT_SELECTOR,
+				tm != null 
+					? new X509TrustManagerCertificateValidator(tm) 
+					: DEFAULT_CERT_VALIDATOR,
+				random,
+				manager,
+				padding,
+				ticketInfos,
+				earlyDataHandler,
+				hostNameVerifier,
+				protocolHandler);
+	}
+
+	public EngineHandler(ICertificateSelector selector, ICertificateValidator validator, SecureRandom random, ISessionManager manager, int padding, 
+			TicketInfo[] ticketInfos,
+			IEarlyDataHandler earlyDataHandler,
+			IHostNameVerifier hostNameVerifier, 
+			IApplicationProtocolHandler protocolHandler) {
+		Args.checkMin(padding, 1, "padding");
+		certificateSelector = selector != null 
+				? selector 
 				: DEFAULT_CERT_SELECTOR;
-		certificateValidator = tm != null 
-				? new X509TrustManagerCertificateValidator(tm) 
+		certificateValidator = validator != null 
+				? validator 
 				: DEFAULT_CERT_VALIDATOR;
 		this.manager = manager == null ? SESSION_MANAGER : manager;
 		this.random = random == null ? new SecureRandom() : random;
@@ -133,15 +162,15 @@ public class EngineHandler implements IEngineHandler {
 				? protocolHandler
 				: DEFAULT_PROTOCOL_HANDLER;
 	}
-
+	
 	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager, int padding) {
 		this(km, alias, 
 				tm, 
 				random, 
 				manager, 
 				padding, 
-				null, 
 				new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE}, 
+				null, 
 				null, 
 				null);
 	}
@@ -194,15 +223,21 @@ public class EngineHandler implements IEngineHandler {
 	public String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert {
 		if (alpn != null && supportedProtocols.length > 0) {
 			String[] offeredProtocols = alpn.getProtocolNames();
+			String selected = protocolHandler.selectApplicationProtocol(offeredProtocols, supportedProtocols);
 			
-			for (String supported: supportedProtocols) {
-				for (String offered: offeredProtocols) {
-					if (offered.equals(supported)) {
-						return offered;
+			if (selected == null) {
+				for (String supported: supportedProtocols) {
+					for (String offered: offeredProtocols) {
+						if (offered.equals(supported)) {
+							return offered;
+						}
 					}
 				}
+				throw new NoApplicationProtocolAlert("Offered application protocols not supported by server");
 			}
-			throw new NoApplicationProtocolAlert("Offered application protocols not supported by server");
+			else if (!selected.isEmpty()) {
+				return selected;
+			}
 		}
 		return null;
 	}
@@ -233,18 +268,19 @@ public class EngineHandler implements IEngineHandler {
 
 	@Override
 	public int calculatePadding(ContentType type, int contentLength) {
-		if (contentLength < MAX_CONTENT_LENGTH) {
-			int padding = this.padding;
-
-			while (padding <= MAX_CONTENT_LENGTH) {
-				if (contentLength <= padding) {
-					return padding - contentLength;
-				}
-				padding <<= 1;
-			}
+		if (contentLength >= MAX_CONTENT_LENGTH) {
+			return 0;
+		}
+		else if (contentLength > MAX_CONTENT_LENGTH - this.padding) {
 			return MAX_CONTENT_LENGTH - contentLength;
 		}
-		return 0;
+
+		int padding = contentLength % this.padding;
+			
+		if (padding != 0) {
+			padding = this.padding - padding;
+		}
+		return padding;
 	}
 
 	@Override

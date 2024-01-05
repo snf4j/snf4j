@@ -53,7 +53,7 @@ public interface IEngineHandler {
 	String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert;
 		
 	/**
-	 * Called by clients to verifies selected application protocol.
+	 * Called by both clients and servers to signal selection of application protocol.
 	 * 
 	 * @param protocol the selected application protocol or {@code null} if no
 	 *                 protocol was used

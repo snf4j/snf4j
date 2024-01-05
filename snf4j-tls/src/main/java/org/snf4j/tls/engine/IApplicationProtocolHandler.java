@@ -29,6 +29,31 @@ import org.snf4j.tls.alert.Alert;
 
 public interface IApplicationProtocolHandler {
 
+	/**
+	 * Called by servers to selects application protocol from offered application
+	 * protocols.
+	 * 
+	 * @param offeredProtocols   the offered application protocols or {@code null}
+	 *                           if no protocol was offered
+	 * @param supportedProtocols the supported application protocols
+	 * @return the selected protocol name (an empty name indicates that no protocol
+	 *         should be used) or {@code null} if the protocol should be selected by
+	 *         the caller
+	 * @throws NoApplicationProtocolAlert if offered only protocols that the server
+	 *                                    does not support
+	 * @throws Alert                      if some other errors occurred
+	 */
+	String selectApplicationProtocol(String[] offeredProtocols, String[] supportedProtocols) throws Alert;
+	
+	/**
+	 * Called by both clients and servers to signal selection of application protocol.
+	 * 
+	 * @param protocol the selected application protocol or {@code null} if no
+	 *                 protocol was used
+	 * @throws NoApplicationProtocolAlert if an application protocol was required
+	 *                                    but none was used
+	 * @throws Alert                      if some other errors occurred
+	 */
 	void selectedApplicationProtocol(String protocol) throws Alert;
 	
 }
