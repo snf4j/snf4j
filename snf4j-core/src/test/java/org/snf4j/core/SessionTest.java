@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2023 SNF4J contributors
+ * Copyright (c) 2017-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -3761,6 +3762,13 @@ public class SessionTest {
 		assertSame(b[0], a.getReleased().get(0));
 		assertSame(b[1], a.getReleased().get(1));
 		
+		//none with releasing allocator
+		a = new TestAllocator(false, true);
+		b = new ByteBuffer[0];
+		b2 = StreamSession.clearBuffers(b, a, true);
+		assertNotSame(b, b2);
+		assertEquals(0, b2.length);
+		assertEquals(0, a.getReleasedCount());
 	}
 	
 	@Test

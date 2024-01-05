@@ -29,6 +29,12 @@ jobs:
     - name: Check out code    
       uses: actions/checkout@v4
       
+    - name: Install packages
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: libsctp-dev
+        version: 1.0
+          
     - name: Set up Java ${{ matrix.java }}
       uses: actions/setup-java@v4
       with:
