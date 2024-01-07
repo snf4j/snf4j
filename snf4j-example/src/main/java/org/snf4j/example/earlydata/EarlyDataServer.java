@@ -60,6 +60,7 @@ public class EarlyDataServer {
 					KeyStoreLoader.keyManager(),
 					KeyStoreLoader.trustManager())
 					.ticketInfos(1024)
+					.maxEarlyDataSize(1024)
 					.padding(1);
 			
 			// Register the listener

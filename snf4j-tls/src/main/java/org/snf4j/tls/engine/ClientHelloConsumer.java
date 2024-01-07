@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -201,7 +201,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					state.setEarlyDataContext(new EarlyDataContext(
 							cipherSuite, 
 							true, 
-							state.getHandler().getEarlyDataHandler().getMaxEarlyDataSize()));
+							state.getHandler().getMaxEarlyDataSize()));
 					earlyData = false;
 				}
 			}
@@ -236,7 +236,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			state.setEarlyDataContext(new EarlyDataContext(
 					cipherSuite, 
 					true, 
-					state.getHandler().getEarlyDataHandler().getMaxEarlyDataSize()));
+					state.getHandler().getMaxEarlyDataSize()));
 			earlyData = false;
 		}
 		if (namedGroup == null) {
@@ -332,7 +332,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 							state.setEarlyDataContext(new EarlyDataContext(
 									cipherSuite, 
 									true, 
-									state.getHandler().getEarlyDataHandler().getMaxEarlyDataSize()));
+									state.getHandler().getMaxEarlyDataSize()));
 							earlyData = false;
 						}
 						state.getKeySchedule().deriveEarlySecret();
@@ -355,7 +355,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 							state.setEarlyDataContext(new EarlyDataContext(
 									cipherSuite, 
 									true, 
-									state.getHandler().getEarlyDataHandler().getMaxEarlyDataSize()));
+									state.getHandler().getMaxEarlyDataSize()));
 							earlyData = false;
 						}
 					}

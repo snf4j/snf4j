@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,16 +28,6 @@ package org.snf4j.tls.engine;
 public interface IEarlyDataHandler {
 	
 	/**
-	 * Determines the max size of incoming early data that was rejected by
-	 * server. This size should also include possible padding as without
-	 * cryptographic material servers will not be able to differentiate padding from
-	 * content.
-	 * 
-	 * @return the max size of incoming early data
-	 */
-	long getMaxEarlyDataSize();
-	
-	/**
 	 * Tells if client has an early data to send.
 	 * 
 	 * @return {@code true} if the client has an early data to send
@@ -54,8 +44,16 @@ public interface IEarlyDataHandler {
 	 */
 	byte[] nextEarlyData(String protocol);
 	
+	/**
+	 * Called when data produced by the {@link #nextEarlyData} was accepted by
+	 * server.
+	 */
 	void acceptedEarlyData();
 	
+	/**
+	 * Called when data produced by the {@link #nextEarlyData} was rejected by
+	 * server.
+	 */
 	void rejectedEarlyData();
 
 }

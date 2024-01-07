@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -235,7 +235,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		state.getTask().run();
 		state.getTask().run();
 		ProducedHandshake[] produced = state.getProduced();
-		assertEquals("ALPN(null)|VSN(snf4j.org)|CS|HTS|RTS(HANDSHAKE)|ATS|", handler.trace());
+		assertEquals("ALPN(null)|PN(null)|VSN(snf4j.org)|CS|HTS|RTS(HANDSHAKE)|ATS|", handler.trace());
 		CertificateCriteria criteria = handler.certificateSelector.criteria;
 		assertEquals("snf4j.org", criteria.getHostName());
 		assertTrue(criteria.isServer());
@@ -302,7 +302,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 		replace(extensions, keyShare());
 		ClientHello ch = clientHello();
 		consumer.consume(state, ch, data(ch), false);
-		assertEquals("ALPN(null)|VSN(snf4j.org)|", handler.trace());
+		assertEquals("ALPN(null)|PN(null)|VSN(snf4j.org)|", handler.trace());
 		
 		state = serverState();
 		remove(extensions, ExtensionType.SERVER_NAME);
@@ -311,13 +311,13 @@ public class ClientHelloConsumerTest extends EngineTest {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
 		} catch (MissingExtensionAlert e) {}
-		assertEquals("ALPN(null)|", handler.trace());
+		assertEquals("ALPN(null)|PN(null)|", handler.trace());
 		
 		state = serverState();
 		params.serverNameRequired = false;
 		ch = clientHello();
 		consumer.consume(state, ch, data(ch), false);
-		assertEquals("ALPN(null)|", handler.trace());
+		assertEquals("ALPN(null)|PN(null)|", handler.trace());
 		
 		extensions.add(serverName("snf4j.org"));
 		handler.verifyServerName = false;
@@ -328,7 +328,7 @@ public class ClientHelloConsumerTest extends EngineTest {
 			consumer.consume(state, ch, data(ch), false);
 			fail();
 		} catch (UnrecognizedNameAlert e) {}
-		assertEquals("ALPN(null)|VSN(snf4j.org)|", handler.trace());
+		assertEquals("ALPN(null)|PN(null)|VSN(snf4j.org)|", handler.trace());
 	}
 	
 	@Test

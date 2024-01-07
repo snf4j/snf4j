@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -66,10 +66,6 @@ public class TestHandler implements IEngineHandler {
 	}
 	
 	@Override
-	public void handshakeFinished(String protocol) {
-	}
-	
-	@Override
 	public ICertificateSelector getCertificateSelector() {
 		return certificateSelector;
 	}
@@ -95,6 +91,11 @@ public class TestHandler implements IEngineHandler {
 	}
 
 	@Override
+	public long getMaxEarlyDataSize() {
+		return maxEarlyDataSize;
+	}
+	
+	@Override
 	public TicketInfo[] createNewTickets() {
 		return new TicketInfo[] {new TicketInfo()};
 	}
@@ -110,11 +111,6 @@ public class TestHandler implements IEngineHandler {
 	}
 
 	class TestEarlyDataHandler implements IEarlyDataHandler {
-
-		@Override
-		public long getMaxEarlyDataSize() {
-			return maxEarlyDataSize;
-		}
 
 		@Override
 		public boolean hasEarlyData() {

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -143,10 +143,6 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 
 	@Override
 	public void selectedApplicationProtocol(String protocol) throws Alert {
-	}
-	
-	@Override
-	public void handshakeFinished(String protocol) {
 		trace("PN(" + protocol +")");
 	}
 	
@@ -155,6 +151,11 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 		return ticketInfos;
 	}
 
+	@Override
+	public long getMaxEarlyDataSize() {
+		return maxEarlyDataSize;
+	}
+	
 	@Override
 	public void onNewTrafficSecrets(IEngineState state, RecordType recordType) throws Alert {
 		switch (recordType) {
@@ -236,11 +237,6 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	}
 	
 	class TestEarlyDataHandler implements IEarlyDataHandler {
-
-		@Override
-		public long getMaxEarlyDataSize() {
-			return maxEarlyDataSize;
-		}
 
 		@Override
 		public boolean hasEarlyData() {

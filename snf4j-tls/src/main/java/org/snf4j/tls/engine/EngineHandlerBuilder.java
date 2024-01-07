@@ -57,11 +57,13 @@ public class EngineHandlerBuilder {
 	
 	private TicketInfo[] tickets = new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE};
 	
-	private int padding = 4096;
+	private int padding = 1;
 	
 	private IHostNameVerifier hostNameVerifier;
 	
 	private IApplicationProtocolHandler protocolHandler;
+	
+	private long maxEarlyDataSize;
 	
 	public EngineHandlerBuilder(X509KeyManager km, String alias, X509TrustManager tm) {
 		Args.checkNull(km, "km");
@@ -142,6 +144,14 @@ public class EngineHandlerBuilder {
 		return hostNameVerifier;
 	}
 	
+	/**
+	 * Sets padding for TLS records so that they are a multiple of the padding
+	 * value in length on send. A value of 1 turns off padding. Otherwise, the value
+	 * must be >1.
+	 * 
+	 * @param padding the padding value
+	 * @return this builder
+	 */
 	public EngineHandlerBuilder padding(int padding) {
 		Args.checkMin(padding, 1, "padding");
 		this.padding = padding;
@@ -150,6 +160,15 @@ public class EngineHandlerBuilder {
 	
 	public int getPadding() {
 		return padding;
+	}
+	
+	public EngineHandlerBuilder maxEarlyDataSize(long maxSize) {
+		maxEarlyDataSize = maxSize;
+		return this;
+	}
+
+	public long getMaxEarlyDataSize() {
+		return maxEarlyDataSize;
 	}
 	
 	public EngineHandlerBuilder ticketInfos(long... maxEarlyDataSizes) {
@@ -171,7 +190,7 @@ public class EngineHandlerBuilder {
 		}
 		return this;
 	}
-	
+		
 	public TicketInfo[] getTicketInfos() {
 		return tickets;
 	}
@@ -223,22 +242,24 @@ public class EngineHandlerBuilder {
 					tm, 
 					random, 
 					manager, 
-					padding, 
 					safeClone(tickets),
-					earlyDataHandler, 
+					padding, 
+					maxEarlyDataSize,
 					hostNameVerifier,
-					protocolHandler);
+					protocolHandler,
+					earlyDataHandler);
 		}
 		return new EngineHandler(
 				selector, 
 				validator, 
 				random, 
 				manager, 
-				padding, 
 				safeClone(tickets),
-				earlyDataHandler, 
+				padding, 
+				maxEarlyDataSize,
 				hostNameVerifier,
-				protocolHandler);
+				protocolHandler,
+				earlyDataHandler);
 	}
 
 	public EngineHandler build(IEarlyDataHandler earlyDataHandler, IHostNameVerifier hostNameVerifier) {

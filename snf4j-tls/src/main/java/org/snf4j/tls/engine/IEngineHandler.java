@@ -63,15 +63,6 @@ public interface IEngineHandler {
 	 */
 	void selectedApplicationProtocol(String protocol) throws Alert;
 	
-	/**
-	 * Called after successful handshake.
-	 * 
-	 * @param protocol the name of established protocol or {@code null} if no
-	 *                 application protocol is used
-	 * @throws Alert if an error occurred
-	 */
-	void handshakeFinished(String protocol) throws Alert;
-
 	ICertificateSelector getCertificateSelector();
 	
 	ICertificateValidator getCertificateValidator();
@@ -79,12 +70,21 @@ public interface IEngineHandler {
 	int calculatePadding(ContentType type, int contentLength);
 	
 	long getKeyLimit(CipherSuite cipher, long defaultValue);
-	
+		
 	TicketInfo[] createNewTickets();
 	
 	ISessionManager getSessionManager();
 	
 	SecureRandom getSecureRandom();
 
+	/**
+	 * Determines the max size of incoming early data that was rejected by server.
+	 * This size should also include possible padding as without cryptographic
+	 * material servers will not be able to differentiate padding from content.
+	 * 
+	 * @return the max size of incoming early data
+	 */
+	long getMaxEarlyDataSize();
+	
 	IEarlyDataHandler getEarlyDataHandler();
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP_AGAIN;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_TASK;
 import org.junit.Test;
 import org.snf4j.core.engine.EngineResult;
@@ -929,7 +930,7 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("U|OK:tt|T|t|T|w|W|OK:ww|W|OK:uu|", fc.trace());
 		flip();
 		fc.fly(cli, in, out);
-		assertEquals("U|OK:uu|U|OK:tt|T|u|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		assertEquals("U|OK:uu|U|OK:tt|T|ua|U|OK:ww|W|OK:fnh|NH|", fc.trace());
 		flip();
 		fc.fly(srv, in, out);
 		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
@@ -963,7 +964,7 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("U|OK:tt|T|w|W|OK:ww|W|OK:uu|", fc.trace());
 		flip();
 		fc.fly(cli, in, out);
-		assertEquals("U|OK:uu|U|OK:tt|T|u|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		assertEquals("U|OK:uu|U|OK:tt|T|ua|U|OK:ww|W|OK:fnh|NH|", fc.trace());
 		flip();
 		fc.fly(srv, in, out);
 		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
@@ -1667,7 +1668,7 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("U|OK:tt|T|w|W|OK:ww|W|OK:uu|", fc.trace());
 		flip();
 		fc.fly(cli, in, out);
-		assertEquals("U|OK:uu|U|OK:tt|T|u|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		assertEquals("U|OK:uu|U|OK:tt|T|ua|U|OK:ww|W|OK:fnh|NH|", fc.trace());
 		flip();
 		fc.fly(srv, in, out);
 		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
@@ -2718,7 +2719,7 @@ public class TLSEngineTest extends EngineTest {
 		assertNull(cli.getDelegatedTask());
 		assertSame(NEED_TASK, cli.getHandshakeStatus());
 		t.run();
-		assertSame(NEED_UNWRAP, cli.getHandshakeStatus());
+		assertSame(NEED_UNWRAP_AGAIN, cli.getHandshakeStatus());
 		assertSame(NEED_WRAP, cli.unwrap(in, out).getHandshakeStatus());
 	}
 	
@@ -3061,10 +3062,10 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("U|OK:tt|T|w|W|OK:ww|W|OK:ww|W|OK:uu|", fc.trace());
 		flip();
 		fc.fly(cli, in, out);
-		assertEquals("U|OK:uu|U|OK:uu|U|OK:tt|T|u|U|OK:tt|T|w|W|OK:ww|W|OK:fnh|NH|", fc.trace());
+		assertEquals("U|OK:uu|U|OK:uu|U|OK:tt|T|ua|U|OK:tt|T|w|W|OK:ww|W|OK:fnh|NH|", fc.trace());
 		flip();
 		fc.fly(srv, in, out);
-		assertEquals("U|OK:uu|U|OK:tt|T|u|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		assertEquals("U|OK:uu|U|OK:tt|T|ua|U|OK:ww|W|OK:fnh|NH|", fc.trace());
 		flip();
 		fc.fly(cli, in, out);
 		assertEquals("U|OK:nhnh|", fc.trace());
@@ -3511,8 +3512,8 @@ public class TLSEngineTest extends EngineTest {
 		HandshakeEngine c = (HandshakeEngine) handshaker(cli);
 		assertEquals("xxx", c.getState().getApplicationProtocol());
 		assertEquals("xxx", s.getState().getApplicationProtocol());
-		assertEquals("ALPN(yyy|xxx|)|VSN(snf4j.org)|CS|PN(xxx)|", handler.trace());
-		assertEquals("CV|PN(xxx)|", handler2.trace());
+		assertEquals("ALPN(yyy|xxx|)|PN(xxx)|VSN(snf4j.org)|CS|", handler.trace());
+		assertEquals("PN(xxx)|CV|", handler2.trace());
 		
 		//Early data accepted
 		byte[] data = random(90);
@@ -3555,8 +3556,8 @@ public class TLSEngineTest extends EngineTest {
 		c = (HandshakeEngine) handshaker(cli);
 		assertEquals("xxx", c.getState().getApplicationProtocol());
 		assertEquals("xxx", s.getState().getApplicationProtocol());
-		assertEquals("ALPN(xxx|)|VSN(snf4j.org)|PN(xxx)|", handler.trace());
-		assertEquals("AED|PN(xxx)|", handler2.trace());
+		assertEquals("ALPN(xxx|)|PN(xxx)|VSN(snf4j.org)|", handler.trace());
+		assertEquals("PN(xxx)|AED|", handler2.trace());
 
 		//Early data rejected
 		handler.protocol = "yyy";
@@ -3604,8 +3605,8 @@ public class TLSEngineTest extends EngineTest {
 		c = (HandshakeEngine) handshaker(cli);
 		assertEquals("yyy", c.getState().getApplicationProtocol());
 		assertEquals("yyy", s.getState().getApplicationProtocol());
-		assertEquals("ALPN(yyy|)|VSN(snf4j.org)|PN(yyy)|", handler.trace());
-		assertEquals("RED|PN(yyy)|", handler2.trace());	
+		assertEquals("ALPN(yyy|)|PN(yyy)|VSN(snf4j.org)|", handler.trace());
+		assertEquals("PN(yyy)|RED|", handler2.trace());	
 	}
 	
 	@Test

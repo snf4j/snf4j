@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@ import static org.junit.Assert.fail;
 import static org.snf4j.core.engine.HandshakeStatus.FINISHED;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_TASK;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP_AGAIN;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
 import static org.snf4j.core.engine.HandshakeStatus.NOT_HANDSHAKING;
 import static org.snf4j.core.engine.Status.CLOSED;
@@ -127,6 +128,13 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		return data;
 	}
 
+	ByteBuffer copy(ByteBuffer buf) {
+		ByteBuffer buf2 = ByteBuffer.allocate(buf.capacity());
+		buf = buf.duplicate();
+		buf2.put(buf).flip();
+		return buf2;
+	}
+	
 	SSLEngine sslServer(ClientAuth clientAuth, X509Certificate trustCert) throws Exception {
 		SSLContextBuilder builder = SSLContextBuilder.forServer(key("EC", "secp256r1"), cert("secp256r1"));
 		builder.protocol("TLSv1.3").trustManager(trustCert);
@@ -142,7 +150,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 	
 	SSLEngine sslServer(SSLContext ctx) throws Exception {
 		SSLEngineBuilder engineBuilder = SSLEngineBuilder.forServer(ctx);
-		return engineBuilder.build();
+		return engineBuilder.clientAuth(ClientAuth.NONE).build();
 	}
 	
 	SSLEngine sslClient(boolean useKeyManager) throws Exception {
@@ -1026,7 +1034,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(6, 0);
 		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position()-6, 0);
 		tls.getDelegatedTask().run();
-		assertEngine(tls, NEED_UNWRAP);
+		assertEngine(tls, NEED_UNWRAP_AGAIN);
 		clear();
 		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
 		
@@ -1170,12 +1178,24 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 			flip();
 			assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
 			ssl.getDelegatedTask().run();
-			assertEngine(ssl, NEED_UNWRAP);
-			//EncryptedExtension
+			assertEngine(ssl, NEED_WRAP);
+			//CCS ->
 			clear();
-			assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
-			assertInOut(0, out.position());
+			assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+			assertInOut(0, 6);
+			out.flip();
+			ByteBuffer ccs = copy(out);
+			//CCS ->
+			clear();
+			assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, out.position());
+			//EncryptedExtension ->
+			assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position()-6);
+			//CCS <-
+			assertResult(tls.unwrap(ccs, out), OK, NEED_UNWRAP, ccs.limit(), 0);
 			flip();
+			//CCS <-
+			assertResult(ssl.unwrap(in, out), OK, NEED_UNWRAP);
+			//EncryptedExtension <-
 			assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
 			ssl.getDelegatedTask().run();
 			assertEngine(ssl, NEED_WRAP);
@@ -1223,7 +1243,11 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		//HRR ->
 		clear();
-		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, out.position());
+		
+		
+		
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, 6);
 		assertEngine(tls, NEED_UNWRAP);
 		assertInOut(0, out.position());
 		//HRR <-
@@ -1249,6 +1273,14 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		flip();
 		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
 		ssl.getDelegatedTask().run();
+		
+		assertEngine(ssl, NEED_WRAP);
+		//CCS ->
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		out.flip();
+		ByteBuffer ccs = copy(out);
+		out.clear();
+		
 		assertEngine(ssl, NEED_UNWRAP);
 		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
 		ssl.getDelegatedTask().run();
@@ -1257,6 +1289,8 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		clear();
 		assertResult(ssl.wrap(in, out), OK, FINISHED);
 		flip();
+		//CCS <-
+		assertResult(tls.unwrap(ccs, out), OK, NEED_UNWRAP, 6, 0);
 		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.limit(), 0);
 		assertEngine(tls, NEED_WRAP);
 		assertInOut(in.limit(), 0);
@@ -1290,7 +1324,8 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		assertInOut(in.limit(), 0);
 		//HRR ->
 		clear();
-		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		assertResult(tls.wrap(in, out), OK, NEED_WRAP, 0, out.position());
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, 6);
 		assertEngine(tls, NEED_UNWRAP);
 		assertInOut(0, out.position());
 		//HRR <-
@@ -1318,6 +1353,13 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		flip();
 		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
 		ssl.getDelegatedTask().run();
+		
+		assertEngine(ssl, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		out.flip();
+		ccs = copy(out);
+		out.clear();
+		
 		assertEngine(ssl, NEED_UNWRAP);
 		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
 		ssl.getDelegatedTask().run();
@@ -1326,6 +1368,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		clear();
 		assertResult(ssl.wrap(in, out), OK, FINISHED);
 		flip();
+		assertResult(tls.unwrap(ccs, out), OK, NEED_UNWRAP, 6, 0);
 		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.limit(), 0);
 		assertEngine(tls, NEED_WRAP);
 		assertInOut(in.limit(), 0);
@@ -1864,7 +1907,15 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		clear();
 		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
 		flip();
-		assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position(), 0);
+		if (in.remaining() > 200) {
+			assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+			tls.getDelegatedTask().run();
+			assertEngine(tls, NEED_UNWRAP_AGAIN);
+			assertResult(tls.unwrap(in, out), OK, NEED_WRAP, 0, 0);
+		}
+		else {
+			assertResult(tls.unwrap(in, out), OK, NEED_WRAP, in.position(), 0);
+		}
 		clear();
 		assertResult(tls.wrap(in, out), OK, FINISHED, 0, out.position());
 		assertEngine(tls, HandshakeStatus.NOT_HANDSHAKING);
@@ -2185,7 +2236,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 				handler);
 		prepareForClient(tls, ssl);
 		assertEquals("", appicationProtocol(ssl));
-		assertEquals("CV|PN(null)|", handler.trace());
+		assertEquals("PN(null)|CV|", handler.trace());
 
 		ssl = sslServer();
 		appicationProtocol(ssl, "xxx");
@@ -2195,7 +2246,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 				handler);
 		prepareForClient(tls, ssl);
 		assertEquals("", appicationProtocol(ssl));
-		assertEquals("CV|PN(null)|", handler.trace());
+		assertEquals("PN(null)|CV|", handler.trace());
 	}
 
 	@Test
@@ -2211,7 +2262,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 				handler);
 		prepareForClient(tls, ssl);
 		assertEquals("xxx", appicationProtocol(ssl));
-		assertEquals("CV|PN(xxx)|", handler.trace());
+		assertEquals("PN(xxx)|CV|", handler.trace());
 
 		ssl = sslServer();
 		appicationProtocol(ssl, "xxx");
@@ -2222,7 +2273,7 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 				handler);
 		prepareForClient(tls, ssl);
 		assertEquals("xxx", appicationProtocol(ssl));
-		assertEquals("CV|PN(xxx)|", handler.trace());
+		assertEquals("PN(xxx)|CV|", handler.trace());
 	}
 
 	@Test

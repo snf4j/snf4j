@@ -27,8 +27,6 @@ package org.snf4j.tls.engine;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -110,112 +108,34 @@ public class EngineHandlerTest extends CommonTest {
 		assertEquals(padding-1, h.calculatePadding(ContentType.APPLICATION_DATA, padding+1));
 	}
 	
+	EngineHandler handler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager, int padding) {
+		return new EngineHandler(km, alias, tm, random, manager, null, padding, 0, null, null, null);
+	}
+	
 	@Test
 	public void testConstructor() throws Exception {
-		EngineHandler h = new EngineHandler(km, "key", tm, random, sm, 16);
+		EngineHandler h = handler(km, "key", tm, random, sm, 16);
 		assertSame(random, h.getSecureRandom());
 		assertSame(sm, h.getSessionManager());
 		assertSelector(h, km, "key");
 		assertValidator(h, tm);
 		assertPadding(h, 16);
 
-		h = new EngineHandler(km, "key", tm, random, sm);
-		assertSame(random, h.getSecureRandom());
-		assertSame(sm, h.getSessionManager());
-		assertSelector(h, km, "key");
-		assertValidator(h, tm);
-		assertPadding(h, 4096);
-		
-		h = new EngineHandler(km, "key", tm, sm, 16);
-		assertNotSame(random, h.getSecureRandom());
-		assertNotSame(new EngineHandler(km, "key", tm, sm, 16).getSecureRandom(), h.getSecureRandom());
-		assertSame(sm, h.getSessionManager());
-		assertSelector(h, km, "key");
-		assertValidator(h, tm);
-		assertPadding(h, 16);
-
-		h = new EngineHandler(km, "key", tm, sm);
-		assertNotSame(random, h.getSecureRandom());
-		assertSame(sm, h.getSessionManager());
-		assertSelector(h, km, "key");
-		assertValidator(h, tm);
-		assertPadding(h, 4096);
-
-		h = new EngineHandler(km, "key", tm, random);
-		assertSame(random, h.getSecureRandom());
-		assertNotNull(h.getSessionManager());
-		assertNotSame(sm, h.getSessionManager());
-		ISessionManager commonSm = h.getSessionManager();
-		assertSelector(h, km, "key");
-		assertValidator(h, tm);
-		assertPadding(h, 4096);
-
-		h = new EngineHandler(km, "key", tm);
-		assertNotSame(random, h.getSecureRandom());
-		assertSame(commonSm, h.getSessionManager());
-		assertSelector(h, km, "key");
-		assertValidator(h, tm);
-		assertPadding(h, 4096);
-
-	
-		h = new EngineHandler(km, tm, random, sm, 16);
-		assertSame(random, h.getSecureRandom());
-		assertSame(sm, h.getSessionManager());
-		assertSelector(h, km, null);
-		assertValidator(h, tm);
-		assertPadding(h, 16);
-
-		h = new EngineHandler(km, tm, random, sm);
-		assertSame(random, h.getSecureRandom());
-		assertSame(sm, h.getSessionManager());
-		assertSelector(h, km, null);
-		assertValidator(h, tm);
-		assertPadding(h, 4096);
-		
-		h = new EngineHandler(km, tm, sm, 16);
-		assertNotSame(random, h.getSecureRandom());
-		assertNotSame(new EngineHandler(km, "key", tm, sm, 16).getSecureRandom(), h.getSecureRandom());
-		assertSame(sm, h.getSessionManager());
-		assertSelector(h, km, null);
-		assertValidator(h, tm);
-		assertPadding(h, 16);
-
-		h = new EngineHandler(km, tm, sm);
-		assertNotSame(random, h.getSecureRandom());
-		assertSame(sm, h.getSessionManager());
-		assertSelector(h, km, null);
-		assertValidator(h, tm);
-		assertPadding(h, 4096);
-
-		h = new EngineHandler(km, tm, random);
-		assertSame(random, h.getSecureRandom());
-		assertNotNull(h.getSessionManager());
-		assertNotSame(sm, h.getSessionManager());
-		assertSelector(h, km, null);
-		assertValidator(h, tm);
-		assertPadding(h, 4096);
-
-		h = new EngineHandler(km, tm);
-		assertNotSame(random, h.getSecureRandom());
-		assertSame(commonSm, h.getSessionManager());
-		assertSelector(h, km, null);
-		assertValidator(h, tm);
-		assertPadding(h, 4096);
 	}
 	
 	@Test
 	public void testVerify() {
-		assertTrue(new EngineHandler(km, tm).verifyServerName(new ServerNameExtension("xxx")));
+		assertTrue(new EngineHandler(km, null, tm, null, null, null, 1, 0, null, null, null).verifyServerName(new ServerNameExtension("xxx")));
 	}
 
 	@Test
 	public void testGetKeyLimit() {
-		assertEquals(1111, new EngineHandler(km, tm).getKeyLimit(null, 1111));
+		assertEquals(1111, new EngineHandler(km, null, tm, null, null, null, 1, 0, null, null, null).getKeyLimit(null, 1111));
 	}
 	
 	@Test
 	public void testCalculatePadding() {
-		EngineHandler h = new EngineHandler(km, "key", tm, random, sm, 16);
+		EngineHandler h = handler(km, "key", tm, random, sm, 16);
 		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 16));
 		assertEquals(1, h.calculatePadding(ContentType.APPLICATION_DATA, 15));
 		assertEquals(1, h.calculatePadding(ContentType.APPLICATION_DATA, 16383));
@@ -224,17 +144,17 @@ public class EngineHandlerTest extends CommonTest {
 		assertEquals(15, h.calculatePadding(ContentType.APPLICATION_DATA, 17));
 		assertEquals(15, h.calculatePadding(ContentType.APPLICATION_DATA, 17));
 
-		h = new EngineHandler(km, "key", tm, random, sm, 17);
+		h = handler(km, "key", tm, random, sm, 17);
 		assertEquals(1, h.calculatePadding(ContentType.APPLICATION_DATA, 16383));
 		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 16384));
 		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 16385));
 
-		h = new EngineHandler(km, "key", tm, random, sm, 1);
+		h = handler(km, "key", tm, random, sm, 1);
 		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 1));
 		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 2));
 		
 		try {
-			new EngineHandler(km, "key", tm, random, sm, 0);
+			handler(km, "key", tm, random, sm, 0);
 			fail();
 		}
 		catch (IllegalArgumentException e) {
@@ -244,18 +164,20 @@ public class EngineHandlerTest extends CommonTest {
 	
 	@Test
 	public void testCreateNewTickets() {
-		TicketInfo[] tickets = new EngineHandler(km, "key", tm, random, sm, 16).createNewTickets();
+		TicketInfo[] tickets = handler(km, "key", tm, random, sm, 16).createNewTickets();
 		
-		assertEquals(1, tickets.length);
-		assertSame(TicketInfo.NO_MAX_EARLY_DATA_SIZE, tickets[0]);
-		assertEquals(-1, tickets[0].getMaxEarlyDataSize());
+		assertEquals(0, tickets.length);
 	}
 
 	@Test
+	public void testGetMaxEarlyDataSize() {
+		assertEquals(0, handler(km, "key", tm, random, sm, 16).getMaxEarlyDataSize());
+	}
+	
+	@Test
 	public void testEarlyData() {
-		EngineHandler h = new EngineHandler(km, "key", tm, random, sm, 16);
+		EngineHandler h = handler(km, "key", tm, random, sm, 16);
 		
-		assertEquals(0, h.getEarlyDataHandler().getMaxEarlyDataSize());
 		assertFalse(h.getEarlyDataHandler().hasEarlyData());
 		assertNull(h.getEarlyDataHandler().nextEarlyData(null));
 	}
@@ -266,7 +188,7 @@ public class EngineHandlerTest extends CommonTest {
 	
 	@Test
 	public void testSelectApplicationProtocol() throws Exception {
-		EngineHandler h = new EngineHandler(km, "key", tm, random, sm, 16);
+		EngineHandler h = handler(km, "key", tm, random, sm, 16);
 		ALPNExtension alpn = new ALPNExtension("xxx", "yyy");
 		
 		assertNull(h.selectApplicationProtocol(alpn, names()));
@@ -282,7 +204,7 @@ public class EngineHandlerTest extends CommonTest {
 	
 	@Test(expected = NoApplicationProtocolAlert.class)
 	public void testSelectApplicationProtocolAlert1() throws Exception {
-		EngineHandler h = new EngineHandler(km, "key", tm, random, sm, 16);
+		EngineHandler h = handler(km, "key", tm, random, sm, 16);
 		ALPNExtension alpn = new ALPNExtension("xxx", "yyy");
 		
 		assertEquals("yyy", h.selectApplicationProtocol(alpn, names("yy","xx")));

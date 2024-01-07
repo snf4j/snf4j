@@ -37,9 +37,8 @@ import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.example.echo.Logger;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.engine.IApplicationProtocolHandler;
-import org.snf4j.tls.engine.IEarlyDataHandler;
 
-public abstract class EarlyDataHandler extends AbstractStreamHandler implements IApplicationProtocolHandler, IEarlyDataHandler {
+public abstract class EarlyDataHandler extends AbstractStreamHandler implements IApplicationProtocolHandler {
 	
 	private static final IByteBufferAllocator ALLOCATOR = new ThreadLocalCachingAllocator(true);
 	
@@ -58,29 +57,6 @@ public abstract class EarlyDataHandler extends AbstractStreamHandler implements 
 		SessionConfig.updateCodecPipeline(getSession().getCodecPipeline(), protocol);
 	}
 	
-	@Override
-	public long getMaxEarlyDataSize() {
-		return 1024;
-	}
-
-	@Override
-	public boolean hasEarlyData() {
-		return false;
-	}
-
-	@Override
-	public byte[] nextEarlyData(String protocol) {
-		return null;
-	}
-	
-	@Override
-	public void acceptedEarlyData() {
-	}
-
-	@Override
-	public void rejectedEarlyData() {
-	}
-
 	@Override
 	public void event(SessionEvent event) {
 		Logger.inf("session " + event.toString().toLowerCase());

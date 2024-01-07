@@ -51,7 +51,7 @@ public class SessionFactory implements IStreamSessionFactory {
 		
 		return new TLSSession(
 				params, 
-				builder.build(handler, handler), 
+				builder.build(handler), 
 				handler, 
 				false);
 	}

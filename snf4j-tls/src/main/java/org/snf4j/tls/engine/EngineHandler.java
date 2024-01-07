@@ -49,8 +49,6 @@ public class EngineHandler implements IEngineHandler {
 	
 	private final static TicketInfo[] EMPTY_TICKETS = new TicketInfo[0];
 	
-	private final static int DEFAULT_PADDING = 4096; 
-
 	private final static int MAX_CONTENT_LENGTH = 16384; 
 	
 	private final static ICertificateValidator DEFAULT_CERT_VALIDATOR = new ICertificateValidator() {
@@ -114,31 +112,15 @@ public class EngineHandler implements IEngineHandler {
 	
 	private final IApplicationProtocolHandler protocolHandler;
 	
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager, int padding, 
-			TicketInfo[] ticketInfos, 
-			IEarlyDataHandler earlyDataHandler,
-			IHostNameVerifier hostNameVerifier, 
-			IApplicationProtocolHandler protocolHandler) {
-		this(km != null 
-					? new X509KeyManagerCertificateSelector(km, alias) 
-					: DEFAULT_CERT_SELECTOR,
-				tm != null 
-					? new X509TrustManagerCertificateValidator(tm) 
-					: DEFAULT_CERT_VALIDATOR,
-				random,
-				manager,
-				padding,
-				ticketInfos,
-				earlyDataHandler,
-				hostNameVerifier,
-				protocolHandler);
-	}
-
-	public EngineHandler(ICertificateSelector selector, ICertificateValidator validator, SecureRandom random, ISessionManager manager, int padding, 
+	private final long maxEarlyDataSize;
+	
+	public EngineHandler(ICertificateSelector selector, ICertificateValidator validator, SecureRandom random, ISessionManager manager,
 			TicketInfo[] ticketInfos,
-			IEarlyDataHandler earlyDataHandler,
+			int padding, 
+			long maxEarlyDataSize,
 			IHostNameVerifier hostNameVerifier, 
-			IApplicationProtocolHandler protocolHandler) {
+			IApplicationProtocolHandler protocolHandler,
+			IEarlyDataHandler earlyDataHandler) {
 		Args.checkMin(padding, 1, "padding");
 		certificateSelector = selector != null 
 				? selector 
@@ -149,6 +131,7 @@ public class EngineHandler implements IEngineHandler {
 		this.manager = manager == null ? SESSION_MANAGER : manager;
 		this.random = random == null ? new SecureRandom() : random;
 		this.padding = padding;
+		this.maxEarlyDataSize = maxEarlyDataSize;
 		this.earlyDataHandler = earlyDataHandler != null 
 				? earlyDataHandler 
 				: NoEarlyDataHandler.INSTANCE;
@@ -163,62 +146,29 @@ public class EngineHandler implements IEngineHandler {
 				: DEFAULT_PROTOCOL_HANDLER;
 	}
 	
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager, int padding) {
-		this(km, alias, 
-				tm, 
-				random, 
-				manager, 
-				padding, 
-				new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE}, 
-				null, 
-				null, 
-				null);
+	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager,
+			TicketInfo[] ticketInfos, 
+			int padding, 
+			long maxEarlyDataSize,
+			IHostNameVerifier hostNameVerifier, 
+			IApplicationProtocolHandler protocolHandler,
+			IEarlyDataHandler earlyDataHandler) {
+		this(km != null 
+					? new X509KeyManagerCertificateSelector(km, alias) 
+					: DEFAULT_CERT_SELECTOR,
+				tm != null 
+					? new X509TrustManagerCertificateValidator(tm) 
+					: DEFAULT_CERT_VALIDATOR,
+				random,
+				manager,
+				ticketInfos,
+				padding,
+				maxEarlyDataSize,
+				hostNameVerifier,
+				protocolHandler,
+				earlyDataHandler);
 	}
-	
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, ISessionManager manager, int padding) {
-		this(km, alias, tm, null, manager, padding);
-	}
-
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random, ISessionManager manager) {
-		this(km, alias, tm, random, manager, DEFAULT_PADDING);
-	}
-	
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, ISessionManager manager) {
-		this(km, alias, tm, manager, DEFAULT_PADDING);
-	}
-	
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm, SecureRandom random) {
-		this(km, alias, tm, random, null, DEFAULT_PADDING);
-	}
-
-	public EngineHandler(X509KeyManager km, String alias, X509TrustManager tm) {
-		this(km, alias, tm, null, DEFAULT_PADDING);
-	}
-
-	public EngineHandler(X509KeyManager km, X509TrustManager tm, SecureRandom random, ISessionManager manager, int padding) {
-		this(km, null, tm, random, manager, padding);
-	}
-
-	public EngineHandler(X509KeyManager km, X509TrustManager tm, ISessionManager manager, int padding) {
-		this(km, null, tm, null, manager, padding);
-	}
-
-	public EngineHandler(X509KeyManager km, X509TrustManager tm, SecureRandom random, ISessionManager manager) {
-		this(km, null, tm, random, manager, DEFAULT_PADDING);
-	}
-	
-	public EngineHandler(X509KeyManager km, X509TrustManager tm, ISessionManager manager) {
-		this(km, null, tm, manager, DEFAULT_PADDING);
-	}
-
-	public EngineHandler(X509KeyManager km, X509TrustManager tm, SecureRandom random) {
-		this(km, null, tm, random, null, DEFAULT_PADDING);
-	}
-	
-	public EngineHandler(X509KeyManager km, X509TrustManager tm) {
-		this(km, null, tm, null, DEFAULT_PADDING);
-	}
-
+		
 	@Override
 	public String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert {
 		if (alpn != null && supportedProtocols.length > 0) {
@@ -253,10 +203,6 @@ public class EngineHandler implements IEngineHandler {
 	}
 	
 	@Override
-	public void handshakeFinished(String protocol) throws Alert{
-	}
-	
-	@Override
 	public ICertificateSelector getCertificateSelector() {
 		return certificateSelector;
 	}
@@ -268,7 +214,7 @@ public class EngineHandler implements IEngineHandler {
 
 	@Override
 	public int calculatePadding(ContentType type, int contentLength) {
-		if (contentLength >= MAX_CONTENT_LENGTH) {
+		if (padding == 1 || contentLength >= MAX_CONTENT_LENGTH) {
 			return 0;
 		}
 		else if (contentLength > MAX_CONTENT_LENGTH - this.padding) {
@@ -303,6 +249,11 @@ public class EngineHandler implements IEngineHandler {
 		return random;
 	}
 
+	@Override
+	public long getMaxEarlyDataSize() {
+		return maxEarlyDataSize;
+	}
+	
 	@Override
 	public IEarlyDataHandler getEarlyDataHandler() {
 		return earlyDataHandler;

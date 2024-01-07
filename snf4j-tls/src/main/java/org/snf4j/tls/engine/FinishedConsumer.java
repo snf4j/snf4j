@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -97,7 +97,6 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		}
 		
 		state.changeState(MachineState.SRV_CONNECTED);
-		state.getHandler().handshakeFinished(state.getApplicationProtocol());
 	}
 
 	private void consumeClient(EngineState state, IFinished finished, ByteBuffer[] data) throws Alert {
@@ -223,7 +222,6 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			}
 			
 			state.changeState(MachineState.CLI_CONNECTED);
-			state.getHandler().handshakeFinished(state.getApplicationProtocol());
 		}
 	}
 }

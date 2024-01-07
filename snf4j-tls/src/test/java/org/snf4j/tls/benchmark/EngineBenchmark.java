@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,7 @@ import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.engine.DelegatedTaskMode;
 import org.snf4j.tls.engine.EngineHandler;
 import org.snf4j.tls.engine.EngineParametersBuilder;
+import org.snf4j.tls.engine.TicketInfo;
 import org.snf4j.tls.record.ContentType;
 
 public class EngineBenchmark {
@@ -246,7 +247,7 @@ public class EngineBenchmark {
 				.cipherSuites(CipherSuite.TLS_AES_128_GCM_SHA256)
 				.compatibilityMode(true)
 				.build(),
-				new EngineHandler(km,tm) {
+				new EngineHandler(km, null, tm, null, null, new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE}, 1, 0, null, null, null) {
 			
 			@Override
 			public int calculatePadding(ContentType type, int contentLength) {
@@ -261,7 +262,7 @@ public class EngineBenchmark {
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.NONE)
 				.build(),
-				new EngineHandler(km,tm) {
+				new EngineHandler(km, null, tm, null, null, new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE}, 1, 0, null, null, null) {
 			
 			@Override
 			public int calculatePadding(ContentType type, int contentLength) {

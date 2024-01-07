@@ -231,8 +231,9 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		EngineHandlerBuilder b = new EngineHandlerBuilder(km, "key", tm);
 		EngineHandler h = b.build();
 		
-		assertEquals(4096, b.getPadding());
-		assertEquals(4095, h.calculatePadding(ContentType.APPLICATION_DATA, 1));
+		assertEquals(1, b.getPadding());
+		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 1));
+		assertEquals(0, h.calculatePadding(ContentType.APPLICATION_DATA, 2));
 		
 		b.padding(16);
 		h = b.build();
@@ -258,6 +259,24 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		for (int i=0; i<tickets.length; ++i) {
 			assertEquals(sizes[i], tickets[i].getMaxEarlyDataSize());
 		}
+	}
+	
+	@Test
+	public void testMaxEarlyDataSize() {
+		EngineHandlerBuilder b = new EngineHandlerBuilder(km, "key", tm);
+		EngineHandler h = b.build();
+		assertEquals(0,b.getMaxEarlyDataSize());
+		assertEquals(0,h.getMaxEarlyDataSize());
+		
+		b.maxEarlyDataSize(1000);
+		h = b.build();
+		assertEquals(1000,b.getMaxEarlyDataSize());
+		assertEquals(1000,h.getMaxEarlyDataSize());
+
+		b.maxEarlyDataSize(0);
+		h = b.build();
+		assertEquals(0,b.getMaxEarlyDataSize());
+		assertEquals(0,h.getMaxEarlyDataSize());
 	}
 	
 	@Test
@@ -347,11 +366,6 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		assertSame(NoEarlyDataHandler.INSTANCE, h.getEarlyDataHandler());
 		
 		IEarlyDataHandler ed = new IEarlyDataHandler() {
-
-			@Override
-			public long getMaxEarlyDataSize() {
-				return 0;
-			}
 
 			@Override
 			public boolean hasEarlyData() {
@@ -470,11 +484,6 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		
 		TestEarlyDataHandler(String id) {
 			this.id = id;
-		}
-
-		@Override
-		public long getMaxEarlyDataSize() {
-			return 0;
 		}
 
 		@Override

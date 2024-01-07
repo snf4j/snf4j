@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ import org.snf4j.core.pool.DefaultSelectorLoopPool;
 import org.snf4j.core.session.ISession;
 import org.snf4j.tls.TLSSession;
 import org.snf4j.tls.engine.DelegatedTaskMode;
-import org.snf4j.tls.engine.EngineHandler;
+import org.snf4j.tls.engine.EngineHandlerBuilder;
 import org.snf4j.tls.engine.EngineParametersBuilder;
 
 public class Controller implements Config {
@@ -152,7 +152,7 @@ public class Controller implements Config {
 
 			s = new TLSSession(
 					builder.build(), 
-					new EngineHandler(SessionConfig.km,SessionConfig.tm), 
+					new EngineHandlerBuilder(SessionConfig.km,SessionConfig.tm).build(), 
 					new ClientHandler(), 
 					true);
 		}

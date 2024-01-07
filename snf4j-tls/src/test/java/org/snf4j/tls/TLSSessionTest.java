@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -393,18 +393,22 @@ public class TLSSessionTest extends CommonTest {
 		byte[] earlyData;
 		
 		public TestEngineHandler(X509KeyManager km, X509TrustManager tm, ISessionManager mgr, byte[] earlyData) {
-			super(km, tm, mgr);
+			super(km, null, tm, null, mgr, new TicketInfo[] {TicketInfo.NO_MAX_EARLY_DATA_SIZE}, 1, 0, null, null, null);
 			this.earlyData = earlyData == null ? null : earlyData.clone();
 		}
 		
 		public TestEngineHandler(X509KeyManager km, X509TrustManager tm, byte[] earlyData) {
-			super(km, tm);
-			this.earlyData = earlyData == null ? null : earlyData.clone();
+			this(km, tm, null, earlyData);
 		}
 
 		@Override
 		public int calculatePadding(ContentType type, int contentLength) {
 			return 0;
+		}
+		
+		@Override
+		public long getMaxEarlyDataSize() {
+			return 16384;
 		}
 		
 		@Override
@@ -421,11 +425,6 @@ public class TLSSessionTest extends CommonTest {
 		}
 		
 		class TestEarlyDataHandler implements IEarlyDataHandler {
-
-			@Override
-			public long getMaxEarlyDataSize() {
-				return 16384;
-			}
 
 			@Override
 			public boolean hasEarlyData() {
