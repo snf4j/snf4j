@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,10 +25,13 @@
  */
 package org.snf4j.tls.longevity;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.core.session.ISession;
+import org.snf4j.tls.session.SessionCache;
+import org.snf4j.tls.session.SessionManager;
 
 public class Metric implements Config {
 	
@@ -144,6 +147,23 @@ public class Metric implements Config {
 		return print(t, timeUnit);
 	}
 
+	static int cacheSize(SessionManager mgr, String name) {
+		int size = 0;
+		
+		try {
+			Field f = SessionManager.class.getDeclaredField(name);
+			f.setAccessible(true);
+			SessionCache<?> c = (SessionCache<?>) f.get(mgr);
+			
+			synchronized(c) {
+				size = c.size();
+			}
+			
+		} catch (Exception e) {
+		}
+		return size;
+	}
+	
 	static void print() {
 		if (!ENABLE_METRIC_PRINT) {
 			return;
@@ -178,7 +198,7 @@ public class Metric implements Config {
 		sb.append("max: ");
 		sb.append(printTime(System.currentTimeMillis() - longestSession.get()));
 		sb.append("\t");
-		
+				
 		sb.append("alloc: ");
 		sb.append(printBytes(ALLOCATOR_METRIC.getAllocatingCount()));
 		sb.append('/');
@@ -189,6 +209,11 @@ public class Metric implements Config {
 		sb.append(printBytes(ALLOCATOR_METRIC.getMaxCapacity()));
 		sb.append(")\t");
 		
+		sb.append("cache S/C: ");
+		sb.append(cacheSize(Controller.serverManager, "cacheById"));
+		sb.append('/');
+		sb.append(cacheSize(Controller.clientManager, "cacheByIpPort"));
+
 		System.out.println(sb.toString());		
 	}
 	

@@ -27,11 +27,13 @@ package org.snf4j.tls.longevity;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.StandardSocketOptions;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.StreamSession;
@@ -42,6 +44,7 @@ import org.snf4j.tls.TLSSession;
 import org.snf4j.tls.engine.DelegatedTaskMode;
 import org.snf4j.tls.engine.EngineHandlerBuilder;
 import org.snf4j.tls.engine.EngineParametersBuilder;
+import org.snf4j.tls.session.SessionManager;
 
 public class Controller implements Config {
 	
@@ -58,6 +61,12 @@ public class Controller implements Config {
 	static final List<SelectorLoop> serverLoops = new ArrayList<SelectorLoop>();
 	
 	public final static Random random = new Random(System.currentTimeMillis());
+	
+	public final static AtomicLong nextClientId = new AtomicLong();
+	
+	public final static SessionManager clientManager = new SessionManager(86400, 20480);
+	
+	public final static SessionManager serverManager = new SessionManager(86400, 20480);
 	
 	static int clients;
 	
@@ -111,6 +120,7 @@ public class Controller implements Config {
 
 			ServerSocketChannel channel = ServerSocketChannel.open();
 			channel.configureBlocking(false);
+			channel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 			channel.socket().bind(new InetSocketAddress(port));
 			
 			if (ssl) {
@@ -127,6 +137,16 @@ public class Controller implements Config {
 		}
 	}
 	
+	static String host() {
+		if (Config.USE_HOSTNAME) {
+			if (Config.SINGLE_HOSTNAME) {
+				return "c0.snf4j.org";
+			}
+			return "c"+nextClientId.incrementAndGet()+".snf4j.org";
+		}
+		return null;
+	}
+	
 	static ISession createSession(boolean ssl) throws Exception {
 		int port;
 		
@@ -141,6 +161,7 @@ public class Controller implements Config {
 		
 		SocketChannel channel = SocketChannel.open();
 		channel.configureBlocking(false);
+		channel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 		channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), port));
 
 		StreamSession s;
@@ -150,9 +171,17 @@ public class Controller implements Config {
 					.delegatedTaskMode(DelegatedTaskMode.ALL)
 					.compatibilityMode(false);
 
+			String host = host();
+			
+			if (host != null) {
+				builder.peerHost(host).peerPort(1000);
+			}
+			
 			s = new TLSSession(
 					builder.build(), 
-					new EngineHandlerBuilder(SessionConfig.km,SessionConfig.tm).build(), 
+					new EngineHandlerBuilder(SessionConfig.km,SessionConfig.tm)
+					.sessionManager(clientManager)
+					.build(), 
 					new ClientHandler(), 
 					true);
 		}

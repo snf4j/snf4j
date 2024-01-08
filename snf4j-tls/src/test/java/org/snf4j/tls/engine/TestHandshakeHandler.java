@@ -33,6 +33,7 @@ import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IALPNExtension;
 import org.snf4j.tls.extension.IServerNameExtension;
+import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.KeyUpdateRequest;
 import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.RecordType;
@@ -223,6 +224,10 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 		trace("KU(" + request.name() +")");
 	}
 
+	@Override
+	public void onHandshake(IEngineState state, IHandshake handshake) throws Alert {
+	}
+	
 	@Override
 	public SecureRandom getSecureRandom() {
 		if (getSecureRandomException != null) {

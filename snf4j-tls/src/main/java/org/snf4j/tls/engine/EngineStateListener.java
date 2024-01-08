@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ package org.snf4j.tls.engine;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.crypto.TrafficKeys;
+import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.KeyUpdateRequest;
 import org.snf4j.tls.record.Decryptor;
 import org.snf4j.tls.record.Encryptor;
@@ -198,6 +199,10 @@ public class EngineStateListener implements IEngineStateListener, IEncryptorHold
 	
 	@Override
 	public void onKeyUpdate(IEngineState state, KeyUpdateRequest request) {		
+	}
+	
+	@Override
+	public void onHandshake(IEngineState state, IHandshake handshake) throws Alert {
 	}
 	
 	@Override

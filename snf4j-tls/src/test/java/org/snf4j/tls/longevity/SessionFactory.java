@@ -25,6 +25,7 @@
  */
 package org.snf4j.tls.longevity;
 
+import java.net.StandardSocketOptions;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -47,23 +48,19 @@ public class SessionFactory extends AbstractSessionFactory {
 	
 	@Override
 	public StreamSession create(SocketChannel channel) throws Exception {
+		channel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 		EngineParametersBuilder builder = new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.ALL);
 
 		return new TLSSession(
 				builder.build(),
-				new EngineHandlerBuilder(SessionConfig.km, SessionConfig.tm).build(),
+				new EngineHandlerBuilder(SessionConfig.km, SessionConfig.tm)
+				.sessionManager(Controller.serverManager)
+				.build(),
 				new ServerHandler(),
 				false
 				);
-		
-//		StreamSession s = super.create(channel);
-		
-//		if (s instanceof IEngineSession) {
-//			((IEngineSession)s).setExecutor(executor);
-//		}
-//		return s;
-	}
+			}
 	
 	@Override
 	protected IStreamHandler createHandler(SocketChannel channel) {

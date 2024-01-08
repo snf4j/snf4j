@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,11 +57,15 @@ public interface Config {
 	
 	static final int PACKET_SIZE = 1024;
 	
-	static final long SESSION_SIZE = 1024*1024;
+	static final long SESSION_SIZE = 1024*1024*5;
 	
 	static final int MAX_SESSIONS = 100;
 	
 	static final int CLIENT_RESPONSE_DELAY = 0;
 	
 	static final int SERVER_SLEEP_TIME = 0;
+	
+	static final boolean USE_HOSTNAME = true;
+	
+	static final boolean SINGLE_HOSTNAME = true;
 }
