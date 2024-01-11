@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -149,14 +149,14 @@ public class ServerHelloConsumerTest extends EngineTest {
 		random = ServerHelloRandom.getHelloRetryRequestRandom();
 		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
 		ServerHello sh = serverHello(0x0303);
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1, false));
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
 		assertSame(MachineState.CLI_WAIT_1_SH, state.getState());
 		ProducedHandshake[] produced = state.getProduced();
 		assertEquals(1, produced.length);
-		assertNull(state.getPrivateKey(NamedGroup.SECP256R1));
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1, false));
 		ClientHello ch = (ClientHello) produced[0].getHandshake();
 		IKeyShareExtension keyShare = ExtensionsUtil.find(ch, ExtensionType.KEY_SHARE);
 		assertEquals(1, keyShare.getEntries().length);
@@ -178,16 +178,16 @@ public class ServerHelloConsumerTest extends EngineTest {
 		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
 		legacySessionId = ch.getLegacySessionId().clone();
 		ServerHello sh = serverHello(0x0303);
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1, false));
 		assertEquals("", handler.trace());
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
 		assertEquals("prodCCS|", handler.trace());
 		assertSame(MachineState.CLI_WAIT_1_SH, state.getState());
 		ProducedHandshake[] produced = state.getProduced();
 		assertEquals(1, produced.length);
-		assertNull(state.getPrivateKey(NamedGroup.SECP256R1));
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1, false));
 		ClientHello ch = (ClientHello) produced[0].getHandshake();
 		IKeyShareExtension keyShare = ExtensionsUtil.find(ch, ExtensionType.KEY_SHARE);
 		assertEquals(1, keyShare.getEntries().length);
@@ -209,8 +209,8 @@ public class ServerHelloConsumerTest extends EngineTest {
 		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
 		legacySessionId = ch.getLegacySessionId().clone();
 		ServerHello sh = serverHello(0x0303);
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1, false));
 		assertEquals("", handler.trace());
 		state.setEarlyDataContext(new EarlyDataContext(sh.getCipherSuite(), 100));
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
@@ -218,8 +218,8 @@ public class ServerHelloConsumerTest extends EngineTest {
 		assertSame(MachineState.CLI_WAIT_1_SH, state.getState());
 		ProducedHandshake[] produced = state.getProduced();
 		assertEquals(1, produced.length);
-		assertNull(state.getPrivateKey(NamedGroup.SECP256R1));
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1, false));
 		ClientHello ch = (ClientHello) produced[0].getHandshake();
 		IKeyShareExtension keyShare = ExtensionsUtil.find(ch, ExtensionType.KEY_SHARE);
 		assertEquals(1, keyShare.getEntries().length);
@@ -233,15 +233,15 @@ public class ServerHelloConsumerTest extends EngineTest {
 		random = ServerHelloRandom.getHelloRetryRequestRandom();
 		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
 		ServerHello sh = serverHello(0x0303);
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
 		assertSame(MachineState.CLI_WAIT_TASK, state.getState());
 		state.getTask().run();
 		ProducedHandshake[] produced = state.getProduced();
 		assertSame(MachineState.CLI_WAIT_2_SH, state.getState());
 		assertEquals(1, produced.length);
-		assertNull(state.getPrivateKey(NamedGroup.SECP256R1));
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1, false));
 		ClientHello ch = (ClientHello) produced[0].getHandshake();
 		IKeyShareExtension keyShare = ExtensionsUtil.find(ch, ExtensionType.KEY_SHARE);
 		assertEquals(1, keyShare.getEntries().length);
@@ -254,13 +254,13 @@ public class ServerHelloConsumerTest extends EngineTest {
 		random = ServerHelloRandom.getHelloRetryRequestRandom();
 		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
 		ServerHello sh = serverHello(0x0303);
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
 		assertSame(MachineState.CLI_WAIT_2_SH, state.getState());
 		ProducedHandshake[] produced = state.getProduced();
 		assertEquals(1, produced.length);
-		assertNull(state.getPrivateKey(NamedGroup.SECP256R1));
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1));
+		assertNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP384R1, false));
 		ClientHello ch = (ClientHello) produced[0].getHandshake();
 		IKeyShareExtension keyShare = ExtensionsUtil.find(ch, ExtensionType.KEY_SHARE);
 		assertEquals(1, keyShare.getEntries().length);
@@ -338,7 +338,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 		random = ServerHelloRandom.getHelloRetryRequestRandom();
 		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
 		ServerHello sh = serverHello(0x0303);
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
 		assertSame(MachineState.CLI_WAIT_TASK, state.getState());
 		state.getTask().run();
@@ -358,7 +358,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 		random = ServerHelloRandom.getHelloRetryRequestRandom();
 		replace(extensions, new KeyShareExtension(NamedGroup.SECP384R1));
 		ServerHello sh = serverHello(0x0303);
-		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1));
+		assertNotNull(state.getPrivateKey(NamedGroup.SECP256R1, false));
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
 		assertSame(MachineState.CLI_WAIT_TASK, state.getState());
 		state.getTask().run();

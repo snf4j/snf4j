@@ -117,6 +117,7 @@ public class TLSEngine implements IEngine {
 
 	@Override
 	public void cleanup() {
+		handshaker.cleanup();
 	}
 
 	private void beginStatus() {

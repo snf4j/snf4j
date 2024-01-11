@@ -312,6 +312,11 @@ public class HandshakeEngine implements IHandshakeEngine {
 		state.produce(new ProducedHandshake(new KeyUpdate(true), RecordType.APPLICATION, RecordType.NEXT_GEN));
 	}
 	
+	@Override
+	public void cleanup() {
+		state.cleanup();
+	}
+	
 	static class KeyExchangeTask extends AbstractEngineTask {
 
 		private final NamedGroup[] namedGroups;
@@ -530,6 +535,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 					keySchedule.getTranscriptHash().update(HandshakeType.CLIENT_HELLO, clientHello.getPrepared());
 					keySchedule.deriveEarlyTrafficSecret();
 					state.getListener().onNewTrafficSecrets(new EngineStateWrapper(state, keySchedule),	RecordType.ZERO_RTT);
+					keySchedule.eraseEarlyTrafficSecret();
 				}
 				catch (Exception e) {
 					throw new InternalErrorAlert("Failed to derive early traffic secret", e);

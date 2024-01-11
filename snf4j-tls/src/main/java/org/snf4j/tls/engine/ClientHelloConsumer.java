@@ -346,6 +346,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 								&& ticket.forEarlyData(protocol)) {
 							state.getKeySchedule().deriveEarlyTrafficSecret();
 							state.getListener().onNewTrafficSecrets(state, RecordType.ZERO_RTT);
+							state.getKeySchedule().eraseEarlyTrafficSecret();
 							state.getListener().onNewReceivingTraficKey(state, RecordType.ZERO_RTT);
 							state.setEarlyDataContext(new EarlyDataContext(
 									ticket.getCipherSuite(), 
@@ -520,6 +521,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			
 			try {
 				state.getKeySchedule().deriveHandshakeSecret(secret);
+				state.getKeySchedule().eraseEarlySecret();
 				state.getKeySchedule().deriveHandshakeTrafficSecrets();
 			}
 			catch (Exception e) {
@@ -601,6 +603,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				Finished finished = new Finished(state.getKeySchedule().computeServerVerifyData());
 				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
 				state.getKeySchedule().deriveMasterSecret();
+				state.getKeySchedule().eraseHandshakeSecret();
 				state.getKeySchedule().deriveApplicationTrafficSecrets();
 			} catch (Exception e) {
 				throw new InternalErrorAlert("Failed to compute server verify data", e);

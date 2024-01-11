@@ -82,6 +82,7 @@ import org.snf4j.tls.record.ContentType;
 import org.snf4j.tls.record.Cryptor;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.Record;
+import org.snf4j.tls.record.RecordType;
 import org.snf4j.tls.session.ISession;
 
 public class TLSEngineTest extends EngineTest {
@@ -1642,6 +1643,15 @@ public class TLSEngineTest extends EngineTest {
 		assertClosing(cli,true,true);
 		assertInOut(0,0);
 		assertClosed(cli,srv);
+	}
+
+	@Test
+	public void testCleanup() throws Exception {
+		prepareConnection();
+		Encryptor[] e = encryptors(cli);
+		assertNotNull(e[RecordType.APPLICATION.ordinal()]);	
+		cli.cleanup();
+		assertNull(e[RecordType.APPLICATION.ordinal()]);	
 	}
 	
 	@Test

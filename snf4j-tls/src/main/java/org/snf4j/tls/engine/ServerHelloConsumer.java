@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -136,10 +136,9 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 				IExtension extension = extensions.get(i);
 				
 				if (extension.getType().equals(ExtensionType.KEY_SHARE)) {
-					PrivateKey key = state.getPrivateKey(group);
+					PrivateKey key = state.getPrivateKey(group, true);
 					
 					keyShareFound = true;
-					state.clearPrivateKeys();
 					if (key == null) {
 						ISupportedGroupsExtension suppGroups = find(clientHello, ExtensionType.SUPPORTED_GROUPS);
 						
@@ -415,7 +414,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		state.getTranscriptHash().update(handshake.getType(), data);
 		
 		NamedGroup namedGroup = keyShare.getEntries()[0].getNamedGroup();
-		PrivateKey privateKey = state.getPrivateKey(namedGroup);
+		PrivateKey privateKey = state.getPrivateKey(namedGroup, true);
 		if (privateKey == null) {
 			throw new IllegalParameterAlert("Unexpected supported group in ServerHello");
 		}
@@ -425,6 +424,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			byte[] secret = keyExchange.generateSecret(privateKey, publicKey, state.getHandler().getSecureRandom());
 			
 			state.getKeySchedule().deriveHandshakeSecret(secret);
+			state.getKeySchedule().eraseEarlySecret();
 			state.getKeySchedule().deriveHandshakeTrafficSecrets();
 		} 
 		catch (Exception e) {
@@ -433,6 +433,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		state.getListener().onNewTrafficSecrets(state, RecordType.HANDSHAKE);
 		state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);
 		state.setVersion(negotiatedVersion);
+		state.setClientHello(null);
 		state.changeState(MachineState.CLI_WAIT_EE);
 	}
 

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -356,13 +356,20 @@ public class EngineState implements IEngineState, IEngineProducer {
 		privateKeys.add(new KeySharePrivateKey(group, key));
 	}
 
-	public PrivateKey getPrivateKey(NamedGroup group) {
+	public PrivateKey getPrivateKey(NamedGroup group, boolean clearAll) {
 		if (privateKeys != null) {
+			PrivateKey key = null;
+			
 			for (KeySharePrivateKey privateKey: privateKeys) {
 				if (privateKey.getGroup().equals(group)) {
-					return privateKey.getKey();
+					key = privateKey.getKey();
+					break;
 				}
 			}
+			if (clearAll) {
+				clearPrivateKeys();
+			}
+			return key;
 		}
 		return null;
 	}
@@ -427,4 +434,12 @@ public class EngineState implements IEngineState, IEngineProducer {
 		this.certCryteria = certCryteria;
 	}
 
+	public void cleanup() {
+		clearPrivateKeys();
+		clearPskContexts();
+		if (keySchedule != null) {
+			keySchedule.eraseAll();
+		}
+		listener.onCleanup(this);
+	}
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -135,17 +135,28 @@ public class EngineStateTest extends CommonTest {
 				new TestHandshakeHandler(),
 				new TestHandshakeHandler());
 		
-		assertNull(state.getPrivateKey(NamedGroup.FFDHE2048));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE2048, false));
 		state.addPrivateKey(NamedGroup.FFDHE2048, pair1.getPrivate());
-		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048));
-		assertNull(state.getPrivateKey(NamedGroup.FFDHE3072));
+		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048, false));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE3072, false));
 		state.addPrivateKey(NamedGroup.FFDHE3072, pair2.getPrivate());
-		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048));
-		assertSame(pair2.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE3072));
+		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048, false));
+		assertSame(pair2.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE3072, false));
 		state.clearPrivateKeys();
-		assertNull(state.getPrivateKey(NamedGroup.FFDHE2048));
-		assertNull(state.getPrivateKey(NamedGroup.FFDHE3072));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE2048, false));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE3072, false));
 		state.clearPrivateKeys();
+		
+		state.addPrivateKey(NamedGroup.FFDHE2048, pair1.getPrivate());
+		state.addPrivateKey(NamedGroup.FFDHE3072, pair2.getPrivate());
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE6144, true));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE2048, true));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE3072, true));
+
+		state.addPrivateKey(NamedGroup.FFDHE2048, pair1.getPrivate());
+		state.addPrivateKey(NamedGroup.FFDHE3072, pair2.getPrivate());
+		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048, true));
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE3072, true));
 	}
 	
 	@Test
@@ -322,6 +333,49 @@ public class EngineStateTest extends CommonTest {
 				new TestHandshakeHandler(),
 				new TestHandshakeHandler());
 		assertEquals(16384, state.getMaxFragmentLength());
+	}
+	
+	@Test
+	public void testCleanup() throws Exception {
+		TestHandshakeHandler listener = new TestHandshakeHandler();
+		EngineState state = new EngineState(
+				MachineState.CLI_INIT, 
+				new TestParameters(), 
+				new TestHandshakeHandler(),
+				listener);
+		
+		state.cleanup();
+		assertEquals("CL|", listener.trace());
+		
+		KeyPair pair1 = DHKeyExchange.FFDHE2048.generateKeyPair(RANDOM);
+		state.addPrivateKey(NamedGroup.FFDHE2048, pair1.getPrivate());
+		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048, false));
+		assertSame(pair1.getPrivate(), state.getPrivateKey(NamedGroup.FFDHE2048, false));
+
+		TranscriptHash th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
+		Hkdf h = new Hkdf(Mac.getInstance("HmacSHA256"));
+		KeySchedule ks = new KeySchedule(h, th, CipherSuite.TLS_AES_128_GCM_SHA256.spec());
+		PskContext psk1 = new PskContext(ks);
+		state.addPskContext(psk1);
+		assertEquals(1, state.getPskContexts().size());
+		
+		TranscriptHash th1 = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
+		ks = new KeySchedule(h, th1, CipherSuite.TLS_AES_128_GCM_SHA256.spec());
+		state.initialize(ks, CipherSuite.TLS_AES_128_GCM_SHA256);
+
+		state.getKeySchedule().deriveEarlySecret();
+		state.getKeySchedule().deriveEarlyTrafficSecret();
+		
+		assertEquals("", listener.trace());
+		state.cleanup();
+		assertEquals("CL|", listener.trace());
+		assertNull(state.getPrivateKey(NamedGroup.FFDHE2048, false));
+		assertNull(state.getPskContexts());
+		try {
+			state.getKeySchedule().deriveEarlyTrafficSecret();
+			fail();
+		}
+		catch (IllegalStateException e) {}
 	}
 	
 	@Test

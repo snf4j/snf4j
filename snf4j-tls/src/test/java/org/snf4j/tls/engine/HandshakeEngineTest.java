@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -292,6 +292,15 @@ public class HandshakeEngineTest extends EngineTest {
 			fail();
 		} catch (UnexpectedMessageAlert e) {}
 		data[0] = 1;
+	}
+	
+	@Test
+	public void testCleanup() throws Exception {
+		TestParameters params = new TestParameters();
+		HandshakeEngine he = new HandshakeEngine(true, params, handler, handler);
+		
+		he.cleanup();
+		assertEquals("CL|", handler.trace());
 	}
 	
 	@Test

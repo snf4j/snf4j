@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.lang.reflect.Field;
+import java.util.Arrays;
 
 import org.junit.Test;
 import org.snf4j.tls.alert.InternalErrorAlert;
@@ -155,6 +156,22 @@ public class EngineStateListenerTest extends EngineTest {
 		assertNull(e[RecordType.HANDSHAKE.ordinal()]);
 		assertNotNull(e[RecordType.APPLICATION.ordinal()]);
 		assertEquals("h|", trace.toString());
+	}
+	
+	@Test
+	public void testOnCleanup() throws Exception {
+		EngineStateListener l = new EngineStateListener();
+		Encryptor[] e = encryptors(l);
+		Decryptor[] d = decryptors(l);
+
+		e[1] = encryptor("e1");
+		e[2] = encryptor("e2");
+		d[0] = decryptor("d1");
+		d[3] = decryptor("d2");
+		l.onCleanup(null);
+		assertEquals("d1|e1|e2|d2|", trace.toString());
+		assertEquals("[null, null, null, null, null]", Arrays.deepToString(e));
+		assertEquals("[null, null, null, null, null]", Arrays.deepToString(d));
 	}
 
 }

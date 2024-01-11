@@ -30,6 +30,7 @@ import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.crypto.TrafficKeys;
 import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.handshake.KeyUpdateRequest;
+import org.snf4j.tls.record.Cryptor;
 import org.snf4j.tls.record.Decryptor;
 import org.snf4j.tls.record.Encryptor;
 import org.snf4j.tls.record.IDecryptorHolder;
@@ -203,6 +204,23 @@ public class EngineStateListener implements IEngineStateListener, IEncryptorHold
 	
 	@Override
 	public void onHandshake(IEngineState state, IHandshake handshake) throws Alert {
+	}
+	
+	@Override
+	public void onCleanup(IEngineState state) {
+		for (int i=0; i<encryptors.length; ++i) {
+			Cryptor cryptor = encryptors[i];
+			
+			if (cryptor != null) {
+				cryptor.erase();
+				encryptors[i] = null;
+			}
+			cryptor = decryptors[i];
+			if (cryptor != null) {
+				cryptor.erase();
+				decryptors[i] = null;
+			}
+		}
 	}
 	
 	@Override

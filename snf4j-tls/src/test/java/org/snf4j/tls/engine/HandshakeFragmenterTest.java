@@ -554,6 +554,10 @@ public class HandshakeFragmenterTest extends EngineTest {
 		public IEngineState getState() {
 			return state;
 		}
+		
+		@Override
+		public void cleanup() {
+		}
 	}
 	
 	class TestEncryptors implements IEncryptorHolder {
@@ -594,6 +598,10 @@ public class HandshakeFragmenterTest extends EngineTest {
 		public void onHandshake(IEngineState state, IHandshake handshake) throws Alert {
 		}
 
+		@Override
+		public void onCleanup(IEngineState state) {
+		}
+		
 		@Override
 		public void produceChangeCipherSpec(IEngineProducer producer) {
 			trace("X");

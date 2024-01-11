@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -382,5 +382,8 @@ public class HandshakeAggregatorTest extends CommonTest {
 		public void updateKeys() throws Alert {
 		}
 		
+		@Override
+		public void cleanup() {
+		}		
 	}
 }

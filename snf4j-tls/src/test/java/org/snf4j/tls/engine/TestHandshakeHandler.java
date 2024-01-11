@@ -229,6 +229,11 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	}
 	
 	@Override
+	public void onCleanup(IEngineState state) {
+		trace("CL");
+	}
+	
+	@Override
 	public SecureRandom getSecureRandom() {
 		if (getSecureRandomException != null) {
 			throw getSecureRandomException;

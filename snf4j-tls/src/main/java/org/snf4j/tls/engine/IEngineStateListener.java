@@ -42,6 +42,8 @@ public interface IEngineStateListener {
 	
 	void onHandshake(IEngineState state, IHandshake handshake) throws Alert;
 	
+	void onCleanup(IEngineState state);
+	
 	void produceChangeCipherSpec(IEngineProducer producer);
 	
 	void prepareChangeCipherSpec(IEngineProducer producer);

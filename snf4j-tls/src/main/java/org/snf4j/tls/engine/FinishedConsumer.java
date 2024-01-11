@@ -59,7 +59,9 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		try {
 			state.getTranscriptHash().update(finished.getType(), data);
 			state.getKeySchedule().deriveResumptionMasterSecret();
+			state.getKeySchedule().eraseMasterSecret();
 			verifyData = state.getKeySchedule().computeClientVerifyData();
+			state.getKeySchedule().eraseHandshakeTrafficSecrets();
 		} catch (Exception e) {
 			throw new InternalErrorAlert("Failed to compute client verify data", e);
 		}
@@ -199,12 +201,15 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			
 			try {
 				state.getKeySchedule().deriveMasterSecret();
+				state.getKeySchedule().eraseHandshakeSecret();
 				state.getKeySchedule().deriveApplicationTrafficSecrets();
 				state.getListener().onNewTrafficSecrets(state, RecordType.APPLICATION);
 				state.getListener().onNewReceivingTraficKey(state, RecordType.APPLICATION);
 				Finished finished = new Finished(state.getKeySchedule().computeClientVerifyData());
+				state.getKeySchedule().eraseHandshakeTrafficSecrets();
 				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
 				state.getKeySchedule().deriveResumptionMasterSecret();
+				state.getKeySchedule().eraseMasterSecret();
 			} catch (Alert e) {
 				throw e;
 			} catch (Exception e) {
