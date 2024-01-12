@@ -97,7 +97,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 				throw new InternalErrorAlert("Failed to create new session ticket", e);
 			}
 		}
-		
+		state.getTranscriptHash().reset();
 		state.changeState(MachineState.SRV_CONNECTED);
 	}
 
@@ -225,7 +225,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 						.cipher(state.getCipherSuite()));
 				state.setSession(session);
 			}
-			
+			state.getTranscriptHash().reset();
 			state.changeState(MachineState.CLI_CONNECTED);
 		}
 	}

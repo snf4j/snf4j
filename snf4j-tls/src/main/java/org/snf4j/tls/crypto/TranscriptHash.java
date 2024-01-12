@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -389,6 +389,24 @@ public class TranscriptHash implements ITranscriptHash {
 			md.update(buffer);
 		}
 		return md.digest();
+	}
+	
+	@Override
+	public void reset() {
+		md.reset();
+		for (int i=0; i<items.length; ++i) {
+			Item item = items[i];
+			
+			if (item != null) {
+				item.md.reset();
+				if (item.hash != null) {
+					Arrays.fill(item.hash, (byte)0);
+					item.hash = null;
+				}
+				items[i] = null;
+			}
+		}
+		mask = 0;
 	}
 	
 	private class Item {

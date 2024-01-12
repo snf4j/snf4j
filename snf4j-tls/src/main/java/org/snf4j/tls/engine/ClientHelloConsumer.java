@@ -453,18 +453,20 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		
 		private final int selectedIdentity;
 		
-		private final SecureRandom random;
+		private final SecureRandom secureRandom;
 		
 		private volatile byte[] secret;
 		
+		private volatile byte[] random;
+		
 		private volatile PublicKey publicKey;
 		
-		KeyExchangeTask(NamedGroup namedGroup, ParsedKey parsedKey, byte[] legacySessionId, int selectedIdentity, SecureRandom random) {
+		KeyExchangeTask(NamedGroup namedGroup, ParsedKey parsedKey, byte[] legacySessionId, int selectedIdentity, SecureRandom secureRandom) {
 			this.namedGroup = namedGroup;
 			this.parsedKey = parsedKey;
 			this.legacySessionId = legacySessionId;
 			this.selectedIdentity = selectedIdentity;
-			this.random = random;
+			this.secureRandom = secureRandom;
 		}
 		
 		@Override
@@ -480,12 +482,16 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		@Override
 		void execute() throws Exception {
 			IKeyExchange keyExchange = namedGroup.spec().getKeyExchange();
-			KeyPair pair = keyExchange.generateKeyPair(random);
+			KeyPair pair = keyExchange.generateKeyPair(secureRandom);
 			publicKey = pair.getPublic();
 			secret = keyExchange.generateSecret(
 					pair.getPrivate(), 
 					namedGroup.spec().generateKey(parsedKey),
-					random);
+					secureRandom);
+			
+			byte[] random = new byte[32];
+			secureRandom.nextBytes(random);
+			this.random = random;
 		}
 
 		@Override
@@ -502,10 +508,6 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 				extensions.add(new PreSharedKeyExtension(selectedIdentity));
 			}
 			
-			byte[] random = new byte[32];
-			
-			state.getHandler().getSecureRandom().nextBytes(random);
-
 			ServerHello serverHello = new ServerHello(
 					EngineDefaults.LEGACY_VERSION,
 					random,

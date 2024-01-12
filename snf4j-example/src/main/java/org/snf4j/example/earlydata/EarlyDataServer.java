@@ -53,7 +53,7 @@ public class EarlyDataServer {
 			
 			// Configure TLS connection
 			EngineParameters params = new EngineParametersBuilder()
-					.delegatedTaskMode(DelegatedTaskMode.NONE)
+					.delegatedTaskMode(DelegatedTaskMode.ALL)
 					.applicationProtocols("p1","p2","p3")
 					.build();
 			EngineHandlerBuilder builder = new EngineHandlerBuilder(

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -431,6 +431,31 @@ public class TranscriptHashTest extends CommonTest {
 		th.update(HandshakeType.SERVER_HELLO, ascii("SH"));
 		assertArrayEquals(digest, th.getHash(HandshakeType.CLIENT_HELLO));
 		
+	}
+	
+	@Test
+	public void testReset() throws Exception {
+		TranscriptHash th = new TranscriptHash(MessageDigest.getInstance("SHA-256"));
+
+		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO));
+		assertHash("", th.getHash(HandshakeType.FINISHED, false));
+		assertHash("", th.getHash(HandshakeType.FINISHED, true));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
+		th.update(HandshakeType.FINISHED, ascii("SF"));
+		th.update(HandshakeType.FINISHED, ascii("CF"));
+		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
+		assertHash("CHSF", th.getHash(HandshakeType.FINISHED, false));
+		assertHash("CHSFCF", th.getHash(HandshakeType.FINISHED, true));
+		th.reset();
+		assertHash("", th.getHash(HandshakeType.CLIENT_HELLO));
+		assertHash("", th.getHash(HandshakeType.FINISHED, false));
+		assertHash("", th.getHash(HandshakeType.FINISHED, true));
+		th.update(HandshakeType.CLIENT_HELLO, ascii("CH"));
+		th.update(HandshakeType.FINISHED, ascii("SF"));
+		th.update(HandshakeType.FINISHED, ascii("CF"));
+		assertHash("CH", th.getHash(HandshakeType.CLIENT_HELLO));
+		assertHash("CHSF", th.getHash(HandshakeType.FINISHED, false));
+		th.reset();
 	}
 	
 	static class MD extends MessageDigest {

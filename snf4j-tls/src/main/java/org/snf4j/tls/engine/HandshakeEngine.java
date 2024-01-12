@@ -321,13 +321,15 @@ public class HandshakeEngine implements IHandshakeEngine {
 
 		private final NamedGroup[] namedGroups;
 		
-		private final SecureRandom random;
+		private final SecureRandom secureRandom;
 		
 		private volatile KeyPair[] pairs;
 		
-		KeyExchangeTask(NamedGroup[] namedGroups, SecureRandom random) {
+		private volatile byte[] random;
+		
+		KeyExchangeTask(NamedGroup[] namedGroups, SecureRandom secureRandom) {
 			this.namedGroups = namedGroups;
-			this.random = random;
+			this.secureRandom = secureRandom;
 		}
 		
 		@Override
@@ -342,11 +344,9 @@ public class HandshakeEngine implements IHandshakeEngine {
 
 		@Override
 		public void finish(EngineState state) throws Alert {
-			byte[] random = new byte[32];
 			byte[] legacySessionId;
 			IEngineParameters params = state.getParameters();
 			
-			state.getHandler().getSecureRandom().nextBytes(random);
 			if (params.isCompatibilityMode()) {
 				legacySessionId = new byte[32];
 				RANDOM.nextBytes(legacySessionId);
@@ -566,9 +566,13 @@ public class HandshakeEngine implements IHandshakeEngine {
 			
 			for (int i=0; i<namedGroups.length; ++i) {
 				NamedGroup group = namedGroups[i];
-				pairs[i] = group.spec().getKeyExchange().generateKeyPair(random);
+				pairs[i] = group.spec().getKeyExchange().generateKeyPair(secureRandom);
 			}
 			this.pairs = pairs;
+			
+			byte[] random = new byte[32];
+			secureRandom.nextBytes(random);
+			this.random = random;
 		}
 	}
 }

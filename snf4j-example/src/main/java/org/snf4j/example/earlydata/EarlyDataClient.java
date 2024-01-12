@@ -74,7 +74,7 @@ public class EarlyDataClient {
 		
 		// Configure TLS connection
 		EngineParameters params = new EngineParametersBuilder()
-				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.delegatedTaskMode(DelegatedTaskMode.ALL)
 				.peerHost(HOST)
 				.peerPort(PORT)
 				.applicationProtocols(protocol)
