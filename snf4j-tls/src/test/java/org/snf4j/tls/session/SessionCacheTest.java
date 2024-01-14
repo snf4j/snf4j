@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@ import org.snf4j.tls.session.SessionCache.SoftCacheEntry;
 
 public class SessionCacheTest {
 
-	static final long MAX_MEMORY_SIZE = 1_000_000_000_000L; 
+	static final long MAX_MEMORY_SIZE = 1000000000000L; 
 	
 	@SuppressWarnings("unchecked")
 	static Map<Long,CacheEntry<Long>> map(SessionCache<Long> cache) throws Exception {
@@ -71,9 +71,9 @@ public class SessionCacheTest {
 	
 	@Test
 	public void testPut() throws Exception {
-		SessionCache<Long> c = new SessionCache<Long>(10_000_000, 1_000_000);
+		SessionCache<Long> c = new SessionCache<Long>(10000000, 1000000);
 
-		int sessionSize = 10_000_000;
+		int sessionSize = 10000000;
 		int count = (int) (MAX_MEMORY_SIZE / sessionSize);
 		int maxSize1 = 0;
 		int size;
@@ -103,8 +103,8 @@ public class SessionCacheTest {
 		
 		int maxSize2 = 0;
 
-		c = new SessionCache<Long>(10_000_000, 1_000_000);
-		sessionSize = 1_000_000;
+		c = new SessionCache<Long>(10000000, 1000000);
+		sessionSize = 1000000;
 		count = (int) (MAX_MEMORY_SIZE / sessionSize);
 		
 		for (int i=0; i<count; ++i) {
@@ -125,7 +125,7 @@ public class SessionCacheTest {
 	
 	@Test
 	public void testPutAndInvalidateOld() throws Exception {
-		SessionCache<Long> c = new SessionCache<Long>(10_000_000, 1_000_000);
+		SessionCache<Long> c = new SessionCache<Long>(10000000, 1000000);
 		
 		TestSession s1 = new TestSession(1, 100);
 		TestSession s2 = new TestSession(1, 100);
@@ -263,10 +263,10 @@ public class SessionCacheTest {
 		c.clear();
 		assertEquals(0, c.size(1000));
 		
-		c = new SessionCache<Long>(10_000_000, 50);
+		c = new SessionCache<Long>(10000000, 50);
 		ReferenceQueue<ISession> q = queue(c);
-		for (int i=0; i<10_000_000; ++i) {
-			c.put((long)i, new TestSession(i, 100_000));
+		for (int i=0; i<10000000; ++i) {
+			c.put((long)i, new TestSession(i, 100000));
 			if (q.poll() != null) {
 				break;
 			}
@@ -296,10 +296,10 @@ public class SessionCacheTest {
 		assertEquals(3, size(c));
 		assertNotNull(c.get(1L, 1050000));
 
-		c = new SessionCache<Long>(10_000_000, 50);
+		c = new SessionCache<Long>(10000000, 50);
 		ReferenceQueue<ISession> q = queue(c);
-		for (int i=0; i<10_000_000; ++i) {
-			c.put((long)i, new TestSession(i, 100_000));
+		for (int i=0; i<10000000; ++i) {
+			c.put((long)i, new TestSession(i, 100000));
 			if (q.poll() != null) {
 				break;
 			}
@@ -334,10 +334,10 @@ public class SessionCacheTest {
 		c.remove(4L);
 		assertEquals(2, size(c));
 		
-		c = new SessionCache<Long>(10_000_000, 50);
+		c = new SessionCache<Long>(10000000, 50);
 		ReferenceQueue<ISession> q = queue(c);
-		for (int i=0; i<10_000_000; ++i) {
-			c.put((long)i, new TestSession(i, 100_000));
+		for (int i=0; i<10000000; ++i) {
+			c.put((long)i, new TestSession(i, 100000));
 			if (q.poll() != null) {
 				break;
 			}

@@ -260,7 +260,7 @@ public class TLSEngine implements IEngine {
 
 	IEngineResult checkKeyLimit(Cryptor cryptor, IEngineResult currentResult) throws Alert {
 		if (!cryptor.isMarkedForUpdate() 
-				&& (cryptor.isKeyLimitReached() || cryptor.getSequence() > 0xffff_ffffL)) {
+				&& (cryptor.isKeyLimitReached() || cryptor.getSequence() > 0xffffffffL)) {
 			if (!handshaker.hasProducingTask()) {
 				handshaker.updateKeys();
 				cryptor.markForUpdate();

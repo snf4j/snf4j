@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ public class TicketInfo {
 	}
 
 	public TicketInfo(long maxEarlyDataSize) {
-		Args.checkRange(maxEarlyDataSize, 0L, 0xffff_ffffL, "maxEarlyDataSize");
+		Args.checkRange(maxEarlyDataSize, 0L, 0xffffffffL, "maxEarlyDataSize");
 		this.maxEarlyDataSize = maxEarlyDataSize;
 	}
 

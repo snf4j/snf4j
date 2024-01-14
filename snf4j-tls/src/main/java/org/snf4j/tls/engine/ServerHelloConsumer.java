@@ -97,7 +97,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 				SessionTicket ticket = pskCtx.getTicket();
 
 				if (ticket != null) {
-					long obfuscatedAge = (time - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x1_0000_0000L;
+					long obfuscatedAge = (time - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x100000000L;
 				
 					psks[i] = new OfferedPsk(
 							new PskIdentity(ticket.getTicket(), obfuscatedAge), 

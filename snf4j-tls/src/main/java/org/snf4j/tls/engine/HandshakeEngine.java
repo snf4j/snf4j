@@ -469,7 +469,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 							psks = new OfferedPsk[offered];
 							for (SessionTicket ticket: tickets) {
 								if (ticket != null) {
-									long obfuscatedAge = (System.currentTimeMillis() - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x1_0000_0000L;
+									long obfuscatedAge = (System.currentTimeMillis() - ticket.getCreationTime() + ticket.getAgeAdd()) % 0x100000000L;
 
 									psks[i++] = new OfferedPsk(
 											new PskIdentity(ticket.getTicket(), obfuscatedAge), 

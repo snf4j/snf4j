@@ -2140,13 +2140,13 @@ public class TLSEngineTest extends EngineTest {
 		h = handshaker(cli);
 		assertFalse(h.needProduce());
 		c = new Cryptor(random(32), 16, 100) {
-			public long getSequence() { return 0xffff_ffffL; }
+			public long getSequence() { return 0xffffffffL; }
 		};
 		assertFalse(c.isKeyLimitReached());
 		assertSame(r, cli.checkKeyLimit(c, r));
 		assertFalse(h.needProduce());
 		c = new Cryptor(random(32), 16, 100) {
-			public long getSequence() { return 0xffff_ffffL + 1; }
+			public long getSequence() { return 0xffffffffL + 1; }
 		};
 		r2 = cli.checkKeyLimit(c, r);
 		assertSame(NEED_WRAP, r2.getHandshakeStatus());
