@@ -2,7 +2,7 @@
 <!--
  ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MIT License ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  ~ 
- ~ Copyright (c) 2023 SNF4J contributors
+ ~ Copyright (c) 2023-2024 SNF4J contributors
  ~ 
  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
  ~ of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +45,13 @@
       <groupId>org.snf4j</groupId> 
       <artifactId>snf4j-core</artifactId> 
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.snf4j</groupId> 
+      <artifactId>snf4j-core</artifactId> 
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
   </dependencies> 
   
