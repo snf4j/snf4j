@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2022 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -936,15 +936,15 @@ public class DatagramServerSessionTest {
 		DatagramSession session2 = s.getSession();
 		s.getRecordedData(true);
 		
-		session1.getTimer().scheduleEvent("t1", 10);
-		waitFor(8);
+		session1.getTimer().scheduleEvent("t1", 300);
+		waitFor(250);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(8);
+		waitFor(150);
 		assertEquals("TIM;t1;"+session1.getName()+"|", s.getRecordedData(true));
-		session2.getTimer().scheduleEvent("t2", 10);
-		waitFor(8);
+		session2.getTimer().scheduleEvent("t2", 300);
+		waitFor(250);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(8);
+		waitFor(150);
 		assertEquals("TIM;t2;"+session2.getName()+"|", s.getRecordedData(true));
 	}
 	

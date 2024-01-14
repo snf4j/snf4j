@@ -69,6 +69,9 @@ import org.snf4j.core.session.SSLEngineCreateException;
 import org.snf4j.core.timer.TestTimer;
 
 public class SSLSessionTest {
+	
+	private final static boolean compensateTime = TestConfig.compensateTime();
+	
 	long TIMEOUT = 2000;
 	int PORT = 7777;
 	long AFTER_TIMEOUT = 0;
@@ -1767,7 +1770,7 @@ public class SSLSessionTest {
 		long time = System.currentTimeMillis();
 		f.sync(TIMEOUT);
 		time = System.currentTimeMillis() - time;
-		assertTrue("expected 500 but was " + time, time > 490 && time < 520);
+		assertTrue("expected 500 but was " + time, time > 490 && time < (compensateTime ? 600 : 520));
 		
 		session.suspendWrite();
 		byte[] data = new byte[20000];
@@ -1777,7 +1780,7 @@ public class SSLSessionTest {
 		time = System.currentTimeMillis();
 		f.sync(TIMEOUT);
 		time = System.currentTimeMillis() - time;
-		assertTrue("expected 500 but was " + time, time > 490 && time < 520);
+		assertTrue("expected 500 but was " + time, time > 490 && time < (compensateTime ? 600 : 520));
 		
 		session.suspendWrite();
 		data = new byte[40000];
@@ -1787,7 +1790,7 @@ public class SSLSessionTest {
 		time = System.currentTimeMillis();
 		f.sync(TIMEOUT);
 		time = System.currentTimeMillis() - time;
-		assertTrue("expected 500 but was " + time, time > 490 && time < 520);
+		assertTrue("expected 500 but was " + time, time > 490 && time < (compensateTime ? 600 : 520));
 	}
 
 	@Test
