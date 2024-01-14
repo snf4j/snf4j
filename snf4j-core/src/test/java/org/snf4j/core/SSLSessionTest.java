@@ -610,7 +610,8 @@ public class SSLSessionTest {
 		session = (SSLSession) c.getSession(); 
 		bufs = getBuffers(session, "outAppBuffers");
 		bufs[0].put(new Packet(PacketType.NOP, "567").toBytes());
-
+		waitFor(100);
+		
 		LoggerRecorder.enableRecording();
 		c.dirtyStop(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,14 @@ import java.util.concurrent.TimeoutException;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.snf4j.core.TestConfig;
 import org.snf4j.core.TestSession;
 import org.snf4j.core.handler.SessionEvent;
 
 public class AbstractBlockingFutureTest {
 
+	private final static boolean compensateTime = TestConfig.compensateTime();
+	
 	SessionFuturesController sf;
 	Thread thread;
 	
@@ -83,7 +86,9 @@ public class AbstractBlockingFutureTest {
 	
 	void assertTime(long expected, long time) {
 		time = System.currentTimeMillis() - time;
-		assertTrue("expected "+expected+" but was " + time, time > expected - 50 && time < expected + 50);
+		assertTrue("expected "+expected+" but was " + time, 
+				time > expected - 50 && 
+				time < expected + (compensateTime ? 150 : 50));
 	}
 	
 	@Test
