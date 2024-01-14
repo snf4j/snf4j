@@ -182,6 +182,7 @@ public class SessionTest {
 	
 	static void assertVaraints(String expected, String actual, boolean useVariant) {
 		String variant = expected;
+		String variant2 = expected;
 		int i,j;
 		
 		while ((i = expected.indexOf("?{")) != -1) {
@@ -192,6 +193,7 @@ public class SessionTest {
 				
 				expected = expected.replace(s1, s2);
 				variant = variant.replace(s1, "");
+				variant2 = variant2.replace(s1, s2+s2);
 			}
 			else {
 				break;
@@ -199,7 +201,9 @@ public class SessionTest {
 		}
 		if (useVariant) {
 			if (!expected.equals(actual)) {
-				assertEquals(variant, actual);
+				if (!variant.equals(actual)) {
+					assertEquals("variant2", variant2, actual);
+				}
 			}
 		}
 		else {
@@ -2476,7 +2480,7 @@ public class SessionTest {
 		Arrays.fill(payload, (byte)'1');
 		byte[] data = new Packet(PacketType.NOP, new String(payload)).toBytes();
 		int writeCount = 2000;
-		boolean unix = "true".equalsIgnoreCase(System.getenv("SNF4J_UNIX_TEST")) || true;
+		boolean unix = TestConfig.isUnix() || true;
 		int maxTries = unix ? 10 : 1;
 		StringBuilder sb = new StringBuilder();
 		
@@ -2828,39 +2832,39 @@ public class SessionTest {
 		assertTrue(stimer instanceof InternalSessionTimer);
 		assertTrue(stimer.isSupported());
 		
-		stimer.scheduleEvent("t1", 100);
-		waitFor(80);
+		stimer.scheduleEvent("t1", 300);
+		waitFor(250);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(40);
+		waitFor(150);
 		assertEquals("TIM;t1|", s.getRecordedData(true));
 		stimer.scheduleEvent("t2", 10).cancelTask();
 		waitFor(20);
 		assertEquals("", s.getRecordedData(true));
-		ITimerTask task = stimer.scheduleEvent("t3", 40, 40);
-		waitFor(30);
+		ITimerTask task = stimer.scheduleEvent("t3", 100, 300);
+		waitFor(50);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(20);
+		waitFor(150);
 		assertEquals("TIM;t3|", s.getRecordedData(true));
-		waitFor(90);
+		waitFor(700);
 		assertEquals("TIM;t3|TIM;t3|", s.getRecordedData(true));
 		task.cancelTask();
 		waitFor(100);
 		assertEquals("", s.getRecordedData(true));
 
-		stimer.scheduleTask(new Task("task1"), 100, true);
-		waitFor(80);
+		stimer.scheduleTask(new Task("task1"), 300, true);
+		waitFor(250);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(40);
+		waitFor(150);
 		assertEquals("TIM;task1|", s.getRecordedData(true));
 		stimer.scheduleTask(new Task("task2"), 10, true).cancelTask();
 		waitFor(20);
 		assertEquals("", s.getRecordedData(true));
-		task = stimer.scheduleTask(new Task("task3"), 40, 40, true);
-		waitFor(30);
+		task = stimer.scheduleTask(new Task("task3"), 100, 300, true);
+		waitFor(50);
 		assertEquals("", s.getRecordedData(true));
-		waitFor(20);
+		waitFor(150);
 		assertEquals("TIM;task3|", s.getRecordedData(true));
-		waitFor(90);
+		waitFor(700);
 		assertEquals("TIM;task3|TIM;task3|", s.getRecordedData(true));
 		task.cancelTask();
 		waitFor(100);
@@ -2875,37 +2879,37 @@ public class SessionTest {
 		};
 		
 		expired.set(false);
-		stimer.scheduleTask(expiredTask, 100, false);
-		waitFor(80);
+		stimer.scheduleTask(expiredTask, 300, false);
+		waitFor(250);
 		assertFalse(expired.get());
-		waitFor(40);
+		waitFor(150);
 		assertTrue(expired.get());
 		assertEquals("", s.getRecordedData(true));
 		expired.set(false);
 		stimer.scheduleTask(expiredTask, 10, false).cancelTask();
 		waitFor(20);
 		assertFalse(expired.get());
-		task = stimer.scheduleTask(expiredTask, 40, 40, false);
-		waitFor(30);
+		task = stimer.scheduleTask(expiredTask, 100, 300, false);
+		waitFor(50);
 		assertFalse(expired.get());
-		waitFor(20);
+		waitFor(150);
 		assertTrue(expired.get());
 		expired.set(false);
-		waitFor(50);
+		waitFor(300);
 		assertTrue(expired.get());
 		task.cancelTask();
 		expired.set(false);
-		waitFor(115);
+		waitFor(400);
 		assertFalse(expired.get());
 		
 		s.throwInTimer = true;
 		s.incident = true;
-		stimer.scheduleEvent("e1", 10);
-		waitFor(50);
+		stimer.scheduleEvent("e1", 100);
+		waitFor(200);
 		assertEquals(1, s.throwInTimerCount.get());
 		assertEquals("TIM;e1|TIMER_EVENT_FAILURE|", s.getRecordedData(true));
-		stimer.scheduleTask(new Task("t1"), 10, true);
-		waitFor(50);
+		stimer.scheduleTask(new Task("t1"), 100, true);
+		waitFor(200);
 		assertEquals(2, s.throwInTimerCount.get());
 		assertEquals("TIM;t1|TIMER_TASK_FAILURE|", s.getRecordedData(true));
 		

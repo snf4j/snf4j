@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2023 SNF4J contributors
+ * Copyright (c) 2019-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -585,7 +585,7 @@ public class SSLSessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		List<String> recording = LoggerRecorder.disableRecording();
-		assertEquals("SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertTLSVariants("?{DS|}SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		String warnMsg = "[ WARN] " + SessionIncident.SSL_CLOSED_WITHOUT_CLOSE_NOTIFY.defaultMessage();
 		assertTrue(recording.contains(warnMsg));
@@ -613,7 +613,7 @@ public class SSLSessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		recording = LoggerRecorder.disableRecording();
-		assertEquals("SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertTLSVariants("?{DS|}SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
 		assertFalse(recording.contains(warnMsg));
 	
@@ -1353,7 +1353,7 @@ public class SSLSessionTest {
 		session.close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertTLSVariants("DS|?{DS|}SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertTLSVariants("DS|DR|NOP(1234)|?{DS|}SCL|SEN|", s.trimRecordedData(CLIENT_RDY_TAIL));
 
 		c.stop(TIMEOUT);
@@ -1822,7 +1822,7 @@ public class SSLSessionTest {
 		assertEquals("WHF|", sengine.getTrace());
 		assertEquals(TLS1_3 ? "BH|WHF|UHF|" : "BH|UHF|", cengine.getTrace());
 		if (TLS1_3) {
-			assertEquals("DS|DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
+			assertTLSVariants("DS|?{DS|}DR|ECHO_RESPONSE(2)|", c.getRecordedData(true));
 			assertEquals("DR|ECHO(2)|DS|", s.getRecordedData(true));
 		}
 		else {

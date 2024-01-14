@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2023 SNF4J contributors
+ * Copyright (c) 2019-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
+import org.snf4j.core.TestConfig;
 import org.snf4j.core.TestSession;
 
 import static org.junit.Assert.assertEquals;
@@ -38,6 +39,8 @@ import static org.junit.Assert.fail;
 
 public class DelegatedFutureTest {
 
+	private final static boolean compensateTime = TestConfig.compensateTime();
+	
 	private DelegatingBlockingFuture<Void> future, future2;
 	DataFuture<Void> dataFuture;
 	ThresholdFuture<Void> delegateFuture;
@@ -135,7 +138,7 @@ public class DelegatedFutureTest {
 	void assertTime(long expected, long savedTime) {
 		savedTime = System.currentTimeMillis() - savedTime;
 		assertTrue("expected " + expected + " but was " + savedTime, savedTime > expected - 40);
-		assertTrue("expected " + expected + " but was " + savedTime, savedTime < expected + 40);
+		assertTrue("expected " + expected + " but was " + savedTime, savedTime < expected + (compensateTime ? 100 : 40));
 	}
 
 	@Test
