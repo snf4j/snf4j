@@ -103,6 +103,7 @@
     <version.nexus.staging.plugin>1.6.7</version.nexus.staging.plugin>
     <version.versions.plugin>2.7</version.versions.plugin>
     <version.gpg.plugin>1.5</version.gpg.plugin>
+    <version.jacoco.plugin>0.8.11</version.jacoco.plugin>
 
   </properties>
 
@@ -150,6 +151,31 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
         <version>${version.versions.plugin}</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${version.jacoco.plugin}</version>
+        <configuration>
+          <excludes>
+            <exclude>org/snf4j/example/**/*.class</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

@@ -57,12 +57,8 @@ jobs:
         cat snf4j-core-slf4j/target/surefire-reports/*.txt
         cat snf4j-sctp/target/surefire-reports/*.txt
         cat snf4j-websocket/target/surefire-reports/*.txt
+        cat snf4j-tls/target/surefire-reports/*.txt
     
-    - name: Generate coverage report
-      if: matrix.java == 8
-      run: |
-        mvn cobertura:cobertura || echo "Code coverage failed"
-
     - name: Upload coverage to Codecov
       if: matrix.java == 8
       uses: codecov/codecov-action@v3
