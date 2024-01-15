@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2023 SNF4J contributors
+ * Copyright (c) 2017-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,12 +42,15 @@ import org.snf4j.core.Packet;
 import org.snf4j.core.PacketType;
 import org.snf4j.core.Server;
 import org.snf4j.core.StreamSession;
+import org.snf4j.core.TestConfig;
 import org.snf4j.core.TestSession;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.ISession;
 
 public class SessionFuturesControllerTest {
+	
+	private final static boolean compensateTime = TestConfig.compensateTime();
 	
 	static final int PORT = 7777;
 	static final long TIMEOUT = 2000;
@@ -525,7 +528,9 @@ public class SessionFuturesControllerTest {
 		f.await(timeout);
 		long t = System.currentTimeMillis()-t0;
 		if (expectedTimeout > 0) {
-			assertTrue("expected "+expectedTimeout+" but was "+t,t <= (expectedTimeout * 100 / 95) && t >= (expectedTimeout * 95 / 100));
+			assertTrue("expected "+expectedTimeout+" but was "+t,
+					t <= (expectedTimeout * 100 / (compensateTime ? 60 : 85)) && 
+					t >= (expectedTimeout * 95 / 100));
 		}
 		else {
 			assertTrue(t < 50);
