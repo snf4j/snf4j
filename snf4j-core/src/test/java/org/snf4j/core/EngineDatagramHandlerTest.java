@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2023 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -173,7 +173,7 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		c.waitForSessionEnding(TIMEOUT);
 		waitFor(50);
 		assertEquals(0, c.allocator.getSize());
-		assertReleased(base, c.allocator, id, 1, 0);
+		assertReleased(base, c.allocator, id+1, id, 1, 0);
 	}
 
 	@Test
@@ -766,5 +766,50 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		assertTrue(c.getRecordedData(true).endsWith("EXC|SCL|SEN|"));
 		assertTrue(c.getSession().getCloseFuture().cause() instanceof HandshakeLoopsThresholdException);
 		
-	}	
+	}
+	
+	@Test
+	public void testAlertAfterFailure() throws Exception {
+		prepareServerClient(true);
+		c.testEngine.addRecord("W|NW|-|-|C|-|");
+		c.testEngine.wrapException = new SSLException("");
+		c.testEngine.status = HandshakeStatus.NEED_WRAP;
+		c.exceptionRecordExceptionClass = true;		
+		c.getSession().write(nop());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|(javax.net.ssl.SSLException)|DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DR|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		prepareServerClient(true);
+		c.testEngine.addRecord("W|NW|-|-|C|-|");
+		c.testEngine.wrapException = new SSLException("");
+		c.testEngine.statusAfterException = HandshakeStatus.NEED_WRAP;
+		c.exceptionRecordExceptionClass = true;	
+		c.quicklyCloseEngine = true;
+		c.getSession().write(nop());
+		c.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
+		assertEquals("EXC|(javax.net.ssl.SSLException)|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		prepareServerClient(true);
+		c.testEngine.addRecord("W|NW|-|-|C|-|");
+		c.testEngine.unwrapException = new SSLException("");
+		c.testEngine.statusAfterException = HandshakeStatus.NEED_WRAP;
+		c.exceptionRecordExceptionClass = true;		
+		s.getSession().write(nop());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("DR|EXC|(javax.net.ssl.SSLException)|NOP()|DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("DS|DR|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	
+	}
+	
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -273,4 +273,17 @@ public interface ISessionConfig {
 	 */
 	boolean alwaysNotifiedBeingInPipeline();
 	
+	/**
+	 * Determines if the session associated with a session engine should be quickly
+	 * closed in case of an engine failure.
+	 * <p>
+	 * If the returned value is {@code false} the session will be quickly closed
+	 * without sending back any data (e.g. SSL/TLS Alerts) that is still waiting for
+	 * being wrapped by the engine. To wait for the gentle engine closing that sends
+	 * back all data waiting for wrapping this method should return {@code false}.
+	 * 
+	 * @return {@code true} to quickly close the session in case of an engine
+	 *         failure.
+	 */
+	boolean quicklyCloseEngineOnFailure();
 }

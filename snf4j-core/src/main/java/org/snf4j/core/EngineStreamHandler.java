@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2023 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,6 +63,8 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 	private int maxAppBufferSize;
 	
 	private int maxNetBufferSize;
+
+	private boolean sessionClosed;
 	
 	public EngineStreamHandler(IEngine engine, IStreamHandler handler, ILogger logger) {
 		super(engine, handler, logger);
@@ -100,6 +102,14 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 		}
 	}
 	
+	private void sessionClose(boolean isEof) {
+		if (!sessionClosed) {
+			sessionClosed = true;
+			delayedCloseNeeded = false;
+			session.close(isEof);
+		}
+	}
+		
 	@Override
 	boolean unwrap(HandshakeStatus[] status) {
 		if (traceEnabled) {
@@ -130,6 +140,10 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 				}
 			} catch (Exception e) {
 				elogger.error(logger, "Unwrapping failed for {}: {}", session, e);
+				if (tryDelayedException(e, status)) {
+					tryReleaseInAppBuffer();
+					return true;
+				}
 				fireException(e);
 				tryReleaseInAppBuffer();
 				return false;
@@ -221,7 +235,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 						return true;
 					}
 					else {
-						superClose();
+						sessionClose(delayedException != null);
 					}
 					tryReleaseInAppBuffer();
 					return false;
@@ -285,7 +299,6 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 					}
 					else if (engine.isOutboundDone()) {
 						outAppBuffers = StreamSession.clearBuffers(outAppBuffers, allocator, session.optimizeBuffers);
-						appCounter = netCounter;
 						closing = ClosingState.FINISHING;
 					}
 					else {
@@ -319,6 +332,10 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 
 			if (wrapResult == null) {
 				elogger.error(logger, "Wrapping failed for {}: {}", session, ex);
+				if (tryDelayedException(ex, status)) {
+					repeat = true;
+					continue;
+				}
 				fireException(ex);
 				tryReleaseOutNetBuffer();
 				return false;
@@ -360,11 +377,15 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 					if (debugEnabled) {
 						logger.debug("Wrapping has been closed for {}", session);
 					}
+					appCounter = netCounter;
 					flush();
+					if (fireDelayedException()) {
+						break;
+					}
 					if (handler.getConfig().waitForInboundCloseMessage() && !engine.isInboundDone()) {
 						return true;
 					}
-					session.close(true);
+					sessionClose(true);
 					break;
 			}
 		} while (repeat);
@@ -386,12 +407,7 @@ class EngineStreamHandler extends AbstractEngineHandler<EngineStreamSession, ISt
 	final void superQuickClose() {
 		session.superQuickClose();		
 	}
-	
-	@Override
-	final void superClose() {
-		session.superClose();
-	}
-	
+		
 	private final void flush() {
 		int position = outNetBuffer.position();
 

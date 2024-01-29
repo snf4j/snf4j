@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2022 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -103,11 +103,46 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	
 	boolean traceEnabled;
 	
+	/**
+	 * Delayed exception causing a gentle close so any pending data (e.g. Alert) can
+	 * be still wrapped and send back after reporting the real cause to the handler.
+	 */
+	DelayedException delayedException;
+
+	boolean delayedCloseNeeded;
+	
 	AbstractEngineHandler(IEngine engine, H handler, ILogger logger) {
 		this.engine = engine;
 		this.handler = handler;
 		this.logger = logger;
 		allocator = handler.getFactory().getAllocator();
+	}
+	
+	boolean tryDelayedException(Throwable t, HandshakeStatus[] status) {
+		if (!handler.getConfig().quicklyCloseEngineOnFailure()) {
+			if (delayedException == null && engine.getHandshakeStatus() == HandshakeStatus.NEED_WRAP) {
+				if (debugEnabled) {
+					logger.debug("Delaying exception for {}", session);
+				}
+				status[0] = HandshakeStatus.NEED_WRAP;
+				delayedException = new DelayedException(t);
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	boolean fireDelayedException() {
+		if (delayedException != null && !delayedException.isFired()) {
+			delayedException.markFired();
+			if (debugEnabled) {
+				logger.debug("Firing delayed exception for {}", session);
+			}
+			delayedCloseNeeded = true;
+			fireException(delayedException);
+			return true;
+		}
+		return false;
 	}
 	
 	/** Return true if wrap needed */
@@ -125,10 +160,7 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	
 	/** Quickly closes super session */
 	abstract void superQuickClose();
-	
-	/** Gently closes super session */
-	abstract void superClose();
-	
+		
 	/** Method is always running in the same selector loop's thread */
 	@Override
 	public void run() {
@@ -170,7 +202,7 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 						closing = ClosingState.FINISHING;
 					}
 				}
-				wrapNeeded = handleClosing();
+				wrapNeeded = handleClosing() || delayedCloseNeeded;
 			}
 			else {
 				wrapNeeded = false;
@@ -547,4 +579,34 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			return "engine-delegated-task-" + id;
 		}
 	}
+	
+	static class DelayedException extends Exception implements ICloseControllingException {
+
+		private static final long serialVersionUID = 1L;
+
+		private boolean fired;
+		
+		DelayedException(Throwable t) {
+			super(t);
+		}
+		
+		@Override
+		public CloseType getCloseType() {
+			return CloseType.GENTLE;
+		}
+
+		@Override
+		public Throwable getClosingCause() {
+			return getCause();
+		}		
+		
+		void markFired() {
+			fired = true;
+		}
+		
+		boolean isFired() {
+			return fired;
+		}
+	}
+
 }

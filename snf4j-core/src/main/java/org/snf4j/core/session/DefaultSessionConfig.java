@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2021 SNF4J contributors
+ * Copyright (c) 2017-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -81,6 +81,8 @@ public class DefaultSessionConfig implements ISessionConfig {
 	private int maxWriteSpinCount = 16;
 	
 	private boolean alwaysNotifiedBeingInPipeline;
+	
+	private boolean quicklyCloseEngineOnFailure;
 	
 	private final SSLEngineBuilder[] engineBuilders = new SSLEngineBuilder[2];
 	
@@ -488,7 +490,7 @@ public class DefaultSessionConfig implements ISessionConfig {
 	 * be notified in a situation when the connection is closed and the processing
 	 * of the session was not initiated yet.
 	 * <p>
-	 * If the returned value is {@code false} the session that was not processed yet
+	 * If the argument value is {@code false} the session that was not processed yet
 	 * will not be notified (i.e. session events will not be fired). However, this
 	 * does not apply to the session that owns the pipeline as it will always be
 	 * notified.
@@ -512,5 +514,34 @@ public class DefaultSessionConfig implements ISessionConfig {
 	@Override
 	public boolean alwaysNotifiedBeingInPipeline() {
 		return alwaysNotifiedBeingInPipeline;
+	}
+	
+	/**
+	 * Configures if the session associated with a session engine should be quickly
+	 * closed in case of an engine failure.
+	 * <p>
+	 * If the argument value is {@code false} the session will be quickly closed
+	 * without sending back any data (e.g. SSL/TLS Alerts) that is still waiting for
+	 * being wrapped by the engine. To wait for the gentle engine closing that sends
+	 * back all data waiting for wrapping the value should be {@code false}.
+	 * 
+	 * @param quickClose {@code true} to quickly close the session in case of an
+	 *                   engine failure.
+	 * @return this session config object
+	 * @see #quicklyCloseEngineOnFailure()
+	 */
+	public DefaultSessionConfig setQuicklyCloseEngineOnFailure(boolean quickClose) {
+		quicklyCloseEngineOnFailure = quickClose;
+		return this;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * The default value is <code>false</code>
+	 */
+	public boolean quicklyCloseEngineOnFailure() {
+		return quicklyCloseEngineOnFailure;
 	}
 }

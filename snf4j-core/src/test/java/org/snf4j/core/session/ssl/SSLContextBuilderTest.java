@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2021-2023 SNF4J contributors
+ * Copyright (c) 2021-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,6 @@ import java.security.Provider;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
 import javax.net.ssl.KeyManagerFactory;
@@ -801,7 +800,7 @@ public class SSLContextBuilderTest {
 			start(scb.engineBuilder(), ccb.engineBuilder());
 			fail();
 		}
-		catch (CancellationException e) {}
+		catch (ExecutionException e) {}
 		
 		scb = SSLContextBuilder.forServer(KEY_PEM, CERT_PEM)
 				.protocols("TLSv1.2")
@@ -813,7 +812,7 @@ public class SSLContextBuilderTest {
 			start(scb.engineBuilder(), ccb.engineBuilder());
 			fail();
 		}
-		catch (CancellationException e) {}
+		catch (ExecutionException e) {}
 		
 		scb = SSLContextBuilder.forServer(KEY_PEM, CERT_PEM)
 				.clientAuth(ClientAuth.REQUIRED)
