@@ -94,7 +94,7 @@ jobs:
         gpg-passphrase: PGP_PWD
 
     - name: Publish to Apache Maven Central
-      run: mvn deploy -P release
+      run: mvn deploy -DskipTests=true -P release
       env:
         NEXUS_TOKEN_USER: ${{ secrets.NEXUS_TOKEN_USER }}
         NEXUS_TOKEN_PWD: ${{ secrets.NEXUS_TOKEN_PWD }}
