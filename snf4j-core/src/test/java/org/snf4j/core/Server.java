@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2022 SNF4J contributors
+ * Copyright (c) 2017-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -108,6 +108,7 @@ public class Server {
 	public volatile boolean dontReplaceException;
 	public volatile boolean optimizeDataCopying;
 	public volatile int maxWriteSpinCount = -1;
+	public volatile boolean quicklyCloseEngine;
 
 	public volatile int availableCounter;
 	
@@ -116,6 +117,7 @@ public class Server {
 	public volatile int minOutBufferCapacity = 1024;
 	
 	public volatile boolean exceptionRecordException;
+	public volatile boolean exceptionRecordExceptionClass;
 	public volatile boolean incident;
 	public volatile boolean incidentRecordException;
 	public volatile boolean incidentClose;
@@ -153,6 +155,7 @@ public class Server {
 	static Map<EventType, String> eventMapping = new HashMap<EventType, String>();
 
 	static volatile SSLContext sslContext = null; 
+	public volatile SSLContext localSslContext = null;
 	
 	volatile long handshakeTimeout = 5000;
 	
@@ -175,27 +178,31 @@ public class Server {
 		eventMapping.put(EventType.EXCEPTION_CAUGHT, "EXC");
 	}
 	
+	public static SSLContext loadSSLContext(String keystoreName) throws Exception {
+		KeyStore ks = KeyStore.getInstance("JKS");
+		KeyStore ts = KeyStore.getInstance("JKS");
+		char[] password = "password".toCharArray();
+
+		File file = new File(Server.class.getClassLoader().getResource(keystoreName).getFile());
+
+		ks.load(new FileInputStream(file), password);
+		ts.load(new FileInputStream(file), password);
+
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+		kmf.init(ks, password);
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+		tmf.init(ts);
+
+		SSLContext ctx = SSLContext.getInstance("TLS");
+		ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+		return ctx;
+	}
+	
 	public static SSLContext getSSLContext() throws Exception {
 		if (sslContext == null) {
 			synchronized (Server.class) {
 				if (sslContext == null) {
-					KeyStore ks = KeyStore.getInstance("JKS");
-					KeyStore ts = KeyStore.getInstance("JKS");
-					char[] password = "password".toCharArray();
-
-					File file = new File(Server.class.getClassLoader().getResource("keystore.jks").getFile());
-
-					ks.load(new FileInputStream(file), password);
-					ts.load(new FileInputStream(file), password);
-
-					KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-					kmf.init(ks, password);
-					TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-					tmf.init(ts);
-
-					SSLContext ctx = SSLContext.getInstance("TLS");
-					ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-					sslContext = ctx;
+					sslContext = loadSSLContext("keystore.jks");
 				}
 			}
 		}
@@ -203,16 +210,23 @@ public class Server {
 	}
 	
 	public static SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
+		return createSSLEngine(null, remoteAddress, clientMode);
+	}
+
+	public static SSLEngine createSSLEngine(SSLContext ctx, SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
 		SSLEngine engine;
 		try {
+			if (ctx == null) {
+				ctx = getSSLContext();
+			}
 			if (clientMode && remoteAddress instanceof InetSocketAddress) {
 				String host = ((InetSocketAddress)remoteAddress).getHostString();
 				int port = ((InetSocketAddress)remoteAddress).getPort();
 				
-				engine = getSSLContext().createSSLEngine(host, port);
+				engine = ctx.createSSLEngine(host, port);
 			}
 			else {
-				engine = getSSLContext().createSSLEngine();
+				engine = ctx.createSSLEngine();
 			}
 		} catch (Exception e) {
 			throw new SSLEngineCreateException(e);
@@ -591,7 +605,7 @@ public class Server {
 			DefaultSessionConfig config = new DefaultSessionConfig() {
 				@Override
 				public SSLEngine createSSLEngine(SocketAddress remoteAddress, boolean clientMode) throws SSLEngineCreateException {
-					return new TestSSLEngine(Server.createSSLEngine(remoteAddress, clientMode));
+					return new TestSSLEngine(Server.createSSLEngine(localSslContext, remoteAddress, clientMode));
 				}
 				
 				@Override
@@ -628,6 +642,7 @@ public class Server {
 			if (maxWriteSpinCount != -1) {
 				config.setMaxWriteSpinCount(maxWriteSpinCount);
 			}
+			config.setQuicklyCloseEngineOnFailure(quicklyCloseEngine);
 			return config;
 		}
 
@@ -934,6 +949,9 @@ public class Server {
 			event(type, -1);
 			if (exceptionRecordException) {
 				record("(" + t.getMessage() + ")");
+			}
+			if (exceptionRecordExceptionClass) {
+				record("(" + t.getClass().getName() + ")");
 			}
 			if (Server.this.throwInException) {
 				Server.this.throwInExceptionCount.incrementAndGet();

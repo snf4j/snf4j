@@ -50,7 +50,6 @@ import java.util.concurrent.Executors;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -1647,11 +1646,28 @@ public class SSLSessionTest {
 		
 		engine = getSSLEngine((SSLSession) c.getSession());
 		engine.wrapException = new SSLException("");
+		engine.wrapExceptionRepeats = 1;
 		c.getSession().close();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertEquals("EXC|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
 		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		
+		c = new Client(PORT, true);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		s.waitForSessionReady(TIMEOUT);
+		c.getRecordedData(true);
+		s.getRecordedData("RDY|", true);
+		
+		engine = getSSLEngine((SSLSession) c.getSession());
+		engine.wrapException = new SSLException("");
+		c.getSession().close();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("EXC|DS|SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
+		assertEquals("DS|DR|DS|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
 
 		c = new Client(PORT, true);
@@ -1682,6 +1698,7 @@ public class SSLSessionTest {
 
 		engine = getSSLEngine((SSLSession) c.getSession());
 		engine.wrapException = new SSLException("");
+		engine.wrapExceptionRepeats = 1;
 		((SSLSession) c.getSession()).beginHandshake();
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
@@ -1891,7 +1908,7 @@ public class SSLSessionTest {
 		assertEquals("SCR|SOP|", s.getRecordedData(true));
 		channel.write(ByteBuffer.wrap("27736437rhfbbhjhfgjfg".getBytes()));
 		s.waitForSessionEnding(TIMEOUT);
-		assertEquals("DR|EXC|SCL|SEN|", s.getRecordedData(true));
+		assertEquals("DR|EXC|DS|SCL|SEN|", s.getRecordedData(true));
 		channel.close();
 		
 		//SSL established and peer sends close_notify but doesn't shutdown output
@@ -2755,7 +2772,58 @@ public class SSLSessionTest {
 		assertEquals(0, counter((EngineStreamSession) s.session, "appCounter"));
 		assertEquals(0, counter((EngineStreamSession) s.session, "netCounter"));
 	}
+
+	@Test
+	public void testAlertAfterHandshakeFailure() throws Exception {
+		s = new Server(PORT, true);
+		s.localSslContext = Server.loadSSLContext("keystore2.jks");
+		s.exceptionRecordExceptionClass = true;
+		s.dontReplaceException = true;
+		c = new Client(PORT, true);
+		c.exceptionRecordExceptionClass = true;
+		c.waitForCloseMessage = true;
+		s.start();
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(s.getRecordedData(true).endsWith("EXC|(javax.net.ssl.SSLHandshakeException)|SCL|SEN|"));
+		assertTrue(c.getRecordedData(true).endsWith("EXC|(javax.net.ssl.SSLHandshakeException)|DS|SCL|SEN|"));
+		c.stop(TIMEOUT);
+
+		c = new Client(PORT, true);
+		c.exceptionRecordExceptionClass = true;
+		c.waitForCloseMessage = true;
+		c.quicklyCloseEngine = true;
+		c.start();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(s.getRecordedData(true).endsWith("SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|"));
+		assertTrue(c.getRecordedData(true).endsWith("EXC|(javax.net.ssl.SSLHandshakeException)|SCL|SEN|"));
+		c.stop(TIMEOUT);
 		
+		c = new Client(PORT, false);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().writenf("ABCDEF".getBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DS|DR|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|DR|EXC|(javax.net.ssl.SSLException)|DS|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+
+		s.quicklyCloseEngine = true;
+		c = new Client(PORT, false);
+		c.start();
+		c.waitForSessionReady(TIMEOUT);
+		c.getSession().writenf("ABCDEF".getBytes());
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("SCR|SOP|RDY|DS|SCL|SEN|", c.getRecordedData(true));
+		assertEquals("SCR|SOP|DR|EXC|(javax.net.ssl.SSLException)|SCL|SEN|", s.getRecordedData(true));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+	}
+	
 	@Test
 	public void testCopyInBuffer() throws Exception {
 		Client c = new Client(PORT);

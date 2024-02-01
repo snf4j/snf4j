@@ -2184,8 +2184,10 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
 		assertTrue(s.session.getReadyFuture().isSuccessful());
-		assertTrue(s.session.getCloseFuture().isSuccessful());
-		assertTrue(s.session.getEndFuture().isSuccessful());
+		assertTrue(s.session.getCloseFuture().isFailed());
+		assertEquals("Ex2", s.session.getCloseFuture().cause().getMessage());
+		assertTrue(s.session.getEndFuture().isFailed());
+		assertEquals("Ex2", s.session.getEndFuture().cause().getMessage());
 		assertEquals("DS|DR|ECHO_RESPONSE()|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DR|ECHO()|EXC|(Ex2)|DS|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2022 SNF4J contributors
+ * Copyright (c) 2017-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -116,6 +116,8 @@ public class DatagramHandler {
 	public final AtomicInteger throwInSuperReadCount = new AtomicInteger();
 	public volatile boolean throwInIncident;
 	public volatile RuntimeException throwIn;
+	public volatile boolean exceptionRecordExceptionClass;
+	public volatile boolean quicklyCloseEngine;
 	
 	AtomicBoolean sessionOpenLock = new AtomicBoolean(false);
 	AtomicBoolean sessionReadyLock = new AtomicBoolean(false);
@@ -147,6 +149,7 @@ public class DatagramHandler {
 	volatile long reopenBlockedInterval = 4999;
 	
 	static volatile SSLContext sslContext = null; 
+	public volatile SSLContext localSslContext = null;	
 	
 	public static double JAVA_VER = Double.parseDouble(System.getProperty("java.specification.version"));
 	
@@ -161,32 +164,37 @@ public class DatagramHandler {
 		eventMapping.put(EventType.EXCEPTION_CAUGHT, "EXC");
 	}
 	
+	public static SSLContext loadSSLContext(String keystoreName) throws Exception {
+		KeyStore ks = KeyStore.getInstance("JKS");
+		KeyStore ts = KeyStore.getInstance("JKS");
+		char[] password = "password".toCharArray();
+
+		File file = new File(DatagramHandler.class.getClassLoader().getResource(keystoreName).getFile());
+
+		ks.load(new FileInputStream(file), password);
+		ts.load(new FileInputStream(file), password);
+
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+		kmf.init(ks, password);
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+		tmf.init(ts);
+
+		SSLContext ctx = SSLContext.getInstance("DTLS");
+		ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+		return ctx;
+	}
+	
 	public SSLContext getSSLContext() throws Exception {
 		if (sslContext == null) {
 			synchronized (Server.class) {
 				if (sslContext == null) {
-					KeyStore ks = KeyStore.getInstance("JKS");
-					KeyStore ts = KeyStore.getInstance("JKS");
-					char[] password = "password".toCharArray();
-
-					File file = new File(getClass().getClassLoader().getResource("keystore.jks").getFile());
-
-					ks.load(new FileInputStream(file), password);
-					ts.load(new FileInputStream(file), password);
-
-					KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-					kmf.init(ks, password);
-					TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-					tmf.init(ts);
-
-					SSLContext ctx = SSLContext.getInstance("DTLS");
-					ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-					sslContext = ctx;
+					sslContext = loadSSLContext("keystore.jks");
 				}
 			}
 		}
 		return sslContext;
 	}
+	
 	public DatagramHandler(int port) {
 		this.port = port;
 	}
@@ -557,10 +565,14 @@ public class DatagramHandler {
 							String host = ((InetSocketAddress)remoteAddress).getHostString();
 							int port = ((InetSocketAddress)remoteAddress).getPort();
 							
-							engine = engine == null ? getSSLContext().createSSLEngine(host, port) : engine;
+							if (engine == null) {
+								SSLContext ctx = localSslContext != null ? localSslContext : getSSLContext();
+								engine = ctx.createSSLEngine(host, port);
+							}
 						}
-						else {
-							engine = engine == null ? getSSLContext().createSSLEngine() : engine;
+						else if (engine == null) {
+							SSLContext ctx = localSslContext != null ? localSslContext : getSSLContext();
+							engine = ctx.createSSLEngine();
 						}
 					} catch (Exception e) {
 						throw new SSLEngineCreateException(e);
@@ -599,6 +611,7 @@ public class DatagramHandler {
 			if (maxWriteSpinCount != -1) {
 				config.setMaxWriteSpinCount(maxWriteSpinCount);
 			}
+			config.setQuicklyCloseEngineOnFailure(quicklyCloseEngine);
 			return config;
 		}
 
@@ -846,6 +859,9 @@ public class DatagramHandler {
 		@Override
 		public void exception(Throwable t) {
 			event(EventType.EXCEPTION_CAUGHT, -1, null, true);
+			if (exceptionRecordExceptionClass) {
+				record("(" + t.getClass().getName() + ")");
+			}
 			if (throwInException) {
 				throwInExceptionCount.incrementAndGet();
 				throw new NullPointerException();

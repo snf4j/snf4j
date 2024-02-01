@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2023 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -261,6 +261,10 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 			}
 			catch (Exception e) {
 				elogger.error(logger, "Unwrapping failed for {}: {}", session, e);
+				if (tryDelayedException(e, status)) {
+					tryReleaseInAppBuffer();
+					return true;
+				}
 				fireException(e);
 				tryReleaseInAppBuffer();
 				return false;
@@ -360,7 +364,7 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 						return true;
 					}
 					else {
-						superClose();
+						sessionClose();
 					}
 					tryReleaseInAppBuffer();
 					return false;
@@ -411,7 +415,6 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 						}
 						else if (engine.isOutboundDone()) {
 							releaseBuffers(outAppBuffers);
-							appCounter = netCounter;
 							closing = ClosingState.FINISHING;
 						}
 						else {
@@ -437,10 +440,14 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 			}
 			
 			if (wrapResult == null) {
+				elogger.error(logger, "Wrapping failed for {}: {}", session, ex);
+				if (tryDelayedException(ex, status)) {
+					repeat = true;
+					continue;
+				}
 				if (releasable) {
 					allocator.release(outNetBuffer);
 				}
-				elogger.error(logger, "Wrapping failed for {}: {}", session, ex);
 				fireException(ex);
 				return false;
 			}
@@ -489,14 +496,18 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 					if (debugEnabled) {
 						logger.debug("Wrapping has been closed for {}", session);
 					}
+					appCounter = netCounter;
 					boolean flushed = flush(record, outNetBuffer);
+					if (fireDelayedException()) {
+						break;
+					}
 					if (handler.getConfig().waitForInboundCloseMessage() && !engine.isInboundDone()) {
 						if (flushed && status[0] == HandshakeStatus.NEED_UNWRAP) {
 							scheduleRetransmission();
 						}
 						return true;
 					}
-					superClose();
+					sessionClose();
 					break;
 					
 				case BUFFER_UNDERFLOW:
@@ -524,8 +535,8 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 		session.superQuickClose();		
 	}
 	
-	@Override
-	void superClose() {
+	void sessionClose() {
+		delayedCloseNeeded = false;
 		session.superClose();
 	}
 	

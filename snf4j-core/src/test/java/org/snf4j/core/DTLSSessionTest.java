@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2023 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1195,8 +1195,8 @@ public class DTLSSessionTest extends DTLSTest {
 		s.waitForSessionEnding(TIMEOUT);
 		c.waitForSessionEnding(TIMEOUT);
 		assertTrue(c.session.getReadyFuture().isSuccessful());
-		assertTrue(c.session.getCloseFuture().isSuccessful());
-		assertTrue(c.session.getEndFuture().isSuccessful());
+		assertTrue(c.session.getCloseFuture().isFailed());
+		assertTrue(c.session.getEndFuture().isFailed());
 		assertEquals("DR|ECHO()|EXC|DS|SCL|SEN|", c.getRecordedData(true));
 		assertEquals("DS|DR|ECHO_RESPONSE()|DR|SCL|SEN|", s.getRecordedData(true));
 		c.stop(TIMEOUT);
@@ -2971,6 +2971,48 @@ public class DTLSSessionTest extends DTLSTest {
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);
 		
+	}
+
+	@Test
+	public void testAlertAfterHandshakeFailure() throws Exception {
+		assumeJava9();
+
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.exceptionRecordExceptionClass = true;
+		s.timer = new DefaultTimer();
+		s.localSslContext = DatagramHandler.loadSSLContext("keystore2.jks");
+		s.ssl = true;
+		c.ssl = true;
+		c.waitForCloseMessage = true;
+		c.exceptionRecordExceptionClass = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertTrue(c.getRecordedData(true).endsWith("EXC|(javax.net.ssl.SSLHandshakeException)|DS|SCL|SEN|"));
+		assertTrue(s.getRecordedData(true).endsWith("EXC|(javax.net.ssl.SSLHandshakeException)|SCL|SEN|"));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
+
+		s = new DatagramHandler(PORT);
+		c = new DatagramHandler(PORT);
+		s.useDatagramServerHandler = true;
+		s.exceptionRecordExceptionClass = true;
+		s.timer = new DefaultTimer();
+		s.localSslContext = DatagramHandler.loadSSLContext("keystore2.jks");
+		s.ssl = true;
+		c.ssl = true;
+		c.waitForCloseMessage = true;
+		c.exceptionRecordExceptionClass = true;
+		c.quicklyCloseEngine = true;
+		s.startServer();
+		c.startClient();
+		c.waitForSessionEnding(TIMEOUT);
+		assertTrue(c.getRecordedData(true).endsWith("EXC|(javax.net.ssl.SSLHandshakeException)|SCL|SEN|"));
+		c.stop(TIMEOUT);
+		s.stop(TIMEOUT);
 	}
 	
 }

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2023 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
@@ -190,6 +191,64 @@ public class EngineStreamHandlerTest {
 		assertNull(getBuffer(h, "inAppBuffer"));
 		assertEquals(1, h0.allocator.getReleasedCount());
 		
+	}
+	
+	@Test
+	public void testTryDelayedException() {
+		TestHandler h0 = new TestHandler("Test");
+		EngineStreamHandler h = new EngineStreamHandler(engine, h0, LOGGER);
+		Exception e1 = new Exception("E1");
+		Exception e2 = new Exception("E2");
+		HandshakeStatus[] status = new HandshakeStatus[1];
+		
+		assertNull(h.delayedException);
+		for (HandshakeStatus hs: HandshakeStatus.values()) {
+			if (hs == HandshakeStatus.NEED_WRAP) {
+				continue;
+			}
+			engine.status = hs;
+			assertFalse(h.tryDelayedException(e1, status));
+			assertNull(h.delayedException);
+			assertNull(status[0]);
+		}
+		engine.status = HandshakeStatus.NEED_WRAP;
+		h0.quicklyCloseEngine = true;
+		assertFalse(h.tryDelayedException(e1, status));
+		h0.quicklyCloseEngine = false;
+		assertTrue(h.tryDelayedException(e1, status));
+		assertNotNull(h.delayedException);
+		assertFalse(h.delayedException.isFired());
+		assertSame(e1, h.delayedException.getClosingCause());
+		assertFalse(h.tryDelayedException(e2, status));
+		assertNotNull(h.delayedException);
+		assertSame(e1, h.delayedException.getClosingCause());
+		assertFalse(h.delayedException.isFired());
+		
+		h.delayedException = null;
+		h.debugEnabled = true;
+		assertTrue(h.tryDelayedException(e1, status));
+	}
+	
+	@Test
+	public void testfireDelayedException() throws Exception {
+		TestHandler h0 = new TestHandler("Test");
+		EngineStreamHandler h = new EngineStreamHandler(engine, h0, LOGGER);
+		Exception e1 = new Exception("E1");
+		HandshakeStatus[] status = new HandshakeStatus[1];
+		
+		engine.status = HandshakeStatus.NEED_WRAP;
+		assertFalse(h.fireDelayedException());
+		h.tryDelayedException(e1, status);
+		SSLSession session = new SSLSession(h, false);
+		h.setSession(session);
+		assertTrue(h.fireDelayedException());
+		assertTrue(h.delayedException.isFired());
+		assertFalse(h.fireDelayedException());
+		
+		h.delayedException = null;
+		h.tryDelayedException(e1, status);
+		h.debugEnabled = true;
+		assertTrue(h.fireDelayedException());
 	}
 	
 	@Test
@@ -366,8 +425,8 @@ public class EngineStreamHandlerTest {
 		}
 		assertEquals("DR|ECHO()|EXC|(Ex2)|DS|SCL|SEN|", s.getRecordedData(true));
 		assertTrue(s.session.getReadyFuture().isSuccessful());
-		assertTrue(s.session.getCloseFuture().isSuccessful());
-		assertTrue(s.session.getEndFuture().isSuccessful());		
+		assertTrue(s.session.getCloseFuture().isFailed());
+		assertTrue(s.session.getEndFuture().isFailed());		
 	}
 	
 	@Test

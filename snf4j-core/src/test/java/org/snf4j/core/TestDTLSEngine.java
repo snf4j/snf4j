@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2022 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -65,6 +65,8 @@ public class TestDTLSEngine extends SSLEngine {
 	int unwrapConsumed = -1;
 
 	HandshakeStatus status = HandshakeStatus.NOT_HANDSHAKING;
+	
+	HandshakeStatus statusAfterException;
 	
 	final List<Record> records = new ArrayList<Record>();
 	
@@ -259,6 +261,9 @@ public class TestDTLSEngine extends SSLEngine {
 		if (wrapException != null) {
 			SSLException e = wrapException;
 			wrapException = null;
+			if (statusAfterException != null) {
+				status = statusAfterException;
+			}
 			throw e;
 		}
 		if (wrapResult != null) {
@@ -289,6 +294,9 @@ public class TestDTLSEngine extends SSLEngine {
 		if (unwrapException != null) {
 			SSLException e = unwrapException;
 			unwrapException = null;
+			if (statusAfterException != null) {
+				status = statusAfterException;
+			}
 			throw e;
 		}
 		if (unwrapResult != null) {
