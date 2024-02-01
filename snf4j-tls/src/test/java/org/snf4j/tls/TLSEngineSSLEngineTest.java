@@ -65,10 +65,14 @@ import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.core.session.ssl.SSLContextBuilder;
 import org.snf4j.core.session.ssl.SSLEngineBuilder;
 import org.snf4j.tls.alert.CertificateRequiredAlert;
+import org.snf4j.tls.alert.CloseNotifyAlert;
+import org.snf4j.tls.alert.UserCanceledAlert;
 import org.snf4j.tls.engine.DelegatedTaskMode;
 import org.snf4j.tls.engine.EngineParametersBuilder;
 import org.snf4j.tls.engine.EngineTest;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.record.Encryptor;
+import org.snf4j.tls.record.Record;
 import org.snf4j.tls.session.ISession;
 
 public class TLSEngineSSLEngineTest extends EngineTest {
@@ -2311,4 +2315,66 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		}
 	}
 
+	@Test
+	public void testUserCanceledAlert() throws Exception {
+		Assume.assumeTrue(JAVA11);
+
+		SSLEngine ssl = sslServer();
+		ssl.beginHandshake();
+
+		TLSEngine tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.build(), 
+				handler);
+		tls.beginHandshake();
+		assertEngine(tls, HandshakeStatus.NEED_WRAP);
+		
+		//ClientHello ->
+		clear();
+		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
+		assertEngine(tls, NEED_UNWRAP);
+		//ClientHello <-
+		flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_TASK);
+		runTasks(ssl);
+		assertEngine(ssl, NEED_WRAP, false, false);
+		
+		clear();
+		assertResult(ssl.wrap(in, out), OK, NEED_WRAP);
+		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);
+		flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_UNWRAP, in.position(), 0);
+		in.compact().flip();
+		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
+		runTasks(tls);
+		assertEngine(tls, NEED_UNWRAP_AGAIN);
+		
+		Encryptor[] e = TLSEngineTest.encryptors(tls);
+		clear();
+		Record.alert(new UserCanceledAlert(""), 0, e[2], in);
+		in.flip();
+		assertResult(ssl.unwrap(in, out), OK, NEED_UNWRAP);
+		clear();
+		Record.alert(new CloseNotifyAlert(""), 0, e[2], in);
+		in.flip();
+		assertResult(ssl.unwrap(in, out), CLOSED, NEED_WRAP);
+		
+		ssl = sslServer();
+		tls = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.build(), 
+				handler);
+		prepareForClient(tls, ssl);
+		assertEngine(ssl, NOT_HANDSHAKING);
+		
+		e = TLSEngineTest.encryptors(tls);
+		clear();
+		Record.alert(new UserCanceledAlert(""), 0, e[3], in);
+		in.flip();
+		assertResult(ssl.unwrap(in, out), OK, NOT_HANDSHAKING);
+		clear();
+		Record.alert(new CloseNotifyAlert(""), 0, e[3], in);
+		in.flip();
+		assertResult(ssl.unwrap(in, out), CLOSED, NEED_WRAP);
+	}	
 }

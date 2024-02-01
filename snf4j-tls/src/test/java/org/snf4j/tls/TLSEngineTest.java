@@ -55,12 +55,14 @@ import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.alert.BadCertificateAlert;
 import org.snf4j.tls.alert.BadRecordMacAlert;
 import org.snf4j.tls.alert.CertificateRequiredAlert;
+import org.snf4j.tls.alert.CloseNotifyAlert;
 import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.alert.HandshakeFailureAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 import org.snf4j.tls.alert.NoApplicationProtocolAlert;
 import org.snf4j.tls.alert.RecordOverflowAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
+import org.snf4j.tls.alert.UserCanceledAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.engine.CertificateCriteria;
 import org.snf4j.tls.engine.DelegatedTaskMode;
@@ -2292,6 +2294,21 @@ public class TLSEngineTest extends EngineTest {
 		
 		content[size] = (byte) type.value();
 		return content;
+	}
+	
+	@Test
+	public void testUnwrapUserCanceledAlert() throws Exception {
+		prepareConnection();
+		Encryptor[] encryptors = encryptors(cli);
+		in.clear();
+		Record.alert(new UserCanceledAlert(""), 0, encryptors[3], in);
+		Record.alert(new CloseNotifyAlert(""), 0, encryptors[3], in);
+		in.flip();
+		assertResult(srv.unwrap(in, out), Status.OK, HandshakeStatus.NOT_HANDSHAKING, 24, 0);
+		assertResult(srv.unwrap(in, out), Status.CLOSED, HandshakeStatus.NEED_WRAP, 24, 0);
+		assertInOut(0,0);
+		clear();
+		assertResult(srv.wrap(in, out), Status.CLOSED, HandshakeStatus.NOT_HANDSHAKING, 0, 24);
 	}
 	
 	@Test
