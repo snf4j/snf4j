@@ -815,6 +815,13 @@ public class TLSEngine implements IEngine {
 					consumed, 
 					0);
 		}
+		else if (desc.equals(AlertDescription.USER_CANCELED)) {
+			return new EngineResult(
+					OK, 
+					getHandshakeStatus(), 
+					consumed, 
+					0);
+		}
 		alert(Alert.of(level, desc));
 		outboundDone = true;
 		status = NOT_HANDSHAKING;
