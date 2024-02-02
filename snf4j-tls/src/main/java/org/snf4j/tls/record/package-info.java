@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023-2024 SNF4J contributors
+ * Copyright (c) 2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,42 +23,10 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.tls.engine;
 
-import org.snf4j.tls.cipher.CipherSuite;
-
-public interface IEarlyDataContext {
-	
-	/**
-	 * Gets the status of an early data processing.
-	 * 
-	 * @return the status
-	 */
-	EarlyDataState getState();
-	
-	/**
-	 * Marks the processing of an early data as completed.
-	 */
-	void complete();
-
-	/**
-	 * Marks the processing of an early data as rejecting.
-	 */
-	void rejecting();
-		
-	/**
-	 * Increments the number of already processed early-data bytes.
-	 * 
-	 * @param amount the amount of bytes to increment
-	 */
-	void incProcessedBytes(int amount);
-	
-	/**
-	 * Tells if the maximum size limit of processed bytes has been exceeded.
-	 * 
-	 * @return {@code true} if the maximum size limit has been exceeded
-	 */
-	boolean isSizeLimitExceeded();
-	
-	CipherSuite getCipherSuite();
-}
+/**
+ * Provides classes and interfaces for TLS 1.3 record layer utilities.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+package org.snf4j.tls.record;

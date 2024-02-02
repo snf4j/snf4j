@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -195,6 +195,7 @@ public class ByteBufferArray {
 	 * Tells whether there are at least the {@code length} of bytes between the
 	 * current position and the limit.
 	 * 
+	 * @param length the minimum number of bytes to check
 	 * @return {@code true} if, and only if, there is at least the {@code length} of
 	 *         bytes remaining in this buffer array wrapper
 	 */
