@@ -39,6 +39,7 @@ The framework is designed to be simple in use and moderately easy to understand.
 * HTTP Web Proxy Connect Protocol
 * SOCKS Protocols
 * WebSocket Protocol
+* Toolkit for TLS 1.3 Protocol (parsers/formatters, handshake engine, record layer utils and complete TLS engine)
  
 ## Security
 
@@ -47,7 +48,7 @@ The framework is designed to be simple in use and moderately easy to understand.
 
 ## Integration
 
-* No additional dependencies, JDK 6 or JDK 9 (for DTLS) is enough
+* No additional dependencies, JDK 8 or JDK 9 (for DTLS) is enough
 * Fully customizable logging (SLF4J, Log4j 2 already here)
 * Customizable thread factories
 * Customizable session timers 
@@ -55,7 +56,7 @@ The framework is designed to be simple in use and moderately easy to understand.
 
 # Compiling
 
-You need Apache maven 3.0 or above , Java 7 or above
+You need Apache maven 3.8 or above , Java 8 or above
 
     mvn install
 
