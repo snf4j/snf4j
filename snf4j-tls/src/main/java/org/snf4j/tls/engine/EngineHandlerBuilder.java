@@ -147,7 +147,7 @@ public class EngineHandlerBuilder {
 	/**
 	 * Sets padding for TLS records so that they are a multiple of the padding
 	 * value in length on send. A value of 1 turns off padding. Otherwise, the value
-	 * must be >1.
+	 * must be greater than 1.
 	 * 
 	 * @param padding the padding value
 	 * @return this builder

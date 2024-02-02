@@ -28,6 +28,7 @@ package org.snf4j.tls.engine;
 import java.security.SecureRandom;
 
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.NoApplicationProtocolAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.extension.IALPNExtension;
 import org.snf4j.tls.extension.IServerNameExtension;
@@ -50,7 +51,7 @@ public interface IEngineHandler {
 	 *                                    support
 	 * @throws Alert if some other errors occurred
 	 */
-	String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws Alert;
+	String selectApplicationProtocol(IALPNExtension alpn, String[] supportedProtocols) throws NoApplicationProtocolAlert, Alert;
 		
 	/**
 	 * Called by both clients and servers to signal selection of application protocol.
@@ -61,7 +62,7 @@ public interface IEngineHandler {
 	 *                                    but none was used
 	 * @throws Alert                      if some other errors occurred
 	 */
-	void selectedApplicationProtocol(String protocol) throws Alert;
+	void selectedApplicationProtocol(String protocol) throws NoApplicationProtocolAlert, Alert;
 	
 	ICertificateSelector getCertificateSelector();
 	

@@ -1,3 +1,12 @@
+#### 1.11.0
+ - 2024-02-02 - [changes](https://github.com/snf4j/snf4j/compare/v1.10.0...v1.11.0)
+ - Added ByteBufferArray wrapper for simplified data reading from multiple ByteBuffer [(#88)](https://github.com/snf4j/snf4j/pull/88)
+ - Added get methods for unsigned values to ByteBufferArray [(#89)](https://github.com/snf4j/snf4j/pull/89)
+ - Fixed #90: Engine stream handler may enter infinite loop when engine closes while sending pending data [(#91)](https://github.com/snf4j/snf4j/pull/91) [(#92)](https://github.com/snf4j/snf4j/pull/92)
+ - Introduced TLS 1.3 Toolkit module [(#93)](https://github.com/snf4j/snf4j/pull/93)
+ - Gentle closing of session engine in case of failure [(#94)](https://github.com/snf4j/snf4j/pull/94)
+ - Handling of user_canceled alert by TLSEngine [(#95)](https://github.com/snf4j/snf4j/pull/95)
+
 #### 1.10.0
  - 2022-05-18 - [changes](https://github.com/snf4j/snf4j/compare/v1.9.0...v1.10.0)
  - Added support for byte buffer holder [(#85)](https://github.com/snf4j/snf4j/pull/85)

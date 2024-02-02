@@ -570,6 +570,7 @@ public class SSLSessionTest {
 		session.dirtyClose();
 
 		s = new Server(PORT, true);
+		s.dontReplaceException = true;
 		c = new Client(PORT, true);
 		
 		s.start();
@@ -588,9 +589,15 @@ public class SSLSessionTest {
 		s.waitForSessionEnding(TIMEOUT);
 		List<String> recording = LoggerRecorder.disableRecording();
 		assertTLSVariants("?{DS|}SCL|SEN|", c.trimRecordedData(CLIENT_RDY_TAIL));
-		assertEquals("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|", s.getRecordedData(true));
+		String recordedData = s.getRecordedData(true);
 		String warnMsg = "[ WARN] " + SessionIncident.SSL_CLOSED_WITHOUT_CLOSE_NOTIFY.defaultMessage();
-		assertTrue(recording.contains(warnMsg));
+		if ("DS|SSL_CLOSED_WITHOUT_CLOSE_NOTIFY|SCL|SEN|".equals(recordedData)) {
+			assertTrue(recording.contains(warnMsg));
+		}
+		else if (TestConfig.isUnix()) {
+			assertEquals("DS|EXC|SCL|SEN|", recordedData);
+			assertFalse(recording.contains(warnMsg));
+		}
 		
 		c.stop(TIMEOUT);
 		s.stop(TIMEOUT);

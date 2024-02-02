@@ -26,6 +26,7 @@
 package org.snf4j.tls.engine;
 
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.NoApplicationProtocolAlert;
 
 public interface IApplicationProtocolHandler {
 
@@ -43,7 +44,7 @@ public interface IApplicationProtocolHandler {
 	 *                                    does not support
 	 * @throws Alert                      if some other errors occurred
 	 */
-	String selectApplicationProtocol(String[] offeredProtocols, String[] supportedProtocols) throws Alert;
+	String selectApplicationProtocol(String[] offeredProtocols, String[] supportedProtocols) throws NoApplicationProtocolAlert, Alert;
 	
 	/**
 	 * Called by both clients and servers to signal selection of application protocol.
@@ -54,6 +55,6 @@ public interface IApplicationProtocolHandler {
 	 *                                    but none was used
 	 * @throws Alert                      if some other errors occurred
 	 */
-	void selectedApplicationProtocol(String protocol) throws Alert;
+	void selectedApplicationProtocol(String protocol) throws NoApplicationProtocolAlert, Alert;
 	
 }
