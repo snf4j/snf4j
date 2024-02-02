@@ -102,7 +102,7 @@
     <version.source.plugin>3.0.1</version.source.plugin>
     <version.nexus.staging.plugin>1.6.7</version.nexus.staging.plugin>
     <version.versions.plugin>2.7</version.versions.plugin>
-    <version.gpg.plugin>1.5</version.gpg.plugin>
+    <version.gpg.plugin>3.1.0</version.gpg.plugin>
     <version.jacoco.plugin>0.8.11</version.jacoco.plugin>
 
   </properties>
