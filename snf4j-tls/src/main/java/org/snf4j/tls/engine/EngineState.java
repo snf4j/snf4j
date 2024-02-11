@@ -38,8 +38,7 @@ import org.snf4j.tls.crypto.ITranscriptHash;
 import org.snf4j.tls.crypto.KeySchedule;
 import org.snf4j.tls.extension.NamedGroup;
 import org.snf4j.tls.extension.PskKeyExchangeMode;
-import org.snf4j.tls.handshake.ClientHello;
-import org.snf4j.tls.handshake.IClientHello;
+import org.snf4j.tls.handshake.IHandshake;
 import org.snf4j.tls.session.ISession;
 import org.snf4j.tls.session.SessionInfo;
 
@@ -73,8 +72,8 @@ public class EngineState implements IEngineState, IEngineProducer {
 	
 	private KeySchedule keySchedule;
 		
-	private IClientHello clientHello;
-	
+	private IHandshake retained;
+		
 	private List<KeySharePrivateKey> privateKeys;
 
 	private List<PskContext> psks;
@@ -229,12 +228,13 @@ public class EngineState implements IEngineState, IEngineProducer {
 		this.version = version;
 	}
 
-	public IClientHello getClientHello() {
-		return clientHello;
+	@SuppressWarnings("unchecked")
+	public <T extends IHandshake> T getRetainedHandshake() {
+		return (T) retained;
 	}
 
-	public void setClientHello(ClientHello clientHello) {
-		this.clientHello = clientHello;
+	public void retainHandshake(IHandshake handshake) {
+		retained = handshake;
 	}
 
 	@Override
@@ -441,5 +441,6 @@ public class EngineState implements IEngineState, IEngineProducer {
 			keySchedule.eraseAll();
 		}
 		listener.onCleanup(this);
+		retainHandshake(null);
 	}
 }

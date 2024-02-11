@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,6 @@
 package org.snf4j.tls.engine;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
@@ -40,14 +39,6 @@ import org.snf4j.tls.handshake.Certificate;
 import org.snf4j.tls.handshake.ICertificateEntry;
 
 public class CertificateConsumerTest {
-
-	@Test
-	public void testTask() {
-		CertificateConsumer.CertificateTask task = new CertificateConsumer.CertificateTask(null, null, null);
-		
-		assertEquals("Certificate", task.name());
-		assertFalse(task.isProducing());
-	}
 	
 	@Test
 	public void testNoCertificateFromServer() throws Exception {

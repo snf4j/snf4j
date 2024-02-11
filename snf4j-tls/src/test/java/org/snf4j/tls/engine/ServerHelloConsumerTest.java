@@ -321,7 +321,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 		AbstractEngineTask task = (AbstractEngineTask) state.getTask();
 		assertEquals("Key exchange", task.name());
 		assertTrue(task.isProducing());
-		remove(state.getClientHello().getExtensions(), ExtensionType.KEY_SHARE);
+		remove(state.getRetainedHandshake().getExtensions(), ExtensionType.KEY_SHARE);
 		task.run();
 		try {
 			state.getProduced();
@@ -382,7 +382,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 	public void testConsumeHRRNoKeyShareInStoredClientHello() throws Exception {
 		random = ServerHelloRandom.getHelloRetryRequestRandom();
 		ServerHello sh = serverHello(0x0303);
-		remove(state.getClientHello().getExtensions(), ExtensionType.KEY_SHARE);
+		remove(state.getRetainedHandshake().getExtensions(), ExtensionType.KEY_SHARE);
 		new ServerHelloConsumer().consume(state, sh, data(sh), true);
 	}
 	
@@ -551,7 +551,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 		c.run(false, HandshakeType.SERVER_HELLO);
 		IHandshake h = c.get(false);
 		assertNotNull(h);
-		remove(((EngineState)cli.getState()).getClientHello().getExtensions(), ExtensionType.EARLY_DATA);
+		remove(((EngineState)cli.getState()).getRetainedHandshake().getExtensions(), ExtensionType.EARLY_DATA);
 		h.prepare();
 		session = cli.getState().getSession();
 		assertEquals(1, session.getManager().getTickets(session).length);
@@ -590,7 +590,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 		srv = new HandshakeEngine(false, params2, handler, handler);
 		c = new HandshakeController(cli, srv);
 		c.run(false, HandshakeType.SERVER_HELLO);
-		ClientHello ch1 = (ClientHello)((EngineState)cli.getState()).getClientHello();
+		ClientHello ch1 = ((EngineState)cli.getState()).getRetainedHandshake();
 		assertNotNull(ch1);
 		ServerHello h = (ServerHello) c.get(false);
 		assertNotNull(h);
@@ -646,7 +646,7 @@ public class ServerHelloConsumerTest extends EngineTest {
 		c.run(false, HandshakeType.SERVER_HELLO);
 		IHandshake h = c.get(false);
 		assertNotNull(h);
-		remove(((EngineState)cli.getState()).getClientHello().getExtensions(), ExtensionType.EARLY_DATA);
+		remove(((EngineState)cli.getState()).getRetainedHandshake().getExtensions(), ExtensionType.EARLY_DATA);
 		h.prepare();
 		session = cli.getState().getSession();
 		assertEquals(1, session.getManager().getTickets(session).length);

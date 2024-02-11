@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,11 +25,7 @@
  */
 package org.snf4j.tls.engine;
 
-import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-
 import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.CertificateRequiredAlert;
@@ -37,7 +33,6 @@ import org.snf4j.tls.alert.DecodeErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.ICertificate;
-import org.snf4j.tls.handshake.ICertificateEntry;
 import org.snf4j.tls.handshake.IHandshake;
 
 public class CertificateConsumer implements IHandshakeConsumer {
@@ -53,19 +48,8 @@ public class CertificateConsumer implements IHandshakeConsumer {
 		}
 		
 		state.getTranscriptHash().update(certificate.getType(), data);
-		
-		AbstractEngineTask task = new CertificateTask(
-				state.getHandler().getCertificateValidator(),
-				new CertificateValidateCriteria(false, state.getParameters().getPeerHost()),
-				certificate.getEntries());
-		
-		if (state.getParameters().getDelegatedTaskMode().certificates()) {
-			state.changeState(MachineState.CLI_WAIT_TASK);
-			state.addTask(task);
-		}
-		else {
-			task.run(state);
-		}		
+		state.retainHandshake(certificate);
+		state.changeState(MachineState.CLI_WAIT_CV);
 	}
 
 	private void consumeServer(EngineState state, ICertificate certificate, ByteBuffer[] data) throws Alert {
@@ -78,18 +62,8 @@ public class CertificateConsumer implements IHandshakeConsumer {
 			state.changeState(MachineState.SRV_WAIT_FINISHED);
 			return;
 		}
-		
-		AbstractEngineTask task = new CertificateTask(
-				state.getHandler().getCertificateValidator(),
-				new CertificateValidateCriteria(true, state.getHostName()),
-				certificate.getEntries());
-		if (state.getParameters().getDelegatedTaskMode().certificates()) {
-			state.changeState(MachineState.SRV_WAIT_TASK);
-			state.addTask(task);
-		}
-		else {
-			task.run(state);
-		}		
+		state.retainHandshake(certificate);
+		state.changeState(MachineState.SRV_WAIT_CV);
 	}
 	
 	@Override
@@ -106,64 +80,6 @@ public class CertificateConsumer implements IHandshakeConsumer {
 			
 		default:
 			throw new UnexpectedMessageAlert("Unexpected Certificate");
-		}
-	}
-
-	static class CertificateTask extends AbstractEngineTask {
-
-		private final ICertificateValidator validator;
-		
-		private final ICertificateEntry[] entries;
-		
-		private final CertificateValidateCriteria criteria;
-		
-		private volatile X509Certificate[] certs;
-		
-		private volatile Alert alert;
-		
-		CertificateTask(ICertificateValidator validator, CertificateValidateCriteria criteria, ICertificateEntry[] entries) {
-			this.validator = validator;
-			this.criteria = criteria;
-			this.entries = entries;
-		}
-		
-		@Override
-		public String name() {
-			return "Certificate";
-		}
-
-		@Override
-		public boolean isProducing() {
-			return false;
-		}
-
-		@Override
-		public void finish(EngineState state) throws Alert {
-			if (alert != null) {
-				throw alert;
-			}
-			state.getSessionInfo().peerCerts(certs);
-			state.changeState(state.isClientMode() 
-					? MachineState.CLI_WAIT_CV
-					: MachineState.SRV_WAIT_CV);
-		}
-
-		@Override
-		void execute() throws Exception {
-			CertificateFactory factory = CertificateFactory.getInstance("X.509");
-			X509Certificate[] certs = new X509Certificate[entries.length];
-			Alert alert;
-			
-			for (int i=0; i<certs.length; ++i) {
-				certs[i] = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(entries[i].getData()));
-			}
-			alert = validator.validateCertificates(criteria, certs);
-			if (alert == null) {
-				this.certs = certs;
-			}
-			else {
-				this.alert = alert;
-			}
 		}
 	}
 }
