@@ -1702,6 +1702,7 @@ public class SSLSessionTest {
 		s.waitForSessionReady(TIMEOUT);
 		c.getRecordedData(true);
 		s.getRecordedData("RDY|", true);
+		waitFor(100);
 
 		engine = getSSLEngine((SSLSession) c.getSession());
 		engine.wrapException = new SSLException("");
