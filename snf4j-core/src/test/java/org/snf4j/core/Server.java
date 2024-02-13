@@ -79,7 +79,7 @@ public class Server {
 	public SelectorLoop loop;
 	public int port;
 	public boolean ssl;
-	public StreamSession session;
+	public volatile StreamSession session;
 	public volatile SocketAddress sessionLocal;
 	public volatile SocketAddress sessionRemote;
 	public volatile boolean sslRemoteAddress;

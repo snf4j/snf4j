@@ -270,9 +270,9 @@ public class EngineStateTest extends CommonTest {
 		assertEquals(0, state.getVersion());
 		state.setVersion(111);
 		assertEquals(111, state.getVersion());
-		assertNull(state.getClientHello());
-		state.setClientHello(ch);
-		assertSame(ch, state.getClientHello());
+		assertNull(state.getRetainedHandshake());
+		state.retainHandshake(ch);
+		assertSame(ch, state.getRetainedHandshake());
 		assertNull(state.getCertCryteria());
 		state.setCertCryteria(cc);
 		assertSame(cc, state.getCertCryteria());

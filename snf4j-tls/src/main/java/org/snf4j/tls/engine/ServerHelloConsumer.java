@@ -81,7 +81,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 	}
 
 	private void consumeHRR(EngineState state, IServerHello serverHello, ByteBuffer[] data, IKeyShareExtension keyShare, int noPskCount) throws Alert {
-		IClientHello clientHello = state.getClientHello();
+		IClientHello clientHello = state.getRetainedHandshake();
 		List<IExtension> extensions = clientHello.getExtensions();
 		List<PskContext> pskCtxs = state.getPskContexts();
 		boolean psk = false;
@@ -226,7 +226,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 	}
 	
 	private static void produceWithBinders(EngineState state, RecordType recordType) throws Alert {
-		IClientHello clientHello = state.getClientHello();
+		IClientHello clientHello = state.getRetainedHandshake();
 		IPreSharedKeyExtension preSharedKey = ExtensionsUtil.findLast(clientHello);
 		byte[] truncated = clientHello.prepare();
 		OfferedPsk[] psks = preSharedKey.getOfferedPsks();
@@ -283,12 +283,14 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 			throw new ProtocolVersionAlert("Invalid legacy version");
 		}
 		
-		if (!Arrays.equals(serverHello.getLegacySessionId(), state.getClientHello().getLegacySessionId())) {
+		IClientHello retainedClientHello = state.getRetainedHandshake();
+		
+		if (!Arrays.equals(serverHello.getLegacySessionId(), retainedClientHello.getLegacySessionId())) {
 			throw new IllegalParameterAlert("Unexpexted value of legacy session id");
 		}
 		
 		CipherSuite cipherSuite = IntConstant.find(
-				state.getClientHello().getCipherSuites(), 
+				retainedClientHello.getCipherSuites(), 
 				serverHello.getCipherSuite());
 		if (cipherSuite == null) {
 			throw new IllegalParameterAlert("Not offered cipher suite");	
@@ -355,7 +357,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		
 		if (!state.isInitialized()) {
 			try {
-				byte[] clientHello = state.getClientHello().getPrepared();
+				byte[] clientHello = retainedClientHello.getPrepared();
 				
 				if (keySchedule == null) {
 					if (isHRR) {
@@ -433,7 +435,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 		state.getListener().onNewTrafficSecrets(state, RecordType.HANDSHAKE);
 		state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);
 		state.setVersion(negotiatedVersion);
-		state.setClientHello(null);
+		state.retainHandshake(null);
 		state.changeState(MachineState.CLI_WAIT_EE);
 	}
 
@@ -465,7 +467,7 @@ public class ServerHelloConsumer implements IHandshakeConsumer {
 
 		@Override
 		public void finish(EngineState state) throws Alert {
-			IClientHello clientHello = state.getClientHello();
+			IClientHello clientHello = state.getRetainedHandshake();
 			List<IExtension> extensions = clientHello.getExtensions();
 			int size = extensions.size();
 			KeyShareEntry entry = new KeyShareEntry(namedGroup, pair.getPublic());

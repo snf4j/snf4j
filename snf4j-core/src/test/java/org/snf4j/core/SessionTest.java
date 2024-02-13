@@ -2472,9 +2472,23 @@ public class SessionTest {
 		return count;
 	}
 	
+	private void sessionWrite(StreamSession session, byte[] data, int tryNum, int writeNum) throws Exception {
+		try {
+			session.write(data);
+		}
+		catch (Exception e) {
+			System.out.println("[INFO] testWriteSpinCount: " + e + " try;write " + tryNum + ";" +writeNum);
+			System.out.println("[INFO] client: " + c.getRecordedData(false));
+			System.out.println("[INFO] server: " + s.getRecordedData(false));
+			throw e;
+		}
+	}
+	
 	@Test
 	public void testWriteSpinCount() throws Exception {
 		s = new Server(PORT);
+		s.exceptionRecordException = true;
+		s.exceptionRecordExceptionClass = true;
 		s.start();
 		
 		StreamSession session;
@@ -2490,6 +2504,8 @@ public class SessionTest {
 		//of data consumed by single execution of channel's write method.
 		for (int t=0; t<maxTries; ++t) {
 			c = new Client(PORT);
+			c.exceptionRecordException = true;
+			c.exceptionRecordExceptionClass = true;
 			c.start();
 			c.waitForSessionReady(TIMEOUT);
 			s.waitForSessionReady(TIMEOUT);
@@ -2499,7 +2515,7 @@ public class SessionTest {
 			session = c.getSession();
 			session.suspendWrite();
 			for (int i=0; i<writeCount; i++) {
-				session.write(data);
+				sessionWrite(session, data, t, i);
 			}
 			session.write(new Packet(PacketType.CLOSE).toBytes());
 			session.resumeWrite();
@@ -2510,8 +2526,11 @@ public class SessionTest {
 			int count = countDS(text);
 			assertEquals("SCL|SEN|", text.substring(count*3));
 			c.stop(TIMEOUT);
+			waitFor(100);
 
 			c = new Client(PORT);
+			c.exceptionRecordException = true;
+			c.exceptionRecordExceptionClass = true;
 			c.maxWriteSpinCount = 1;
 			c.start();
 			c.waitForSessionReady(TIMEOUT);
@@ -2522,7 +2541,7 @@ public class SessionTest {
 			session = c.getSession();
 			session.suspendWrite();
 			for (int i=0; i<writeCount; i++) {
-				session.write(data);
+				sessionWrite(session, data, t, i);
 			}
 			session.write(new Packet(PacketType.CLOSE).toBytes());
 			session.resumeWrite();
@@ -2541,6 +2560,7 @@ public class SessionTest {
 				countsOk = count2 > count*4;
 			}
 			c.stop(TIMEOUT);
+			waitFor(100);
 			
 			if (countsOk) {
 				sb.setLength(0);
@@ -2570,7 +2590,7 @@ public class SessionTest {
 		session = c.getSession();
 		session.suspendWrite();
 		for (int i=0; i<writeCount; i++) {
-			session.write(data);
+			sessionWrite(session, data, 0, i);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
 		session.resumeWrite();
@@ -2578,6 +2598,7 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("EXC|SCL|SEN|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
+		waitFor(100);
 		
 		c = new Client(PORT);
 		c.useTestSession = true;
@@ -2592,7 +2613,7 @@ public class SessionTest {
 		session = c.getSession();
 		session.suspendWrite();
 		for (int i=0; i<writeCount; i++) {
-			session.write(data);
+			sessionWrite(session, data, 0, i);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
 		session.resumeWrite();
@@ -2600,6 +2621,7 @@ public class SessionTest {
 		c.waitForSessionEnding(TIMEOUT);
 		assertEquals("DS|EXC|SCL|SEN|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
+		waitFor(100);
 		
 		c = new Client(PORT);
 		c.maxWriteSpinCount = 1;
@@ -2623,6 +2645,7 @@ public class SessionTest {
 		assertEquals("DR|NOP(123456)|CLOSE()|SCL|SEN|", s.getRecordedData(true));
 		assertEquals("DS|SCL|SEN|", c.getRecordedData(true));
 		c.stop(TIMEOUT);
+		waitFor(100);
 	
 		TestHandler h = new TestHandler("") {
 			@Override

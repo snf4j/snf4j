@@ -517,7 +517,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 				}
 			}
 			
-			state.setClientHello(clientHello);
+			state.retainHandshake(clientHello);
 			
 			if (earlyData) {
 				SessionTicket ticket;

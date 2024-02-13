@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 package org.snf4j.tls.engine;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
@@ -36,6 +37,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.snf4j.core.session.ssl.ClientAuth;
+import org.snf4j.tls.alert.BadCertificateAlert;
 import org.snf4j.tls.alert.DecryptErrorAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.extension.SignatureScheme;
@@ -53,6 +55,14 @@ public class CertificateVerifyConsumerTest extends EngineTest {
 	}
 	
 	@Test
+	public void testTask() {
+		CertificateVerifyConsumer.CertificateTask task = new CertificateVerifyConsumer.CertificateTask(null, null, null, null, null, null, false);
+		
+		assertEquals("Certificate", task.name());
+		assertFalse(task.isProducing());
+	}
+	
+	@Test
 	public void testFailingServerCertificateValidation() throws Exception {
 		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
 		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
@@ -64,6 +74,7 @@ public class CertificateVerifyConsumerTest extends EngineTest {
 		assertNotNull(h);
 		assertSame(HandshakeType.CERTIFICATE_VERIFY, h.getType());
 		((ICertificateVerify)h).getSignature()[0] ^= 0xaa;
+		handler.certificateValidator.certificatesAlert = new BadCertificateAlert("Bad cert");
 		h.prepare();
 		try {
 			c.run(false, null);
@@ -74,6 +85,28 @@ public class CertificateVerifyConsumerTest extends EngineTest {
 		}
 	}
 
+	@Test
+	public void testFailingServerCertificateValidation2() throws Exception {
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		
+		c.run(false, HandshakeType.CERTIFICATE_VERIFY);
+		IHandshake h = c.get(false);
+		assertNotNull(h);
+		assertSame(HandshakeType.CERTIFICATE_VERIFY, h.getType());
+		handler.certificateValidator.certificatesAlert = new BadCertificateAlert("Bad certificate");
+		h.prepare();
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (BadCertificateAlert e) {
+			assertEquals("Bad certificate", e.getMessage());
+		}
+	}
+	
 	@Test
 	public void testFailingClientCertificateValidation() throws Exception {
 		params.clientAuth = ClientAuth.REQUIRED;
