@@ -2998,7 +2998,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.peerHost("host")
-				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512)
+				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512, SignatureScheme.RSA_PKCS1_SHA384)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -3007,7 +3007,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.REQUIRED)
-				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512)
+				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512, SignatureScheme.RSA_PKCS1_SHA384, SignatureScheme.RSA_PKCS1_SHA256)
 				.build(), 
 				handler2);
 		srv.beginHandshake();
@@ -3041,14 +3041,14 @@ public class TLSEngineTest extends EngineTest {
 		assertArrayEquals(cs.getPeerCertificates()[0].getEncoded(), cert("rsasha384").getEncoded());
 
 		CertificateCriteria criteria = handler2.certificateSelector.criteria;
-		assertEquals(1, criteria.getSchemes().length);
+		assertEquals(2, criteria.getSchemes().length);
 		assertNull(criteria.getCertSchemes());
 		assertTrue(criteria.isServer());
 		assertTrue(handler2.certificateValidator.criteria.isServer());
 		assertEquals("host", handler2.certificateValidator.criteria.getHostName());
 		
 		criteria = handler.certificateSelector.criteria;
-		assertEquals(1, criteria.getSchemes().length);
+		assertEquals(3, criteria.getSchemes().length);
 		assertNull(criteria.getCertSchemes());
 		assertFalse(criteria.isServer());
 		assertFalse(handler.certificateValidator.criteria.isServer());
@@ -3064,7 +3064,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
 				.compatibilityMode(true)
-				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512)
+				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512, SignatureScheme.RSA_PKCS1_SHA384)
 				.signatureSchemesCert(SignatureScheme.ECDSA_SECP256R1_SHA256)
 				.build(), 
 				handler);
@@ -3074,7 +3074,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.REQUIRED)
-				.signatureSchemes(SignatureScheme.RSA_PKCS1_SHA256)
+				.signatureSchemes(SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PKCS1_SHA384)
 				.signatureSchemesCert(SignatureScheme.RSA_PKCS1_SHA384)
 				.build(), 
 				handler2);
@@ -3098,13 +3098,13 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("U|OK:nhnh|", fc.trace());
 		
 		CertificateCriteria criteria = handler2.certificateSelector.criteria;
-		assertEquals(1, criteria.getSchemes().length);
+		assertEquals(2, criteria.getSchemes().length);
 		assertSame(SignatureScheme.ECDSA_SECP521R1_SHA512, criteria.getSchemes()[0]);
 		assertEquals(1, criteria.getCertSchemes().length);
 		assertSame(SignatureScheme.ECDSA_SECP256R1_SHA256, criteria.getCertSchemes()[0]);
 		
 		criteria = handler.certificateSelector.criteria;
-		assertEquals(1, criteria.getSchemes().length);
+		assertEquals(2, criteria.getSchemes().length);
 		assertSame(SignatureScheme.RSA_PKCS1_SHA256, criteria.getSchemes()[0]);
 		assertEquals(1, criteria.getCertSchemes().length);
 		assertSame(SignatureScheme.RSA_PKCS1_SHA384, criteria.getCertSchemes()[0]);
