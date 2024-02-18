@@ -82,7 +82,8 @@ public class HandshakeEngineTest extends EngineTest {
 				NamedGroup.SECP384R1});
 		assertArrayEquals(params.getSignatureSchemes(), new SignatureScheme[] {
 				SignatureScheme.ECDSA_SECP256R1_SHA256, 
-				SignatureScheme.ECDSA_SECP384R1_SHA384});
+				SignatureScheme.ECDSA_SECP384R1_SHA384,
+				SignatureScheme.RSA_PKCS1_SHA256});
 		
 		assertFalse(he.getState().isStarted());
 		he.start();
@@ -108,7 +109,7 @@ public class HandshakeEngineTest extends EngineTest {
 		assertEquals(5, ch.getExtensions().size());
 		assertSupportedVersions(ch, 0x0304);
 		assertSupportedGroups(ch, NamedGroup.SECP256R1, NamedGroup.SECP384R1);
-		assertSignatureAlgorithms(ch, SignatureScheme.ECDSA_SECP256R1_SHA256, SignatureScheme.ECDSA_SECP384R1_SHA384);
+		assertSignatureAlgorithms(ch, SignatureScheme.ECDSA_SECP256R1_SHA256, SignatureScheme.ECDSA_SECP384R1_SHA384, SignatureScheme.RSA_PKCS1_SHA256);
 		assertKeyShare(ch, false, NamedGroup.SECP256R1);
 		assertPskModes(ch, PskKeyExchangeMode.PSK_DHE_KE);
 		

@@ -39,6 +39,7 @@ import org.junit.Test;
 import org.snf4j.core.session.ssl.ClientAuth;
 import org.snf4j.tls.alert.BadCertificateAlert;
 import org.snf4j.tls.alert.DecryptErrorAlert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.CertificateVerify;
@@ -106,6 +107,28 @@ public class CertificateVerifyConsumerTest extends EngineTest {
 			assertEquals("Bad certificate", e.getMessage());
 		}
 	}
+
+	@Test
+	public void testFailingServerUnexpectedSignatureAlgorithm() throws Exception {
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		
+		c.run(false, HandshakeType.CERTIFICATE_VERIFY);
+		IHandshake h = c.get(false);
+		assertNotNull(h);
+		assertSame(HandshakeType.CERTIFICATE_VERIFY, h.getType());
+		h.prepare();
+		params.signatureSchemes = new SignatureScheme[] {SignatureScheme.ED25519};
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (IllegalParameterAlert e) {
+			assertEquals("Unexpected signature algorithm", e.getMessage());
+		}
+	}
 	
 	@Test
 	public void testFailingClientCertificateValidation() throws Exception {
@@ -130,6 +153,29 @@ public class CertificateVerifyConsumerTest extends EngineTest {
 		}
 	}
 
+	@Test
+	public void testFailingClientUnexpectedSignatureAlgorithm() throws Exception {
+		params.clientAuth = ClientAuth.REQUIRED;
+		HandshakeEngine cli = new HandshakeEngine(true, params, handler, handler);
+		HandshakeEngine srv = new HandshakeEngine(false, params, handler, handler);
+		
+		HandshakeController c = new HandshakeController(cli, srv);
+		
+		c.run(true, HandshakeType.CERTIFICATE_VERIFY);
+		IHandshake h = c.get(true);
+		assertNotNull(h);
+		assertSame(HandshakeType.CERTIFICATE_VERIFY, h.getType());
+		h.prepare();
+		params.signatureSchemes = new SignatureScheme[] {SignatureScheme.ED25519};
+		try {
+			c.run(false, null);
+			fail();
+		}
+		catch (IllegalParameterAlert e) {
+			assertEquals("Unexpected signature algorithm", e.getMessage());
+		}
+	}
+	
 	@Test
 	public void testUnexpectedMessage() throws Exception {
 		CertificateVerifyConsumer cr = new CertificateVerifyConsumer();

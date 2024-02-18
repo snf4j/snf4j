@@ -30,8 +30,10 @@ import java.nio.ByteBuffer;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
+import org.snf4j.tls.IntConstant;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.DecryptErrorAlert;
+import org.snf4j.tls.alert.IllegalParameterAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.extension.SignatureScheme;
 import org.snf4j.tls.handshake.HandshakeType;
@@ -48,12 +50,20 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 	}
 
 	private void consumeClient(EngineState state, ICertificateVerify certificateVerify, ByteBuffer[] data) throws Alert {
+		SignatureScheme algorithm = IntConstant.find(
+				state.getParameters().getSignatureSchemes(), 
+				certificateVerify.getAlgorithm());
+		
+		if (algorithm == null) {
+			throw new IllegalParameterAlert("Unexpected signature algorithm");
+		}
+		
 		ICertificate certificate = state.getRetainedHandshake();
 		AbstractEngineTask task = new CertificateTask(
 				state.getHandler().getCertificateValidator(),
 				new CertificateValidateCriteria(false, state.getParameters().getPeerHost()),
 				certificate.getEntries(),
-				certificateVerify.getAlgorithm(),
+				algorithm,
 				certificateVerify.getSignature(),
 				state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false),
 				false);
@@ -71,12 +81,20 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 	}
 
 	private void consumeServer(EngineState state, ICertificateVerify certificateVerify, ByteBuffer[] data) throws Alert {
+		SignatureScheme algorithm = IntConstant.find(
+				state.getParameters().getSignatureSchemes(), 
+				certificateVerify.getAlgorithm());
+		
+		if (algorithm == null) {
+			throw new IllegalParameterAlert("Unexpected signature algorithm");
+		}
+
 		ICertificate certificate = state.getRetainedHandshake();
 		AbstractEngineTask task = new CertificateTask(
 				state.getHandler().getCertificateValidator(),
 				new CertificateValidateCriteria(true, state.getHostName()),
 				certificate.getEntries(),
-				certificateVerify.getAlgorithm(),
+				algorithm,
 				certificateVerify.getSignature(),
 				state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, true),
 				true);
@@ -91,8 +109,6 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 		else {
 			task.run(state);
 		}
-		
-		state.changeState(MachineState.SRV_WAIT_FINISHED);
 	}
 	
 	@Override

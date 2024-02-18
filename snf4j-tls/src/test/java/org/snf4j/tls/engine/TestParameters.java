@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,8 @@ public class TestParameters implements IEngineParameters {
 	
 	public SignatureScheme[] signatureSchemes = new SignatureScheme[] {
 			SignatureScheme.ECDSA_SECP256R1_SHA256,
-			SignatureScheme.ECDSA_SECP384R1_SHA384
+			SignatureScheme.ECDSA_SECP384R1_SHA384,
+			SignatureScheme.RSA_PKCS1_SHA256
 			};
 
 	public SignatureScheme[] signatureSchemesCert = null;
