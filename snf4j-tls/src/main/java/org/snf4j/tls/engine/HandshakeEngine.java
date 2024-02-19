@@ -368,7 +368,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 			extensions.add(new SupportedVersionsExtension(ISupportedVersionsExtension.Mode.CLIENT_HELLO, 0x0304));
 			extensions.add(new SupportedGroupsExtension(groups));
 			extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
-			signSchemes = params.getSignatureSchemesCert();
+			signSchemes = params.getCertSignatureSchemes();
 			if (signSchemes != null) {
 				extensions.add(new SignatureAlgorithmsCertExtension(signSchemes));
 			}

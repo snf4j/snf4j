@@ -102,7 +102,7 @@ public class EngineHandlerBuilderTest extends CommonTest {
 		EngineHandlerBuilder b = new EngineHandlerBuilder(km, "key", tm);
 		EngineHandler h = b.build();
 		CertificateCriteria c = new CertificateCriteria(true, CertificateType.X509, "host", schemes, null, schemes);
-		CertificateValidateCriteria vc = new CertificateValidateCriteria(true, "host");
+		CertificateValidateCriteria vc = new CertificateValidateCriteria(true, "host", schemes);
 		SelectedCertificates sc = h.getCertificateSelector().selectCertificates(c);
 		assertSame(SignatureScheme.ECDSA_SECP256R1_SHA256, sc.getAlgorithm());
 		assertNull(h.getCertificateValidator().validateCertificates(vc, certs));

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,15 +25,24 @@
  */
 package org.snf4j.tls.engine;
 
+import java.security.cert.X509Certificate;
+
+import org.snf4j.tls.Args;
+import org.snf4j.tls.extension.SignatureScheme;
+
 public class CertificateValidateCriteria {
 
 	private final boolean server;
 
 	private final String hostName;
 
-	public CertificateValidateCriteria(boolean server, String hostName) {
+	private final SignatureScheme[] localSchemes;
+
+	public CertificateValidateCriteria(boolean server, String hostName, SignatureScheme[] localSchemes) {
+		Args.checkNull(localSchemes, "localSchemes");
 		this.server = server;
 		this.hostName = hostName;
+		this.localSchemes = localSchemes;
 	}
 
 	public boolean isServer() {
@@ -44,4 +53,16 @@ public class CertificateValidateCriteria {
 		return hostName;
 	}
 	
+	public SignatureScheme[] getLocalSchemes() {
+		return localSchemes;
+	}
+	
+	public boolean allMatch(X509Certificate[] certs, int offset, int length) {
+		return CertificateCriteria.allMatch(certs, offset, length, localSchemes);
+	}
+	
+	public boolean allMatch(X509Certificate[] certs) {
+		return allMatch(certs, 0, certs.length);
+	}
+
 }

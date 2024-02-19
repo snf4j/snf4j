@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,8 +50,8 @@ public class EngineParametersBuilderTest {
 		assertArrayEquals(EngineDefaults.getDefaultCipherSuites(), b.getCipherSuites());
 		assertArrayEquals(EngineDefaults.getDefaulSignatureSchemes(), p.getSignatureSchemes());
 		assertArrayEquals(EngineDefaults.getDefaulSignatureSchemes(), b.getSignatureSchemes());
-		assertNull(p.getSignatureSchemesCert());
-		assertNull(b.getSignatureSchemesCert());
+		assertArrayEquals(EngineDefaults.getDefaulCertSignatureSchemes(), p.getCertSignatureSchemes());
+		assertArrayEquals(EngineDefaults.getDefaulCertSignatureSchemes(), b.getCertSignatureSchemes());
 		assertArrayEquals(EngineDefaults.getDefaultNamedGroups(), p.getNamedGroups());
 		assertArrayEquals(EngineDefaults.getDefaultNamedGroups(), b.getNamedGroups());
 		assertArrayEquals(EngineDefaults.getDefaultPskKeyExchangeModes(), p.getPskKeyExchangeModes());
@@ -85,10 +85,10 @@ public class EngineParametersBuilderTest {
 		SignatureScheme[] ss2 = new SignatureScheme[] {SignatureScheme.ECDSA_SECP384R1_SHA384};
 		b.signatureSchemes(ss);
 		assertArrayEquals(ss, b.build().getSignatureSchemes());
-		b.signatureSchemesCert(ss2);
-		assertArrayEquals(ss2, b.build().getSignatureSchemesCert());
-		b.signatureSchemesCert((SignatureScheme[])null);
-		assertNull(b.build().getSignatureSchemesCert());
+		b.certSignatureSchemes(ss2);
+		assertArrayEquals(ss2, b.build().getCertSignatureSchemes());
+		b.certSignatureSchemes((SignatureScheme[])null);
+		assertNull(b.build().getCertSignatureSchemes());
 		NamedGroup[] ng = new NamedGroup[] {NamedGroup.FFDHE2048};
 		b.namedGroups(ng);
 		assertArrayEquals(ng, b.build().getNamedGroups());

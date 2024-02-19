@@ -36,10 +36,18 @@ import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509KeyManager;
+import javax.net.ssl.X509TrustManager;
 
 import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
@@ -66,6 +74,7 @@ import org.snf4j.tls.alert.UserCanceledAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.engine.CertificateCriteria;
 import org.snf4j.tls.engine.DelegatedTaskMode;
+import org.snf4j.tls.engine.EngineHandlerBuilder;
 import org.snf4j.tls.engine.EngineParametersBuilder;
 import org.snf4j.tls.engine.EngineStateListener;
 import org.snf4j.tls.engine.EngineTest;
@@ -213,6 +222,7 @@ public class TLSEngineTest extends EngineTest {
 	void prepareTickets(long... maxSizes) throws Exception {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.peerHost(PEER_HOST)
 				.peerPort(PEER_PORT)
 				.build(), 
@@ -222,6 +232,7 @@ public class TLSEngineTest extends EngineTest {
 
 		srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.init();
@@ -249,6 +260,7 @@ public class TLSEngineTest extends EngineTest {
 	void prepareEngines() throws Exception {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.init();
@@ -256,6 +268,7 @@ public class TLSEngineTest extends EngineTest {
 
 		srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.init();
@@ -533,12 +546,14 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.peerHost(PEER_HOST)
 				.peerPort(PEER_PORT)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				new TestHandshakeHandler());
 		srv.beginHandshake();
@@ -621,12 +636,14 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.peerHost(PEER_HOST)
 				.peerPort(PEER_PORT)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				new TestHandshakeHandler());
 		srv.beginHandshake();
@@ -758,12 +775,14 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.peerHost(PEER_HOST)
 				.peerPort(PEER_PORT)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -880,12 +899,14 @@ public class TLSEngineTest extends EngineTest {
 	public void testHandshakeWithNoTask() throws Exception {
 		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -914,12 +935,14 @@ public class TLSEngineTest extends EngineTest {
 	public void testHandshakeWithAllTasks() throws Exception {
 		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.ALL)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.ALL)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -948,12 +971,14 @@ public class TLSEngineTest extends EngineTest {
 	public void testHandshakeWithTask() throws Exception {
 		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -1003,12 +1028,14 @@ public class TLSEngineTest extends EngineTest {
 	public void testAppDataNoPadding() throws Exception {
 		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -1052,12 +1079,14 @@ public class TLSEngineTest extends EngineTest {
 		handler.padding = 16384;
 		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -1661,12 +1690,14 @@ public class TLSEngineTest extends EngineTest {
 		handler.keyLimit = 16384;
 		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				new TestHandshakeHandler());
 		srv.beginHandshake();
@@ -1763,12 +1794,14 @@ public class TLSEngineTest extends EngineTest {
 	public void testUnderflow() throws Exception {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -1917,6 +1950,7 @@ public class TLSEngineTest extends EngineTest {
 						SignatureScheme.RSA_PKCS1_SHA512,
 						SignatureScheme.ECDSA_SHA1,
 						SignatureScheme.RSA_PKCS1_SHA1)
+				.certSignatureSchemes((SignatureScheme[])null)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -1944,6 +1978,7 @@ public class TLSEngineTest extends EngineTest {
 						SignatureScheme.RSA_PKCS1_SHA512,
 						SignatureScheme.ECDSA_SHA1,
 						SignatureScheme.RSA_PKCS1_SHA1)
+				.certSignatureSchemes((SignatureScheme[])null)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -2703,12 +2738,14 @@ public class TLSEngineTest extends EngineTest {
 	public void testUnwrapWithTask() throws Exception {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.ALL)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
 
 		srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.ALL)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -2878,6 +2915,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -2885,6 +2923,7 @@ public class TLSEngineTest extends EngineTest {
 		srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -2914,6 +2953,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.namedGroups(NamedGroup.SECP256R1, NamedGroup.SECP521R1)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -2922,6 +2962,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.namedGroups(NamedGroup.SECP521R1)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -2959,6 +3000,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler2);
 		cli.beginHandshake();
@@ -2966,6 +3008,7 @@ public class TLSEngineTest extends EngineTest {
 		srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -2999,6 +3042,7 @@ public class TLSEngineTest extends EngineTest {
 				.compatibilityMode(true)
 				.peerHost("host")
 				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512, SignatureScheme.RSA_PKCS1_SHA384)
+				.certSignatureSchemes((SignatureScheme[])null)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -3008,6 +3052,7 @@ public class TLSEngineTest extends EngineTest {
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.REQUIRED)
 				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512, SignatureScheme.RSA_PKCS1_SHA384, SignatureScheme.RSA_PKCS1_SHA256)
+				.certSignatureSchemes((SignatureScheme[])null)
 				.build(), 
 				handler2);
 		srv.beginHandshake();
@@ -3065,7 +3110,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.CERTIFICATES)
 				.compatibilityMode(true)
 				.signatureSchemes(SignatureScheme.ECDSA_SECP521R1_SHA512, SignatureScheme.RSA_PKCS1_SHA384)
-				.signatureSchemesCert(SignatureScheme.ECDSA_SECP256R1_SHA256)
+				.certSignatureSchemes(SignatureScheme.ECDSA_SECP256R1_SHA256)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -3075,7 +3120,7 @@ public class TLSEngineTest extends EngineTest {
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.REQUIRED)
 				.signatureSchemes(SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PKCS1_SHA384)
-				.signatureSchemesCert(SignatureScheme.RSA_PKCS1_SHA384)
+				.certSignatureSchemes(SignatureScheme.RSA_PKCS1_SHA384)
 				.build(), 
 				handler2);
 		srv.beginHandshake();
@@ -3118,6 +3163,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -3126,6 +3172,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.REQUIRED)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler2);
 		srv.beginHandshake();
@@ -3155,6 +3202,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -3163,6 +3211,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.REQUIRED)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler2);
 		srv.beginHandshake();
@@ -3196,6 +3245,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -3204,6 +3254,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.REQUESTED)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler2);
 		srv.beginHandshake();
@@ -3233,6 +3284,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -3241,6 +3293,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.REQUESTED)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler2);
 		srv.beginHandshake();
@@ -3275,6 +3328,7 @@ public class TLSEngineTest extends EngineTest {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		cli.beginHandshake();
@@ -3283,6 +3337,7 @@ public class TLSEngineTest extends EngineTest {
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.compatibilityMode(true)
 				.clientAuth(ClientAuth.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler2);
 		srv.beginHandshake();
@@ -3313,6 +3368,7 @@ public class TLSEngineTest extends EngineTest {
 	public void testUnwrapHandshakeUnexpectedMessage() throws Exception {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		params.delegatedTaskMode = DelegatedTaskMode.NONE;
@@ -3404,6 +3460,7 @@ public class TLSEngineTest extends EngineTest {
 	public void testUnwrapRemainingUnexpectedMessage() throws Exception {
 		cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		params.delegatedTaskMode = DelegatedTaskMode.NONE;
@@ -3503,6 +3560,7 @@ public class TLSEngineTest extends EngineTest {
 		handler.ticketInfos = new TicketInfo[] {new TicketInfo(100)};
 		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.peerHost(PEER_HOST)
 				.peerPort(PEER_PORT)
 				.applicationProtocols("yyy","xxx")
@@ -3513,6 +3571,7 @@ public class TLSEngineTest extends EngineTest {
 		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
 				.delegatedTaskMode(DelegatedTaskMode.NONE)
 				.applicationProtocols("xxx","yyy")
+				.signatureSchemes(SIGNATURE_SCHEMES)
 				.build(), 
 				handler);
 		srv.beginHandshake();
@@ -3680,4 +3739,188 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("", fc.trace());
 		assertClosed(cli,srv);
 	}
+	
+	EngineHandlerBuilder builder(PrivateKey key, X509Certificate... certs) throws Exception {
+		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+		ks.load(null, null);
+		char[] PASSWORD = "password".toCharArray();
+		ks.setKeyEntry("1", key, PASSWORD, certs);
+		
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+		kmf.init(ks,PASSWORD);
+		X509KeyManager km = (X509KeyManager) kmf.getKeyManagers()[0];
+		
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+		tmf.init(ks);
+		X509TrustManager tm = (X509TrustManager) tmf.getTrustManagers()[0];
+		return new EngineHandlerBuilder(km,tm);
+	}
+	
+	@Test
+	public void testClientSignatureSchemesNotSupportedByServer() throws Exception {
+		EngineHandlerBuilder hb = builder(key("RSA", "rsa"), cert("rsasha256")); 
+
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SignatureScheme.RSA_PKCS1_SHA256)
+				.build(), 
+				hb.build());
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				hb.build());
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:uu|", fc.trace());
+		flip();
+		try {
+			fc.fly(srv, in, out);
+			fail();
+		}
+		catch (TLSException e) {
+			assertSame(HandshakeFailureAlert.class, e.getCause().getClass());
+			assertEquals("org.snf4j.tls.alert.HandshakeFailureAlert: No certificate chain found", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testClientCertSignatureSchemesNotSupportedByServer() throws Exception {
+		EngineHandlerBuilder hb = builder(key("RSA", "rsa"), cert("rsasha256")); 
+
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.certSignatureSchemes(SignatureScheme.RSA_PKCS1_SHA384)
+				.build(), 
+				hb.build());
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				hb.build());
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:uu|", fc.trace());
+		flip();
+		try {
+			fc.fly(srv, in, out);
+			fail();
+		}
+		catch (TLSException e) {
+			assertSame(HandshakeFailureAlert.class, e.getCause().getClass());
+			assertEquals("org.snf4j.tls.alert.HandshakeFailureAlert: No certificate chain found", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testClientRejectsCertsWithMD5() throws Exception {
+		EngineHandlerBuilder hb = builder(key("RSA", "rsa"), cert("rsamd5")); 
+
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SignatureScheme.RSA_PKCS1_SHA256)
+				.certSignatureSchemes(SIGNATURE_SCHEMES)
+				.build(), 
+				hb.build());
+		cli.beginHandshake();
+
+		handler.certificateSelector.certNames = new String[] {"rsamd5"};
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		try {
+			fc.fly(cli, in, out);
+			fail();
+		}
+		catch (TLSException e) {
+			assertSame(BadCertificateAlert.class, e.getCause().getClass());
+			assertEquals("org.snf4j.tls.alert.BadCertificateAlert: Certificate signed by unsupported signatures", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testClientRejectsCertsWithSHA1ByDefault() throws Exception {
+		EngineHandlerBuilder hb = builder(key("RSA", "rsa"), cert("rsasha1")); 
+
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SignatureScheme.RSA_PKCS1_SHA256)
+				.build(), 
+				hb.build());
+		cli.beginHandshake();
+
+		handler.certificateSelector.certNames = new String[] {"rsasha1"};
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		try {
+			fc.fly(cli, in, out);
+			fail();
+		}
+		catch (TLSException e) {
+			assertSame(BadCertificateAlert.class, e.getCause().getClass());
+			assertEquals("org.snf4j.tls.alert.BadCertificateAlert: Certificate signed by unsupported signatures", e.getMessage());
+		}
+	}
+
+	@Test
+	public void testClientAcceptsCertsWithSHA1IfConfigured() throws Exception {
+		EngineHandlerBuilder hb = builder(key("RSA", "rsa"), cert("rsasha1")); 
+
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.signatureSchemes(SignatureScheme.RSA_PKCS1_SHA256)
+				.certSignatureSchemes(SignatureScheme.RSA_PKCS1_SHA1, SignatureScheme.RSA_PKCS1_SHA256)
+				.build(), 
+				hb.build());
+		cli.beginHandshake();
+
+		handler.certificateSelector.certNames = new String[] {"rsasha1"};
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+	}
+	
 }

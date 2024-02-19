@@ -49,9 +49,18 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 		return HandshakeType.CERTIFICATE_VERIFY;
 	}
 
+	private static SignatureScheme[] cloneCertSchemes(IEngineParameters params) {
+		SignatureScheme[] certSchemes = params.getCertSignatureSchemes();
+		if (certSchemes == null) {
+			certSchemes = params.getSignatureSchemes();
+		}
+		return certSchemes.clone();
+	}
+	
 	private void consumeClient(EngineState state, ICertificateVerify certificateVerify, ByteBuffer[] data) throws Alert {
+		IEngineParameters params = state.getParameters();
 		SignatureScheme algorithm = IntConstant.find(
-				state.getParameters().getSignatureSchemes(), 
+				params.getSignatureSchemes(), 
 				certificateVerify.getAlgorithm());
 		
 		if (algorithm == null) {
@@ -61,7 +70,7 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 		ICertificate certificate = state.getRetainedHandshake();
 		AbstractEngineTask task = new CertificateTask(
 				state.getHandler().getCertificateValidator(),
-				new CertificateValidateCriteria(false, state.getParameters().getPeerHost()),
+				new CertificateValidateCriteria(false, params.getPeerHost(), cloneCertSchemes(params)),
 				certificate.getEntries(),
 				algorithm,
 				certificateVerify.getSignature(),
@@ -71,7 +80,7 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 		state.getTranscriptHash().update(certificateVerify.getType(), data);
 		
 		state.retainHandshake(null);
-		if (state.getParameters().getDelegatedTaskMode().certificates()) {
+		if (params.getDelegatedTaskMode().certificates()) {
 			state.changeState(MachineState.CLI_WAIT_TASK);
 			state.addTask(task);
 		}
@@ -81,8 +90,9 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 	}
 
 	private void consumeServer(EngineState state, ICertificateVerify certificateVerify, ByteBuffer[] data) throws Alert {
+		IEngineParameters params = state.getParameters();
 		SignatureScheme algorithm = IntConstant.find(
-				state.getParameters().getSignatureSchemes(), 
+				params.getSignatureSchemes(), 
 				certificateVerify.getAlgorithm());
 		
 		if (algorithm == null) {
@@ -92,7 +102,7 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 		ICertificate certificate = state.getRetainedHandshake();
 		AbstractEngineTask task = new CertificateTask(
 				state.getHandler().getCertificateValidator(),
-				new CertificateValidateCriteria(true, state.getHostName()),
+				new CertificateValidateCriteria(true, state.getHostName(), cloneCertSchemes(params)),
 				certificate.getEntries(),
 				algorithm,
 				certificateVerify.getSignature(),
@@ -102,7 +112,7 @@ public class CertificateVerifyConsumer implements IHandshakeConsumer {
 		state.getTranscriptHash().update(certificateVerify.getType(), data);
 		
 		state.retainHandshake(null);
-		if (state.getParameters().getDelegatedTaskMode().certificates()) {
+		if (params.getDelegatedTaskMode().certificates()) {
 			state.changeState(MachineState.SRV_WAIT_TASK);
 			state.addTask(task);
 		}

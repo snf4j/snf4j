@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +41,7 @@ import org.junit.Before;
 import org.snf4j.core.util.PemUtil;
 import org.snf4j.core.util.PemUtil.Label;
 import org.snf4j.tls.crypto.ECDSASignatureTest;
+import org.snf4j.tls.extension.SignatureScheme;
 
 public class CommonTest {
 
@@ -48,6 +49,23 @@ public class CommonTest {
 
 	protected static final SecureRandom RANDOM = new SecureRandom(); 	
 	
+	protected final static SignatureScheme[] SIGNATURE_SCHEMES = new SignatureScheme[] {
+			SignatureScheme.ECDSA_SECP256R1_SHA256,
+			SignatureScheme.ECDSA_SECP384R1_SHA384,
+			SignatureScheme.ECDSA_SECP521R1_SHA512,
+			SignatureScheme.RSA_PSS_PSS_SHA256,
+			SignatureScheme.RSA_PSS_PSS_SHA384,
+			SignatureScheme.RSA_PSS_PSS_SHA512,
+			SignatureScheme.RSA_PSS_RSAE_SHA256,
+			SignatureScheme.RSA_PSS_RSAE_SHA384,
+			SignatureScheme.RSA_PSS_RSAE_SHA512,
+			SignatureScheme.RSA_PKCS1_SHA256,
+			SignatureScheme.RSA_PKCS1_SHA384,
+			SignatureScheme.RSA_PKCS1_SHA512,
+			SignatureScheme.RSA_PKCS1_SHA1,
+			SignatureScheme.ECDSA_SHA1
+			};
+
 	public static final boolean JAVA11;
 
 	public static final boolean JAVA8;

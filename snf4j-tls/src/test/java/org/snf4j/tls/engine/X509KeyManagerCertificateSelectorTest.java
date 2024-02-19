@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -216,7 +216,7 @@ public class X509KeyManagerCertificateSelectorTest extends CommonTest {
         		true,
         		CertificateType.X509,
         		"host",
-        		EngineDefaults.getDefaulSignatureSchemes(),
+        		SIGNATURE_SCHEMES,
         		null,
         		schemes(SignatureScheme.ED25519, SignatureScheme.RSA_PKCS1_SHA1, SignatureScheme.RSA_PKCS1_SHA256)
         		);
@@ -241,7 +241,7 @@ public class X509KeyManagerCertificateSelectorTest extends CommonTest {
         		true,
         		CertificateType.X509,
         		"host",
-        		EngineDefaults.getDefaulSignatureSchemes(),
+        		SIGNATURE_SCHEMES,
         		null,
         		schemes(SignatureScheme.RSA_PKCS1_SHA1, SignatureScheme.RSA_PKCS1_SHA256)
         		);
@@ -254,7 +254,7 @@ public class X509KeyManagerCertificateSelectorTest extends CommonTest {
         		true,
         		CertificateType.X509,
         		"host",
-        		EngineDefaults.getDefaulSignatureSchemes(),
+        		SIGNATURE_SCHEMES,
         		null,
         		schemes(SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PKCS1_SHA1)
         		);
@@ -267,7 +267,7 @@ public class X509KeyManagerCertificateSelectorTest extends CommonTest {
         		true,
         		CertificateType.X509,
         		"host",
-        		EngineDefaults.getDefaulSignatureSchemes(),
+        		SIGNATURE_SCHEMES,
         		null,
         		schemes(SignatureScheme.ECDSA_SECP256R1_SHA256, SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PKCS1_SHA1)
         		);
@@ -280,7 +280,7 @@ public class X509KeyManagerCertificateSelectorTest extends CommonTest {
         		false,
         		CertificateType.X509,
         		"host",
-        		EngineDefaults.getDefaulSignatureSchemes(),
+        		SIGNATURE_SCHEMES,
         		null,
         		schemes(SignatureScheme.ECDSA_SECP256R1_SHA256, SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PKCS1_SHA1)
         		);
@@ -314,7 +314,7 @@ public class X509KeyManagerCertificateSelectorTest extends CommonTest {
         		false,
         		CertificateType.X509,
         		"host",
-        		EngineDefaults.getDefaulSignatureSchemes(),
+        		SIGNATURE_SCHEMES,
         		null,
         		schemes(SignatureScheme.ECDSA_SECP256R1_SHA256, SignatureScheme.RSA_PKCS1_SHA256, SignatureScheme.RSA_PKCS1_SHA1)
         		);
@@ -346,7 +346,7 @@ public class X509KeyManagerCertificateSelectorTest extends CommonTest {
         		true,
         		CertificateType.X509,
         		"host",
-        		EngineDefaults.getDefaulSignatureSchemes(),
+        		SIGNATURE_SCHEMES,
         		null,
         		preferred
         		);
