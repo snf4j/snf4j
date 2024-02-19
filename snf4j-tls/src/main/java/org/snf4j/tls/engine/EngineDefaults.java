@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -73,15 +73,29 @@ public class EngineDefaults {
 			SignatureScheme.RSA_PSS_PSS_SHA512,
 			SignatureScheme.RSA_PSS_RSAE_SHA256,
 			SignatureScheme.RSA_PSS_RSAE_SHA384,
+			SignatureScheme.RSA_PSS_RSAE_SHA512
+			};
+
+	private final static SignatureScheme[] DEFAULT_CERT_SIGNATURE_SCHEMES = new SignatureScheme[] {
+			SignatureScheme.ECDSA_SECP256R1_SHA256,
+			SignatureScheme.ECDSA_SECP384R1_SHA384,
+			SignatureScheme.ECDSA_SECP521R1_SHA512,
+			SignatureScheme.ED25519,
+			SignatureScheme.ED448,
+			SignatureScheme.RSA_PSS_PSS_SHA256,
+			SignatureScheme.RSA_PSS_PSS_SHA384,
+			SignatureScheme.RSA_PSS_PSS_SHA512,
+			SignatureScheme.RSA_PSS_RSAE_SHA256,
+			SignatureScheme.RSA_PSS_RSAE_SHA384,
 			SignatureScheme.RSA_PSS_RSAE_SHA512,
 			SignatureScheme.RSA_PKCS1_SHA256,
 			SignatureScheme.RSA_PKCS1_SHA384,
-			SignatureScheme.RSA_PKCS1_SHA512,
-			SignatureScheme.ECDSA_SHA1,
-			SignatureScheme.RSA_PKCS1_SHA1
+			SignatureScheme.RSA_PKCS1_SHA512
 			};
-
+	
 	private final static SignatureScheme[] IMPLEMENTED_SIGNATURE_SCHEMES = implemented(DEFAULT_SIGNATURE_SCHEMES);
+	
+	private final static SignatureScheme[] IMPLEMENTED_CERT_SIGNATURE_SCHEMES = implemented(DEFAULT_CERT_SIGNATURE_SCHEMES);
 
 	private final static PskKeyExchangeMode[] IMPLEMENTED_PSK_KEY_EXCHANGE_MODES = new PskKeyExchangeMode[] {
 			PskKeyExchangeMode.PSK_DHE_KE
@@ -150,6 +164,10 @@ public class EngineDefaults {
 	
 	public static SignatureScheme[] getDefaulSignatureSchemes() {
 		return IMPLEMENTED_SIGNATURE_SCHEMES.clone();
+	}
+	
+	public static SignatureScheme[] getDefaulCertSignatureSchemes() {
+		return IMPLEMENTED_CERT_SIGNATURE_SCHEMES.clone();
 	}
 
 	public static PskKeyExchangeMode[] getDefaultPskKeyExchangeModes() {

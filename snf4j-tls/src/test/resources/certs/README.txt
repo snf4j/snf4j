@@ -26,6 +26,9 @@ openssl genrsa -out rsa.key 1024
 openssl req -new -key rsa.key -x509 -sha1 -nodes -days 10000 -out rsasha1.crt
 openssl x509 -text -in rsasha1.crt
 
+openssl req -new -key rsa.key -x509 -md5 -nodes -days 10000 -out rsamd5.crt
+openssl x509 -text -in rsamd5.crt
+
 openssl req -new -key rsa.key -x509 -sha256 -nodes -days 10000 -out rsasha256.crt
 openssl x509 -text -in rsasha256.crt
 

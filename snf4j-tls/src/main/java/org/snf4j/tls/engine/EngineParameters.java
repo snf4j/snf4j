@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ public class EngineParameters implements IEngineParameters {
 	
 	private final SignatureScheme[] signatureSchemes;
 
-	private final SignatureScheme[] signatureSchemesCert;
+	private final SignatureScheme[] certSignatureSchemes;
 	
 	private final PskKeyExchangeMode[] pskKeyExchangeModes;
 	
@@ -62,7 +62,7 @@ public class EngineParameters implements IEngineParameters {
 	private final String[] applicationProtocols;
 	
 	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
-			SignatureScheme[] signatureSchemesCert, PskKeyExchangeMode[] pskKeyExchangeModes,
+			SignatureScheme[] certSignatureSchemes, PskKeyExchangeMode[] pskKeyExchangeModes,
 			boolean compatibilityMode, int numberOfOfferedSharedKeys, String peerHost,
 			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode,ClientAuth clientAuth,
 			String[] applicationProtocols) {
@@ -70,7 +70,7 @@ public class EngineParameters implements IEngineParameters {
 		this.cipherSuites = cipherSuites;
 		this.namedGroups = namedGroups;
 		this.signatureSchemes = signatureSchemes;
-		this.signatureSchemesCert = signatureSchemesCert;
+		this.certSignatureSchemes = certSignatureSchemes;
 		this.pskKeyExchangeModes = pskKeyExchangeModes;
 		this.compatibilityMode = compatibilityMode;
 		this.numberOfOfferedSharedKeys = numberOfOfferedSharedKeys;
@@ -98,8 +98,8 @@ public class EngineParameters implements IEngineParameters {
 	}
 
 	@Override
-	public SignatureScheme[] getSignatureSchemesCert() {
-		return signatureSchemesCert;
+	public SignatureScheme[] getCertSignatureSchemes() {
+		return certSignatureSchemes;
 	}
 	
 	@Override

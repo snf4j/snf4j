@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ package org.snf4j.tls.engine;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.HandshakeFailureAlert;
 import org.snf4j.tls.alert.InternalErrorAlert;
 
 abstract public class AbstractEngineTask implements IEngineTask {
@@ -54,6 +55,8 @@ abstract public class AbstractEngineTask implements IEngineTask {
 	public void run(EngineState state) throws Alert {
 		try {
 			execute();
+		} catch (CertificateSelectorException e) {
+			throw new HandshakeFailureAlert(e.getMessage());
 		} catch (Exception e) {
 			throw new InternalErrorAlert(name() + " task failed", e);
 		}

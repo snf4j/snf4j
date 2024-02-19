@@ -579,7 +579,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					SignatureScheme[] signSchemes;
 					
 					extensions.add(new SignatureAlgorithmsExtension(params.getSignatureSchemes()));
-					signSchemes = params.getSignatureSchemesCert();
+					signSchemes = params.getCertSignatureSchemes();
 					if (signSchemes != null) {
 						extensions.add(new SignatureAlgorithmsCertExtension(signSchemes));
 					}

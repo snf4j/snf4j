@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ public class EngineParametersBuilder {
 	
 	private SignatureScheme[] signatureSchemes = EngineDefaults.getDefaulSignatureSchemes();
 
-	private SignatureScheme[] signatureSchemesCert;
+	private SignatureScheme[] certSignatureSchemes = EngineDefaults.getDefaulCertSignatureSchemes();
 	
 	private PskKeyExchangeMode[] pskKeyExchangeModes = EngineDefaults.getDefaultPskKeyExchangeModes();
 		
@@ -88,13 +88,13 @@ public class EngineParametersBuilder {
 		return signatureSchemes;
 	}
 
-	public EngineParametersBuilder signatureSchemesCert(SignatureScheme... signatureSchemes) {
-		this.signatureSchemesCert = safeClone(signatureSchemes);
+	public EngineParametersBuilder certSignatureSchemes(SignatureScheme... signatureSchemes) {
+		this.certSignatureSchemes = safeClone(signatureSchemes);
 		return this;
 	}
 	
-	public SignatureScheme[] getSignatureSchemesCert() {
-		return signatureSchemesCert;
+	public SignatureScheme[] getCertSignatureSchemes() {
+		return certSignatureSchemes;
 	}
 	
 	public EngineParametersBuilder pskKeyExchangeModes(PskKeyExchangeMode... pskKeyExchangeModes) {
@@ -190,7 +190,7 @@ public class EngineParametersBuilder {
 				cipherSuites.clone(),
 				namedGroups.clone(),
 				signatureSchemes.clone(),
-				safeClone(signatureSchemesCert),
+				safeClone(certSignatureSchemes),
 				pskKeyExchangeModes.clone(),
 				compatibilityMode,
 				numberOfOfferedSharedKeys,

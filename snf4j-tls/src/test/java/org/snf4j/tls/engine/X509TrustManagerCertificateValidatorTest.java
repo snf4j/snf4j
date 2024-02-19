@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,7 @@ import javax.security.auth.x500.X500Principal;
 import org.junit.Test;
 import org.snf4j.tls.CommonTest;
 import org.snf4j.tls.alert.AlertDescription;
+import org.snf4j.tls.extension.SignatureScheme;
 
 public class X509TrustManagerCertificateValidatorTest extends CommonTest {
 
@@ -75,6 +76,10 @@ public class X509TrustManagerCertificateValidatorTest extends CommonTest {
 		return certs;
 	}
 	
+	SignatureScheme[] schemes(SignatureScheme... schemes) {
+		return schemes;
+	}
+	
 	X509TrustManager trustManager() throws Exception {
         TrustManagerFactory kmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
 
@@ -91,7 +96,10 @@ public class X509TrustManagerCertificateValidatorTest extends CommonTest {
 		add("cert1", cert1);
 		TestTrustMannager tm = new TestTrustMannager(trustManager());
 		X509TrustManagerCertificateValidator v = new X509TrustManagerCertificateValidator(tm);
-		CertificateValidateCriteria c = new CertificateValidateCriteria(true, "host");
+		CertificateValidateCriteria c = new CertificateValidateCriteria(true, "host", schemes(
+				SignatureScheme.RSA_PKCS1_SHA256, 
+				SignatureScheme.RSA_PKCS1_SHA384, 
+				SignatureScheme.RSA_PSS_RSAE_SHA256));
 		assertNull(v.validateCertificates(c, certs(cert1)));
 		assertEquals("C|", tm.trace());
 		assertNull(v.validateCertificates(c, certs(cert2)));
@@ -113,7 +121,7 @@ public class X509TrustManagerCertificateValidatorTest extends CommonTest {
 		add("ca", ca);
 		TestTrustMannager tm = new TestTrustMannager(trustManager());
 		X509TrustManagerCertificateValidator v = new X509TrustManagerCertificateValidator(tm);
-		CertificateValidateCriteria c = new CertificateValidateCriteria(false, "host");
+		CertificateValidateCriteria c = new CertificateValidateCriteria(false, "host", schemes(SignatureScheme.RSA_PKCS1_SHA256));
 		assertSame(AlertDescription.BAD_CERTIFICATE, v.validateCertificates(c, certs(sub2)).getDescription());
 		assertEquals("S|", tm.trace());
 		assertNull(v.validateCertificates(c, certs(sub2,sub1,ca)));
@@ -134,7 +142,7 @@ public class X509TrustManagerCertificateValidatorTest extends CommonTest {
 		add("cert", cert);
 		TestTrustMannager tm = new TestTrustMannager(trustManager());
 		X509TrustManagerCertificateValidator v = new X509TrustManagerCertificateValidator(tm);
-		CertificateValidateCriteria c = new CertificateValidateCriteria(false, "host");
+		CertificateValidateCriteria c = new CertificateValidateCriteria(false, "host", schemes(SignatureScheme.RSA_PKCS1_SHA256));
 		tm.exception = new CertificateEncodingException();
 		assertSame(AlertDescription.BAD_CERTIFICATE, v.validateCertificates(c, certs(cert)).getDescription());
 		tm.exception = new CertificateExpiredException();
@@ -158,8 +166,25 @@ public class X509TrustManagerCertificateValidatorTest extends CommonTest {
 		add("cert", cert);
 		TestTrustMannager tm = new TestTrustMannager(trustManager());
 		X509TrustManagerCertificateValidator v = new X509TrustManagerCertificateValidator(tm);
-		CertificateValidateCriteria c = new CertificateValidateCriteria(false, "host");
+		CertificateValidateCriteria c = new CertificateValidateCriteria(false, "host", schemes(SignatureScheme.RSA_PKCS1_SHA256));
 		assertSame(AlertDescription.UNSUPPORTED_CERTIFICATE, v.validateRawKey(c, cert.getPublicKey()).getDescription());
+	}
+
+	@Test
+	public void testIgnoreAlgorithms() throws Exception {
+		X509Certificate cert = cert("rsasha256");
+
+		add("cert", cert);
+		TestTrustMannager tm = new TestTrustMannager(trustManager());
+		X509TrustManagerCertificateValidator v = new X509TrustManagerCertificateValidator(tm);
+		CertificateValidateCriteria c = new CertificateValidateCriteria(false, "host", schemes(SignatureScheme.RSA_PKCS1_SHA1));
+		assertSame(AlertDescription.BAD_CERTIFICATE, v.validateCertificates(c, certs(cert)).getDescription());
+		v = new X509TrustManagerCertificateValidator(tm, false);
+		c = new CertificateValidateCriteria(false, "host", schemes(SignatureScheme.RSA_PKCS1_SHA1));
+		assertSame(AlertDescription.BAD_CERTIFICATE, v.validateCertificates(c, certs(cert)).getDescription());
+		v = new X509TrustManagerCertificateValidator(tm, true);
+		c = new CertificateValidateCriteria(false, "host", schemes(SignatureScheme.RSA_PKCS1_SHA1));
+		assertNull(v.validateCertificates(c, certs(cert)));
 	}
 	
 	class TestTrustMannager implements X509TrustManager {

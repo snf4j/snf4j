@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,14 +47,24 @@ public class X509TrustManagerCertificateValidator implements ICertificateValidat
 	
 	private final X509TrustManager manager;
 	
+	private final boolean ignoreAlgorithms;
+	
 	public X509TrustManagerCertificateValidator(X509TrustManager manager) {
+		this(manager, false);
+	}
+
+	public X509TrustManagerCertificateValidator(X509TrustManager manager, boolean ignoreAlgorithms) {
 		Args.checkNull(manager, "manager");
 		this.manager = manager;
+		this.ignoreAlgorithms = ignoreAlgorithms;
 	}
 	
 	@Override
 	public Alert validateCertificates(CertificateValidateCriteria criteria, X509Certificate[] certs) throws Alert {
 		try {
+			if (!ignoreAlgorithms && !criteria.allMatch(certs)) {
+				return new BadCertificateAlert("Certificate signed by unsupported signatures");
+			}
 			if (criteria.isServer()) {
 				manager.checkClientTrusted(certs, UNKNOWN);
 			}

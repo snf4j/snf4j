@@ -49,7 +49,7 @@ public class TestParameters implements IEngineParameters {
 			SignatureScheme.RSA_PKCS1_SHA256
 			};
 
-	public SignatureScheme[] signatureSchemesCert = null;
+	public SignatureScheme[] certSignatureSchemes = null;
 	
 	public PskKeyExchangeMode[] pskKeyExchangeModes = new PskKeyExchangeMode[] {
 			PskKeyExchangeMode.PSK_DHE_KE
@@ -87,8 +87,8 @@ public class TestParameters implements IEngineParameters {
 	}
 
 	@Override
-	public SignatureScheme[] getSignatureSchemesCert() {
-		return signatureSchemesCert;
+	public SignatureScheme[] getCertSignatureSchemes() {
+		return certSignatureSchemes;
 	}
 	
 	@Override

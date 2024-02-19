@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,8 @@
 package org.snf4j.tls.engine;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import java.nio.ByteBuffer;
 import java.security.PublicKey;
@@ -149,5 +151,88 @@ public class EngineDefaultsTest {
 		assertArrayEquals(new  SignatureScheme[] {SignatureScheme.RSA_PKCS1_SHA256}, EngineDefaults.implemented(sss));
 		sss[1] = ss2;
 		assertArrayEquals(new  SignatureScheme[] {SignatureScheme.RSA_PKCS1_SHA256}, EngineDefaults.implemented(sss));
+	}
+
+	@Test
+	public void testDefaulNamedGroups() {
+		NamedGroup[] expected = new NamedGroup[] { 
+				NamedGroup.X25519,
+				NamedGroup.SECP256R1,
+				NamedGroup.X448,
+				NamedGroup.SECP521R1,
+				NamedGroup.SECP384R1,
+				NamedGroup.FFDHE2048,
+				NamedGroup.FFDHE3072,
+				NamedGroup.FFDHE4096,
+				NamedGroup.FFDHE6144,
+				NamedGroup.FFDHE8192
+				};
+		NamedGroup[] groups = EngineDefaults.getDefaultNamedGroups();
+
+		int j = 0;
+		for (int i=0; i<expected.length; ++i) {
+			NamedGroup exp = expected[i];
+			
+			if (exp.spec().isImplemented()) {
+				assertSame(exp, groups[j++]);
+			}
+		}
+		assertEquals(j, groups.length);
+	}
+	
+	@Test
+	public void testDefaulSignatureSchemes() {
+		SignatureScheme[] expected = new SignatureScheme[] {
+				SignatureScheme.ECDSA_SECP256R1_SHA256,
+				SignatureScheme.ECDSA_SECP384R1_SHA384,
+				SignatureScheme.ECDSA_SECP521R1_SHA512,
+				SignatureScheme.ED25519,
+				SignatureScheme.ED448,
+				SignatureScheme.RSA_PSS_PSS_SHA256,
+				SignatureScheme.RSA_PSS_PSS_SHA384,
+				SignatureScheme.RSA_PSS_PSS_SHA512,
+				SignatureScheme.RSA_PSS_RSAE_SHA256,
+				SignatureScheme.RSA_PSS_RSAE_SHA384,
+				SignatureScheme.RSA_PSS_RSAE_SHA512
+				};
+		SignatureScheme[] schemes = EngineDefaults.getDefaulSignatureSchemes();
+		
+		int j = 0;
+		for (int i=0; i<expected.length; ++i) {
+			SignatureScheme exp = expected[i];
+			
+			if (exp.spec().isImplemented()) {
+				assertSame(exp, schemes[j++]);
+			}
+		}
+		assertEquals(j, schemes.length);
+		
+		expected = new SignatureScheme[] {
+				SignatureScheme.ECDSA_SECP256R1_SHA256,
+				SignatureScheme.ECDSA_SECP384R1_SHA384,
+				SignatureScheme.ECDSA_SECP521R1_SHA512,
+				SignatureScheme.ED25519,
+				SignatureScheme.ED448,
+				SignatureScheme.RSA_PSS_PSS_SHA256,
+				SignatureScheme.RSA_PSS_PSS_SHA384,
+				SignatureScheme.RSA_PSS_PSS_SHA512,
+				SignatureScheme.RSA_PSS_RSAE_SHA256,
+				SignatureScheme.RSA_PSS_RSAE_SHA384,
+				SignatureScheme.RSA_PSS_RSAE_SHA512,
+				SignatureScheme.RSA_PKCS1_SHA256,
+				SignatureScheme.RSA_PKCS1_SHA384,
+				SignatureScheme.RSA_PKCS1_SHA512
+				};
+		schemes = EngineDefaults.getDefaulCertSignatureSchemes();
+
+		j = 0;
+		for (int i=0; i<expected.length; ++i) {
+			SignatureScheme exp = expected[i];
+			
+			if (exp.spec().isImplemented()) {
+				assertSame(exp, schemes[j++]);
+			}
+		}
+		assertEquals(j, schemes.length);
 	}
 }
