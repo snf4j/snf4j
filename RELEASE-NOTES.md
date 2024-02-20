@@ -1,3 +1,9 @@
+#### 1.11.1
+ - 2024-02-20 - [changes](https://github.com/snf4j/snf4j/compare/v1.11.0...v1.11.1)
+ - Fixed #97: [TLS Toolkit] Certificate validation is performed on certificates that have not yet been successfully verified [(#98)](https://github.com/snf4j/snf4j/pull/98)
+ - Fixed #99: [TLS Toolkit] Certificates may be verified using not offered signature scheme [(#100)](https://github.com/snf4j/snf4j/pull/100)
+ - [TLS Toolkit] Improved certificates verification and validation [(#101)](https://github.com/snf4j/snf4j/pull/101)
+
 #### 1.11.0
  - 2024-02-02 - [changes](https://github.com/snf4j/snf4j/compare/v1.10.0...v1.11.0)
  - Added ByteBufferArray wrapper for simplified data reading from multiple ByteBuffer [(#88)](https://github.com/snf4j/snf4j/pull/88)
