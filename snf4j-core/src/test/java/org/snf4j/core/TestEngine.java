@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -36,8 +37,10 @@ import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
+import org.snf4j.core.engine.IEngineTimerTask;
 import org.snf4j.core.engine.Status;
 import org.snf4j.core.handler.SessionIncidentException;
+import org.snf4j.core.session.ISessionTimer;
 
 public class TestEngine implements IEngine {
 
@@ -54,6 +57,16 @@ public class TestEngine implements IEngine {
 	final List<Record> records = Collections.synchronizedList(new ArrayList<Record>());
 
 	final List<Runnable> tasks = Collections.synchronizedList(new ArrayList<Runnable>());
+
+	final List<Runnable> timerTasks = Collections.synchronizedList(new ArrayList<Runnable>());
+	
+	long timeTaskDelays = -1;
+	
+	Exception timerException;
+	
+	volatile Runnable pendingTimerTask;
+	
+	volatile Runnable awakeningTask;
 	
 	HandshakeStatus status = HandshakeStatus.NOT_HANDSHAKING;
 	
@@ -89,6 +102,18 @@ public class TestEngine implements IEngine {
 			}
 			
 		});
+	}
+
+	public void addTimerTask(Runnable task) {
+		timerTasks.add(task);
+	}
+	
+	public void addTimerTask() {
+		addTimerTask(new TimerTask());
+	}
+
+	public void pendingTimerTask() {
+		pendingTimerTask = new TimerTask();
 	}
 	
 	void trace(String s) {
@@ -182,6 +207,9 @@ public class TestEngine implements IEngine {
 		if (!tasks.isEmpty()) {
 			return HandshakeStatus.NEED_TASK;
 		}
+		if (!timerTasks.isEmpty()) {
+			return HandshakeStatus.NEED_TIMER;
+		}
 		return status;
 	}
 
@@ -204,6 +232,22 @@ public class TestEngine implements IEngine {
 			i += src.remaining();
 		}
 		return i;
+	}
+	
+	@Override
+	public void timer(ISessionTimer timer, Runnable awakeningTask) throws Exception {
+		if (timerException != null) {
+			throw timerException;
+		}
+		this.awakeningTask = awakeningTask;
+		for (Iterator<Runnable> i = timerTasks.iterator(); i.hasNext();) {
+			Runnable task = i.next();
+			
+			i.remove();
+			if (timeTaskDelays >= 0) {
+				timer.scheduleTask(task, timeTaskDelays, true);
+			}
+		}
 	}
 	
 	int consume(ByteBuffer[] srcs, byte[] expected) {
@@ -229,6 +273,11 @@ public class TestEngine implements IEngine {
 	@Override
 	public IEngineResult wrap(ByteBuffer[] srcs, ByteBuffer dst) throws Exception {
 		trace("W" + remaining(srcs));
+		if (pendingTimerTask != null) {
+			addTimerTask(pendingTimerTask);
+			pendingTimerTask = null;
+			return new EngineResult(Status.OK, getHandshakeStatus(), 0, 0);
+		}
 		if (isOutboundDone()) {
 			return new EngineResult(Status.CLOSED, getHandshakeStatus(), 0, 0);
 		}
@@ -281,6 +330,11 @@ public class TestEngine implements IEngine {
 	public IEngineResult unwrap(ByteBuffer src, ByteBuffer dst) throws Exception {
 		if (unwrapResult == null) {
 			trace("U" + src.remaining());
+			if (pendingTimerTask != null) {
+				addTimerTask(pendingTimerTask);
+				pendingTimerTask = null;
+				return new EngineResult(Status.OK, getHandshakeStatus(), 0, 0);
+			}
 			if (isInboundDone()) {
 				return new EngineResult(Status.CLOSED, getHandshakeStatus(), 0, 0);
 			}
@@ -330,6 +384,7 @@ public class TestEngine implements IEngine {
 		map.put("NU", HandshakeStatus.NEED_UNWRAP);
 		map.put("NA", HandshakeStatus.NEED_UNWRAP_AGAIN);
 		map.put("NT", HandshakeStatus.NEED_TASK);
+		map.put("Nt", HandshakeStatus.NEED_TIMER);
 		map.put("OK", Status.OK);
 		map.put("BO", Status.BUFFER_OVERFLOW);
 		map.put("BU", Status.BUFFER_UNDERFLOW);
@@ -364,6 +419,14 @@ public class TestEngine implements IEngine {
 			if (resultStatus == null) {
 				resultStatus = status;
 			}
+		}
+	}
+	
+	class TimerTask implements Runnable, IEngineTimerTask {
+
+		@Override
+		public void run() {
+			trace("TIMER_TASK");
 		}
 	}
 }

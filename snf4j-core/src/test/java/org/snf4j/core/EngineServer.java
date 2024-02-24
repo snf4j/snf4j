@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +45,7 @@ import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
+import org.snf4j.core.timer.TestTimer;
 
 public class EngineServer {
 
@@ -57,6 +58,7 @@ public class EngineServer {
 	long timeout;
 	volatile boolean directAllocator;
 	volatile boolean waitForInboundCloseMessage;
+	volatile TestTimer timer = new TestTimer();
 	
 	AtomicBoolean sessionLock = new AtomicBoolean(false);
 	AtomicBoolean readLock = new AtomicBoolean(false);
@@ -168,7 +170,7 @@ public class EngineServer {
 		
 		@Override
 		public ITimer getTimer() {
-			return null;
+			return timer;
 		}
 
 		@Override
@@ -208,6 +210,11 @@ public class EngineServer {
 
 		@Override
 		public void read(Object msg) {
+		}
+		
+		@Override
+		public void timer(Runnable task) {
+			trace("TIM");
 		}
 		
 		@Override

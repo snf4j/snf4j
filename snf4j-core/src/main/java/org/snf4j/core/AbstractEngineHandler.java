@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.snf4j.core.allocator.IByteBufferAllocator;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
+import org.snf4j.core.engine.IEngineTimerTask;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.DataEvent;
 import org.snf4j.core.handler.HandshakeLoopsThresholdException;
@@ -266,6 +267,21 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 					return;
 				}
 				running = false;
+				break;
+				
+			case NEED_TIMER:
+				try {
+					if (traceEnabled) {
+						logger.trace("Engine timer needed for {}", session);
+					}
+					engine.timer(session.getTimer(), this);
+				}
+				catch (Exception e) {
+					elogger.error(logger, "Processing of session timer failed for {}: {}", session, e);
+					fireException(e);
+					return;
+				}
+				status[0] = engine.getHandshakeStatus();
 				break;
 			}
 			
@@ -506,7 +522,12 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 	
 	@Override
 	public void timer(Runnable task) {
-		handler.timer(task);
+		if (task instanceof IEngineTimerTask) {
+			task.run();
+		}
+		else {
+			handler.timer(task);
+		}
 	}
 	
 	@Override

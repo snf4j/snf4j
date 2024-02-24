@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2021 SNF4J contributors
+ * Copyright (c) 2019-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ package org.snf4j.core.engine;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.handler.SessionIncidentException;
+import org.snf4j.core.session.ISessionTimer;
 
 /**
  * An <code>interface</code> allowing implementation of customizable protocol
@@ -320,5 +321,29 @@ public interface IEngine {
 	 *             when a problem occurred. Once it is thrown the associated
 	 *             session will be quickly closed
 	 */
-	IEngineResult unwrap(ByteBuffer src, ByteBuffer dst) throws Exception;	
+	IEngineResult unwrap(ByteBuffer src, ByteBuffer dst) throws Exception;
+	
+	/**
+	 * Provides a session timer that can be used by an {@link IEngine}
+	 * implementation to schedule a task.
+	 * <p>
+	 * For a scheduled task to be executed by the engine handler the task must
+	 * implement the {@link IEngineTimerTask} interface, otherwise the task will be
+	 * passed to the session's handler.
+	 * <p>
+	 * <b>Concurrency Notes</b>: The handler awakening task must be always run in
+	 * the engine handler's thread. To schedule a task that will be run in the
+	 * engine handler's thread always set the {@code inHandler} parameter to
+	 * {@code true} in the timer's schedule methods.
+	 *
+	 * @param timer         a session timer for scheduling a task
+	 * @param awakeningTask a task that can be used for awakening the engine handler
+	 *                      associated with this engine. It can be run after
+	 *                      completing of a scheduled task to pass the control back
+	 *                      to the engine handler.
+	 * @throws Exception when a problem occurred. Once it is thrown the associated
+	 *                   session will be quickly closed
+	 * @since 1.12
+	 */
+	default void timer(ISessionTimer timer, Runnable awakeningTask) throws Exception {};
 }

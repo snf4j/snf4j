@@ -2474,7 +2474,7 @@ public class SessionTest {
 	
 	private void sessionWrite(StreamSession session, byte[] data, int tryNum, int writeNum) throws Exception {
 		try {
-			session.write(data);
+			session.writenf(data);
 		}
 		catch (Exception e) {
 			System.out.println("[INFO] testWriteSpinCount: " + e + " try;write " + tryNum + ";" +writeNum);
