@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2020 SNF4J contributors
+ * Copyright (c) 2019-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -147,6 +147,76 @@ public class EngineSessionTest {
 		value = value.substring(0, i) + value.substring(i+5);
 		assertEquals(expected,value);
 	}
+
+	@Test
+	public void testEngineTimer() throws Exception {
+		TestEngine se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		TestEngine ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		
+		assertEquals(HandshakeStatus.NOT_HANDSHAKING, se.getHandshakeStatus());
+		assertEquals(HandshakeStatus.NOT_HANDSHAKING, ce.getHandshakeStatus());
+		ce.timeTaskDelays = 200;
+		se.timeTaskDelays = 200;
+		ce.addTimerTask();
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		startAndWaitForReady(se, ce);
+		assertEquals("INI|CR|OP|W0|RE|", ce.trace.get(true));
+		assertEquals("INI|CR|OP|W0|RE|", se.trace.get(true));
+		waitFor(400);
+		assertEquals("TIMER_TASK|", ce.trace.get(true));
+		assertEquals("", se.trace.get(true));
+		assertSame(EngineStreamHandler.class, ce.awakeningTask.getClass());
+		
+		ce.pendingTimerTask();
+		se.pendingTimerTask();
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("W3|W3|", ce.trace.get(true));
+		assertEquals("U3|U3|R789|", se.trace.get(true));
+		waitFor(400);
+		assertEquals("TIMER_TASK|", ce.trace.get(true));
+		assertEquals("TIMER_TASK|", se.trace.get(true));
+		
+		assertEquals("", c.getTrace(true));
+		ce.addTimerTask(new Runnable() {
+			@Override
+			public void run() {
+			}});
+		ce.addRecord("W|NH|123|456|OK|-|");
+		se.addRecord("U|NH|456|789|OK|-|");
+		c.getSession().write("123".getBytes()).sync(TIMEOUT);
+		s.waitForDataRead(TIMEOUT);
+		assertEquals("W3|", c.getTrace(true));
+		waitFor(400);
+		assertEquals("TIM|", c.getTrace(true));
+	}	
+
+	@Test
+	public void testEngineTimerException() throws Exception {
+		TestEngine se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		TestEngine ce = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
+		
+		assertEquals(HandshakeStatus.NOT_HANDSHAKING, se.getHandshakeStatus());
+		assertEquals(HandshakeStatus.NOT_HANDSHAKING, ce.getHandshakeStatus());
+		ce.timeTaskDelays = 200;
+		se.timeTaskDelays = 200;
+		ce.addTimerTask();
+		ce.timerException = new Exception("EX1");
+		se.addRecord("W|NH|-|-|OK|F|");
+		ce.addRecord("W|NH|-|-|OK|F|");
+		
+		s = new EngineServer(PORT, TIMEOUT);
+		c = new EngineClient(PORT, TIMEOUT);
+		s.start(se);
+		c.start(ce);
+		c.waitForSessionEnding(TIMEOUT);
+		s.waitForSessionEnding(TIMEOUT);
+		assertEquals("INI|CR|OP|EX|CI|CO|CL|EN|FIN|", c.getTrace(true));
+	}	
 	
 	@Test
 	public void testNotHandshaking() throws Exception {
