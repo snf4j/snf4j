@@ -115,6 +115,7 @@
     <module>snf4j-example</module>
     <module>snf4j-websocket</module>
     <module>snf4j-tls</module>
+    <module>snf4j-quic</module>
   </modules>
   
   <dependencies>
