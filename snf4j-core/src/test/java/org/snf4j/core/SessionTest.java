@@ -2514,7 +2514,6 @@ public class SessionTest {
 
 			session = c.getSession();
 			session.suspendWrite();
-			waitFor(100);
 			for (int i=0; i<writeCount; i++) {
 				sessionWrite(session, data, t, i);
 			}
@@ -2541,7 +2540,6 @@ public class SessionTest {
 
 			session = c.getSession();
 			session.suspendWrite();
-			waitFor(100);
 			for (int i=0; i<writeCount; i++) {
 				sessionWrite(session, data, t, i);
 			}
@@ -2591,7 +2589,6 @@ public class SessionTest {
 		((TestStreamSession)session).getOutBuffersException = true;
 		session = c.getSession();
 		session.suspendWrite();
-		waitFor(100);
 		for (int i=0; i<writeCount; i++) {
 			sessionWrite(session, data, 0, i);
 		}
@@ -2615,7 +2612,6 @@ public class SessionTest {
 		((TestStreamSession)session).getOutBuffersExceptionDelay = 1;
 		session = c.getSession();
 		session.suspendWrite();
-		waitFor(100);
 		for (int i=0; i<writeCount; i++) {
 			sessionWrite(session, data, 0, i);
 		}
@@ -2637,7 +2633,6 @@ public class SessionTest {
 		
 		session = c.getSession();
 		session.suspendWrite();
-		waitFor(100);
 		session.write(new Packet(PacketType.NOP, "123456").toBytes());
 		TestSelectionKey key = new TestSelectionKey(new TestSocketChannel());
 		Method m = SelectorLoop.class.getDeclaredMethod("handleWriting", StreamSession.class, SelectionKey.class, int.class);
