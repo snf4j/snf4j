@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,4 +45,15 @@ public interface ITimeoutModel {
 	 * should return the initial value.
 	 */
 	void reset();
+	
+	/**
+	 * Tells if this timeout model is enabled or not. When the model is disabled
+	 * all associated operation should never be timed out.
+	 * <p>
+	 * The default value is {@code true}
+	 * 
+	 * @return {@code true} to enable this timeout model
+	 * @since 1.12
+	 */
+	default boolean isEnabled() { return true; }
 }

@@ -84,6 +84,10 @@ class EngineDatagramHandler extends AbstractEngineHandler<DatagramSession, IData
 	}
 
 	private final void scheduleRetransmission() {
+		if (!timeoutModel.isEnabled()) {
+			return;
+		}
+		
 		ISessionTimer timer = session.getTimer();
 		
 		if (retransmissionTimer == null && timer.isSupported()) {

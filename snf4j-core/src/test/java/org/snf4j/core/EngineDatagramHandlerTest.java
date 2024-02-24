@@ -47,6 +47,7 @@ import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.logger.LoggerRecorder;
 import org.snf4j.core.timer.DefaultTimeoutModel;
 import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimerTask;
 import org.snf4j.core.timer.TestTimer;
 
@@ -731,6 +732,50 @@ public class EngineDatagramHandlerTest extends DTLSTest {
 		assertEquals("1000|", t.getTrace(true));
 		waitFor(1000);
 		assertEquals("1000|", t.getExpired());
+		c.getSession().dirtyClose();
+		c.waitForSessionEnding(TIMEOUT);
+	}	
+
+	@Test
+	public void testRetransmissionWithDisabledTimeoutModel() throws Exception {
+		prepareServerClient(false);
+		c.handshakeTimeout = 2000;
+		c.waitForCloseMessage = true;
+		c.testEngine.handshakingAfterClose = true;
+		c.timer = new TestTimer();
+		c.timeoutModel = new ITimeoutModel() {
+
+			@Override
+			public long next() {
+				return 0;
+			}
+
+			@Override
+			public void reset() {
+			}
+			
+			@Override
+			public boolean isEnabled() { 
+				return false; 
+			}
+		};
+		
+		TestTimer t = (TestTimer)c.timer;
+		s.startServer();
+		c.startClient();
+		assertReady(c, s);
+		s.getSession().dirtyClose();
+		s.waitForSessionEnding(TIMEOUT);
+		t.getTrace(true);
+		c.testEngine.addRecord("U|NU|-|-|OK|-|");
+		c.testEngine.addRecord("U|NH|-|-|OK|F|");
+		EngineDatagramHandler h = getHandler(c.getSession());
+		h.handshaking = true;
+		h.run(new org.snf4j.core.engine.HandshakeStatus[] {org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP_AGAIN});
+		waitFor(100);
+		assertEquals("", t.getTrace(true));
+		waitFor(1000);
+		assertEquals("", t.getExpired());
 		c.getSession().dirtyClose();
 		c.waitForSessionEnding(TIMEOUT);
 	}	
