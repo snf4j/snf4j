@@ -130,6 +130,7 @@ public class ChaCha20HeaderProtectionTest extends CommonTest {
 		hp.deriveMask(c, k, bytes("d1b1c98dd7689fb8ec11d242b123dc9b"), 0);
 		assertArrayEquals(bytes("d7689fb8ec11d242b123dc9b"), hp.nonce);
 		assertEquals(0x8dc9b1d1, hp.counter);
+		hp.deriveMask(c, k, bytes("d1b1c98dd7689fb8ec11d242b123dc9b"), 0);
 	}
 	
 	static class HeaderProtection extends ChaCha20HeaderProtection {
@@ -151,7 +152,7 @@ public class ChaCha20HeaderProtectionTest extends CommonTest {
 		AlgorithmParameterSpec parameterSpec(Constructor<?> contructor, byte[] nonce, int counter) throws InvalidParameterSpecException {
 			this.nonce = nonce;
 			this.counter = counter;
-			return new GCMParameterSpec(8*16, new byte[16]);
+			return new GCMParameterSpec(8*16, nonce);
 		}
 	}
 }
