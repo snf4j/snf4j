@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,19 +26,17 @@
 package org.snf4j.tls.crypto;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.util.Arrays;
 
 import javax.crypto.SecretKey;
+
 import org.snf4j.tls.Args;
 import org.snf4j.tls.cipher.ICipherSuiteSpec;
 import org.snf4j.tls.cipher.IHashSpec;
 import org.snf4j.tls.handshake.HandshakeType;
 
-public class KeySchedule {
-	
-	private static final String LABEL_PREFIX = "tls13 ";
+public class KeySchedule extends AbstractKeySchedule {
 	
 	private static final byte[] DERIVED = label("derived");
 	
@@ -69,19 +67,13 @@ public class KeySchedule {
 	private static final byte[] IV = label("iv");
 	
 	private static final byte[] EMPTY = new byte[0];
-	
-	private final IHkdf hkdf;
-	
+
 	private final ITranscriptHash transcriptHash;
-	
-	private final IHashSpec hashSpec;
 	
 	private final int hashLength;
 	
 	private final byte[] emptyHash;
 
-	private ICipherSuiteSpec cipherSuiteSpec;
-	
 	private boolean usingPsk;
 	
 	private boolean externalPsk;
@@ -105,47 +97,29 @@ public class KeySchedule {
 	private byte[] serverApplicationTrafficSecret;
 	
 	private byte[] resumptionMasterSecret;
-	
-	private static byte[] label(String label) {
-		return (LABEL_PREFIX + label).getBytes(StandardCharsets.US_ASCII);
-	}
-	
+
 	private static void checkDerived(Object o, String name) {
 		if (o == null) {
 			throw new IllegalStateException(name + " not derived");
 		}
 	}
 	
-	private static ICipherSuiteSpec check(ICipherSuiteSpec cipherSuiteSpec) {
-		Args.checkNull(cipherSuiteSpec, "cipherSuiteSpec");
-		return cipherSuiteSpec;
-	}
-	
 	public KeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, ICipherSuiteSpec cipherSuiteSpec) {
-		this(hkdf, transcriptHash, check(cipherSuiteSpec).getHashSpec());
-		this.cipherSuiteSpec = cipherSuiteSpec;
-	}
-
-	public KeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, IHashSpec hashSpec) {
-		Args.checkNull(hkdf, "hkdf");
+		super(hkdf, cipherSuiteSpec);
 		Args.checkNull(transcriptHash, "transcriptHash");
-		Args.checkNull(hashSpec, "hashSpec");
-		this.hkdf = hkdf;
 		this.transcriptHash = transcriptHash;
-		this.hashSpec = hashSpec;
 		emptyHash = hashSpec.getEmptyHash();
 		hashLength = hashSpec.getHashLength();
 	}
 
-	public void setCipherSuiteSpec(ICipherSuiteSpec cipherSuiteSpec) {
-		Args.checkNull(cipherSuiteSpec, "cipherSuiteSpec");
-		this.cipherSuiteSpec = cipherSuiteSpec;
+	public KeySchedule(IHkdf hkdf, ITranscriptHash transcriptHash, IHashSpec hashSpec) {
+		super(hkdf, hashSpec);
+		Args.checkNull(transcriptHash, "transcriptHash");
+		this.transcriptHash = transcriptHash;
+		emptyHash = hashSpec.getEmptyHash();
+		hashLength = hashSpec.getHashLength();
 	}
-	
-	public IHashSpec getHashSpec() {
-		return hashSpec;
-	}
-	
+		
 	public ITranscriptHash getTranscriptHash() {
 		return transcriptHash;
 	}
@@ -251,16 +225,29 @@ public class KeySchedule {
 	}
 	
 	public TrafficKeys deriveEarlyTrafficKeys() throws InvalidKeyException {
+		return deriveEarlyTrafficKeys(KEY, IV);
+	}
+
+	public TrafficKeys deriveEarlyTrafficKeys(byte[] keyLabel, byte[] ivLabel) throws InvalidKeyException {
 		checkDerived(earlyTrafficSecret, "Early Traffic Secret");
 		byte[] iv = hkdfExpandLabel(earlyTrafficSecret,
-				IV,
+				ivLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getIvLength());
 		byte[] key = hkdfExpandLabel(earlyTrafficSecret,
-				KEY,
+				keyLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
 		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(key), iv);
+	}
+	
+	public DerivedSecrets deriveEarlySecrets(byte[] label, int length) throws InvalidKeyException {
+		checkDerived(earlyTrafficSecret, "Early Traffic Secret");
+		byte[] secret = hkdfExpandLabel(earlyTrafficSecret,
+				label,
+				EMPTY,
+				length);
+		return new DerivedSecrets(secret);
 	}
 	
 	public void deriveHandshakeSecret(byte[] sharedSecret) throws InvalidKeyException {
@@ -330,26 +317,43 @@ public class KeySchedule {
 	}
 	
 	public TrafficKeys deriveHandshakeTrafficKeys() throws InvalidKeyException {
+		return deriveHandshakeTrafficKeys(KEY, IV);
+	}
+
+	public TrafficKeys deriveHandshakeTrafficKeys(byte[] keyLabel, byte[] ivLabel) throws InvalidKeyException {
 		checkDerived(clientHandshakeTrafficSecret, "Handshake Traffic Secrets");
 		byte[] civ = hkdfExpandLabel(clientHandshakeTrafficSecret,
-				IV,
+				ivLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getIvLength());
 		byte[] ckey = hkdfExpandLabel(clientHandshakeTrafficSecret,
-				KEY,
+				keyLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
 		byte[] siv = hkdfExpandLabel(serverHandshakeTrafficSecret,
-				IV,
+				ivLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getIvLength());
 		byte[] skey = hkdfExpandLabel(serverHandshakeTrafficSecret,
-				KEY,
+				keyLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
 		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(ckey), civ, createKey(skey), siv);
 	}
-
+	
+	public DerivedSecrets deriveHandshakeSecrets(byte[] label, int length) throws InvalidKeyException {
+		checkDerived(clientHandshakeTrafficSecret, "Handshake Traffic Secrets");
+		byte[] csecret = hkdfExpandLabel(clientHandshakeTrafficSecret,
+				label,
+				EMPTY,
+				length);
+		byte[] ssecret = hkdfExpandLabel(serverHandshakeTrafficSecret,
+				label,
+				EMPTY,
+				length);
+		return new DerivedSecrets(csecret, ssecret);
+	}
+	
 	public void deriveMasterSecret() throws InvalidKeyException {
 		checkDerived(handshakeSecret, "Handshake Secret");
 		byte[] derived = hkdfExpandLabel(handshakeSecret,
@@ -420,26 +424,43 @@ public class KeySchedule {
 	}
 	
 	public TrafficKeys deriveApplicationTrafficKeys() throws InvalidKeyException {
+		return deriveApplicationTrafficKeys(KEY, IV);
+	}
+
+	public TrafficKeys deriveApplicationTrafficKeys(byte[] keyLabel, byte[] ivLabel) throws InvalidKeyException {
 		checkDerived(clientApplicationTrafficSecret, "Application Traffic Secrets");
 		byte[] civ = hkdfExpandLabel(clientApplicationTrafficSecret,
-				IV,
+				ivLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getIvLength());
 		byte[] ckey = hkdfExpandLabel(clientApplicationTrafficSecret,
-				KEY,
+				keyLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
 		byte[] siv = hkdfExpandLabel(serverApplicationTrafficSecret,
-				IV,
+				ivLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getIvLength());
 		byte[] skey = hkdfExpandLabel(serverApplicationTrafficSecret,
-				KEY,
+				keyLabel,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
 		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(ckey), civ, createKey(skey), siv);
 	}
-			
+	
+	public DerivedSecrets deriveApplicationSecrets(byte[] label, int length) throws InvalidKeyException {
+		checkDerived(clientApplicationTrafficSecret, "Application Traffic Secrets");
+		byte[] csecret = hkdfExpandLabel(clientApplicationTrafficSecret,
+				label,
+				EMPTY,
+				length);
+		byte[] ssecret = hkdfExpandLabel(serverApplicationTrafficSecret,
+				label,
+				EMPTY,
+				length);
+		return new DerivedSecrets(csecret, ssecret);
+	}
+	
 	public TrafficKeys deriveNextGenerationTrafficKey(boolean client) throws InvalidKeyException {
 		if (client) {
 			checkDerived(clientApplicationTrafficSecret, "Application Traffic Secrets");
@@ -477,7 +498,8 @@ public class KeySchedule {
 		serverApplicationTrafficSecret = updated;
 		return new TrafficKeys(cipherSuiteSpec.getAead(), null, null, createKey(key), iv);
 	}
-	
+
+	@Override
 	public void eraseAll() {	
 		eraseApplicationTrafficSecrets();
 		eraseBinderKey();
@@ -489,21 +511,4 @@ public class KeySchedule {
 		eraseResumptionMasterSecret();
 	}
 	
-	byte[] hkdfExpandLabel(byte[] secret, String label, byte[] context, int length) throws InvalidKeyException {
-		return hkdfExpandLabel(secret, label(label), context, length);
-	}
-	
-	byte[] hkdfExpandLabel(byte[] secret, byte[] label, byte[] context, int length) throws InvalidKeyException {
-		byte[] buf = new byte[2 + 1 + label.length + 1 + context.length];
-		
-		buf[0] = (byte) (length >> 8);
-		buf[1] = (byte) length;
-		buf[2] = (byte) label.length;
-		System.arraycopy(label, 0, buf, 3, label.length);
-		buf[3+label.length] = (byte) context.length;
-		if (context.length > 0) {
-			System.arraycopy(context, 0, buf, buf.length-context.length, context.length);
-		}
-		return hkdf.expand(secret, buf, length);
-	}
 }
