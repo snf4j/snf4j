@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -171,6 +171,7 @@ public class KeyScheduleTest extends CommonTest {
 	public void testDeriveEarlySecret() throws Exception {
 		assertSame(th, ks.getTranscriptHash());
 		assertSame(CipherSuiteSpec.TLS_AES_128_GCM_SHA256.getHashSpec(), ks.getHashSpec());
+		assertSame(CipherSuiteSpec.TLS_AES_128_GCM_SHA256, ks.getCipherSuiteSpec());
 		assertFalse(ks.isUsingPsk());
 		ks.deriveEarlySecret();
 		ks.deriveBinderKey();
@@ -334,7 +335,10 @@ public class KeyScheduleTest extends CommonTest {
 		assertEquals("AES", key.getAlgorithm());
 		assertNull(keys.getIv(false));
 		assertNull(keys.getKey(false));
-
+		DerivedSecrets secrets = ks.deriveEarlySecrets("tls13 iv".getBytes(ASCII), 12);
+		assertArrayEquals(keys.getIv(true), secrets.getSecret(true));
+		assertNull(secrets.getSecret(false));
+		
 		assertSame(AESAead.AEAD_AES_128_GCM, keys.getAead());
 		assertNotNull(keys.getAeadDecrypt(true));
 		assertNotNull(keys.getAeadEncrypt(true));
@@ -430,6 +434,9 @@ public class KeyScheduleTest extends CommonTest {
 		byte[] k = ks.hkdfExpandLabel(hts, "tls13 key".getBytes(ASCII), new byte[0], 16);
 		SecretKey key = keys.getKey(true);
 		assertArrayEquals(k, key.getEncoded());
+		DerivedSecrets secrets = ks.deriveHandshakeSecrets("tls13 iv".getBytes(ASCII), 12);
+		assertArrayEquals(keys.getIv(true), secrets.getSecret(true));
+		assertArrayEquals(keys.getIv(false), secrets.getSecret(false));
 		
 		hts = getSecret(ks, "serverHandshakeTrafficSecret");
 		iv = ks.hkdfExpandLabel(hts, "tls13 iv".getBytes(ASCII), new byte[0], 12);
@@ -596,6 +603,9 @@ public class KeyScheduleTest extends CommonTest {
 		byte[] k = ks.hkdfExpandLabel(hts, "tls13 key".getBytes(ASCII), new byte[0], 16);
 		SecretKey key = keys.getKey(true);
 		assertArrayEquals(k, key.getEncoded());
+		DerivedSecrets secrets = ks.deriveApplicationSecrets("tls13 iv".getBytes(ASCII), 12);
+		assertArrayEquals(keys.getIv(true), secrets.getSecret(true));
+		assertArrayEquals(keys.getIv(false), secrets.getSecret(false));
 		
 		hts = getSecret(ks, "serverApplicationTrafficSecret");
 		iv = ks.hkdfExpandLabel(hts, "tls13 iv".getBytes(ASCII), new byte[0], 12);
