@@ -23,31 +23,41 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic;
+package org.snf4j.quic.crypto;
 
-import org.junit.Before;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
-public class CommonTest {
+import javax.crypto.SecretKey;
 
-	public static final boolean JAVA11;
+import org.junit.Test;
 
-	static {
-		double version = Double.parseDouble(System.getProperty("java.specification.version"));
+public class SecretKeysTest {
+
+	@Test
+	public void testAll() {
+		SecretKey k1 = AESHeaderProtection.HP_AES_128.createKey(new byte[16]);
+		SecretKey k2 = AESHeaderProtection.HP_AES_128.createKey(new byte[16]);
 		
-		JAVA11 = version >= 11.0;
+		SecretKeys hpk = new SecretKeys(k1,k2);
+		assertSame(k1, hpk.getKey(true));
+		assertSame(k2, hpk.getKey(false));
+		assertSame(k1, hpk.getClientKey());
+		assertSame(k2, hpk.getServerKey());
+		hpk.clear();
+		assertNull(hpk.getKey(true));
+		assertNull(hpk.getKey(false));
+		assertNull(hpk.getClientKey());
+		assertNull(hpk.getServerKey());
+		hpk = new SecretKeys(k1);
+		assertSame(k1, hpk.getKey(true));
+		assertNull(hpk.getKey(false));
+		assertSame(k1, hpk.getClientKey());
+		assertNull(hpk.getServerKey());
+		hpk.clear();
+		assertNull(hpk.getKey(true));
+		assertNull(hpk.getKey(false));
+		assertNull(hpk.getClientKey());
+		assertNull(hpk.getServerKey());
 	}
-	
-	@Before
-	public void before() throws Exception {
-	}
-	
-	protected static byte[] bytes(String hexString) {
-		byte[] bytes = new byte[hexString.length()/2];
-		
-		for (int i=0; i<bytes.length; ++i) {
-			bytes[i] = (byte)Integer.parseInt(hexString.substring(i*2, i*2+2), 16);
-		}
-		return bytes;
-	}
-
 }
