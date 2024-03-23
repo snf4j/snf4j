@@ -25,9 +25,30 @@
  */
 package org.snf4j.quic;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.List;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509KeyManager;
+import javax.net.ssl.X509TrustManager;
+
 import org.junit.Before;
+import org.snf4j.core.ByteBufferArray;
+import org.snf4j.core.util.PemUtil;
+import org.snf4j.core.util.PemUtil.Label;
 
 public class CommonTest {
+
+	final static char[] PASSWORD = "password".toCharArray();
 
 	public static final boolean JAVA11;
 
@@ -49,5 +70,81 @@ public class CommonTest {
 		}
 		return bytes;
 	}
+	
+	protected static byte[][] split(byte[] array, int... sizes) {
+		byte[][] splitted = new byte[sizes.length+1][];
+		byte[] b;
+		int remaining = array.length;
+		int i=0;
+		int off=0;
+		
+		
+		for (; i<sizes.length; ++i) {
+			int size = sizes[i];
+			b = new byte[size];
+			
+			System.arraycopy(array, off, b, 0, size);
+			off += size;
+			remaining -= size;
+			splitted[i] = b;
+		}
+		b = new byte[remaining];
+		System.arraycopy(array, off, b, 0, remaining);
+		splitted[i] = b;
+		return splitted;
+	}
+	
+	protected static ByteBuffer[] split(ByteBuffer buf, int... sizes) {
+		byte[] bytes = new byte[buf.remaining()];
+		
+		buf.duplicate().get(bytes);
+		byte[][] splittedBytes = split(bytes, sizes);
+		ByteBuffer[] splitted = new ByteBuffer[splittedBytes.length];
+		for (int i=0; i<splitted.length; ++i) {
+			splitted[i] = ByteBuffer.wrap(splittedBytes[i]);
+		}
+		return splitted;
+	}
 
+	protected static ByteBuffer cat(ByteBuffer... bufs) {
+		ByteBufferArray bufArray = ByteBufferArray.wrap(bufs);
+		byte[] bytes = new byte[(int) bufArray.remaining()];
+		bufArray.get(bytes);
+		return ByteBuffer.wrap(bytes);
+	}
+	
+	protected X509Certificate cert(String name) throws Exception {
+		InputStream in = CommonTest.class.getResourceAsStream("/certs/" + name + ".crt");
+		List<byte[]> certs = PemUtil.read(Label.CERTIFICATE, in);
+		in.close();
+		CertificateFactory factory = CertificateFactory.getInstance("X.509");
+		return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certs.get(0)));
+	}
+
+	protected PrivateKey key(String algorithm, String name) throws Exception {
+		InputStream in = CommonTest.class.getResourceAsStream("/certs/" + name + ".key");
+		List<byte[]> keys = PemUtil.read(Label.PRIVATE_KEY, in);
+		in.close();
+		PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keys.get(0));
+		KeyFactory factory = KeyFactory.getInstance(algorithm);
+	    return factory.generatePrivate(spec);
+	}
+
+	protected X509KeyManager km() throws Exception {
+		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+		ks.load(null, null);
+		ks.setKeyEntry("key", key("EC", "secp256r1"), PASSWORD, new X509Certificate[] {cert("secp256r1")});
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+		kmf.init(ks,PASSWORD);
+		return (X509KeyManager) kmf.getKeyManagers()[0];
+	}
+	
+	protected X509TrustManager tm() throws Exception {
+		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+		ks.load(null, null);
+		ks.setCertificateEntry("ca", cert("secp256r1"));
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+		tmf.init(ks);
+		return (X509TrustManager) tmf.getTrustManagers()[0];
+	}
 }
