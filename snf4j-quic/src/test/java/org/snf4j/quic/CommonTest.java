@@ -45,7 +45,6 @@ import org.junit.Before;
 import org.snf4j.core.ByteBufferArray;
 import org.snf4j.core.util.PemUtil;
 import org.snf4j.core.util.PemUtil.Label;
-import org.snf4j.tls.crypto.ECDSASignatureTest;
 
 public class CommonTest {
 
@@ -115,7 +114,7 @@ public class CommonTest {
 	}
 	
 	protected X509Certificate cert(String name) throws Exception {
-		InputStream in = ECDSASignatureTest.class.getResourceAsStream("/certs/" + name + ".crt");
+		InputStream in = CommonTest.class.getResourceAsStream("/certs/" + name + ".crt");
 		List<byte[]> certs = PemUtil.read(Label.CERTIFICATE, in);
 		in.close();
 		CertificateFactory factory = CertificateFactory.getInstance("X.509");
@@ -123,7 +122,7 @@ public class CommonTest {
 	}
 
 	protected PrivateKey key(String algorithm, String name) throws Exception {
-		InputStream in = ECDSASignatureTest.class.getResourceAsStream("/certs/" + name + ".key");
+		InputStream in = CommonTest.class.getResourceAsStream("/certs/" + name + ".key");
 		List<byte[]> keys = PemUtil.read(Label.PRIVATE_KEY, in);
 		in.close();
 		PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keys.get(0));
