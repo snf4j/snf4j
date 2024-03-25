@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package org.snf4j.tls.crypto;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
@@ -83,6 +84,7 @@ public class AESAeadTest extends CommonTest {
 		assertEquals(12, nonce.length);
 		assertEquals(12, aead.getIvLength());
 		assertEquals(1L<<37, aead.getKeyLimit());
+		assertSame(AeadId.AES_128_GCM, aead.getId());
 	}
 
 	@Test
@@ -121,6 +123,7 @@ public class AESAeadTest extends CommonTest {
 		assertEquals(12, nonce.length);
 		assertEquals(12, aead.getIvLength());
 		assertEquals(1L<<37, aead.getKeyLimit());
+		assertSame(AeadId.AES_256_GCM, aead.getId());
 	}
 	
 }

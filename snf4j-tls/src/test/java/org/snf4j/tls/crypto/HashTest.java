@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 package org.snf4j.tls.crypto;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import java.security.MessageDigest;
 
@@ -42,6 +43,7 @@ public class HashTest {
 		
 		assertEquals("HmacSHA256", mac.getAlgorithm());
 		assertEquals("SHA-256", md.getAlgorithm());
+		assertSame(HashId.SHA_256, Hash.SHA256.getId());
 	}
 
 	@Test
@@ -51,5 +53,6 @@ public class HashTest {
 		
 		assertEquals("HmacSHA384", mac.getAlgorithm());
 		assertEquals("SHA-384", md.getAlgorithm());
+		assertSame(HashId.SHA_384, Hash.SHA384.getId());
 	}
 }
