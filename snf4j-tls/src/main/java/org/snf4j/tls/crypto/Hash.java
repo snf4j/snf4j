@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,17 +32,20 @@ import javax.crypto.Mac;
 
 public class Hash implements IHash {
 	
-	public final static IHash SHA256 = new Hash("SHA-256","HmacSHA256");
+	public final static IHash SHA256 = new Hash("SHA-256","HmacSHA256", HashId.SHA_256);
 
-	public final static IHash SHA384 = new Hash("SHA-384","HmacSHA384");
+	public final static IHash SHA384 = new Hash("SHA-384","HmacSHA384", HashId.SHA_384);
 	
 	private final String hashAlgoritm;
 	
 	private final String macAlgorithm;
 	
-	public Hash(String hashAlgorithm, String macAlgorithm) {
+	private final HashId id;
+	
+	public Hash(String hashAlgorithm, String macAlgorithm, HashId id) {
 		this.hashAlgoritm = hashAlgorithm;
 		this.macAlgorithm = macAlgorithm;
+		this.id = id;
 	}
 	
 	@Override
@@ -53,5 +56,10 @@ public class Hash implements IHash {
 	@Override
 	public Mac createMac() throws NoSuchAlgorithmException {
 		return Mac.getInstance(macAlgorithm);
+	}
+
+	@Override
+	public HashId getId() {
+		return id;
 	}
 }

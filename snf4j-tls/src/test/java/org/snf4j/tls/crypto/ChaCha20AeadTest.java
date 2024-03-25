@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2023 SNF4J contributors
+ * Copyright (c) 2022-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ package org.snf4j.tls.crypto;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.security.NoSuchAlgorithmException;
@@ -91,6 +92,7 @@ public class ChaCha20AeadTest extends CommonTest {
 		assertEquals(12, nonce.length);
 		assertEquals(12, aead.getIvLength());
 		assertEquals(1L<<62, aead.getKeyLimit());
+		assertSame(AeadId.CHACHA20_POLY1305, aead.getId());
 	}
 	
 	@Test
@@ -101,7 +103,7 @@ public class ChaCha20AeadTest extends CommonTest {
 	
 	@Test
 	public void testInit() throws Exception {
-		ChaCha20Aead aead = new ChaCha20Aead(16,16,100000,12) {
+		ChaCha20Aead aead = new ChaCha20Aead(16,16,100000,12,AeadId.CHACHA20_POLY1305) {
 			
 			@Override
 			Cipher createCipher(String transformation) throws NoSuchAlgorithmException, NoSuchPaddingException {
