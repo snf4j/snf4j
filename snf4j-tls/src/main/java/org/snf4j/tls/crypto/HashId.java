@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2022-2024 SNF4J contributors
+ * Copyright (c) 2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,33 +25,16 @@
  */
 package org.snf4j.tls.crypto;
 
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-
-import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-
-public interface IAead {
-
-	int getTagLength();
+/**
+ * An {@code enum} defining internal identifiers for supported hash functions.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public enum HashId {
 	
-	int getKeyLength();
+	/** SHA-256 */
+	SHA_256,
 	
-	long getKeyLimit();
-	
-	int getIvLength();
-	
-	boolean isImplemented();
-	
-	Cipher createCipher() throws NoSuchAlgorithmException, NoSuchPaddingException;
-	
-	SecretKey createKey(byte[] key);
-	
-	void initDecrypt(Cipher cipher, SecretKey key, byte[] nonce) throws InvalidKeyException, InvalidAlgorithmParameterException;
-
-	void initEncrypt(Cipher cipher, SecretKey key, byte[] nonce) throws InvalidKeyException, InvalidAlgorithmParameterException;
-
-	AeadId getId();
+	/** SHA-384 */
+	SHA_384
 }
