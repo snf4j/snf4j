@@ -113,6 +113,20 @@ public class CommonTest {
 		return ByteBuffer.wrap(bytes);
 	}
 	
+	protected static byte[] cat(byte[]... arrays) {
+		int len = 0;
+		for (byte[] array: arrays) {
+			len += array.length;
+		}
+		byte[] bytes = new byte[len];
+		len = 0;
+		for (byte[] array: arrays) {
+			System.arraycopy(array, 0, bytes, len, array.length);
+			len += array.length;
+		}
+		return bytes;
+	}
+	
 	protected X509Certificate cert(String name) throws Exception {
 		InputStream in = CommonTest.class.getResourceAsStream("/certs/" + name + ".crt");
 		List<byte[]> certs = PemUtil.read(Label.CERTIFICATE, in);
