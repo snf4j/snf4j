@@ -85,12 +85,23 @@ public class QuicKeySchedule extends AbstractKeySchedule {
 	 * @param cipherSuiteSpec  the cipher suite
 	 * @param headerProtection the header protection algorithm
 	 */
-	public QuicKeySchedule(IHkdf hkdf, ICipherSuiteSpec cipherSuiteSpec, IHeaderProtection headerProtection) {
+	protected QuicKeySchedule(IHkdf hkdf, ICipherSuiteSpec cipherSuiteSpec, IHeaderProtection headerProtection) {
 		super(hkdf, cipherSuiteSpec);
 		this.headerProtection = headerProtection;
 		hashLength = hashSpec.getHashLength();
 	}
 
+	/**
+	 * Constructs a QUIC key schedule for the given HMAC-based Extract-and-Expand
+	 * Key Derivation Function (HKDF) and cipher suite.
+	 * 
+	 * @param hkdf             the HKDF
+	 * @param cipherSuiteSpec  the cipher suite
+	 */
+	public QuicKeySchedule(IHkdf hkdf, ICipherSuiteSpec cipherSuiteSpec) {
+		this(hkdf, cipherSuiteSpec, AeadSpec.getHeaderProtection(cipherSuiteSpec.getAead().getId()));
+	}
+	
 	/**
 	 * Derives initial secrets from the given salt and the connection id.
 	 * 
