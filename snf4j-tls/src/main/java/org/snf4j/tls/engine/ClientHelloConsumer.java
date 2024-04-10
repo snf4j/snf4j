@@ -391,6 +391,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					cipherSuite,
 					(byte)0,
 					extensions);
+			state.getListener().onHandshakeCreate(state, helloRetryRequest, true);
 			ConsumerUtil.produceHRR(state, helloRetryRequest, RecordType.INITIAL);
 			
 			if (clientHello.getLegacySessionId().length > 0) {
@@ -515,6 +516,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 					state.getCipherSuite(),
 					(byte)0,
 					extensions);
+			state.getListener().onHandshakeCreate(state, serverHello, false);
 			ConsumerUtil.prepare(state, serverHello, RecordType.INITIAL, RecordType.HANDSHAKE);
 
 			if (legacySessionId.length > 0 && !state.hadState(MachineState.SRV_WAIT_2_CH)) {
@@ -552,6 +554,7 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 			extensions.add(new SupportedGroupsExtension(state.getParameters().getNamedGroups()));
 			
 			EncryptedExtensions encryptedExtensions = new EncryptedExtensions(extensions);
+			state.getListener().onHandshakeCreate(state, encryptedExtensions, false);
 			ConsumerUtil.prepare(state, encryptedExtensions, RecordType.HANDSHAKE);	
 		}
 	}
@@ -567,9 +570,17 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 		
 		@Override
 		public void finish(EngineState state) throws Alert {
-			MachineState nextState = state.getEarlyDataContext().getState() == EarlyDataState.PROCESSING 
-					? MachineState.SRV_WAIT_EOED 
-					: MachineState.SRV_WAIT_FINISHED;
+			MachineState nextState = MachineState.SRV_WAIT_FINISHED;
+			
+			if (state.getEarlyDataContext().getState() == EarlyDataState.PROCESSING) {
+				if (state.getParameters().skipEndOfEarlyData()) {
+					state.getEarlyDataContext().complete();
+					state.getListener().onNewReceivingTraficKey(state, RecordType.HANDSHAKE);
+				}
+				else {
+					nextState = MachineState.SRV_WAIT_EOED;
+				}
+			}
 			
 			if (certificates != null) {
 				IEngineParameters params = state.getParameters();
@@ -584,12 +595,14 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 						extensions.add(new SignatureAlgorithmsCertExtension(signSchemes));
 					}
 					CertificateRequest certificateRequest = new CertificateRequest(extensions);
+					state.getListener().onHandshakeCreate(state, certificateRequest, false);
 					ConsumerUtil.prepare(state, certificateRequest, RecordType.HANDSHAKE);
 					nextState = MachineState.SRV_WAIT_CERT;
 				}
 				
 				state.getSessionInfo().localCerts(certificates.getCertificates());
 				Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
+				state.getListener().onHandshakeCreate(state, certificate, false);
 				ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
 
 				byte[] signature = ConsumerUtil.sign(state.getTranscriptHash().getHash(HandshakeType.CERTIFICATE, false), 
@@ -598,11 +611,13 @@ public class ClientHelloConsumer implements IHandshakeConsumer {
 						false,
 						state.getHandler().getSecureRandom());
 				CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
+				state.getListener().onHandshakeCreate(state, certificateVerify, false);
 				ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);	
 			}
 			
 			try {
 				Finished finished = new Finished(state.getKeySchedule().computeServerVerifyData());
+				state.getListener().onHandshakeCreate(state, finished, false);
 				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
 				state.getKeySchedule().deriveMasterSecret();
 				state.getKeySchedule().eraseHandshakeSecret();

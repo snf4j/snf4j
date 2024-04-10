@@ -59,6 +59,8 @@ public class EngineParametersBuilder {
 	
 	private String[] applicationProtocols;
 	
+	private boolean skipEndOfEarlyData;
+	
 	public EngineParametersBuilder() {}
 		
 	public EngineParametersBuilder cipherSuites(CipherSuite... cipherSuites) {
@@ -180,6 +182,15 @@ public class EngineParametersBuilder {
 	public String[] getApplicationProtocols() {
 		return applicationProtocols;
 	}
+
+	public EngineParametersBuilder skipEndOfEarlyData(boolean skip) {
+		this.skipEndOfEarlyData = skip;
+		return this;
+	}
+
+	public boolean getSkipEndOfEarlyData() {
+		return skipEndOfEarlyData;
+	}
 	
 	private static <T> T[] safeClone(T[] array) {
 		return array == null ? null : array.clone();
@@ -199,7 +210,8 @@ public class EngineParametersBuilder {
 				serverNameRequired,
 				delegatedTaskMode,
 				clientAuth,
-				safeClone(applicationProtocols)
+				safeClone(applicationProtocols),
+				skipEndOfEarlyData
 				);
 	}
 

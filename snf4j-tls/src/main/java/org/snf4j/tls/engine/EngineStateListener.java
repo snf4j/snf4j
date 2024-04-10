@@ -207,6 +207,10 @@ public class EngineStateListener implements IEngineStateListener, IEncryptorHold
 	}
 	
 	@Override
+	public void onHandshakeCreate(IEngineState state, IHandshake handshake, boolean isHRR) {
+	}
+	
+	@Override
 	public void onCleanup(IEngineState state) {
 		for (int i=0; i<encryptors.length; ++i) {
 			Cryptor cryptor = encryptors[i];

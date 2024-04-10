@@ -379,6 +379,91 @@ public class TLSEngineTest extends EngineTest {
 	}
 
 	@Test
+	public void testEarlyDataWithEndOfEDSkipped() throws Exception {
+		prepareTickets(111);
+		
+		byte[] data = random(111);
+		handler.earlyData.add(data);
+		TLSEngine cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.skipEndOfEarlyData(true)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		TLSEngine srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.skipEndOfEarlyData(true)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		FlightController fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		in.limit(in.getShort(3)+5);
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|", fc.trace());
+		assertNull(fc.earlyData);
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|", fc.trace());
+		assertInOut(0,0);
+		assertAppData(cli,srv,100,1000);
+		assertTrue(handler.trace().contains("AED|"));
+		
+		handler.earlyData.add(split(data, 50)[0]);
+		handler.earlyData.add(split(data, 50)[1]);
+		cli = new TLSEngine(true, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.peerHost(PEER_HOST)
+				.peerPort(PEER_PORT)
+				.skipEndOfEarlyData(true)
+				.build(), 
+				handler);
+		cli.beginHandshake();
+
+		srv = new TLSEngine(false, new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE)
+				.skipEndOfEarlyData(true)
+				.build(), 
+				handler);
+		srv.beginHandshake();
+
+		fc = new FlightController();
+		clear();
+		fc.fly(cli, in, out);
+		assertEquals("W|OK:ww|W|OK:uu|", fc.trace());
+		flip();
+		in.limit(in.getShort(3)+5);
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:ww|W|OK:uu|", fc.trace());
+		assertNull(fc.earlyData);
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:uu|U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(srv, in, out);
+		assertEquals("U|OK:ww|W|OK:fnh|NH|", fc.trace());
+		flip();
+		fc.fly(cli, in, out);
+		assertEquals("U|OK:nhnh|", fc.trace());
+		assertInOut(0,0);	
+		assertAppData(cli,srv,100,1000);
+		assertTrue(handler.trace().contains("AED|"));
+	}
+	
+	@Test
 	public void testEarlyDataWithUnexpectedMessage() throws Exception {
 		prepareTickets(100000);
 		
