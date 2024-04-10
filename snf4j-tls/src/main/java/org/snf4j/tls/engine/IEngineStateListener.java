@@ -42,6 +42,19 @@ public interface IEngineStateListener {
 	
 	void onHandshake(IEngineState state, IHandshake handshake) throws Alert;
 	
+	/**
+	 * Called right after creation of a handshake message. This method is allowed to
+	 * update extensions in the handshake message.
+	 * 
+	 * @param state     the current state of handshake engine
+	 * @param handshake the created handshake message
+	 * @param isHRR     if a {@link org.snf4j.tls.handshake.IServerHello ServerHello}
+	 *                  handshake message is passed it informs whether it is a
+	 *                  regular ServerHello or HelloRetryRequest. For other messages
+	 *                  is always set to {@code false}
+	 */
+	void onHandshakeCreate(IEngineState state, IHandshake handshake, boolean isHRR);
+	
 	void onCleanup(IEngineState state);
 	
 	void produceChangeCipherSpec(IEngineProducer producer);

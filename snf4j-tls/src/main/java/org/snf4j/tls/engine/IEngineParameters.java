@@ -65,4 +65,16 @@ public interface IEngineParameters {
 	 */
 	String[] getApplicationProtocols();
 	
+	/**
+	 * Tells if the EndOfEarlyData handshake message should be skipped during TLS
+	 * 1.3 handshake.
+	 * <p>
+	 * NOTE: This method should return {@code true} only when the handshake engine
+	 * is used by other protocols which prohibit the usage of this handshake message
+	 * (e.g. QUIC).
+	 * 
+	 * @return {@code true} to skip the EndOfEarlyData handshake message
+	 */
+	boolean skipEndOfEarlyData();
+	
 }

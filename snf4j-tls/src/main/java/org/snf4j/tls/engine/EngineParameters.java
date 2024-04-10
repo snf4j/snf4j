@@ -61,11 +61,13 @@ public class EngineParameters implements IEngineParameters {
 	
 	private final String[] applicationProtocols;
 	
+	private final boolean skipEndOfEarlyData;
+	
 	public EngineParameters(CipherSuite[] cipherSuites, NamedGroup[] namedGroups, SignatureScheme[] signatureSchemes,
 			SignatureScheme[] certSignatureSchemes, PskKeyExchangeMode[] pskKeyExchangeModes,
 			boolean compatibilityMode, int numberOfOfferedSharedKeys, String peerHost,
 			int peerPort, boolean serverNameRequired, DelegatedTaskMode delegatedTaskMode,ClientAuth clientAuth,
-			String[] applicationProtocols) {
+			String[] applicationProtocols, boolean skipEndOfEarlyData) {
 		super();
 		this.cipherSuites = cipherSuites;
 		this.namedGroups = namedGroups;
@@ -80,6 +82,7 @@ public class EngineParameters implements IEngineParameters {
 		this.delegatedTaskMode = delegatedTaskMode;
 		this.clientAuth = clientAuth;
 		this.applicationProtocols = applicationProtocols == null ? EMPTY : applicationProtocols;
+		this.skipEndOfEarlyData = skipEndOfEarlyData;
 	}
 
 	@Override
@@ -145,5 +148,10 @@ public class EngineParameters implements IEngineParameters {
 	@Override
 	public String[] getApplicationProtocols() {
 		return applicationProtocols;
+	}
+	
+	@Override
+	public boolean skipEndOfEarlyData() {
+		return skipEndOfEarlyData;
 	}
 }
