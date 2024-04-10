@@ -420,6 +420,7 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("U|OK:nhnh|", fc.trace());
 		assertInOut(0,0);
 		assertAppData(cli,srv,100,1000);
+		assertTrue(handler.trace().contains("AED|"));
 		
 		handler.earlyData.add(split(data, 50)[0]);
 		handler.earlyData.add(split(data, 50)[1]);
@@ -459,6 +460,7 @@ public class TLSEngineTest extends EngineTest {
 		assertEquals("U|OK:nhnh|", fc.trace());
 		assertInOut(0,0);	
 		assertAppData(cli,srv,100,1000);
+		assertTrue(handler.trace().contains("AED|"));
 	}
 	
 	@Test
