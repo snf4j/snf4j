@@ -136,4 +136,8 @@ public class TestParameters implements IEngineParameters {
 		return applicationProtocols;
 	}
 	
+	@Override
+	public boolean skipEndOfEarlyData() {
+		return false;
+	}
 }

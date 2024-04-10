@@ -229,6 +229,10 @@ public class TestHandshakeHandler implements IEngineHandler, IEngineStateListene
 	}
 	
 	@Override
+	public void onHandshakeCreate(IEngineState state, IHandshake handshake, boolean isHRR) {
+	}
+	
+	@Override
 	public void onCleanup(IEngineState state) {
 		trace("CL");
 	}

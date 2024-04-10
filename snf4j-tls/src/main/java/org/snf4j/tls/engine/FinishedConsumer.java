@@ -85,6 +85,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 				for (TicketInfo ticketInfo: ticketInfos) {
 					long maxSize = ticketInfo.getMaxEarlyDataSize();
 					NewSessionTicket ticket = handler.getSessionManager().newTicket(state, maxSize);
+					state.getListener().onHandshakeCreate(state, ticket, false);
 					
 					if (maxSize != -1) {
 						ticket.getExtensions().add(new EarlyDataExtension(maxSize));
@@ -116,8 +117,10 @@ public class FinishedConsumer implements IHandshakeConsumer {
 		state.getTranscriptHash().update(finished.getType(), data);
 		
 		IEarlyDataContext ctx = state.getEarlyDataContext();
-		if (ctx.getState() == EarlyDataState.PROCESSING) {
-			ConsumerUtil.prepare(state, new EndOfEarlyData(), RecordType.ZERO_RTT, RecordType.HANDSHAKE);
+		if (ctx.getState() == EarlyDataState.PROCESSING && !state.getParameters().skipEndOfEarlyData()) {
+			EndOfEarlyData endOfEarlyData = new EndOfEarlyData();
+			state.getListener().onHandshakeCreate(state, endOfEarlyData, false);
+			ConsumerUtil.prepare(state, endOfEarlyData, RecordType.ZERO_RTT, RecordType.HANDSHAKE);
 		}
 		else {
 			state.getListener().onNewSendingTraficKey(state, RecordType.HANDSHAKE);
@@ -185,6 +188,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 			
 			if (certificates != null) {
 				Certificate certificate = new Certificate(new byte[0], certificates.getEntries());
+				state.getListener().onHandshakeCreate(state, certificate, false);
 				ConsumerUtil.prepare(state, certificate, RecordType.HANDSHAKE);	
 
 				if (certificate.getEntries().length > 0) {
@@ -195,6 +199,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 							true,
 							state.getHandler().getSecureRandom());
 					CertificateVerify certificateVerify = new CertificateVerify(certificates.getAlgorithm(), signature);
+					state.getListener().onHandshakeCreate(state, certificateVerify, false);
 					ConsumerUtil.prepare(state, certificateVerify, RecordType.HANDSHAKE);
 				}
 			}
@@ -206,6 +211,7 @@ public class FinishedConsumer implements IHandshakeConsumer {
 				state.getListener().onNewTrafficSecrets(state, RecordType.APPLICATION);
 				state.getListener().onNewReceivingTraficKey(state, RecordType.APPLICATION);
 				Finished finished = new Finished(state.getKeySchedule().computeClientVerifyData());
+				state.getListener().onHandshakeCreate(state, finished, false);
 				state.getKeySchedule().eraseHandshakeTrafficSecrets();
 				ConsumerUtil.prepare(state, finished, RecordType.HANDSHAKE, RecordType.APPLICATION);
 				state.getKeySchedule().deriveResumptionMasterSecret();

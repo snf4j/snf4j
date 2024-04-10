@@ -597,6 +597,10 @@ public class HandshakeFragmenterTest extends EngineTest {
 		@Override
 		public void onHandshake(IEngineState state, IHandshake handshake) throws Alert {
 		}
+		
+		@Override
+		public void onHandshakeCreate(IEngineState state, IHandshake handshake, boolean isHRR) {
+		}
 
 		@Override
 		public void onCleanup(IEngineState state) {

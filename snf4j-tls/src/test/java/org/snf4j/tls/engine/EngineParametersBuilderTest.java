@@ -72,6 +72,8 @@ public class EngineParametersBuilderTest {
 		assertSame(ClientAuth.NONE, b.getClientAuth());
 		assertEquals(0, p.getApplicationProtocols().length);
 		assertNull(b.getApplicationProtocols());
+		assertFalse(p.skipEndOfEarlyData());
+		assertFalse(b.getSkipEndOfEarlyData());
 	}
 	
 	@Test
@@ -117,5 +119,11 @@ public class EngineParametersBuilderTest {
 		b.applicationProtocols((String[])null);
 		assertNull(b.getApplicationProtocols());
 		assertEquals(0, b.build().getApplicationProtocols().length);
+		b.skipEndOfEarlyData(true);
+		assertTrue(b.getSkipEndOfEarlyData());
+		assertTrue(b.build().skipEndOfEarlyData());
+		b.skipEndOfEarlyData(false);
+		assertFalse(b.getSkipEndOfEarlyData());
+		assertFalse(b.build().skipEndOfEarlyData());
 	}
 }

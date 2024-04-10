@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2023 SNF4J contributors
+ * Copyright (c) 2023-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -59,7 +59,9 @@ public class KeyUpdateConsumer implements IHandshakeConsumer {
 		
 		state.getListener().onNewReceivingTraficKey(state, RecordType.NEXT_GEN);
 		if (ku.getRequest() == KeyUpdateRequest.UPDATE_REQUESTED) {
-			state.produce(new ProducedHandshake(new KeyUpdate(false), RecordType.APPLICATION, RecordType.NEXT_GEN));
+			KeyUpdate keyUpdate = new KeyUpdate(false);
+			state.getListener().onHandshakeCreate(state, keyUpdate, false);
+			state.produce(new ProducedHandshake(keyUpdate, RecordType.APPLICATION, RecordType.NEXT_GEN));
 		}
 	}
 

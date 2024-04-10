@@ -309,7 +309,9 @@ public class HandshakeEngine implements IHandshakeEngine {
 	
 	@Override
 	public void updateKeys() throws Alert {
-		state.produce(new ProducedHandshake(new KeyUpdate(true), RecordType.APPLICATION, RecordType.NEXT_GEN));
+		KeyUpdate keyUpdate = new KeyUpdate(true);
+		state.getListener().onHandshakeCreate(state, keyUpdate, false);
+		state.produce(new ProducedHandshake(keyUpdate, RecordType.APPLICATION, RecordType.NEXT_GEN));
 	}
 	
 	@Override
@@ -489,6 +491,7 @@ public class HandshakeEngine implements IHandshakeEngine {
 					cipherSuites, 
 					new byte[1], 
 					extensions);
+			state.getListener().onHandshakeCreate(state, clientHello, false);
 			
 			if (psks != null) {
 				int i = 0;
