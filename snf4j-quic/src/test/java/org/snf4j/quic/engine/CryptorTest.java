@@ -23,7 +23,7 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.crypto;
+package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -36,6 +36,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
+import org.snf4j.quic.engine.HeaderProtector;
 import org.snf4j.tls.crypto.AeadId;
 
 public class CryptorTest extends CommonTest {

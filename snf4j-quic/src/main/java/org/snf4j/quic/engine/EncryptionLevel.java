@@ -23,36 +23,42 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.engine.crypto;
+package org.snf4j.quic.engine;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
+/**
+ * The encryption levels that identify keys being used for data and header
+ * protection.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public enum EncryptionLevel {
 
-import java.nio.ByteBuffer;
-
-import org.junit.Test;
-import org.snf4j.quic.CommonTest;
-import org.snf4j.quic.engine.EncryptionLevel;
-
-public class ProducedCryptoTest extends CommonTest {
-
-	@Test
-	public void testAll() {
-		ByteBuffer b = ByteBuffer.wrap(bytes("00112233"));
-		ProducedCrypto pc = new ProducedCrypto(b, EncryptionLevel.INITIAL, 100);
-		
-		assertSame(b, pc.getData());
-		assertSame(EncryptionLevel.INITIAL, pc.getEncryptionLevel());
-		assertEquals(100, pc.getOffset());
+	/** Initial keys */
+	INITIAL(0),
+	
+	/** Early data (0-RTT) keys */
+	EARLY_DATA(-1),
+	
+	/** Handshake keys */
+	HANDSHAKE(1),
+	
+	/** Application data (1-RTT) keys */
+	APPLICATION_DATA(2);
+	
+	private final int cryptoOrdinal;
+	
+	private EncryptionLevel(int cryptoOrdinal) {
+		this.cryptoOrdinal = cryptoOrdinal;
 	}
 	
-	@Test(expected=IllegalArgumentException.class)
-	public void testExeption1() {
-		new ProducedCrypto(null, EncryptionLevel.INITIAL, 0);
-	}
-
-	@Test(expected=IllegalArgumentException.class)
-	public void testExeption2() {
-		new ProducedCrypto(ByteBuffer.wrap(bytes("00112233")), null, 0);
+	/**
+	 * Returns the ordinal of the cryptographic data space associated with this
+	 * encryption level.
+	 * 
+	 * @return the ordinal of the cryptographic data space, or -1 if this encryption
+	 *         level is not used for carrying the cryptographic data.
+	 */
+	public int cryptoOrdinal() {
+		return cryptoOrdinal;
 	}
 }

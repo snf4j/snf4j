@@ -27,6 +27,7 @@ package org.snf4j.quic.engine.crypto;
 
 import java.nio.ByteBuffer;
 
+import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.tls.Args;
 
 /**
@@ -40,7 +41,7 @@ public class ProducedCrypto {
 	
 	private final ByteBuffer data;
 	
-	private final int offset;
+	private final long offset;
 	
 	/**
 	 * Constructs the holder for produced cryptographic handshake data with the
@@ -51,7 +52,7 @@ public class ProducedCrypto {
 	 * @param offset          the offset within the cryptographic handshake
 	 *                        stream of the produced data 
 	 */
-	public ProducedCrypto(ByteBuffer data, EncryptionLevel encryptionLevel, int offset) {
+	public ProducedCrypto(ByteBuffer data, EncryptionLevel encryptionLevel, long offset) {
 		Args.checkNull(data, "data");
 		Args.checkNull(encryptionLevel, "encryptionLevel");
 		this.data = data;
@@ -84,7 +85,7 @@ public class ProducedCrypto {
 	 * 
 	 * @return the offset within the cryptographic handshake stream
 	 */
-	public int getOffset() {
+	public long getOffset() {
 		return offset;
 	}
 }

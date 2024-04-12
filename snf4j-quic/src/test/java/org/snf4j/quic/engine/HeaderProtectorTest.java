@@ -23,7 +23,7 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.crypto;
+package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -32,6 +32,7 @@ import javax.crypto.SecretKey;
 import javax.security.auth.DestroyFailedException;
 
 import org.junit.Test;
+import org.snf4j.quic.crypto.AESHeaderProtection;
 import org.snf4j.tls.crypto.AESAead;
 import org.snf4j.tls.crypto.AeadId;
 

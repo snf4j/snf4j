@@ -40,10 +40,12 @@ import org.junit.Test;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.TransportError;
+import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.quic.QuicException;
 import org.snf4j.tls.alert.AlertDescription;
 import org.snf4j.tls.alert.ProtocolVersionAlert;
 import org.snf4j.tls.engine.DelegatedTaskMode;
+import org.snf4j.tls.engine.EarlyData;
 import org.snf4j.tls.engine.EngineHandlerBuilder;
 import org.snf4j.tls.engine.EngineParametersBuilder;
 import org.snf4j.tls.engine.HandshakeEngine;
@@ -86,6 +88,10 @@ public class CryptoEngineTest extends CommonTest {
 	ProducedHandshake phandshake(String hexBytes, RecordType type) {
 		return new ProducedHandshake(handshake(hexBytes), type);
 	}
+
+	ProducedHandshake pearlydata(String hexBytes, RecordType type) {
+		return new ProducedHandshake(new EarlyData(bytes(hexBytes)), type);
+	}
 	
 	void assertProduced(String expected, EncryptionLevel expectedType, ProducedCrypto produced) {
 		ByteBuffer expectedData = ByteBuffer.allocate(16000);
@@ -102,6 +108,15 @@ public class CryptoEngineTest extends CommonTest {
 		expectedData.get(expectedBytes);
 		dupData.get(dupBytes);
 		assertArrayEquals(expectedBytes, dupBytes);
+		assertSame(expectedType, produced.getEncryptionLevel());
+	}
+
+	void assertProducedEarlyData(String expected, EncryptionLevel expectedType, ProducedCrypto produced) {
+		ByteBuffer dupData = produced.getData().duplicate();
+		byte[] dupBytes = new byte[dupData.remaining()];
+		
+		dupData.get(dupBytes);
+		assertArrayEquals(bytes(expected), dupBytes);
 		assertSame(expectedType, produced.getEncryptionLevel());
 	}
 	
@@ -122,6 +137,50 @@ public class CryptoEngineTest extends CommonTest {
 		ProducedCrypto[] produced = engine.produce();
 		assertEquals(1, produced.length);
 		assertProduced("00", EncryptionLevel.INITIAL, produced[0]);
+
+		he.addProduced(phandshake("00", RecordType.INITIAL));
+		he.addProduced(pearlydata("", RecordType.ZERO_RTT));
+		he.addProduced(pearlydata("02", RecordType.ZERO_RTT));
+		produced = engine.produce();
+		assertEquals(3, produced.length);
+		assertProduced("00", EncryptionLevel.INITIAL, produced[0]);
+		assertProducedEarlyData("", EncryptionLevel.EARLY_DATA, produced[1]);
+		assertProducedEarlyData("02", EncryptionLevel.EARLY_DATA, produced[2]);
+
+		he.addProduced(phandshake("00", RecordType.INITIAL));
+		he.addProduced(pearlydata("", RecordType.ZERO_RTT));
+		he.addProduced(phandshake("01", RecordType.INITIAL));
+		he.addProduced(pearlydata("02", RecordType.ZERO_RTT));
+		produced = engine.produce();
+		assertEquals(3, produced.length);
+		assertProduced("00,01", EncryptionLevel.INITIAL, produced[0]);
+		assertProducedEarlyData("", EncryptionLevel.EARLY_DATA, produced[1]);
+		assertProducedEarlyData("02", EncryptionLevel.EARLY_DATA, produced[2]);
+
+		he.addProduced(pearlydata("", RecordType.ZERO_RTT));
+		he.addProduced(phandshake("01", RecordType.INITIAL));
+		he.addProduced(pearlydata("02", RecordType.ZERO_RTT));
+		produced = engine.produce();
+		assertEquals(3, produced.length);
+		assertProducedEarlyData("", EncryptionLevel.EARLY_DATA, produced[0]);
+		assertProducedEarlyData("02", EncryptionLevel.EARLY_DATA, produced[1]);
+		assertProduced("01", EncryptionLevel.INITIAL, produced[2]);
+		
+		he.addProduced(pearlydata("01", RecordType.ZERO_RTT));
+		he.addProduced(pearlydata("02", RecordType.ZERO_RTT));
+		produced = engine.produce();
+		assertEquals(2, produced.length);
+		assertProducedEarlyData("01", EncryptionLevel.EARLY_DATA, produced[0]);
+		assertProducedEarlyData("02", EncryptionLevel.EARLY_DATA, produced[1]);
+		
+		he.addProduced(pearlydata("01", RecordType.ZERO_RTT));
+		he.addProduced(pearlydata("02", RecordType.ZERO_RTT));
+		he.addProduced(phandshake("03", RecordType.HANDSHAKE));
+		produced = engine.produce();
+		assertEquals(3, produced.length);
+		assertProducedEarlyData("01", EncryptionLevel.EARLY_DATA, produced[0]);
+		assertProducedEarlyData("02", EncryptionLevel.EARLY_DATA, produced[1]);
+		assertProduced("03", EncryptionLevel.HANDSHAKE, produced[2]);
 		
 		he.addProduced(phandshake("00", RecordType.INITIAL));
 		he.addProduced(phandshake("01", RecordType.INITIAL));
@@ -134,14 +193,27 @@ public class CryptoEngineTest extends CommonTest {
 		he.addProduced(phandshake("00", RecordType.INITIAL));
 		he.addProduced(phandshake("01", RecordType.HANDSHAKE));
 		he.addProduced(phandshake("02", RecordType.APPLICATION));
-		he.addProduced(phandshake("03", RecordType.ZERO_RTT));
+		he.addProduced(pearlydata("", RecordType.ZERO_RTT));
+		he.addProduced(pearlydata("", RecordType.ZERO_RTT));
 		produced = engine.produce();
-		assertEquals(4, produced.length);
+		assertEquals(5, produced.length);
 		assertProduced("00", EncryptionLevel.INITIAL, produced[0]);
 		assertProduced("01", EncryptionLevel.HANDSHAKE, produced[1]);
 		assertProduced("02", EncryptionLevel.APPLICATION_DATA, produced[2]);
-		assertProduced("03", EncryptionLevel.EARLY_DATA, produced[3]);
+		assertProducedEarlyData("", EncryptionLevel.EARLY_DATA, produced[3]);
+		assertProducedEarlyData("", EncryptionLevel.EARLY_DATA, produced[4]);
 
+		he.addProduced(phandshake("00", RecordType.INITIAL));
+		he.addProduced(pearlydata("01", RecordType.ZERO_RTT));
+		he.addProduced(phandshake("02", RecordType.HANDSHAKE));
+		he.addProduced(phandshake("03", RecordType.APPLICATION));
+		produced = engine.produce();
+		assertEquals(4, produced.length);
+		assertProduced("00", EncryptionLevel.INITIAL, produced[0]);
+		assertProducedEarlyData("01", EncryptionLevel.EARLY_DATA, produced[1]);
+		assertProduced("02", EncryptionLevel.HANDSHAKE, produced[2]);
+		assertProduced("03", EncryptionLevel.APPLICATION_DATA, produced[3]);
+		
 		he.addProduced(phandshake("00", RecordType.INITIAL));
 		he.addProduced(phandshake("01", RecordType.INITIAL));
 		he.addProduced(phandshake("02", RecordType.INITIAL));
@@ -150,15 +222,17 @@ public class CryptoEngineTest extends CommonTest {
 		he.addProduced(phandshake("05", RecordType.HANDSHAKE));
 		he.addProduced(phandshake("06", RecordType.APPLICATION));
 		he.addProduced(phandshake("07", RecordType.APPLICATION));
-		he.addProduced(phandshake("08", RecordType.ZERO_RTT));
-		he.addProduced(phandshake("09", RecordType.ZERO_RTT));
-		he.addProduced(phandshake("10", RecordType.ZERO_RTT));
+		he.addProduced(pearlydata("08", RecordType.ZERO_RTT));
+		he.addProduced(pearlydata("09", RecordType.ZERO_RTT));
+		he.addProduced(pearlydata("10", RecordType.ZERO_RTT));
 		produced = engine.produce();
-		assertEquals(4, produced.length);
+		assertEquals(6, produced.length);
 		assertProduced("00,01,02", EncryptionLevel.INITIAL, produced[0]);
 		assertProduced("03,04,05", EncryptionLevel.HANDSHAKE, produced[1]);
 		assertProduced("06,07", EncryptionLevel.APPLICATION_DATA, produced[2]);
-		assertProduced("08,09,10", EncryptionLevel.EARLY_DATA, produced[3]);
+		assertProducedEarlyData("08", EncryptionLevel.EARLY_DATA, produced[3]);
+		assertProducedEarlyData("09", EncryptionLevel.EARLY_DATA, produced[4]);
+		assertProducedEarlyData("10", EncryptionLevel.EARLY_DATA, produced[5]);
 	}
 	
 	@Test

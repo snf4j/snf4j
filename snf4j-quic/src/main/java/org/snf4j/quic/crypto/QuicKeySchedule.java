@@ -316,74 +316,57 @@ public class QuicKeySchedule extends AbstractKeySchedule {
 	 * Erases the next generation traffic key secrets.
 	 */
 	public void eraseNextGenerationSecrets() {
-		eraseNextGenerationSecret(true);
-		eraseNextGenerationSecret(false);
-	}
-	
-	private void eraseNextGenerationSecret(boolean client) {
-		if (client) {
-			if (clientNextGenerationSecret != null) {
-				Arrays.fill(clientNextGenerationSecret, (byte)0);
-				clientNextGenerationSecret = null;
-			}
+		if (clientNextGenerationSecret != null) {
+			Arrays.fill(clientNextGenerationSecret, (byte)0);
+			clientNextGenerationSecret = null;
 		}
-		else {
-			if (serverNextGenerationSecret != null) {
-				Arrays.fill(serverNextGenerationSecret, (byte)0);
-				serverNextGenerationSecret = null;
-			}
+		if (serverNextGenerationSecret != null) {
+			Arrays.fill(serverNextGenerationSecret, (byte)0);
+			serverNextGenerationSecret = null;
 		}
 	}
 	
 	/**
-	 * Derives the next generation traffic key for client or server.
+	 * Derives the next generation traffic keys.
 	 * <p>
-	 * NOTE: After calling this method the associated (client or server) next
-	 * generation traffic key secret will be derived for the next traffic key
-	 * derivation.
+	 * NOTE: After calling this method the associated next generation traffic key
+	 * secrets will be derived for the next traffic key derivation.
 	 * 
-	 * @param client determines if the key should be derived for client or server
-	 * @return the derived next generation traffic key
-	 * @throws InvalidKeyException   if the key could not be derived
+	 * @return the derived next generation traffic keys
+	 * @throws InvalidKeyException   if the keys could not be derived
 	 * @throws IllegalStateException if the next generation traffic secrets are not
 	 *                               derived yet or have been erased
 	 */
-	public TrafficKeys deriveNextGenerationTrafficKey(boolean client) throws InvalidKeyException {
-		if (client) {
-			checkDerived(clientNextGenerationSecret, "Next Generation Secrets");
-			byte[] iv = hkdfExpandLabel(clientNextGenerationSecret,
-					QUIC_IV,
-					EMPTY,
-					cipherSuiteSpec.getAead().getIvLength());
-			byte[] key = hkdfExpandLabel(clientNextGenerationSecret,
-					QUIC_KEY,
-					EMPTY,
-					cipherSuiteSpec.getAead().getKeyLength());
-			byte[] updated = hkdfExpandLabel(clientNextGenerationSecret,
-					QUIC_KU,
-					EMPTY,
-					hashLength);
-			eraseNextGenerationSecret(client);
-			clientNextGenerationSecret = updated;
-			return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(key), iv, null, null);
-		}
-
-		checkDerived(serverNextGenerationSecret, "Next Generation Secrets");
-		byte[] iv = hkdfExpandLabel(serverNextGenerationSecret,
+	public TrafficKeys deriveNextGenerationTrafficKeys() throws InvalidKeyException {
+		checkDerived(clientNextGenerationSecret, "Next Generation Secrets");
+		byte[] civ = hkdfExpandLabel(clientNextGenerationSecret,
 				QUIC_IV,
 				EMPTY,
 				cipherSuiteSpec.getAead().getIvLength());
-		byte[] key = hkdfExpandLabel(serverNextGenerationSecret,
+		byte[] ckey = hkdfExpandLabel(clientNextGenerationSecret,
 				QUIC_KEY,
 				EMPTY,
 				cipherSuiteSpec.getAead().getKeyLength());
-		byte[] updated = hkdfExpandLabel(serverNextGenerationSecret,
+		byte[] cupdated = hkdfExpandLabel(clientNextGenerationSecret,
 				QUIC_KU,
 				EMPTY,
 				hashLength);
-		eraseNextGenerationSecret(client);
-		serverNextGenerationSecret = updated;
-		return new TrafficKeys(cipherSuiteSpec.getAead(), null, null, createKey(key), iv);
+		byte[] siv = hkdfExpandLabel(serverNextGenerationSecret,
+				QUIC_IV,
+				EMPTY,
+				cipherSuiteSpec.getAead().getIvLength());
+		byte[] skey = hkdfExpandLabel(serverNextGenerationSecret,
+				QUIC_KEY,
+				EMPTY,
+				cipherSuiteSpec.getAead().getKeyLength());
+		byte[] supdated = hkdfExpandLabel(serverNextGenerationSecret,
+				QUIC_KU,
+				EMPTY,
+				hashLength);
+		eraseNextGenerationSecrets();
+		clientNextGenerationSecret = cupdated;
+		serverNextGenerationSecret = supdated;
+		return new TrafficKeys(cipherSuiteSpec.getAead(), createKey(ckey), civ, createKey(skey), siv);
 	}
 	
 	@Override

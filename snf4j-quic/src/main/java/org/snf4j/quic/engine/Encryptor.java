@@ -23,44 +23,39 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.crypto;
+package org.snf4j.quic.engine;
 
-import org.snf4j.tls.crypto.IAeadDecrypt;
+import org.snf4j.tls.crypto.IAeadEncrypt;
 
 /**
- * The default QUIC decryptor.
+ * The default QUIC encryptor.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class Decryptor extends Cryptor {
+public class Encryptor extends Cryptor {
 
-	private final IAeadDecrypt aead;
-	
-	private long integrityCountdown;
+	private final IAeadEncrypt aead;
 	
 	/**
-	 * Constructs a QUIC decryptor with the given AEAD decryptor, header protector,
-	 * initialization vector, confidentiality limit and integrity limit.
+	 * Constructs a QUIC encryptor with the given AEAD encryptor, header protector,
+	 * initialization vector and confidentiality limit.
 	 * 
-	 * @param aead                 the AEAD decryptor
+	 * @param aead                 the AEAD encryptor
 	 * @param protector            the header protector
 	 * @param iv                   the initialization vector
 	 * @param confidentialityLimit the number of packets that can be encrypted with
 	 *                             a given key
-	 * @param integrityLimit       the number of invalid packets that can be accepted for
-	 *                             a given key
 	 */
-	public Decryptor(IAeadDecrypt aead, HeaderProtector protector, byte[] iv, long confidentialityLimit, long integrityLimit) {
+	public Encryptor(IAeadEncrypt aead, HeaderProtector protector, byte[] iv, long confidentialityLimit) {
 		super(protector, iv, aead.getAead().getTagLength(), confidentialityLimit);
 		this.aead = aead;
-		integrityCountdown = integrityLimit;
 	}
 
 	/**
-	 * Returns the associated AEAD decryptor.
-	 * @return the associated AEAD decryptor
+	 * Returns the associated AEAD encryptor.
+	 * @return the associated AEAD encryptor
 	 */
-	public IAeadDecrypt getAead() {
+	public IAeadEncrypt getAead() {
 		return aead;
 	}
 
@@ -70,22 +65,4 @@ public class Decryptor extends Cryptor {
 		aead.erase();
 	}	
 
-	/**
-	 * Increases the number of invalid packets by the given amount.
-	 * 
-	 * @param amount the amount by which it should be increased
-	 */
-	public void incInvalidPackets(int amount) {
-		integrityCountdown -= amount;
-	}
-	
-	/**
-	 * Tells if the integrity limit has been reached.
-	 * 
-	 * @return {@code true} if the integrity limit has been reached
-	 */
-	public boolean isIntegrityLimitReached() {
-		return integrityCountdown < 0;
-	}
-	
 }

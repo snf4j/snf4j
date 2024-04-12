@@ -23,25 +23,44 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.engine.crypto;
+package org.snf4j.quic;
+
+import org.snf4j.tls.alert.Alert;
+import org.snf4j.tls.alert.AlertDescription;
 
 /**
- * The encryption levels that identify keys being used for data and header
- * protection.
+ * A special alert used to report errors from TLS subsystem that should be
+ * mapped to a specific QUIC error.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public enum EncryptionLevel {
+public class QuicAlert extends Alert {
 
-	/** Initial keys */
-	INITIAL,
+	private static final long serialVersionUID = 1L;
+
+	private final static AlertDescription DESCRIPTION = new AlertDescription("quic_error", -1) {}; 
 	
-	/** Early data (0-RTT) keys */
-	EARLY_DATA,
+	private final TransportError error;
 	
-	/** Handshake keys */
-	HANDSHAKE,
-	
-	/** Application data (1-RTT) keys */
-	APPLICATION_DATA;
+	/**
+	 * Constructs a TLS alert that should be mapped to the given QUIC transport
+	 * error.
+	 * 
+	 * @param error   the QUIC transport error
+	 * @param message the detail message
+	 */
+	public QuicAlert(TransportError error, String message) {
+		super(message, DESCRIPTION);
+		this.error = error;
+	}
+
+	/**
+	 * Return the QUIC transport error this alert should be mapped to.
+	 * 
+	 * @return the QUIC transport error
+	 */
+	public TransportError getTransportError() {
+		return error;
+	}
+
 }

@@ -23,36 +23,10 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.engine.crypto;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-
-import java.nio.ByteBuffer;
-
-import org.junit.Test;
-import org.snf4j.quic.CommonTest;
-import org.snf4j.quic.engine.EncryptionLevel;
-
-public class ProducedCryptoTest extends CommonTest {
-
-	@Test
-	public void testAll() {
-		ByteBuffer b = ByteBuffer.wrap(bytes("00112233"));
-		ProducedCrypto pc = new ProducedCrypto(b, EncryptionLevel.INITIAL, 100);
-		
-		assertSame(b, pc.getData());
-		assertSame(EncryptionLevel.INITIAL, pc.getEncryptionLevel());
-		assertEquals(100, pc.getOffset());
-	}
-	
-	@Test(expected=IllegalArgumentException.class)
-	public void testExeption1() {
-		new ProducedCrypto(null, EncryptionLevel.INITIAL, 0);
-	}
-
-	@Test(expected=IllegalArgumentException.class)
-	public void testExeption2() {
-		new ProducedCrypto(ByteBuffer.wrap(bytes("00112233")), null, 0);
-	}
-}
+/**
+ * Provides classes and interfaces for the QUIC protocol engine.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+package org.snf4j.quic.engine;

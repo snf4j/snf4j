@@ -23,7 +23,7 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.crypto;
+package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -37,7 +37,9 @@ import java.security.GeneralSecurityException;
 
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
-import org.snf4j.quic.crypto.CryptorTest.TestProtector;
+import org.snf4j.quic.crypto.QuicKeySchedule;
+import org.snf4j.quic.crypto.SecretKeys;
+import org.snf4j.quic.engine.CryptorTest.TestProtector;
 import org.snf4j.tls.cipher.CipherSuiteSpec;
 import org.snf4j.tls.crypto.AESAead;
 import org.snf4j.tls.crypto.AeadId;
@@ -95,6 +97,33 @@ public class DecryptorTest extends CommonTest {
 		assertTrue(d.isIntegrityLimitReached());
 	}
 
+	@Test
+	public void testUpdatePacketNumber() throws Exception {
+		Decryptor d = new Decryptor(new TestDecrypt(), new TestProtector(), bytes("11"), 100, 2000);
+
+		assertEquals(0, d.getMaxPacketNumber());
+		assertEquals(Long.MAX_VALUE, d.getMinPacketNumber());
+		
+		d.updatePacketNumber(10);
+		assertEquals(10, d.getMaxPacketNumber());
+		assertEquals(10, d.getMinPacketNumber());
+		d.updatePacketNumber(9);
+		assertEquals(10, d.getMaxPacketNumber());
+		assertEquals(9, d.getMinPacketNumber());
+		d.updatePacketNumber(2);
+		assertEquals(10, d.getMaxPacketNumber());
+		assertEquals(2, d.getMinPacketNumber());
+		d.updatePacketNumber(3);
+		assertEquals(10, d.getMaxPacketNumber());
+		assertEquals(2, d.getMinPacketNumber());
+		d.updatePacketNumber(10);
+		assertEquals(10, d.getMaxPacketNumber());
+		assertEquals(2, d.getMinPacketNumber());
+		d.updatePacketNumber(11);
+		assertEquals(11, d.getMaxPacketNumber());
+		assertEquals(2, d.getMinPacketNumber());
+	}
+	
 	@Test
 	public void testIncPackets() throws Exception {
 		Cryptor c = new Decryptor(new TestDecrypt(), new TestProtector(), bytes("11"), 1000, 100);
