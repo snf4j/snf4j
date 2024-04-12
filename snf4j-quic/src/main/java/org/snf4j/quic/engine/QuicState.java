@@ -23,36 +23,49 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.engine.crypto;
+package org.snf4j.quic.engine;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
+/**
+ * The state of the QUIC engine. This object holda all information related to
+ * the state of the QUIC engine.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class QuicState {
 
-import java.nio.ByteBuffer;
-
-import org.junit.Test;
-import org.snf4j.quic.CommonTest;
-import org.snf4j.quic.engine.EncryptionLevel;
-
-public class ProducedCryptoTest extends CommonTest {
-
-	@Test
-	public void testAll() {
-		ByteBuffer b = ByteBuffer.wrap(bytes("00112233"));
-		ProducedCrypto pc = new ProducedCrypto(b, EncryptionLevel.INITIAL, 100);
-		
-		assertSame(b, pc.getData());
-		assertSame(EncryptionLevel.INITIAL, pc.getEncryptionLevel());
-		assertEquals(100, pc.getOffset());
+	private final EncryptionContext[] contexts = new EncryptionContext[EncryptionLevel.values().length];
+	
+	private final boolean clientMode;
+	
+	/**
+	 * Constructs the state object for the given client mode.
+	 * 
+	 * @param clientMode determines whether the state object should bes for a client
+	 *                   or server
+	 */
+	public QuicState(boolean clientMode) {
+		this.clientMode = clientMode;
+		for (int i=0; i<contexts.length; ++i) {
+			contexts[i] = new EncryptionContext();
+		}
 	}
 	
-	@Test(expected=IllegalArgumentException.class)
-	public void testExeption1() {
-		new ProducedCrypto(null, EncryptionLevel.INITIAL, 0);
+	/**
+	 * Tells if this state object is for a client or server.
+	 * 
+	 * @return {@code true} if this state object is for a client
+	 */
+	public boolean isClientMode() {
+		return clientMode;
 	}
-
-	@Test(expected=IllegalArgumentException.class)
-	public void testExeption2() {
-		new ProducedCrypto(ByteBuffer.wrap(bytes("00112233")), null, 0);
+	
+	/**
+	 * Returns the associated encryption context for the given encryption level.
+	 * 
+	 * @param level the encryption level
+	 * @return the encryption context for the given encryption level
+	 */
+	public EncryptionContext getContext(EncryptionLevel level) {
+		return contexts[level.ordinal()];
 	}
 }

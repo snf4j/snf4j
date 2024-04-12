@@ -28,6 +28,7 @@ package org.snf4j.quic.engine.crypto;
 import java.nio.ByteBuffer;
 
 import org.snf4j.quic.QuicException;
+import org.snf4j.tls.session.ISession;
 
 /**
  * An engine responsible for consuming/producing cryptographic message
@@ -46,15 +47,19 @@ public interface ICryptoEngine {
 	
 	/**
 	 * Consumes cryptographic message data from a CRYPTO frame.
+	 * <p>
+	 * NOTE: The offset points to the position in the whole stream, which is
+	 * counted from the first byte encrypted by keys form the initial encryption
+	 * level.
 	 * 
 	 * @param src    the cryptographic message data
-	 * @param offset the byte offset in the stream for the cryptographic message
-	 *               data
+	 * @param offset the byte offset in the whole stream of the cryptographic
+	 *               message data
 	 * @param length the length of the cryptographic message data
 	 * @throws CryptoException if a handshake related error occurred
 	 * @throws QuicException   if an error occurred
 	 */
-	void consume(ByteBuffer src, int offset, int length) throws CryptoException, QuicException;
+	void consume(ByteBuffer src, long offset, int length) throws CryptoException, QuicException;
 	
 	/**
 	 * Tells if this engine is ready to produce some cryptographic message data. If
@@ -68,6 +73,10 @@ public interface ICryptoEngine {
 	
 	/**
 	 * Tries to produce some cryptographic message data.
+	 * <p>
+	 * NOTE: The offsets in the returned holders point to the position in the whole
+	 * stream, which is counted from the first byte encrypted by keys form the
+	 * initial encryption level.
 	 * 
 	 * @return the produced cryptographic message data or an empty array if no
 	 *         cryptographic data was ready to be produced
@@ -138,4 +147,11 @@ public interface ICryptoEngine {
 	 * @return {@code true} if the handshake is done
 	 */
 	boolean isHandshakeDone();
+	
+	/**
+	 * Returns the TLS session associated with this cryptographic engine.
+	 * 
+	 * @return the TLS session
+	 */
+	ISession getSession();
 }

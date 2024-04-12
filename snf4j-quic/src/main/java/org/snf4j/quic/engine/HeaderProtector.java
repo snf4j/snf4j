@@ -23,7 +23,7 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.crypto;
+package org.snf4j.quic.engine;
 
 import java.security.GeneralSecurityException;
 import java.security.KeyException;
@@ -32,6 +32,8 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.security.auth.DestroyFailedException;
 
+import org.snf4j.quic.crypto.AeadSpec;
+import org.snf4j.quic.crypto.IHeaderProtection;
 import org.snf4j.tls.crypto.AeadId;
 import org.snf4j.tls.crypto.IAead;
 

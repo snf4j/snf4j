@@ -23,46 +23,21 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.crypto;
-
-import org.snf4j.tls.crypto.IAeadEncrypt;
+package org.snf4j.quic.engine;
 
 /**
- * The default QUIC encryptor.
+ * An {@code enum} defining possible key phases for the 1-RTT keys. 
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class Encryptor extends Cryptor {
-
-	private final IAeadEncrypt aead;
+public enum KeyPhase {
 	
-	/**
-	 * Constructs a QUIC encryptor with the given AEAD encryptor, header protector,
-	 * initialization vector and confidentiality limit.
-	 * 
-	 * @param aead                 the AEAD encryptor
-	 * @param protector            the header protector
-	 * @param iv                   the initialization vector
-	 * @param confidentialityLimit the number of packets that can be encrypted with
-	 *                             a given key
-	 */
-	public Encryptor(IAeadEncrypt aead, HeaderProtector protector, byte[] iv, long confidentialityLimit) {
-		super(protector, iv, aead.getAead().getTagLength(), confidentialityLimit);
-		this.aead = aead;
-	}
-
-	/**
-	 * Returns the associated AEAD encryptor.
-	 * @return the associated AEAD encryptor
-	 */
-	public IAeadEncrypt getAead() {
-		return aead;
-	}
-
-	@Override
-	public void erase(boolean skipProtector) {
-		super.erase(skipProtector);
-		aead.erase();
-	}	
-
+	/** Identifies 1-RTT keys that was used during the previous key phase */
+	PREVIOUS, 
+	
+	/** Identifies current 1-RTT keys */
+	CURRENT, 
+	
+	/** Identifies 1-RTT keys that will be used during the next key phase */ 
+	NEXT
 }

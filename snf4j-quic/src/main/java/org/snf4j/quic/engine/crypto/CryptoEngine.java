@@ -32,6 +32,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.snf4j.quic.TransportError;
+import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.quic.QuicException;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.InternalErrorAlert;
@@ -39,6 +40,7 @@ import org.snf4j.tls.engine.HandshakeAggregator;
 import org.snf4j.tls.engine.IHandshakeEngine;
 import org.snf4j.tls.engine.ProducedHandshake;
 import org.snf4j.tls.record.RecordType;
+import org.snf4j.tls.session.ISession;
 
 /**
  * The default QUIC cryptographic engine handling the TLS handshake.
@@ -61,9 +63,9 @@ public class CryptoEngine implements ICryptoEngine {
 
 	private int bufferLength;
 	
-	private int consumeOffset;
+	private long consumeOffset;
 	
-	private int produceOffset;
+	private long produceOffset;
 	
 	static {
 		ENCRYPTION_LEVEL_MAP[RecordType.INITIAL.ordinal()] = EncryptionLevel.INITIAL;
@@ -129,7 +131,7 @@ public class CryptoEngine implements ICryptoEngine {
 	}
 	
 	@Override
-	public void consume(ByteBuffer src, int offset, int length) throws QuicException {
+	public void consume(ByteBuffer src, long offset, int length) throws QuicException {
 		try {
 			if (offset == consumeOffset) {
 				if (!handshaker.updateTasks()) {
@@ -143,7 +145,7 @@ public class CryptoEngine implements ICryptoEngine {
 			}
 
 			int bufferPos = 0;
-			int nextOffset = offset + length;	
+			long nextOffset = offset + length;	
 			CryptoData buffered;
 			Iterator<CryptoData> i;
 
@@ -233,44 +235,80 @@ public class CryptoEngine implements ICryptoEngine {
 		}
 		
 		if (produced.length > 0) {
-			RecordType type = produced[0].getRecordType();
 			List<ProducedCrypto> producedCrypto = new ArrayList<>(produced.length);
-			int length = 0, j = 0, count = 0;
+			List<ProducedCrypto> earlyData = null;
+			RecordType earlyDataPrevType = null;
+			int limit = 0;
+			RecordType prevType = null;
 			
+			//collect early data
 			for (int i=0; i<produced.length; ++i) {
 				ProducedHandshake ph = produced[i];
-				boolean sameType = ph.getRecordType() == type;
-				boolean produce;
-				
-				if (sameType) {
-					length += ph.getHandshake().getLength();
-					++count;
-					produce = i == produced.length - 1;
+
+				if (ph.getRecordType() == RecordType.ZERO_RTT) {
+					if (earlyData == null) {
+						earlyData = new ArrayList<>(produced.length);
+						earlyDataPrevType = prevType;
+					}
+					ByteBuffer data = ByteBuffer.allocate(ph.getHandshake().getLength());			
+					ph.getHandshake().getBytes(data);
+					data.flip();
+					earlyData.add(new ProducedCrypto(data, EncryptionLevel.EARLY_DATA, -1));
 				}
 				else {
-					produce = true;
+					produced[limit++] = produced[i];
 				}
-				
-				if (produce) {
-					EncryptionLevel level = ENCRYPTION_LEVEL_MAP[type.ordinal()];
-					
-					if (level == null) {
-						throw new CryptoException(new InternalErrorAlert("Unexpected encryption level"));
+				prevType = ph.getRecordType();
+			}
+			
+			if (earlyData != null && earlyDataPrevType == null) {
+				producedCrypto.addAll(earlyData);
+				earlyData = null;
+			}
+			
+			if (limit > 0) {
+				int length = 0, j = 0, count = 0;
+
+				prevType = produced[0].getRecordType();
+				for (int i=0; i<limit; ++i) {
+					ProducedHandshake ph = produced[i];
+					boolean sameType = ph.getRecordType() == prevType;
+					boolean produce;
+
+					if (sameType) {
+						length += ph.getHandshake().getLength();
+						++count;
+						produce = i == limit - 1;
 					}
-					
-					ByteBuffer data = ByteBuffer.allocate(length);
-					
-					for (int k=0; k < count; ++k) {
-						produced[j++].getHandshake().getBytes(data);
+					else {
+						produce = true;
 					}
-					data.flip();
-					producedCrypto.add(new ProducedCrypto(data, level, produceOffset));
-					produceOffset += data.remaining();
-					if (!sameType) {
-						type = ph.getRecordType();
-						length = 0;
-						count = 0;
-						--i;
+
+					if (produce) {
+						EncryptionLevel level = ENCRYPTION_LEVEL_MAP[prevType.ordinal()];
+
+						if (level == null) {
+							throw new CryptoException(new InternalErrorAlert("Unexpected encryption level"));
+						}
+
+						ByteBuffer data = ByteBuffer.allocate(length);
+
+						for (int k=0; k < count; ++k) {
+							produced[j++].getHandshake().getBytes(data);
+						}
+						data.flip();
+						producedCrypto.add(new ProducedCrypto(data, level, produceOffset));
+						if (earlyData != null && prevType == earlyDataPrevType) {
+							producedCrypto.addAll(earlyData);
+							earlyData = null;
+						}
+						produceOffset += data.remaining();
+						if (!sameType) {
+							prevType = ph.getRecordType();
+							length = 0;
+							count = 0;
+							--i;
+						}
 					}
 				}
 			}
@@ -322,15 +360,20 @@ public class CryptoEngine implements ICryptoEngine {
 		
 		final ByteBuffer data;
 
-		final int offset;
+		final long offset;
 		
-		final int nextOffset;
+		final long nextOffset;
 				
-		private CryptoData(ByteBuffer data, int offset, int nextOffset) {
+		private CryptoData(ByteBuffer data, long offset, long nextOffset) {
 			this.offset = offset;
 			this.nextOffset = nextOffset;
 			this.data = data;
 		}
+	}
+
+	@Override
+	public ISession getSession() {
+		return handshaker.getState().getSession();
 	}
 
 }

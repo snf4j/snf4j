@@ -23,7 +23,7 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.crypto;
+package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -38,7 +38,9 @@ import java.util.Arrays;
 import org.junit.Assume;
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
-import org.snf4j.quic.crypto.CryptorTest.TestProtector;
+import org.snf4j.quic.crypto.ChaCha20HeaderProtection;
+import org.snf4j.quic.crypto.QuicKeySchedule;
+import org.snf4j.quic.engine.CryptorTest.TestProtector;
 import org.snf4j.tls.cipher.CipherSuiteSpec;
 import org.snf4j.tls.crypto.AESAead;
 import org.snf4j.tls.crypto.AeadEncrypt;

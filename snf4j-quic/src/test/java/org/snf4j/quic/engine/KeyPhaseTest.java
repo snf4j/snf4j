@@ -23,36 +23,19 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.engine.crypto;
+package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-
-import java.nio.ByteBuffer;
 
 import org.junit.Test;
-import org.snf4j.quic.CommonTest;
-import org.snf4j.quic.engine.EncryptionLevel;
 
-public class ProducedCryptoTest extends CommonTest {
+public class KeyPhaseTest {
 
 	@Test
-	public void testAll() {
-		ByteBuffer b = ByteBuffer.wrap(bytes("00112233"));
-		ProducedCrypto pc = new ProducedCrypto(b, EncryptionLevel.INITIAL, 100);
-		
-		assertSame(b, pc.getData());
-		assertSame(EncryptionLevel.INITIAL, pc.getEncryptionLevel());
-		assertEquals(100, pc.getOffset());
-	}
-	
-	@Test(expected=IllegalArgumentException.class)
-	public void testExeption1() {
-		new ProducedCrypto(null, EncryptionLevel.INITIAL, 0);
+	public void testOrigin() {
+		assertEquals(0, KeyPhase.PREVIOUS.ordinal());
+		assertEquals(1, KeyPhase.CURRENT.ordinal());
+		assertEquals(2, KeyPhase.NEXT.ordinal());
 	}
 
-	@Test(expected=IllegalArgumentException.class)
-	public void testExeption2() {
-		new ProducedCrypto(ByteBuffer.wrap(bytes("00112233")), null, 0);
-	}
 }

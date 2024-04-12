@@ -164,9 +164,9 @@ public class QuicKeyScheduleTest extends CommonTest {
 		assertNull(getSecret(ks, "serverInitialSecret"));
 	}
 
-	void assertIllegalStateNG(QuicKeySchedule ks, boolean client) throws Exception {
+	void assertIllegalStateNG(QuicKeySchedule ks) throws Exception {
 		try {
-			ks.deriveNextGenerationTrafficKey(client);
+			ks.deriveNextGenerationTrafficKeys();
 			fail();
 		}
 		catch (IllegalStateException e) {
@@ -181,22 +181,16 @@ public class QuicKeyScheduleTest extends CommonTest {
 		setSecret(ks0, "serverApplicationTrafficSecret", bytes("3c199828fd139efd216c155ad844cc81fb82fa8d7446fa7d78be803acdda951b"));
 
 		ks.eraseNextGenerationSecrets();
-		assertIllegalStateNG(ks,true);
-		assertIllegalStateNG(ks,false);
+		assertIllegalStateNG(ks);
 		ks.deriveNextGenerationSecrets(ks0);
 		byte[] s1 = getSecret(ks, "clientNextGenerationSecret");
 		byte[] s2 = getSecret(ks, "serverNextGenerationSecret");
 		assertNotErased(s1);
 		assertNotErased(s2);
-		ks.deriveNextGenerationTrafficKey(true);
+		ks.deriveNextGenerationTrafficKeys();
 		assertErased(s1);
-		assertNotErased(s2);
+		assertErased(s1);
 		s1 = getSecret(ks, "clientNextGenerationSecret");
-		assertNotErased(s1);
-		assertNotErased(s2);
-		ks.deriveNextGenerationTrafficKey(false);
-		assertNotErased(s1);
-		assertErased(s2);
 		s2 = getSecret(ks, "serverNextGenerationSecret");
 		assertNotErased(s1);
 		assertNotErased(s2);
@@ -434,22 +428,15 @@ public class QuicKeyScheduleTest extends CommonTest {
 		setSecret(ks, "clientNextGenerationSecret", csecret.clone());
 		setSecret(ks, "serverNextGenerationSecret", ssecret.clone());
 
-		TrafficKeys keys = ks.deriveNextGenerationTrafficKey(true);
+		TrafficKeys keys = ks.deriveNextGenerationTrafficKeys();
 		assertArrayEquals(bytes("1f369613dd76d5467730efcbe3b1a22d"), keys.getKey(true).getEncoded());
 		assertArrayEquals(bytes("fa044b2f42a3fd3b46fb255c"), keys.getIv(true));
-		assertNull(keys.getKey(false));
-		assertNull(keys.getIv(false));
+		assertArrayEquals(bytes("cf3a5331653c364c88f0f379b6067e37"), keys.getKey(false).getEncoded());
+		assertArrayEquals(bytes("0ac1493ca1905853b0bba03e"), keys.getIv(false));
 
 		TestKeySchedule tks = new TestKeySchedule(h, CipherSuiteSpec.TLS_AES_128_GCM_SHA256);
 		byte[] expected = tks.hkdfExpandLabel(csecret, "quic ku", new byte[0], 32);
 		assertArrayEquals(expected, getSecret(ks, "clientNextGenerationSecret"));
-		
-		keys = ks.deriveNextGenerationTrafficKey(false);
-		assertArrayEquals(bytes("cf3a5331653c364c88f0f379b6067e37"), keys.getKey(false).getEncoded());
-		assertArrayEquals(bytes("0ac1493ca1905853b0bba03e"), keys.getIv(false));
-		assertNull(keys.getKey(true));
-		assertNull(keys.getIv(true));
-
 		expected = tks.hkdfExpandLabel(ssecret, "quic ku", new byte[0], 32);
 		assertArrayEquals(expected, getSecret(ks, "serverNextGenerationSecret"));
 	}
