@@ -52,23 +52,79 @@ public class CommonTest {
 
 	public static final boolean JAVA11;
 
+	protected ByteBuffer buffer = ByteBuffer.allocate(128000);
+	
 	static {
 		double version = Double.parseDouble(System.getProperty("java.specification.version"));
 		
 		JAVA11 = version >= 11.0;
 	}
-	
+
 	@Before
 	public void before() throws Exception {
+		buffer.clear();
+	}
+	
+	protected byte[] bytes() {
+		ByteBuffer dup = buffer.duplicate();
+		
+		dup.flip();
+		byte[] bytes = new byte[dup.remaining()];
+		dup.get(bytes);
+		return bytes;
+	}
+	
+	protected byte[] bytes(ByteBuffer buf) {
+		ByteBuffer dup = buf.duplicate();
+
+		byte[] bytes = new byte[dup.remaining()];
+		dup.get(bytes);
+		return bytes;
+	}
+	
+	protected byte[] bytesAndClear() {
+		buffer.flip();
+		byte[] bytes = new byte[buffer.remaining()];
+		buffer.get(bytes);
+		buffer.clear();
+		return bytes;
+	}
+	
+	protected ByteBuffer buffer(String hexString) {
+		buffer.clear();
+		buffer.put(bytes(hexString)).flip();
+		return buffer;
+	}
+
+	protected ByteBuffer buffer(byte[] bytes) {
+		return ByteBuffer.wrap(bytes);
 	}
 	
 	protected static byte[] bytes(String hexString) {
+		hexString = hexString.replace(" ", "");
 		byte[] bytes = new byte[hexString.length()/2];
 		
 		for (int i=0; i<bytes.length; ++i) {
 			bytes[i] = (byte)Integer.parseInt(hexString.substring(i*2, i*2+2), 16);
 		}
 		return bytes;
+	}
+	
+	protected static byte[] bytes(int count) {
+		byte[] bytes = new byte[count];
+		
+		for (int i=0; i<count; ++i) {
+			bytes[i] = (byte) i;
+		}
+		return bytes;
+	}
+	
+	protected static String hex(byte[] bytes) {
+		StringBuilder sb = new StringBuilder(bytes.length * 2);
+		for(byte b: bytes) {
+			sb.append(String.format("%02x", b));
+		}
+		return sb.toString();
 	}
 	
 	protected static byte[][] split(byte[] array, int... sizes) {

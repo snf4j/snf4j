@@ -1,0 +1,76 @@
+/*
+ * -------------------------------- MIT License --------------------------------
+ * 
+ * Copyright (c) 2024 SNF4J contributors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * -----------------------------------------------------------------------------
+ */
+package org.snf4j.quic.frame;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+import org.junit.Test;
+import org.snf4j.quic.CommonTest;
+import org.snf4j.quic.QuicException;
+
+public class FrameDecoderTest extends CommonTest {
+
+	IFrameDecoder decoder = FrameDecoder.INSTANCE;
+	
+	@Test
+	public void testDecode() throws Exception {
+		//PADDING
+		PaddingFrame f0 = decoder.decode(buffer("00 00 01"), 3);
+		assertNotNull(f0);
+		assertEquals(2, f0.getLength());
+		assertEquals(1, buffer.remaining());
+		
+		//PING
+		PingFrame f1 = decoder.decode(buffer("01 00"), 2);
+		assertNotNull(f1);
+		assertEquals(1, buffer.remaining());
+		
+		//ACK
+		AckFrame f2 = decoder.decode(buffer("02 10 20 00 00 66"), 5);
+		assertNotNull(f2);
+		assertEquals(1, buffer.remaining());
+		EcnAckFrame f3 = decoder.decode(buffer("03 10 20 00 00 01 02 03 66"), 8);
+		assertNotNull(f3);
+		assertEquals(1, buffer.remaining());
+
+		//CRYPTO
+		CryptoFrame f6 = decoder.decode(buffer("06 10 02 00 00 66"), 5);
+		assertNotNull(f6);
+		assertEquals(1, buffer.remaining());
+		
+	}
+	
+	@Test(expected=QuicException.class)
+	public void testDecodeEmptyData() throws Exception {
+		decoder.decode(buffer(""), 0);
+	}	
+
+	@Test(expected=QuicException.class)
+	public void testDecodeUnknownType() throws Exception {
+		decoder.decode(buffer("88"), 1);
+	}	
+}
