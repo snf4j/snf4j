@@ -50,7 +50,6 @@ import org.snf4j.tls.extension.IEarlyDataExtension;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IClientHello;
 import org.snf4j.tls.handshake.IHandshake;
-import org.snf4j.tls.handshake.INewSessionTicket;
 import org.snf4j.tls.handshake.KeyUpdateRequest;
 import org.snf4j.tls.record.RecordType;
 
