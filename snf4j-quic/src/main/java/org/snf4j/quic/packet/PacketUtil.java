@@ -115,20 +115,6 @@ class PacketUtil {
 			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Invalid reserved bits");
 		}
 	}
-
-	/**
-	 * Checks if reserved bits (0x18) in the first byte of a QUIC packet are
-	 * cleared.
-	 * 
-	 * @param bits the bits from the first byte
-	 * @throws QuicException if any of reserved bits in the first byte of a QUIC
-	 *                       packet is set.
-	 */
-	static void checkReservedBits18(int bits) throws QuicException {
-		if ((bits & 0x18) != 0) {
-			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Invalid reserved bits");
-		}
-	}
 	
 	/**
 	 * Returns the length of encoded variable-length integer.

@@ -88,6 +88,17 @@ public class VersionNegotiationPacket extends LongHeaderPacket {
 			}
 			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Inconsistent length of Version Negotiation packet");
 		}
+		
+		@Override
+		public HeaderInfo parseHeader(ByteBuffer src, int remaining, ParseContext context) throws QuicException {
+			return null;
+		}		
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public VersionNegotiationPacket parse(ByteBuffer src, HeaderInfo info, ParseContext context, IFrameDecoder decoder) throws QuicException {
+			return null;
+		}		
 	};
 	
 	/**
@@ -123,6 +134,11 @@ public class VersionNegotiationPacket extends LongHeaderPacket {
 	
 	@Override
 	public void getBytes(long largestPn, ByteBuffer dst) {
+		getHeaderBytes(largestPn,0 , dst);
+	}
+
+	@Override
+	public int getHeaderBytes(long largestPn, int expansion, ByteBuffer dst) {
 		dst.put((byte) 0b11000000);
 		dst.putInt(version.value());
 		dst.put((byte) destinationId.length);
@@ -132,6 +148,16 @@ public class VersionNegotiationPacket extends LongHeaderPacket {
 		for (Version version: versions) {
 			dst.putInt(version.value());
 		}
+		return 0;
+	}
+	
+	@Override
+	public int getPayloadLength() {
+		return 0;
+	}
+
+	@Override
+	public void getPayloadBytes(ByteBuffer dst) {
 	}
 
 	/**

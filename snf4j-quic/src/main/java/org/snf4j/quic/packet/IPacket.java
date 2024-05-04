@@ -66,12 +66,49 @@ public interface IPacket {
 	/**
 	 * Gets the bytes representing this QUIC packet and put them into the given
 	 * destination byte buffer.
+	 * <p>
+	 * This method is only for packets that do not require the header and payload
+	 * protection.
 	 * 
 	 * @param largestPn the largest processed/acknowledged packet number in the
 	 *                  current packet number space
 	 * @param dst       the destination byte buffer
 	 */
 	void getBytes(long largestPn, ByteBuffer dst);
+	
+	/**
+	 * Gets the bytes representing the header of this QUIC packet up to the Packet
+	 * Number field (inclusive) and put them into the given destination byte buffer.
+	 * <p>
+	 * This method is only for packets that require the header and payload
+	 * protection.
+	 * 
+	 * @param largestPn the largest processed/acknowledged packet number in the
+	 *                  current packet number space
+	 * @param expansion the number of bytes the length of ciphertext is greater than
+	 *                  the length of plaintext
+	 * @param dst       the destination buffer
+	 * @return the length of expected encrypted payload with the encoded packet
+	 *         number, or 0 for packets not carrying frames.
+	 */
+	int getHeaderBytes(long largestPn, int expansion, ByteBuffer dst);
+	
+	/**
+	 * Returns the length of the unprotected payload (i.e. the length of frames) of
+	 * this packet.
+	 * 
+	 * @return the length of the unprotected payload, or 0 for packets not carrying
+	 *         frames
+	 */
+	int getPayloadLength();
+	
+	/**
+	 * Gets the bytes representing the unprotected payload (i.e. frames) of this
+	 * QUIC packet and put them into the given destination byte buffer.
+	 * 
+	 * @param dst the destination buffer
+	 */
+	void getPayloadBytes(ByteBuffer dst);
 	
 	/**
 	 * Returns the destination connection id.

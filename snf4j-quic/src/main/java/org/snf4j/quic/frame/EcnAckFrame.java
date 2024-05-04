@@ -79,6 +79,11 @@ public class EcnAckFrame extends AckFrame {
 	}
 
 	@Override
+	public int getTypeValue() {
+		return 0x03;
+	}
+	
+	@Override
 	public int getLength() {
 		return super.getLength()
 			+ FrameUtil.encodedIntegerLength(ect0)
@@ -88,7 +93,7 @@ public class EcnAckFrame extends AckFrame {
 	
 	@Override
 	public void getBytes(ByteBuffer dst) {
-		getBytes((byte) 3, dst);
+		super.getBytes(dst);
 		FrameUtil.encodeInteger(ect0, dst);
 		FrameUtil.encodeInteger(ect1, dst);
 		FrameUtil.encodeInteger(ecnCe, dst);

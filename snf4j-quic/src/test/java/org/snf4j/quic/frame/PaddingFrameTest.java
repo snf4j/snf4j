@@ -29,6 +29,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
+import java.nio.ByteBuffer;
+
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
 
@@ -61,6 +63,30 @@ public class PaddingFrameTest extends CommonTest {
 		f = PaddingFrame.getParser().parse(buffer("00000001"), 4, 0);
 		assertEquals(4, f.getLength());
 		assertEquals(1, buffer.remaining());
+		
+		buffer("00000001");
+		buffer.position(2);
+		ByteBuffer slice = buffer.slice();
+		f = PaddingFrame.getParser().parse(slice, 2, 0);
+		assertEquals(2, f.getLength());
+		assertEquals(1, slice.remaining());
+		assertEquals(1, slice.position());
+	}
+
+	@Test
+	public void testParseFromDirectBuffer() throws Exception {
+		PaddingFrame f = PaddingFrame.getParser().parse(directBuffer(""), 0, 0);
+		assertEquals(1, f.getLength());
+		assertEquals(0, directBuffer.remaining());
+		f = PaddingFrame.getParser().parse(directBuffer("00"), 0, 0);
+		assertEquals(1, f.getLength());
+		assertEquals(1, directBuffer.remaining());
+		f = PaddingFrame.getParser().parse(directBuffer("00"), 1, 0);
+		assertEquals(2, f.getLength());
+		assertEquals(0, directBuffer.remaining());
+		f = PaddingFrame.getParser().parse(directBuffer("00000001"), 4, 0);
+		assertEquals(4, f.getLength());
+		assertEquals(1, directBuffer.remaining());
 	}
 	
 	@Test

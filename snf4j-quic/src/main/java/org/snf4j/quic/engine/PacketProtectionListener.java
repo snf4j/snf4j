@@ -23,71 +23,41 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.frame;
+package org.snf4j.quic.engine;
 
-import java.nio.ByteBuffer;
+import org.snf4j.quic.QuicException;
+import org.snf4j.quic.Version;
 
 /**
- * A PING frame as defined in RFC 9000. 
+ * A listener for the QUIC packet protection functionalities.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class PingFrame implements IFrame {
-	
-	private final static FrameType TYPE = FrameType.PING;
-	
-	/**
-	 * A stateless instance of the PING frame.
-	 */
-	public static final PingFrame INSTANCE = new PingFrame();
-	
-	private final static IFrameParser PARSER = new IFrameParser() {
-
-		@Override
-		public FrameType getType() {
-			return TYPE;
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public PingFrame parse(ByteBuffer src, int remaining, int type) {
-			return INSTANCE;
-		}
-	};
+public interface PacketProtectionListener {
 
 	/**
-	 * Constructs a PING frame.
-	 */
-	public PingFrame() {
-	}
-	
-	/**
-	 * Return the default PING frame parser.
+	 * Called when there is a need for derivation of the initial keys. It is
+	 * expected that the initial keys will be ready after returning from this
+	 * method.
 	 * 
-	 * @return the PING frame parser
+	 * @param state         the state of the associated QUIC engine
+	 * @param destinationId the original destination connection id provided by
+	 *                      client
+	 * @param version       the version provided by client
+	 * @throws QuicException if an error occurred during the keys derivation. To close the connection
+	 *                       the INTERNAL_ERROR should be signaled
 	 */
-	public static IFrameParser getParser() {
-		return PARSER;
-	}
+	void onInitialKeys(QuicState state, byte[] destinationId, Version version) throws QuicException;
 	
-	@Override
-	public FrameType getType() {
-		return TYPE;
-	}
-	
-	@Override
-	public int getTypeValue() {
-		return 0x01;
-	}
-	
-	@Override
-	public int getLength() {
-		return 1;
-	}
-
-	@Override
-	public void getBytes(ByteBuffer dst) {
-		dst.put((byte) getTypeValue());
-	}
-	
+	/**
+	 * Called after rotation of the 1-RTT keys that was initiated by other endpoint.
+	 * It is not expected that the next 1-RTT keys will be ready after returning
+	 * from this method. For example this method can schedule a task that will derive
+	 * the next keys in the future.
+	 * 
+	 * @param state the state of the associated QUIC engine
+	 * @throws QuicException if an error occurred. To close the connection
+	 *                       the INTERNAL_ERROR should be signaled
+	 */
+	void onKeysRotation(QuicState state) throws QuicException;
 }

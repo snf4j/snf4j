@@ -100,6 +100,11 @@ public class CryptoFrame implements IFrame {
 	}
 
 	@Override
+	public int getTypeValue() {
+		return 0x06;
+	}
+	
+	@Override
 	public int getLength() {
 		return 1 
 			+ FrameUtil.encodedIntegerLength(offset)
@@ -109,7 +114,7 @@ public class CryptoFrame implements IFrame {
 
 	@Override
 	public void getBytes(ByteBuffer dst) {
-		dst.put((byte) 0x06);
+		dst.put((byte) getTypeValue());
 		FrameUtil.encodeInteger(offset, dst);
 		FrameUtil.encodeInteger(data.remaining(), dst);
 		dst.put(data.duplicate());
