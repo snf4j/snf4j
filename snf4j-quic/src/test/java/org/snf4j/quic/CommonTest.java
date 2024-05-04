@@ -53,6 +53,8 @@ public class CommonTest {
 	public static final boolean JAVA11;
 
 	protected ByteBuffer buffer = ByteBuffer.allocate(128000);
+
+	protected ByteBuffer directBuffer = ByteBuffer.allocateDirect(128000);
 	
 	static {
 		double version = Double.parseDouble(System.getProperty("java.specification.version"));
@@ -63,6 +65,7 @@ public class CommonTest {
 	@Before
 	public void before() throws Exception {
 		buffer.clear();
+		directBuffer.clear();
 	}
 	
 	protected byte[] bytes() {
@@ -98,6 +101,16 @@ public class CommonTest {
 
 	protected ByteBuffer buffer(byte[] bytes) {
 		return ByteBuffer.wrap(bytes);
+	}
+
+	protected ByteBuffer directBuffer(byte[] bytes) {
+		directBuffer.clear();
+		directBuffer.put(bytes).flip();
+		return directBuffer;
+	}
+
+	protected ByteBuffer directBuffer(String hexString) {
+		return directBuffer(bytes(hexString));
 	}
 	
 	protected static byte[] bytes(String hexString) {

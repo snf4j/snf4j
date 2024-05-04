@@ -59,6 +59,7 @@ public class VersionNegotiationPacketTest extends CommonTest {
 	@Test
 	public void testGetType() {
 		assertTrue(PacketType.VERSION_NEGOTIATION.hasLongHeader());
+		assertNull(PacketType.VERSION_NEGOTIATION.encryptionLevel());
 		assertSame(PacketType.VERSION_NEGOTIATION, VersionNegotiationPacket.getParser().getType());
 		assertSame(PacketType.VERSION_NEGOTIATION, packet("","",Version.V1).getType());
 	}
@@ -129,6 +130,18 @@ public class VersionNegotiationPacketTest extends CommonTest {
 		assertEquals(24, p.getMaxLength());
 		assertEquals(1, buffer.remaining());
 		assertArrayEquals(new Version[] {Version.V1, null, Version.V0}, p.getSupportedVersions());
+		
+		assertNull(parser.parseHeader(null, 10, null));
+		assertNull(parser.parse(null, null, null, null));
+	}
+	
+	@Test
+	public void testGetPayloadBytes() {
+		VersionNegotiationPacket p = packet("010203", "0405");
+		
+		assertEquals(0, p.getPayloadLength());
+		p.getPayloadBytes(buffer);
+		assertEquals(0, buffer.position());
 	}
 	
 	@Test

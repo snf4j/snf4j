@@ -23,71 +23,59 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.frame;
+package org.snf4j.quic.engine;
 
-import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
- * A PING frame as defined in RFC 9000. 
+ * A buffer for packet data. 
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class PingFrame implements IFrame {
+public class PacketBuffer {
 	
-	private final static FrameType TYPE = FrameType.PING;
+	private final Queue<byte[]> packets = new LinkedList<>();
 	
-	/**
-	 * A stateless instance of the PING frame.
-	 */
-	public static final PingFrame INSTANCE = new PingFrame();
-	
-	private final static IFrameParser PARSER = new IFrameParser() {
-
-		@Override
-		public FrameType getType() {
-			return TYPE;
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public PingFrame parse(ByteBuffer src, int remaining, int type) {
-			return INSTANCE;
-		}
-	};
-
-	/**
-	 * Constructs a PING frame.
-	 */
-	public PingFrame() {
-	}
+	private final int maxSize;
 	
 	/**
-	 * Return the default PING frame parser.
+	 * Constructs a buffer with the given maximum size.
 	 * 
-	 * @return the PING frame parser
+	 * @param maxSize the maximum size of the buffer (i.e. maximum number of
+	 *                packets)
 	 */
-	public static IFrameParser getParser() {
-		return PARSER;
-	}
-	
-	@Override
-	public FrameType getType() {
-		return TYPE;
-	}
-	
-	@Override
-	public int getTypeValue() {
-		return 0x01;
-	}
-	
-	@Override
-	public int getLength() {
-		return 1;
+	public PacketBuffer(int maxSize) {
+		this.maxSize = maxSize;
 	}
 
-	@Override
-	public void getBytes(ByteBuffer dst) {
-		dst.put((byte) getTypeValue());
+	/**
+	 * Puts the given packet data into this buffer. If the maximum size of this
+	 * buffer is reached no other packet data is put (i.e. is discarded)
+	 * 
+	 * @param packet the packet data
+	 */
+	public void put(byte[] packet) {
+		if (packets.size() < maxSize) {
+			packets.add(packet);
+		}
 	}
 	
+	/**
+	 * Gets and removes the oldest packet data from this buffer.
+	 * 
+	 * @return the oldest packet data, or {@code null} if the buffer is empty
+	 */
+	public byte[] get() {
+		return packets.poll();
+	}
+	
+	/**
+	 * Tells if this buffer is empty.
+	 * 
+	 * @return {@code true} if the buffer is empty
+	 */
+	public boolean isEmpty() {
+		return packets.isEmpty();
+	}
 }

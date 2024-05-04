@@ -42,6 +42,13 @@ public interface IFrame {
 	FrameType getType();
 	
 	/**
+	 * Returns the type value identifying this QUIC frame.
+	 * 
+	 * @return the QUIC frame type
+	 */
+	int getTypeValue();
+	
+	/**
 	 * Returns the length in bytes of this QUIC frame.
 	 * 
 	 * @return the length in bytes

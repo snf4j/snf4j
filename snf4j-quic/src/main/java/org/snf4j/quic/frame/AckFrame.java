@@ -174,6 +174,11 @@ public class AckFrame implements IFrame {
 	}
 
 	@Override
+	public int getTypeValue() {
+		return 0x02;
+	}
+	
+	@Override
 	public int getLength() {
 		AckRange range = ranges[0];
 		int len = 1;
@@ -190,11 +195,12 @@ public class AckFrame implements IFrame {
 		}
 		return len;
 	}
-
-	void getBytes(byte type, ByteBuffer dst) {
+	
+	@Override
+	public void getBytes(ByteBuffer dst) {
 		AckRange range = ranges[0];
 		
-		dst.put(type);
+		dst.put((byte) getTypeValue());
 		FrameUtil.encodeInteger(range.getFrom(), dst);
 		FrameUtil.encodeInteger(delay, dst);
 		FrameUtil.encodeInteger(ranges.length-1, dst);
@@ -205,11 +211,6 @@ public class AckFrame implements IFrame {
 			FrameUtil.encodeInteger(next.getFrom()-next.getTo(), dst);
 			range = next;
 		}
-	}
-	
-	@Override
-	public void getBytes(ByteBuffer dst) {
-		getBytes((byte) 2, dst);
 	}
 
 	/**

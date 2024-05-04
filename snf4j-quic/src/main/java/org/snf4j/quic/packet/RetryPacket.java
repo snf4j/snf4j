@@ -42,7 +42,7 @@ public class RetryPacket extends LongHeaderPacket {
 
 	private final static PacketType TYPE = PacketType.RETRY;
 	
-	private final static int INTEGRITY_TAG_LENGTH = 128;
+	private final static int INTEGRITY_TAG_LENGTH = 128/8;
 	
 	private final byte[] token;
 	
@@ -103,6 +103,17 @@ public class RetryPacket extends LongHeaderPacket {
 			}
 			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Inconsistent length of Initial packet");
 		}
+		
+		@Override
+		public HeaderInfo parseHeader(ByteBuffer src, int remaining, ParseContext context) throws QuicException {
+			return null;
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public RetryPacket parse(ByteBuffer src, HeaderInfo info, ParseContext context, IFrameDecoder decoder) throws QuicException {
+			return null;
+		}
 	};
 	
 	/**
@@ -145,6 +156,11 @@ public class RetryPacket extends LongHeaderPacket {
 	
 	@Override
 	public void getBytes(long largestPn, ByteBuffer dst) {
+		getHeaderBytes(largestPn, 0, dst);
+	}
+
+	@Override
+	public int getHeaderBytes(long largestPn, int expansion, ByteBuffer dst) {
 		dst.put((byte) 0b11110000);
 		dst.putInt(version.value());
 		dst.put((byte) destinationId.length);
@@ -155,8 +171,18 @@ public class RetryPacket extends LongHeaderPacket {
 			dst.put(token);
 		}
 		dst.put(integrityTag);
+		return 0;
 	}
-
+	
+	@Override
+	public int getPayloadLength() {
+		return 0;
+	}
+	
+	@Override
+	public void getPayloadBytes(ByteBuffer dst) {
+	}
+	
 	/**
 	 * Returns the opaque token that the server can use to validate the client's
 	 * address.

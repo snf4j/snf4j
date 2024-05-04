@@ -44,6 +44,43 @@ public class EncryptionContext {
 		
 	private boolean keyPhaseBit;
 	
+	private final int maxBufferSize;
+	
+	private PacketBuffer buffer;
+	
+	private boolean erased;
+	
+	/**
+	 * Constructs a encryption context with the given maximum buffer size for
+	 * buffered packets.
+	 * 
+	 * @param maxBufferSize the maximum buffer size
+	 */
+	public EncryptionContext(int maxBufferSize) {
+		this.maxBufferSize = maxBufferSize;
+	}
+
+	/**
+	 * Constructs a encryption context with the default buffer size (10) for
+	 * buffered packets.
+	 */
+	public EncryptionContext() {
+		this(10);
+	}
+	
+	/**
+	 * Returns the buffer for packets received when this encryption context was not
+	 * yet initiated with keys.
+	 * 
+	 * @return the buffer for buffered packets
+	 */
+	PacketBuffer getBuffer() {
+		if (buffer == null) {
+			buffer = new PacketBuffer(maxBufferSize);
+		}
+		return buffer;
+	}
+	
 	/**
 	 * Sets an encryptor for the current key phase.
 	 * <p>
@@ -238,6 +275,8 @@ public class EncryptionContext {
 		boolean skipEncryptorHp = false;
 		boolean skipDecryptorHp = false;
 
+		erased = true;
+		buffer = null;
 		for (int i=0; i<PHASES_NUMBER; ++i) {
 			if (encryptors[i] != null) {
 				encryptors[i].erase(skipEncryptorHp);
@@ -252,4 +291,12 @@ public class EncryptionContext {
 		}		
 	}
 
+	/**
+	 * Tells if this encryption context has been erased.
+	 * 
+	 * @return {@code true} if this context has been erased
+	 */
+	public boolean isErased() {
+		return erased;
+	}
 }

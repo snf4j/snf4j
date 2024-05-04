@@ -33,6 +33,9 @@ package org.snf4j.quic.packet;
  */
 public class ParseContext {
 	
+	/** The initial instance of the parsing context */
+	public final static ParseContext INITIAL = new ParseContext();
+	
 	private final long largestPn;
 	
 	private final int destinationIdLength;

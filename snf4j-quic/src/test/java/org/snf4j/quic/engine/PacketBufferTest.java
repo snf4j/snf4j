@@ -23,71 +23,34 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.frame;
+package org.snf4j.quic.engine;
 
-import java.nio.ByteBuffer;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-/**
- * A PING frame as defined in RFC 9000. 
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class PingFrame implements IFrame {
-	
-	private final static FrameType TYPE = FrameType.PING;
-	
-	/**
-	 * A stateless instance of the PING frame.
-	 */
-	public static final PingFrame INSTANCE = new PingFrame();
-	
-	private final static IFrameParser PARSER = new IFrameParser() {
+import org.junit.Test;
+import org.snf4j.quic.CommonTest;
 
-		@Override
-		public FrameType getType() {
-			return TYPE;
-		}
+public class PacketBufferTest extends CommonTest {
 
-		@SuppressWarnings("unchecked")
-		@Override
-		public PingFrame parse(ByteBuffer src, int remaining, int type) {
-			return INSTANCE;
-		}
-	};
-
-	/**
-	 * Constructs a PING frame.
-	 */
-	public PingFrame() {
+	@Test
+	public void testAll() {
+		PacketBuffer b = new PacketBuffer(2);
+		
+		assertTrue(b.isEmpty());
+		assertNull(b.get());
+		b.put(bytes("0001"));
+		assertFalse(b.isEmpty());
+		assertArrayEquals(bytes("0001"), b.get());
+		assertTrue(b.isEmpty());
+		assertNull(b.get());
+		b.put(bytes("0001"));
+		b.put(bytes("0002"));
+		b.put(bytes("0003"));
+		assertArrayEquals(bytes("0001"), b.get());
+		assertArrayEquals(bytes("0002"), b.get());
+		assertNull(b.get());		
 	}
-	
-	/**
-	 * Return the default PING frame parser.
-	 * 
-	 * @return the PING frame parser
-	 */
-	public static IFrameParser getParser() {
-		return PARSER;
-	}
-	
-	@Override
-	public FrameType getType() {
-		return TYPE;
-	}
-	
-	@Override
-	public int getTypeValue() {
-		return 0x01;
-	}
-	
-	@Override
-	public int getLength() {
-		return 1;
-	}
-
-	@Override
-	public void getBytes(ByteBuffer dst) {
-		dst.put((byte) getTypeValue());
-	}
-	
 }

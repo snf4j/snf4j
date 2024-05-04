@@ -37,7 +37,9 @@ import org.junit.Test;
 import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
+import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.quic.frame.FrameDecoder;
+import org.snf4j.quic.frame.MultiPaddingFrame;
 import org.snf4j.quic.frame.PaddingFrame;
 import org.snf4j.quic.frame.PingFrame;
 
@@ -60,25 +62,22 @@ public class OneRttPacketTest extends CommonTest {
 	@Test
 	public void testGetType() {
 		assertFalse(PacketType.ONE_RTT.hasLongHeader());
+		assertSame(EncryptionLevel.APPLICATION_DATA, PacketType.ONE_RTT.encryptionLevel());
 		assertSame(PacketType.ONE_RTT, OneRttPacket.getParser().getType());
 		assertSame(PacketType.ONE_RTT, packet("",0,false,false).getType());
 	}
 	
-	@Test(expected=QuicException.class)
-	public void testReservedBits10() throws Exception {
-		parse("50 01020304 30 00 01", -1, -1);
+	@Test
+	public void testGetHeaderBytes() {
+		OneRttPacket p = new OneRttPacket(bytes(255), 1, false, false);
+		p.getFrames().add(new MultiPaddingFrame(99));
+		p.getFrames().add(new PingFrame());
+		buffer.clear();
+		assertEquals(100+16+1, p.getHeaderBytes(-1, 16, buffer));
+		assertEquals(100, p.getPayloadLength());
+		assertEquals(p.getFramesLength(), p.getPayloadLength());
 	}
-
-	@Test(expected=QuicException.class)
-	public void testReservedBits08() throws Exception {
-		parse("48 01020304 30 00 01", -1, -1);
-	}
-
-	@Test(expected=QuicException.class)
-	public void testReservedBits18() throws Exception {
-		parse("58 01020304 30 00 01", -1, -1);
-	}
-
+	
 	@Test
 	public void testParser() throws Exception {
 		//1-byte packet number

@@ -58,24 +58,45 @@ public class OneRttPacket extends Packet {
 		@SuppressWarnings("unchecked")
 		@Override
 		public OneRttPacket parse(ByteBuffer src, int remaining, ParseContext context, IFrameDecoder decoder) throws QuicException {
-			int firstByte = src.get();
-			int pnLength, len;
+			return parse(src, parseHeader(src, remaining, context), context, decoder);
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public OneRttPacket parse(ByteBuffer src, HeaderInfo info, ParseContext context, IFrameDecoder decoder) throws QuicException {
+			int bits = info.getBits();
+			int pnLength = (bits & 0x03) + 1;
 			
-			PacketUtil.checkReservedBits18(firstByte);
-			pnLength = (firstByte & 0x03) + 1;
+			if (info.getLength() > pnLength) {
+				long pn = parsePacketNumber(src, pnLength, context);
+				
+				return PacketUtil.decodeFrames(new OneRttPacket(
+						info.getDestinationId(),
+						pn,
+						(bits & SPIN_BIT) != 0,
+						(bits & KEY_PHASE) != 0), 
+							src, 
+							info.getLength() - pnLength, 
+							decoder);
+			}
+			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Inconsistent length of 1-RTT packet");
+		}
+		
+		@Override
+		public HeaderInfo parseHeader(ByteBuffer src, int remaining, ParseContext context) throws QuicException {
+			int bits = src.get();
+			int len = context.getDestinationIdLength();
+			
 			--remaining;
-			len = context.getDestinationIdLength();
-			if (remaining > len + pnLength) {
+			if (remaining > len) {
 				byte[] destinationId = new byte[len];
 				
 				src.get(destinationId);
-				long pn = PacketUtil.decodePacketNumber(src, pnLength, context.getLargestPn());
-				remaining -= len + pnLength;
-				return PacketUtil.decodeFrames(new OneRttPacket(
+				remaining -= len;
+				return new HeaderInfo(
+						bits,
 						destinationId,
-						pn,
-						(firstByte & SPIN_BIT) != 0,
-						(firstByte & KEY_PHASE) != 0), src, remaining, decoder);
+						remaining);
 			}
 			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Inconsistent length of 1-RTT packet");
 		}
@@ -118,6 +139,12 @@ public class OneRttPacket extends Packet {
 
 	@Override
 	public void getBytes(long largestPn, ByteBuffer dst) {
+		getHeaderBytes(largestPn, 0, dst);
+		getPayloadBytes(dst);
+	}
+
+	@Override
+	public int getHeaderBytes(long largestPn, int expansion, ByteBuffer dst) {
 		int pnLength = PacketUtil.encodedPacketNumberLength(packetNumber, largestPn);
 		int firstByte = 0b01000000;
 		
@@ -131,9 +158,19 @@ public class OneRttPacket extends Packet {
 		PacketUtil.putFirstBits(firstByte, pnLength, dst);
 		dst.put(destinationId);
 		PacketUtil.truncatePacketNumber(packetNumber, pnLength, dst);
-		getFramesBytes(dst);
+		return getFramesLength() + pnLength + expansion;
+	}
+	
+	@Override
+	public int getPayloadLength() {
+		return getFramesLength();
 	}
 
+	@Override
+	public void getPayloadBytes(ByteBuffer dst) {
+		getFramesBytes(dst);
+	}
+	
 	/**
 	 * Returns the latency spin bit.
 	 * 

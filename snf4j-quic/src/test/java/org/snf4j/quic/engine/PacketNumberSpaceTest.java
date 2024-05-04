@@ -23,71 +23,48 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.frame;
+package org.snf4j.quic.engine;
 
-import java.nio.ByteBuffer;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
-/**
- * A PING frame as defined in RFC 9000. 
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class PingFrame implements IFrame {
-	
-	private final static FrameType TYPE = FrameType.PING;
-	
-	/**
-	 * A stateless instance of the PING frame.
-	 */
-	public static final PingFrame INSTANCE = new PingFrame();
-	
-	private final static IFrameParser PARSER = new IFrameParser() {
+import org.junit.Test;
 
-		@Override
-		public FrameType getType() {
-			return TYPE;
-		}
+public class PacketNumberSpaceTest {
 
-		@SuppressWarnings("unchecked")
-		@Override
-		public PingFrame parse(ByteBuffer src, int remaining, int type) {
-			return INSTANCE;
-		}
-	};
-
-	/**
-	 * Constructs a PING frame.
-	 */
-	public PingFrame() {
+	@Test
+	public void testNext() {
+		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA);
+		
+		assertEquals(0, s.next());
+		assertEquals(1, s.next());
+		assertSame(PacketNumberSpace.Type.APPLICATION_DATA, s.getType());
 	}
 	
-	/**
-	 * Return the default PING frame parser.
-	 * 
-	 * @return the PING frame parser
-	 */
-	public static IFrameParser getParser() {
-		return PARSER;
+	@Test
+	public void testUpdate() {
+		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA);
+		
+		assertEquals(-1, s.getLargestAcked());
+		assertEquals(-1, s.getLargestProcessed());
+		s.updateAcked(100);
+		assertEquals(100, s.getLargestAcked());
+		assertEquals(-1, s.getLargestProcessed());
+		s.updateAcked(99);
+		assertEquals(100, s.getLargestAcked());
+		assertEquals(-1, s.getLargestProcessed());
+		s.updateAcked(101);
+		assertEquals(101, s.getLargestAcked());
+		assertEquals(-1, s.getLargestProcessed());
+		
+		s.updateProcessed(50);
+		assertEquals(101, s.getLargestAcked());
+		assertEquals(50, s.getLargestProcessed());
+		s.updateProcessed(49);
+		assertEquals(101, s.getLargestAcked());
+		assertEquals(50, s.getLargestProcessed());
+		s.updateProcessed(51);
+		assertEquals(101, s.getLargestAcked());
+		assertEquals(51, s.getLargestProcessed());
 	}
-	
-	@Override
-	public FrameType getType() {
-		return TYPE;
-	}
-	
-	@Override
-	public int getTypeValue() {
-		return 0x01;
-	}
-	
-	@Override
-	public int getLength() {
-		return 1;
-	}
-
-	@Override
-	public void getBytes(ByteBuffer dst) {
-		dst.put((byte) getTypeValue());
-	}
-	
 }

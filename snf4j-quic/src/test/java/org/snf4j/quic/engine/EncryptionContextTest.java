@@ -27,6 +27,7 @@ package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -332,7 +333,9 @@ public class EncryptionContextTest extends CommonTest {
 		ctx.setDecryptor(d1, KeyPhase.PREVIOUS);
 		ctx.setDecryptor(d2, KeyPhase.CURRENT);
 		ctx.setDecryptor(d3, KeyPhase.NEXT);
+		assertFalse(ctx.isErased());
 		ctx.erase();
+		assertTrue(ctx.isErased());
 		assertEquals("hpe1|e1|hpd1|d1|e2|d2|e3|d3|", trace());
 		assertEncryptors(ctx, null, null, null);
 		assertDecryptors(ctx, null, null, null);
@@ -364,6 +367,31 @@ public class EncryptionContextTest extends CommonTest {
 		assertDecryptors(ctx, null, null, null);
 		ctx.erase();
 		assertEquals("", trace());
+	}
+	
+	@Test
+	public void testBuffer() throws Exception {
+		EncryptionContext ctx = new EncryptionContext();
+		
+		for (int i=0; i<11; ++i) {
+			ctx.getBuffer().put(bytes(i));
+		}
+		for (int i=0; i<10; ++i) {
+			assertEquals(i, ctx.getBuffer().get().length);
+		}
+		assertNull(ctx.getBuffer().get());
+		
+		ctx = new EncryptionContext(2);
+		ctx.getBuffer().put(bytes(0));
+		ctx.getBuffer().put(bytes(1));
+		ctx.getBuffer().put(bytes(2));
+		assertEquals(0, ctx.getBuffer().get().length);
+		assertEquals(1, ctx.getBuffer().get().length);
+		assertNull(ctx.getBuffer().get());
+		
+		PacketBuffer buf = ctx.getBuffer();
+		ctx.erase();
+		assertNotSame(buf, ctx.getBuffer());
 	}
 	
 	class TestEncrypt implements IAeadEncrypt {

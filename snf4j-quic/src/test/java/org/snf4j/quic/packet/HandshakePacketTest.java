@@ -37,6 +37,7 @@ import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
+import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.quic.frame.FrameDecoder;
 import org.snf4j.quic.frame.MultiPaddingFrame;
 import org.snf4j.quic.frame.PaddingFrame;
@@ -61,23 +62,20 @@ public class HandshakePacketTest extends CommonTest {
 	@Test
 	public void testGetType() {
 		assertTrue(PacketType.HANDSHAKE.hasLongHeader());
+		assertSame(EncryptionLevel.HANDSHAKE, PacketType.HANDSHAKE.encryptionLevel());
 		assertSame(PacketType.HANDSHAKE, HandshakePacket.getParser().getType());
 		assertSame(PacketType.HANDSHAKE, packet("",0,"").getType());
 	}
 	
-	@Test(expected=QuicException.class)
-	public void testReservedBits04() throws Exception {
-		parse("e4 00000001 03 010203 02 0102 03 30 00 01", -1, -1);
-	}
-
-	@Test(expected=QuicException.class)
-	public void testReservedBits08() throws Exception {
-		parse("e8 00000001 03 010203 02 0102 03 30 00 01", -1, -1);
-	}
-
-	@Test(expected=QuicException.class)
-	public void testReservedBits0c() throws Exception {
-		parse("ec 00000001 03 010203 02 0102 03 30 00 01", -1, -1);
+	@Test
+	public void testGetHeaderBytes() {
+		HandshakePacket p = new HandshakePacket(bytes(255), 1, bytes(255), Version.V1);
+		p.getFrames().add(new MultiPaddingFrame(99));
+		p.getFrames().add(new PingFrame());
+		buffer.clear();
+		assertEquals(100+16+1, p.getHeaderBytes(-1, 16, buffer));
+		assertEquals(100, p.getPayloadLength());
+		assertEquals(p.getFramesLength(), p.getPayloadLength());
 	}
 	
 	@Test

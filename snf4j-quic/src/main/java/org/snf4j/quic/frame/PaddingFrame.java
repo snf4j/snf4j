@@ -54,9 +54,22 @@ public class PaddingFrame implements IFrame {
 			int p = src.position();
 			int count = 1;
 			
-			while(remaining-- > 0 && src.get(p) == 0) {
-				++count;
-				++p;
+			if (src.hasArray()) {
+				byte[] array = src.array();
+				int off = src.arrayOffset();
+				
+				p += off;
+				while(remaining-- > 0 && array[p] == 0) {
+					++count;
+					++p;
+				}
+				p -= off;
+			}
+			else {
+				while(remaining-- > 0 && src.get(p) == 0) {
+					++count;
+					++p;
+				}
 			}
 			if (count == 1) {
 				return INSTANCE;
@@ -85,6 +98,11 @@ public class PaddingFrame implements IFrame {
 	public FrameType getType() {
 		return TYPE;
 	}
+
+	@Override
+	public int getTypeValue() {
+		return 0x00;
+	}
 	
 	@Override
 	public int getLength() {
@@ -93,7 +111,7 @@ public class PaddingFrame implements IFrame {
 
 	@Override
 	public void getBytes(ByteBuffer dst) {
-		dst.put((byte) 0);
+		dst.put((byte) getTypeValue());
 	}
 
 	

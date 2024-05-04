@@ -25,6 +25,8 @@
  */
 package org.snf4j.quic.packet;
 
+import org.snf4j.quic.engine.EncryptionLevel;
+
 /**
  * An {@code enum} defining the QUIC packet types as defined in RFC 9000. 
  * 
@@ -36,24 +38,31 @@ public enum PacketType {
 	VERSION_NEGOTIATION(true),
 	
 	/** The Initial packet as defined in section 17.2.2 */
-	INITIAL(true),
+	INITIAL(true, EncryptionLevel.INITIAL),
 	
 	/** The 0-RTT packet as defined in section 17.2.3 */
-	ZERO_RTT(true),
+	ZERO_RTT(true, EncryptionLevel.EARLY_DATA),
 	
 	/** The Handshake packet as defined in section 17.2.4 */
-	HANDSHAKE(true),
+	HANDSHAKE(true, EncryptionLevel.HANDSHAKE),
 	
 	/** The Retry packet as defined in section 17.2.5 */
 	RETRY(true),
 	
 	/** The 1-RTT packet as defined in section 17.3.1 */
-	ONE_RTT(false);
+	ONE_RTT(false, EncryptionLevel.APPLICATION_DATA);
 	
 	private final boolean longHeader;
 	
+	private final EncryptionLevel encryptionLevel;
+	
 	PacketType(boolean longHeader) {
+		this(longHeader, null);
+	}
+
+	PacketType(boolean longHeader, EncryptionLevel encryptionLevel) {
 		this.longHeader = longHeader;
+		this.encryptionLevel = encryptionLevel;
 	}
 	
 	/**
@@ -63,5 +72,14 @@ public enum PacketType {
 	 */
 	public boolean hasLongHeader() {
 		return longHeader;
+	}
+	
+	/**
+	 * Returns the encryption level associated with this packet type.
+	 * 
+	 * @return the encryption level, or {@code null} if the packet is not protected
+	 */
+	public EncryptionLevel encryptionLevel() {
+		return encryptionLevel;
 	}
 }

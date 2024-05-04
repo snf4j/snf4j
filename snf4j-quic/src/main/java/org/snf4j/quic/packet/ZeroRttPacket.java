@@ -51,11 +51,33 @@ public class ZeroRttPacket extends LongHeaderPacket {
 		@SuppressWarnings("unchecked")
 		@Override
 		public ZeroRttPacket parse(ByteBuffer src, int remaining, ParseContext context, IFrameDecoder decoder) throws QuicException {
-			int firstByte = src.get();
-			int pnLength;
+			return parse(src, parseHeader(src, remaining, context), context, decoder);
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public ZeroRttPacket parse(ByteBuffer src, HeaderInfo info, ParseContext context, IFrameDecoder decoder) throws QuicException {
+			int pnLength = (info.getBits() & 0x03) + 1;
 			
-			PacketUtil.checkReservedBits(firstByte);
-			pnLength = (firstByte & 0x03) + 1;
+			if (info.getLength() > pnLength) {
+				long pn = parsePacketNumber(src, pnLength, context);
+				
+				return PacketUtil.decodeFrames(new ZeroRttPacket(
+						info.getDestinationId(),
+						pn,
+						info.getSourceId(),
+						info.getVersion()), 
+							src, 
+							info.getLength() - pnLength, 
+							decoder);
+			}
+			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Inconsistent length of 0-RTT packet");
+		}
+		
+		@Override
+		public HeaderInfo parseHeader(ByteBuffer src, int remaining, ParseContext context) throws QuicException {
+			int bits = src.get();
+			
 			--remaining;
 			if (remaining > 4) {
 				Version version = PacketUtil.identifyVersion(src.getInt());
@@ -78,16 +100,13 @@ public class ZeroRttPacket extends LongHeaderPacket {
 						int[] remainings = new int[] {remaining};
 						long llen = PacketUtil.decodeInteger(src, remainings);
 
-						remaining = remainings[0];
-						if (remaining >= llen && llen > pnLength) {
-							long pn = PacketUtil.decodePacketNumber(src, pnLength, context.getLargestPn());
-							
-							remaining -= pnLength;
-							return PacketUtil.decodeFrames(new ZeroRttPacket(
+						if (remainings[0] >= llen) {
+							return new HeaderInfo(
+									bits,
+									version,
 									destinationId,
-									pn,
 									sourceId,
-									version), src, remaining, decoder);
+									(int) llen);
 						}
 					}
 				}
@@ -133,8 +152,14 @@ public class ZeroRttPacket extends LongHeaderPacket {
 	
 	@Override
 	public void getBytes(long largestPn, ByteBuffer dst) {
+		getHeaderBytes(largestPn, 0, dst);
+		getPayloadBytes(dst);
+	}
+	
+	@Override
+	public int getHeaderBytes(long largestPn, int expansion, ByteBuffer dst) {
 		int pnLength = PacketUtil.encodedPacketNumberLength(packetNumber, largestPn);
-		int length = getFramesLength() + pnLength;
+		int length = getFramesLength() + pnLength + expansion;
 		
 		PacketUtil.putFirstBits(0b11010000, pnLength, dst);
 		dst.putInt(version.value());
@@ -144,6 +169,16 @@ public class ZeroRttPacket extends LongHeaderPacket {
 		dst.put(sourceId);
 		PacketUtil.encodeInteger(length, dst);
 		PacketUtil.truncatePacketNumber(packetNumber, pnLength, dst);
+		return length;
+	}
+	
+	@Override
+	public int getPayloadLength() {
+		return getFramesLength();
+	}
+
+	@Override
+	public void getPayloadBytes(ByteBuffer dst) {
 		getFramesBytes(dst);
 	}
 

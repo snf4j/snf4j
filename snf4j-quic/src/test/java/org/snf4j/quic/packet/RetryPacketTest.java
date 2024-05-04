@@ -59,75 +59,88 @@ public class RetryPacketTest extends CommonTest {
 	@Test
 	public void testGetType() {
 		assertTrue(PacketType.RETRY.hasLongHeader());
+		assertNull(PacketType.RETRY.encryptionLevel());
 		assertSame(PacketType.RETRY, RetryPacket.getParser().getType());
-		assertSame(PacketType.RETRY, packet("","","",hex(bytes(128))).getType());
+		assertSame(PacketType.RETRY, packet("","","",hex(bytes(16))).getType());
 	}
 	
 	@Test
 	public void testParser() throws Exception {
 		//no token
-		RetryPacket p = parse("f0 00000001 03 010203 02 0102" + hex(bytes(128)), -1);
+		RetryPacket p = parse("f0 00000001 03 010203 02 0102" + hex(bytes(16)), -1);
 		assertNotNull(p);
 		assertSame(Version.V1, p.getVersion());
 		assertArrayEquals(bytes("010203"), p.getDestinationId());
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertSame(PacketUtil.EMPTY_ARRAY, p.getToken());
-		assertArrayEquals(bytes(128), p.getIntegrityTag());
+		assertArrayEquals(bytes(16), p.getIntegrityTag());
 		assertNull(p.getFrames());
-		assertEquals(12+128, p.getLength(-1));
-		assertEquals(12+128, p.getMaxLength());
+		assertEquals(12+16, p.getLength(-1));
+		assertEquals(12+16, p.getMaxLength());
 
 		assertEquals(0, buffer.remaining());
 
 		//token
-		p = parse("f0 00000001 03 010203 02 0102 01" + hex(bytes(128)), -1);
+		p = parse("f0 00000001 03 010203 02 0102 01" + hex(bytes(16)), -1);
 		assertNotNull(p);
 		assertSame(Version.V1, p.getVersion());
 		assertArrayEquals(bytes("010203"), p.getDestinationId());
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertArrayEquals(bytes("01"), p.getToken());
-		assertArrayEquals(bytes(128), p.getIntegrityTag());
-		assertEquals(13+128, p.getLength(-1));
-		assertEquals(13+128, p.getMaxLength());
+		assertArrayEquals(bytes(16), p.getIntegrityTag());
+		assertEquals(13+16, p.getLength(-1));
+		assertEquals(13+16, p.getMaxLength());
 		assertEquals(0, buffer.remaining());
 
 		//more data in buffer
-		p = parse("f0 00000001 03 010203 02 0102 01" + hex(bytes(128)) + "00", 13 + 128);
+		p = parse("f0 00000001 03 010203 02 0102 01" + hex(bytes(16)) + "00", 13 + 16);
 		assertNotNull(p);
 		assertSame(Version.V1, p.getVersion());
 		assertArrayEquals(bytes("010203"), p.getDestinationId());
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertArrayEquals(bytes("01"), p.getToken());
-		assertArrayEquals(bytes(128), p.getIntegrityTag());
+		assertArrayEquals(bytes(16), p.getIntegrityTag());
 		assertEquals(1, buffer.remaining());
+		
+		assertNull(parser.parseHeader(null, 10, null));
+		assertNull(parser.parse(null, null, null, null));
+	}
+	
+	@Test
+	public void testGetPayloadBytes() {
+		RetryPacket p = packet("010203", "0405", "", hex(bytes(16)));
+		
+		assertEquals(0, p.getPayloadLength());
+		p.getPayloadBytes(buffer);
+		assertEquals(0, buffer.position());
 	}
 	
 	@Test
 	public void testGetBytes() {
-		RetryPacket p = packet("010203", "0405", "", hex(bytes(128)));
+		RetryPacket p = packet("010203", "0405", "", hex(bytes(16)));
 		p.getBytes(-1, buffer);
-		assertArrayEquals(bytes("f0 00000001 03 010203 02 0405" + hex(bytes(128))), bytesAndClear());
+		assertArrayEquals(bytes("f0 00000001 03 010203 02 0405" + hex(bytes(16))), bytesAndClear());
 
-		p = packet("010203", "0405", "060708", hex(bytes(128)));
+		p = packet("010203", "0405", "060708", hex(bytes(16)));
 		p.getBytes(-1, buffer);
-		assertArrayEquals(bytes("f0 00000001 03 010203 02 0405 060708" + hex(bytes(128))), bytesAndClear());
+		assertArrayEquals(bytes("f0 00000001 03 010203 02 0405 060708" + hex(bytes(16))), bytesAndClear());
 	}
 	
 	@Test
 	public void testMaxValues() throws Exception { 
-		RetryPacket p = new RetryPacket(bytes(255), bytes(255), Version.V1, bytes(20000), bytes(128));
+		RetryPacket p = new RetryPacket(bytes(255), bytes(255), Version.V1, bytes(20000), bytes(16));
 		p.getBytes(-1, buffer);
 		assertArrayEquals(bytes("f0 00000001 ff" 
 				+ hex(bytes(255)) + "ff" 
 				+ hex(bytes(255))  
 				+ hex(bytes(20000))
-				+ hex(bytes(128))), bytes());
+				+ hex(bytes(16))), bytes());
 		buffer.flip();
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(), FrameDecoder.INSTANCE);
 		assertArrayEquals(bytes(255), p.getDestinationId());
 		assertArrayEquals(bytes(255), p.getSourceId());
 		assertArrayEquals(bytes(20000), p.getToken());
-		assertArrayEquals(bytes(128), p.getIntegrityTag());
+		assertArrayEquals(bytes(16), p.getIntegrityTag());
 		buffer.clear();
 	}
 	
@@ -143,7 +156,7 @@ public class RetryPacketTest extends CommonTest {
 
 	@Test
 	public void testParseFailure() throws Exception {
-		String data = "f0 00000001 03 010203 02 0405" + hex(bytes(128));
+		String data = "f0 00000001 03 010203 02 0405" + hex(bytes(16));
 		int len = bytes(data).length;
 		
 		for (int i=1; i<len; ++i) {
