@@ -59,6 +59,11 @@ public class QuicState {
 	
 	private int maxUdpPayloadSize = MIN_MAX_UDP_PAYLOAD_SIZE;
 	
+	/**
+	 * Constructs a QUIC state for the given role.
+	 * 
+	 * @param clientMode determines the role (client/server) for the state
+	 */
 	public QuicState(boolean clientMode) {
 		this.clientMode = clientMode;
 		manager = new ConnectionIdManager(clientMode, 8, 2, new SecureRandom());
@@ -100,15 +105,30 @@ public class QuicState {
 		return spaces[level.ordinal()];
 	}
 
+	/**
+	 * Returns the associated connection id manager.
+	 * 
+	 * @return the associated connection id manager
+	 */
 	public ConnectionIdManager getConnectionIdManager() {
 		return manager;
 	}
 
-	
+	/**
+	 * Returns the maximum UDP payload size that can be safely send to a peer.
+	 * 
+	 * @return the maximum UDP payload size
+	 */
 	public int getMaxUdpPayloadSize() {
 		return maxUdpPayloadSize;
 	}
 
+	/**
+	 * Produces the transport parameters representing the current configuration of
+	 * this state object.
+	 * 
+	 * @return the transport parameters
+	 */
 	public TransportParameters produceTransportParameters() {
 		TransportParametersBuilder builder = new TransportParametersBuilder();
 		
@@ -144,6 +164,13 @@ public class QuicState {
 		return new QuicAlert(TransportError.TRANSPORT_PARAMETER_ERROR, "Invalid length of " + p.typeName());
 	}
 	
+	/**
+	 * Consumes the given transport parameters received from a peer.
+	 * 
+	 * @param params the transport parameters
+	 * @throws Alert if an error occurred during validation of the transport
+	 *               parameters
+	 */
 	public void consumeTransportParameters(TransportParameters params) throws Alert {
 		byte[] bytes;
 		long value;
