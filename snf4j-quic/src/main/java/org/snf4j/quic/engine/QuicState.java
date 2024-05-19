@@ -25,7 +25,17 @@
  */
 package org.snf4j.quic.engine;
 
-import org.snf4j.tls.Args;
+import java.security.SecureRandom;
+import java.util.Arrays;
+
+import org.snf4j.quic.QuicAlert;
+import org.snf4j.quic.TransportError;
+import org.snf4j.quic.cid.ConnectionIdManager;
+import org.snf4j.quic.cid.IPool;
+import org.snf4j.quic.tp.TransportParameterType;
+import org.snf4j.quic.tp.TransportParameters;
+import org.snf4j.quic.tp.TransportParametersBuilder;
+import org.snf4j.tls.alert.Alert;
 
 /**
  * The state of the QUIC engine. This object keeps all information related to
@@ -35,26 +45,28 @@ import org.snf4j.tls.Args;
  */
 public class QuicState {
 
-	private final static byte[] EMPTY_ARRAY = new byte[0];
+	private final static int MIN_MAX_UDP_PAYLOAD_SIZE = 1200;
 	
 	private final EncryptionContext[] contexts = new EncryptionContext[EncryptionLevel.values().length];
 	
 	private final PacketNumberSpace[] spaces = new PacketNumberSpace[contexts.length];
+
+	private final ConnectionIdManager manager;
 	
 	private final boolean clientMode;
-	
-	private byte[] destinationId;
 
-	private byte[] sourceId = EMPTY_ARRAY;
+	private final int maxActiveConnectionIdLimit = 10;
+	
+	private int maxUdpPayloadSize = MIN_MAX_UDP_PAYLOAD_SIZE;
 	
 	/**
-	 * Constructs the state object for the given client mode.
+	 * Constructs a QUIC state for the given role.
 	 * 
-	 * @param clientMode determines whether the state object should bes for a client
-	 *                   or server
+	 * @param clientMode determines the role (client/server) for the state
 	 */
 	public QuicState(boolean clientMode) {
 		this.clientMode = clientMode;
+		manager = new ConnectionIdManager(clientMode, 8, 2, new SecureRandom());
 		for (int i=0; i<contexts.length; ++i) {
 			contexts[i] = new EncryptionContext(10);
 		}
@@ -94,41 +106,125 @@ public class QuicState {
 	}
 
 	/**
-	 * Returns the current destination connection id
+	 * Returns the associated connection id manager.
 	 * 
-	 * @return the current destination connection id, or {@code null} if it not set
-	 *         yet
+	 * @return the associated connection id manager
 	 */
-	public byte[] getDestinationId() {
-		return destinationId;
+	public ConnectionIdManager getConnectionIdManager() {
+		return manager;
 	}
 
 	/**
-	 * Sets the current destination connection id.
+	 * Returns the maximum UDP payload size that can be safely send to a peer.
 	 * 
-	 * @param destinationId the destination connection id
+	 * @return the maximum UDP payload size
 	 */
-	public void setDestinationId(byte[] destinationId) {
-		this.destinationId = destinationId;
+	public int getMaxUdpPayloadSize() {
+		return maxUdpPayloadSize;
+	}
+
+	/**
+	 * Produces the transport parameters representing the current configuration of
+	 * this state object.
+	 * 
+	 * @return the transport parameters
+	 */
+	public TransportParameters produceTransportParameters() {
+		TransportParametersBuilder builder = new TransportParametersBuilder();
+		
+		builder.iniSourceId(manager.getSourcePool().get(IPool.INITIAL_SEQUENCE_NUMBER).getId());	
+		builder.activeConnectionIdLimit(manager.getDestinationPool().getLimit());
+		builder.maxUdpPayloadSize(maxUdpPayloadSize);
+		if (!clientMode) {
+			builder.originalDestinationId(manager.getOriginalId());
+			if (manager.hasRetryId()) {
+				builder.retrySourceId(manager.getRetryId());
+			}
+			builder.statelessResetToken(manager.getSourcePool().get(IPool.INITIAL_SEQUENCE_NUMBER).getResetToken());
+		}
+		return builder.build();
+	}
+	
+	private static QuicAlert missing(TransportParameterType p)  {
+		return new QuicAlert(TransportError.TRANSPORT_PARAMETER_ERROR, "Missing " + p.typeName());
+	}
+
+	private static QuicAlert notMatching(TransportParameterType p)  {
+		return new QuicAlert(TransportError.TRANSPORT_PARAMETER_ERROR, "Not matching " + p.typeName());
+	}
+
+	private static QuicAlert unexpected(TransportParameterType p)  {
+		return new QuicAlert(TransportError.TRANSPORT_PARAMETER_ERROR, "Unexpected " + p.typeName());
+	}
+	private static QuicAlert invalid(TransportParameterType p)  {
+		return new QuicAlert(TransportError.TRANSPORT_PARAMETER_ERROR, "Invalid " + p.typeName());
+	}
+
+	private static QuicAlert invalidLength(TransportParameterType p)  {
+		return new QuicAlert(TransportError.TRANSPORT_PARAMETER_ERROR, "Invalid length of " + p.typeName());
 	}
 	
 	/**
-	 * Returns the source connection id
+	 * Consumes the given transport parameters received from a peer.
 	 * 
-	 * @return the source connection id
+	 * @param params the transport parameters
+	 * @throws Alert if an error occurred during validation of the transport
+	 *               parameters
 	 */
-	public byte[] getSourceId() {
-		return sourceId;
-	}
+	public void consumeTransportParameters(TransportParameters params) throws Alert {
+		byte[] bytes;
+		long value;
 
-	/**
-	 * Sets the source connection id.
-	 * 
-	 * @param sourceId the destination connection id
-	 */
-	public void setSourceId(byte[] sourceId) {
-		Args.checkNull(sourceId, "sourceId");
-		this.sourceId = sourceId;
+		if (clientMode) {
+			bytes = params.originalDestinationId();
+			if (bytes == null) {
+				throw missing(TransportParameterType.ORIGINAL_DESTINATION_CONNECTION_ID);
+			}
+			if (!Arrays.equals(manager.getOriginalId(), bytes)) {
+				throw notMatching(TransportParameterType.ORIGINAL_DESTINATION_CONNECTION_ID);
+			}
+			
+			bytes = params.retrySourceId();
+			if (bytes == null) {
+				if (manager.hasRetryId()) {
+					throw missing(TransportParameterType.RETRY_SOURCE_CONNECTION_ID);
+				}
+			}
+			else {
+				if (manager.hasRetryId()) {
+					if (!Arrays.equals(manager.getRetryId(), params.retrySourceId())) {
+						throw notMatching(TransportParameterType.RETRY_SOURCE_CONNECTION_ID);
+					}
+				}
+				else {
+					throw unexpected(TransportParameterType.RETRY_SOURCE_CONNECTION_ID);
+				}
+			}
+			
+			bytes = params.statelessResetToken();
+			if (bytes != null) {
+				if (bytes.length != 16) {
+					throw invalidLength(TransportParameterType.STATELESS_RESET_TOKEN);
+				}
+				manager.getDestinationPool().updateResetToken(bytes);
+			}
+		}
+		
+		bytes = params.iniSourceId();
+		if (bytes == null) {
+			throw missing(TransportParameterType.INITIAL_SOURCE_CONNECTION_ID);
+		}
+		if (!Arrays.equals(manager.getDestinationPool().get(IPool.INITIAL_SEQUENCE_NUMBER).getId(), bytes)) {
+			throw notMatching(TransportParameterType.INITIAL_SOURCE_CONNECTION_ID);			
+		}
+		
+		manager.getSourcePool().setLimit((int) Math.min(maxActiveConnectionIdLimit, params.activeConnectionIdLimit()));
+		
+		value = params.maxUdpPayloadSize();
+		if (value < MIN_MAX_UDP_PAYLOAD_SIZE) {
+			throw invalid(TransportParameterType.MAX_UDP_PAYLOAD_SIZE);
+		}
+		maxUdpPayloadSize = (int) Math.min(maxUdpPayloadSize, value);
 	}
-
+	
 }

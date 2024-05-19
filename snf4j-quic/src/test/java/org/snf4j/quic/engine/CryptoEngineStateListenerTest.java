@@ -50,7 +50,13 @@ import org.snf4j.quic.TransportError;
 import org.snf4j.quic.crypto.QuicKeySchedule;
 import org.snf4j.quic.engine.crypto.CryptoEngine;
 import org.snf4j.quic.engine.crypto.ProducedCrypto;
+import org.snf4j.quic.tp.ITransportParametersFormatter;
+import org.snf4j.quic.tp.QuicExtensionType;
+import org.snf4j.quic.tp.TransportParameters;
+import org.snf4j.quic.tp.TransportParametersBuilder;
+import org.snf4j.quic.tp.TransportParametersFormatter;
 import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.MissingExtensionAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.cipher.CipherSuiteSpec;
@@ -72,7 +78,9 @@ import org.snf4j.tls.engine.MachineState;
 import org.snf4j.tls.extension.EarlyDataExtension;
 import org.snf4j.tls.extension.IExtension;
 import org.snf4j.tls.extension.NamedGroup;
+import org.snf4j.tls.extension.UnknownExtension;
 import org.snf4j.tls.handshake.ClientHello;
+import org.snf4j.tls.handshake.EncryptedExtensions;
 import org.snf4j.tls.handshake.EndOfEarlyData;
 import org.snf4j.tls.handshake.Finished;
 import org.snf4j.tls.handshake.KeyUpdate;
@@ -96,11 +104,21 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 
 	CryptoEngineStateListener cliListener, srvListener;
 	
+	TransportParameters cliParams;
+
+	TransportParametersBuilder srvParams;
+	
 	@Override
 	public void before() throws Exception {
 		super.before();
 		cliState = new QuicState(true); 
+		cliState.getConnectionIdManager().setOriginalId(DEST_CID);
+		cliState.getConnectionIdManager().getSourcePool().issue();
 		srvState = new QuicState(false);
+		srvState.getConnectionIdManager().setOriginalId(DEST_CID);
+		srvState.getConnectionIdManager().getSourcePool().issue();
+		cliState.getConnectionIdManager().getDestinationPool().add(0, srvState.getConnectionIdManager().getSourceId(), null);
+		srvState.getConnectionIdManager().getDestinationPool().add(0, cliState.getConnectionIdManager().getSourceId(), null);
 		cliListener = new CryptoEngineStateListener(cliState);
 		srvListener = new CryptoEngineStateListener(srvState);
 	}
@@ -673,6 +691,8 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 	
 	@Test
 	public void testOnHandshake() throws Exception {
+		List<IExtension> extensions = new ArrayList<IExtension>();
+
 		try {
 			cliListener.onHandshake(null, new EndOfEarlyData());
 			fail();
@@ -687,6 +707,18 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 		catch (UnexpectedMessageAlert e) {
 			assertEquals(0xa, e.getDescription().value());
 		}
+
+		TransportParametersBuilder b = new TransportParametersBuilder()
+				.originalDestinationId(cliState.getConnectionIdManager().getOriginalId())
+				.iniSourceId(srvState.getConnectionIdManager().getSourceId());
+		TransportParameters params = b.build();
+		ITransportParametersFormatter formatter = TransportParametersFormatter.INSTANCE;
+		byte[] data = new byte[formatter.length(false, params)];
+		ByteBuffer buf = ByteBuffer.wrap(data);
+		buf.clear();
+		formatter.format(false, params, buf);
+		extensions.add(0, new UnknownExtension(QuicExtensionType.INSTANCE, data));
+		
 		try {
 			cliListener.onHandshake(null, new ClientHello(
 					0x0303, 
@@ -694,11 +726,19 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 					new byte[1], 
 					new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256}, 
 					new byte[1],
-					new ArrayList<IExtension>()));
+					extensions));
 			fail();
 		}
 		catch (QuicAlert e) {
 			assertSame(TransportError.PROTOCOL_VIOLATION, e.getTransportError());
+		}
+		
+		try {
+			srvListener.onHandshake(null, new EncryptedExtensions(extensions));
+			fail();
+		}
+		catch (QuicAlert e) {
+			assertSame(TransportError.TRANSPORT_PARAMETER_ERROR, e.getTransportError());
 		}
 		
 		cliListener.onHandshake(null, new ClientHello(
@@ -707,10 +747,24 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 				new byte[0], 
 				new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256}, 
 				new byte[1],
-				new ArrayList<IExtension>()));
+				extensions));
+		extensions.clear();
+		try {
+			cliListener.onHandshake(null, new ClientHello(
+					0x0303, 
+					new byte[32], 
+					new byte[0], 
+					new CipherSuite[] {CipherSuite.TLS_AES_128_GCM_SHA256}, 
+					new byte[1],
+					extensions));
+			fail();
+		}
+		catch (MissingExtensionAlert e) {
+		}
+		
 		cliListener.onHandshake(null, new Finished(new byte[32]));
 		
-		List<IExtension> extensions = new ArrayList<IExtension>();
+		extensions = new ArrayList<IExtension>();
 		NewSessionTicket ticket = new NewSessionTicket(bytes("00"), bytes("") , 0, 0, extensions);
 		cliListener.onHandshake(null, ticket);
 		extensions.add(new EarlyDataExtension(0xffffffffL));
@@ -818,10 +872,7 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 		assertEquals(1, mgr.getTickets(cliEngine.getSession()).length);
 		
 		//With PSK
-		cliState = new QuicState(true); 
-		srvState = new QuicState(false);
-		cliListener = new CryptoEngineStateListener(cliState);
-		srvListener = new CryptoEngineStateListener(srvState);
+		before();
 		cliEngine = new CryptoEngine(new HandshakeEngine(true, cepb.build(), ehb.build(), cliListener));
 		srvEngine = new CryptoEngine(new HandshakeEngine(false, sepb.build(), ehb.build(), srvListener));
 		cliAdapter = new CryptoEngineAdapter(cliEngine);
@@ -904,10 +955,7 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 		
 		//With early data
 		TestEDHandler edh = new TestEDHandler(bytes("ac"));
-		cliState = new QuicState(true); 
-		srvState = new QuicState(false);
-		cliListener = new CryptoEngineStateListener(cliState);
-		srvListener = new CryptoEngineStateListener(srvState);
+		before();
 		cliEngine = new CryptoEngine(new HandshakeEngine(true, cepb.build(), ehb.build(edh), cliListener));
 		srvEngine = new CryptoEngine(new HandshakeEngine(false, sepb.build(), ehb.build(), srvListener));
 		cliAdapter = new CryptoEngineAdapter(cliEngine);
@@ -1002,10 +1050,7 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 		//With early data
 		TestEDHandler edh = new TestEDHandler(bytes("ac"));
 		sepb.namedGroups(NamedGroup.SECP521R1);
-		cliState = new QuicState(true); 
-		srvState = new QuicState(false);
-		cliListener = new CryptoEngineStateListener(cliState);
-		srvListener = new CryptoEngineStateListener(srvState);
+		before();
 		cliEngine = new CryptoEngine(new HandshakeEngine(true, cepb.build(), ehb.build(edh), cliListener));
 		srvEngine = new CryptoEngine(new HandshakeEngine(false, sepb.build(), ehb.build(), srvListener));
 		cliAdapter = new CryptoEngineAdapter(cliEngine);
