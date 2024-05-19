@@ -34,7 +34,12 @@ import org.snf4j.quic.Version;
 import org.snf4j.quic.frame.IFrame;
 import org.snf4j.quic.frame.IFrameDecoder;
 
-class PacketUtil {
+/**
+ * Packet utilities. 
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class PacketUtil {
 	
 	private PacketUtil() {}
 	
@@ -124,7 +129,7 @@ class PacketUtil {
 	 * @throws IllegalArgumentException if the given value is out of range for
 	 *                                  62-bit unsigned integers
 	 */
-	static int encodedIntegerLength(long i) {
+	public static int encodedIntegerLength(long i) {
 		if (i <= 63L) {
 			if (i < 0) {
 				throw new IllegalArgumentException("Negative variable-length integer");
@@ -145,7 +150,7 @@ class PacketUtil {
 	 * @throws IllegalArgumentException if the given value is out of range for
 	 *                                  62-bit unsigned integers
 	 */
-	static void encodeInteger(long i, ByteBuffer dst) {
+	public static void encodeInteger(long i, ByteBuffer dst) {
 		if (i <= 63L) {
 			if (i < 0) {
 				throw new IllegalArgumentException("Negative variable-length integer");
@@ -187,7 +192,7 @@ class PacketUtil {
 	 * @throws QuicException if the are not enough data in the buffer to decode a
 	 *                       variable-length integer
 	 */
-	static long decodeInteger(ByteBuffer src, int[] remaining) throws QuicException {
+	public static long decodeInteger(ByteBuffer src, int[] remaining) throws QuicException {
 		int i = (src.get(src.position()) >> 6) & 0x03;
 		
 		switch (i) {

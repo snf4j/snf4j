@@ -25,14 +25,23 @@
  */
 package org.snf4j.quic.engine;
 
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+
 import org.snf4j.quic.QuicAlert;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.crypto.AeadSpec;
 import org.snf4j.quic.crypto.QuicKeySchedule;
 import org.snf4j.quic.crypto.SecretKeys;
+import org.snf4j.quic.tp.ITransportParametersFormatter;
+import org.snf4j.quic.tp.QuicExtensionType;
+import org.snf4j.quic.tp.TransportParameters;
+import org.snf4j.quic.tp.TransportParametersBuilder;
+import org.snf4j.quic.tp.TransportParametersFormatter;
+import org.snf4j.quic.tp.TransportParametersParser;
 import org.snf4j.tls.alert.Alert;
 import org.snf4j.tls.alert.InternalErrorAlert;
+import org.snf4j.tls.alert.MissingExtensionAlert;
 import org.snf4j.tls.alert.UnexpectedMessageAlert;
 import org.snf4j.tls.cipher.CipherSuite;
 import org.snf4j.tls.cipher.ICipherSuiteSpec;
@@ -47,6 +56,7 @@ import org.snf4j.tls.engine.IEngineStateListener;
 import org.snf4j.tls.extension.ExtensionType;
 import org.snf4j.tls.extension.ExtensionsUtil;
 import org.snf4j.tls.extension.IEarlyDataExtension;
+import org.snf4j.tls.extension.UnknownExtension;
 import org.snf4j.tls.handshake.HandshakeType;
 import org.snf4j.tls.handshake.IClientHello;
 import org.snf4j.tls.handshake.IHandshake;
@@ -67,6 +77,8 @@ public class CryptoEngineStateListener implements IEngineStateListener {
 	private final static int CLIENT_HELLO = HandshakeType.CLIENT_HELLO.value();
 	
 	private final static int NEW_SESSION_TICKET = HandshakeType.NEW_SESSION_TICKET.value();
+
+	private final static int ENCRYPTED_EXTENSIONS = HandshakeType.ENCRYPTED_EXTENSIONS.value();
 	
 	static {
 		HANDSHAKE_ALERTS[HandshakeType.KEY_UPDATE.value()] = new UnexpectedMessageAlert(
@@ -268,11 +280,24 @@ public class CryptoEngineStateListener implements IEngineStateListener {
 		
 		int type = handshake.getType().value();
 		
-		if (type == CLIENT_HELLO) {
-			IClientHello clientHello = (IClientHello) handshake;
+		if (type == CLIENT_HELLO || type == ENCRYPTED_EXTENSIONS) {
+			if (type == CLIENT_HELLO) {
+				IClientHello clientHello = (IClientHello) handshake;
+
+				if (clientHello.getLegacySessionId().length > 0) {
+					throw new QuicAlert(TransportError.PROTOCOL_VIOLATION, "Prohibited compatibility mode");
+				}
+			}
 			
-			if (clientHello.getLegacySessionId().length > 0) {
-				throw new QuicAlert(TransportError.PROTOCOL_VIOLATION, "Prohibited compatibility mode");
+			UnknownExtension params = ExtensionsUtil.find(handshake, QuicExtensionType.INSTANCE);
+			if (params == null) {
+				throw new MissingExtensionAlert("Missing 'quic_transport_parameters' extension");
+			}
+			else {
+				TransportParametersBuilder builder = new TransportParametersBuilder();
+				ByteBuffer data = ByteBuffer.wrap(params.getData());
+				TransportParametersParser.INSTANCE.parse(state.isClientMode(), data, data.remaining(), builder);
+				state.consumeTransportParameters(builder.build());
 			}
 		}
 		else if (type == NEW_SESSION_TICKET) {
@@ -285,7 +310,21 @@ public class CryptoEngineStateListener implements IEngineStateListener {
 	}
 
 	@Override
-	public void onHandshakeCreate(IEngineState state, IHandshake handshake, boolean isHRR) {
+	public void onHandshakeCreate(IEngineState tlsState, IHandshake handshake, boolean isHRR) {
+		int type = handshake.getType().value();
+
+		if (type == CLIENT_HELLO || type == ENCRYPTED_EXTENSIONS) {
+			ITransportParametersFormatter formatter = TransportParametersFormatter.INSTANCE;
+			TransportParameters params = state.produceTransportParameters();
+			byte[] data = new byte[formatter.length(state.isClientMode(), params)];
+			ByteBuffer buf = ByteBuffer.wrap(data);
+			
+			buf.clear();
+			formatter.format(state.isClientMode(), params, buf);
+			handshake.getExtensions().add(0, new UnknownExtension(
+					QuicExtensionType.INSTANCE, 
+					data));
+		}
 	}
 	
 	@Override

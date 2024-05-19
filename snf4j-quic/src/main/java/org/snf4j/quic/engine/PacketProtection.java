@@ -232,7 +232,7 @@ public class PacketProtection {
 				ctx = new ParseContext(space.getLargestProcessed());
 			}
 			else {
-				ctx = new ParseContext(space.getLargestProcessed(), state.getSourceId().length);
+				ctx = new ParseContext(space.getLargestProcessed(), state.getConnectionIdManager().getSourcePool().getIdLength());
 			}
 			
 			HeaderInfo info = parser.parseHeader(src, src.remaining(), ctx);
@@ -249,6 +249,7 @@ public class PacketProtection {
 						src.position(pos0 + len);
 						return null;						
 					}
+					state.getConnectionIdManager().setOriginalId(info.getDestinationId());
 					listener.onInitialKeys(
 							state, 
 							info.getDestinationId(), 

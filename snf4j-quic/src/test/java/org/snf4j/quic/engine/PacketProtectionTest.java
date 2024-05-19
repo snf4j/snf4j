@@ -108,7 +108,7 @@ public class PacketProtectionTest extends CommonTest {
 	QuicState cliState, srvState;
 
 	CryptoEngineStateListener cliListener, srvListener;
-
+	
 	final ByteBuffer dst = ByteBuffer.allocate(10000);
 
 	PacketProtection protection;
@@ -119,7 +119,13 @@ public class PacketProtectionTest extends CommonTest {
 	public void before() throws Exception {
 		super.before();
 		cliState = new QuicState(true);
+		cliState.getConnectionIdManager().setOriginalId(DEST_CID);
+		cliState.getConnectionIdManager().getSourcePool().issue();
 		srvState = new QuicState(false);
+		srvState.getConnectionIdManager().setOriginalId(DEST_CID);
+		srvState.getConnectionIdManager().getSourcePool().issue();
+		cliState.getConnectionIdManager().getDestinationPool().add(0, srvState.getConnectionIdManager().getSourceId(), null);
+		srvState.getConnectionIdManager().getDestinationPool().add(0, cliState.getConnectionIdManager().getSourceId(), null);
 		cliListener = new CryptoEngineStateListener(cliState);
 		srvListener = new CryptoEngineStateListener(srvState);
 		dst.clear();
@@ -595,13 +601,12 @@ public class PacketProtectionTest extends CommonTest {
 		assertEquals(1, produced.length);
 		assertSame(EncryptionLevel.APPLICATION_DATA, produced[0].getEncryptionLevel());
 		dst.clear();
-		p = new OneRttPacket(bytes("001122334455"), 0, false, false);
+		p = new OneRttPacket(cliState.getConnectionIdManager().getSourceId(), 0, false, false);
 		p.getFrames().add(new CryptoFrame(produced[0].getOffset(), produced[0].getData()));
 		protection.protect(srvState, p, dst);
 
 		dst.flip();
-		cliState.setSourceId(bytes("001122334455"));
-		srvState.setDestinationId(DEST_CID);
+		srvState.getConnectionIdManager().setOriginalId(DEST_CID);
 		p = protection.unprotect(cliState, dst);
 		assertEquals(0, dst.remaining());
 		assertSame(PacketType.ONE_RTT, p.getType());
@@ -614,10 +619,7 @@ public class PacketProtectionTest extends CommonTest {
 
 		// With early data
 		TestEDHandler edh = new TestEDHandler(bytes("ac"));
-		cliState = new QuicState(true);
-		srvState = new QuicState(false);
-		cliListener = new CryptoEngineStateListener(cliState);
-		srvListener = new CryptoEngineStateListener(srvState);
+		before();
 		cliE = new CryptoEngine(new HandshakeEngine(true, epb.build(), ehb.build(edh), cliListener));
 		srvE = new CryptoEngine(new HandshakeEngine(false, epb.build(), ehb.build(), srvListener));
 		cliA = new CryptoEngineAdapter(cliE);
@@ -720,8 +722,9 @@ public class PacketProtectionTest extends CommonTest {
 		produced = cliA.produce();
 		assertEquals(0, produced.length);
 		
-		cliState.setDestinationId(DEST_CID);
-		srvState.setSourceId(DEST_CID);
+		cliState.getConnectionIdManager().setOriginalId(DEST_CID);
+		//cliState.setDestinationId(DEST_CID);
+		//srvState.setSourceId(DEST_CID);
 		IPacket p = new OneRttPacket(DEST_CID, 0, false, false);
 		p.getFrames().add(new MultiPaddingFrame(1200));
 		ByteBuffer buf0 = ByteBuffer.allocate(2000);
