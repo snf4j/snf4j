@@ -23,41 +23,44 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.engine;
+package org.snf4j.quic.packet;
 
-import org.snf4j.quic.QuicException;
 import org.snf4j.quic.Version;
 
 /**
- * A listener for the QUIC packet protection functionalities.
+ * A {@code class} providing additional information about QUIC packets.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public interface PacketProtectionListener {
+public class PacketInfo {
 
-	/**
-	 * Called when there is a need for derivation of the initial keys. It is
-	 * expected that the initial keys will be ready after returning from this
-	 * method.
-	 * 
-	 * @param state         the state of the associated QUIC engine
-	 * @param destinationId the original destination connection id provided by
-	 *                      client
-	 * @param version       the version provided by client
-	 * @throws QuicException if an error occurred during the keys derivation. To close the connection
-	 *                       the INTERNAL_ERROR should be signaled
-	 */
-	void onInitialKeys(QuicState state, byte[] destinationId, Version version) throws QuicException;
+	private final static PacketInfo PACKET_INFO = new PacketInfo();
+	
+	private PacketInfo() {}
 	
 	/**
-	 * Called after rotation of the 1-RTT keys that was initiated by other endpoint.
-	 * It is not expected that the next 1-RTT keys will be ready after returning
-	 * from this method. For example this method can schedule a task that will derive
-	 * the next keys in the future.
+	 * Returns an instance of the packet information object for the given QUIC
+	 * version.
 	 * 
-	 * @param state the state of the associated QUIC engine
-	 * @throws QuicException if an error occurred. To close the connection
-	 *                       the INTERNAL_ERROR should be signaled
+	 * @param version the QUIC version
+	 * @return the instance of the packet information object
 	 */
-	void onKeysRotation(QuicState state) throws QuicException;
+	public static PacketInfo of(Version version) {
+		return PACKET_INFO;
+	}
+	
+	/**
+	 * Detects the long header packet type based on the first byte of a packet.
+	 * 
+	 * @param bits the first byte
+	 * @return the detected long header packet type
+	 */
+	public PacketType longHeaderType(int bits) {
+		switch ((bits & 0x30) >> 4) {
+		case 0: return PacketType.INITIAL;
+		case 1: return PacketType.ZERO_RTT;
+		case 2: return PacketType.HANDSHAKE;
+		default: return PacketType.RETRY;
+		}
+	}
 }

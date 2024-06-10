@@ -30,8 +30,10 @@ import java.util.Arrays;
 
 import org.snf4j.quic.QuicAlert;
 import org.snf4j.quic.TransportError;
+import org.snf4j.quic.Version;
 import org.snf4j.quic.cid.ConnectionIdManager;
 import org.snf4j.quic.cid.IPool;
+import org.snf4j.quic.packet.PacketUtil;
 import org.snf4j.quic.tp.TransportParameterType;
 import org.snf4j.quic.tp.TransportParameters;
 import org.snf4j.quic.tp.TransportParametersBuilder;
@@ -45,19 +47,35 @@ import org.snf4j.tls.alert.Alert;
  */
 public class QuicState {
 
-	private final static int MIN_MAX_UDP_PAYLOAD_SIZE = 1200;
-	
 	private final EncryptionContext[] contexts = new EncryptionContext[EncryptionLevel.values().length];
 	
 	private final PacketNumberSpace[] spaces = new PacketNumberSpace[contexts.length];
 
+	private final IEncryptionContextListener contextsListener = new IEncryptionContextListener() {
+
+		@Override
+		public void onNewEncryptor(EncryptionLevel level, KeyPhase phase) {
+			encryptorLevel = level;
+		}
+
+		@Override
+		public void onNewDecryptor(EncryptionLevel level, KeyPhase phase) {
+		}
+	};
+	
 	private final ConnectionIdManager manager;
 	
 	private final boolean clientMode;
 
+	private HandshakeState handshakeState = HandshakeState.INIT;
+	
 	private final int maxActiveConnectionIdLimit = 10;
 	
-	private int maxUdpPayloadSize = MIN_MAX_UDP_PAYLOAD_SIZE;
+	private int maxUdpPayloadSize = PacketUtil.MIN_MAX_UDP_PAYLOAD_SIZE;
+	
+	private EncryptionLevel encryptorLevel;
+	
+	private Version version = Version.V1;
 	
 	/**
 	 * Constructs a QUIC state for the given role.
@@ -67,9 +85,12 @@ public class QuicState {
 	public QuicState(boolean clientMode) {
 		this.clientMode = clientMode;
 		manager = new ConnectionIdManager(clientMode, 8, 2, new SecureRandom());
-		for (int i=0; i<contexts.length; ++i) {
-			contexts[i] = new EncryptionContext(10);
-		}
+		
+		contexts[EncryptionLevel.EARLY_DATA.ordinal()] = new EncryptionContext(EncryptionLevel.EARLY_DATA, 10,contextsListener);
+		contexts[EncryptionLevel.INITIAL.ordinal()] = new EncryptionContext(EncryptionLevel.INITIAL, 10, contextsListener);
+		contexts[EncryptionLevel.HANDSHAKE.ordinal()] = new EncryptionContext(EncryptionLevel.HANDSHAKE, 10, contextsListener);
+		contexts[EncryptionLevel.APPLICATION_DATA.ordinal()] = new EncryptionContext(EncryptionLevel.APPLICATION_DATA, 10, contextsListener);
+		
 		spaces[EncryptionLevel.EARLY_DATA.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA);
 		spaces[EncryptionLevel.INITIAL.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.INITIAL);
 		spaces[EncryptionLevel.HANDSHAKE.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.HANDSHAKE);
@@ -123,6 +144,15 @@ public class QuicState {
 		return maxUdpPayloadSize;
 	}
 
+	/**
+	 * Sets the maximum UDP payload size that can be safely send to a peer.
+	 * 
+	 * @param size the maximum UDP payload size
+	 */
+	public void setMaxUdpPayloadSize(int size) {
+		maxUdpPayloadSize = size;
+	}
+	
 	/**
 	 * Produces the transport parameters representing the current configuration of
 	 * this state object.
@@ -221,10 +251,56 @@ public class QuicState {
 		manager.getSourcePool().setLimit((int) Math.min(maxActiveConnectionIdLimit, params.activeConnectionIdLimit()));
 		
 		value = params.maxUdpPayloadSize();
-		if (value < MIN_MAX_UDP_PAYLOAD_SIZE) {
+		if (value < PacketUtil.MIN_MAX_UDP_PAYLOAD_SIZE) {
 			throw invalid(TransportParameterType.MAX_UDP_PAYLOAD_SIZE);
 		}
 		maxUdpPayloadSize = (int) Math.min(maxUdpPayloadSize, value);
+	}
+
+	/**
+	 * Returns the encryption level of the current encryptor.
+	 * 
+	 * @return the encryption level of the current encryptor, or {@code null} if no
+	 *         encryptor is set yet
+	 */
+	public EncryptionLevel getEncryptorLevel() {
+		return encryptorLevel;
+	}
+
+	/**
+	 * Returns currently used version of the QUIC protocol.
+	 * 
+	 * @return the current version
+	 */
+	public Version getVersion() {
+		return version;
+	}
+
+	/**
+	 * Set the currently used version of the QUIC protocol.
+	 * 
+	 * @param version the current version
+	 */
+	public void setVersion(Version version) {
+		this.version = version;
+	}
+
+	/**
+	 * Returns the current handshake state.
+	 * 
+	 * @return the current handshake state
+	 */
+	public HandshakeState getHandshakeState() {
+		return handshakeState;
+	}
+
+	/**
+	 * Sets the current handshake state.
+	 * 
+	 * @param handshakeState the current handshake state
+	 */
+	public void setHandshakeState(HandshakeState handshakeState) {
+		this.handshakeState = handshakeState;
 	}
 	
 }

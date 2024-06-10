@@ -1,5 +1,5 @@
 /*
- * -------------------------------- MIT License --------------------------------
+* -------------------------------- MIT License --------------------------------
  * 
  * Copyright (c) 2024 SNF4J contributors
  * 
@@ -25,6 +25,9 @@
  */
 package org.snf4j.quic.engine;
 
+import org.snf4j.quic.QuicException;
+import org.snf4j.quic.frame.AckFrameBuilder;
+
 /**
  * A packet number space.
  * 
@@ -46,6 +49,10 @@ public class PacketNumberSpace {
 	};
 	
 	private final PacketNumberSpace.Type type;
+	
+	private final FrameManager frames = new FrameManager();
+	
+	private final AckFrameBuilder acks = new AckFrameBuilder(10);
 	
 	private long next;
 	
@@ -83,18 +90,41 @@ public class PacketNumberSpace {
 	/**
 	 * Updates the state of this packet number space after receiving of an
 	 * acknowledgement.
+	 * <p>
+	 * This method updates the associated frame manager by calling
+	 * {@link FrameManager#ack(long)}
 	 * 
 	 * @param pn the packet number being acknowledged
+	 * @throws QuicException if the packet number has an unexpected value
 	 */
-	public void updateAcked(long pn) {
+	public void updateAcked(long pn) throws QuicException {
+		frames.ack(pn);
 		if (pn > largestAcked) {
 			largestAcked = pn;
 		}
 	}
 	
 	/**
-	 * Returns the maximum packet number that was acknowledged in this packet number
-	 * space.
+	 * Returns the associated ACK frame builder.
+	 * 
+	 * @return the ACK frame builder
+	 */
+	public AckFrameBuilder acks() {
+		return acks;
+	}
+	
+	/**
+	 * Returns the associated frame manager.
+	 * 
+	 * @return the frame manager
+	 */
+	public FrameManager frames() {
+		return frames;
+	}
+	
+	/**
+	 * Returns the maximum packet number that was acknowledged by peer in this
+	 * packet number space.
 	 * 
 	 * @return the maximum packet number that was acknowledged
 	 */

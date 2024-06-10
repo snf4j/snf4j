@@ -27,8 +27,11 @@ package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
+import org.snf4j.quic.QuicException;
+import org.snf4j.quic.frame.PingFrame;
 
 public class PacketNumberSpaceTest {
 
@@ -42,17 +45,19 @@ public class PacketNumberSpaceTest {
 	}
 	
 	@Test
-	public void testUpdate() {
+	public void testUpdate() throws Exception {
 		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA);
 		
 		assertEquals(-1, s.getLargestAcked());
 		assertEquals(-1, s.getLargestProcessed());
+		s.frames().fly(new PingFrame(), 100);
 		s.updateAcked(100);
 		assertEquals(100, s.getLargestAcked());
 		assertEquals(-1, s.getLargestProcessed());
 		s.updateAcked(99);
 		assertEquals(100, s.getLargestAcked());
 		assertEquals(-1, s.getLargestProcessed());
+		s.frames().fly(new PingFrame(), 101);
 		s.updateAcked(101);
 		assertEquals(101, s.getLargestAcked());
 		assertEquals(-1, s.getLargestProcessed());
@@ -66,5 +71,14 @@ public class PacketNumberSpaceTest {
 		s.updateProcessed(51);
 		assertEquals(101, s.getLargestAcked());
 		assertEquals(51, s.getLargestProcessed());
+		
+		try {
+			s.updateAcked(102);
+			fail();
+		}
+		catch (QuicException e) {
+		}
+		s.frames().fly(new PingFrame(), 102);
+		s.updateAcked(102);
 	}
 }

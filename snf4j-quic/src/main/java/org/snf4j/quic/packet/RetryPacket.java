@@ -148,8 +148,8 @@ public class RetryPacket extends LongHeaderPacket {
 	}
 	
 	@Override
-	int length(int pnLength) {
-		return super.length(pnLength)
+	int length(int pnLength, int expansion) {
+		return super.length(pnLength, expansion)
 			+ token.length
 			+ INTEGRITY_TAG_LENGTH;
 	}

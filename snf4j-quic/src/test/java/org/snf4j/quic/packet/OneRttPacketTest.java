@@ -88,8 +88,8 @@ public class OneRttPacketTest extends CommonTest {
 		assertFalse(p.getKeyPhase());
 		assertEquals(0x30L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(8, p.getLength(-1));
-		assertEquals(11, p.getMaxLength());
+		assertEquals(8+7, p.getLength(-1,7));
+		assertEquals(11+16, p.getMaxLength(16));
 
 		//2-byte packet number
 		p = parse("61 01020304 2930 00 01", -1, -1);
@@ -99,8 +99,8 @@ public class OneRttPacketTest extends CommonTest {
 		assertFalse(p.getKeyPhase());
 		assertEquals(0x2930L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(9, p.getLength(-1));
-		assertEquals(11, p.getMaxLength());
+		assertEquals(9, p.getLength(-1,0));
+		assertEquals(11, p.getMaxLength(0));
 
 		//3-byte packet number
 		p = parse("46 01020304 282930 00 01", -1, -1);
@@ -110,8 +110,8 @@ public class OneRttPacketTest extends CommonTest {
 		assertTrue(p.getKeyPhase());
 		assertEquals(0x282930L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(10, p.getLength(-1));
-		assertEquals(11, p.getMaxLength());
+		assertEquals(10, p.getLength(-1,0));
+		assertEquals(11, p.getMaxLength(0));
 
 		//4-byte packet number
 		p = parse("67 01020304 27282930 00 01", -1, -1);
@@ -121,8 +121,8 @@ public class OneRttPacketTest extends CommonTest {
 		assertTrue(p.getKeyPhase());
 		assertEquals(0x27282930L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(11, p.getLength(-1));
-		assertEquals(11, p.getMaxLength());
+		assertEquals(11, p.getLength(-1,0));
+		assertEquals(11, p.getMaxLength(0));
 
 		//more data in buffer
 		p = parse("67 01020304 27282930 00 01 00", 11, -1);
@@ -132,8 +132,8 @@ public class OneRttPacketTest extends CommonTest {
 		assertTrue(p.getKeyPhase());
 		assertEquals(0x27282930L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(11, p.getLength(-1));
-		assertEquals(11, p.getMaxLength());
+		assertEquals(11, p.getLength(-1,0));
+		assertEquals(11, p.getMaxLength(0));
 	}	
 	
 	@Test
@@ -175,40 +175,40 @@ public class OneRttPacketTest extends CommonTest {
 		p.getBytes(largest, buffer);
 		assertArrayEquals(bytes("40 0102 78 01"), bytes());
 		buffer.flip();
-		assertEquals(buffer.remaining(), p.getLength(largest));
+		assertEquals(buffer.remaining(), p.getLength(largest,0));
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(largest,2), FrameDecoder.INSTANCE);
 		assertEquals(0x0102030405060778L, p.getPacketNumber());
-		assertEquals(buffer.limit(), p.getLength(largest));
+		assertEquals(buffer.limit(), p.getLength(largest,0));
 		buffer.clear();
 
 		largest = 0x0102030405060777L - 0x0fff;
 		p.getBytes(largest, buffer);
 		assertArrayEquals(bytes("41 0102 0778 01"), bytes());
 		buffer.flip();
-		assertEquals(buffer.remaining(), p.getLength(largest));
+		assertEquals(buffer.remaining(), p.getLength(largest,0));
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(largest,2), FrameDecoder.INSTANCE);
 		assertEquals(0x0102030405060778L, p.getPacketNumber());
-		assertEquals(buffer.limit(), p.getLength(largest));
+		assertEquals(buffer.limit(), p.getLength(largest,0));
 		buffer.clear();
 
 		largest = 0x0102030405060777L - 0x0fffff;
 		p.getBytes(largest, buffer);
 		assertArrayEquals(bytes("42 0102 060778 01"), bytes());
 		buffer.flip();
-		assertEquals(buffer.remaining(), p.getLength(largest));
+		assertEquals(buffer.remaining(), p.getLength(largest,0));
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(largest,2), FrameDecoder.INSTANCE);
 		assertEquals(0x0102030405060778L, p.getPacketNumber());
-		assertEquals(buffer.limit(), p.getLength(largest));
+		assertEquals(buffer.limit(), p.getLength(largest,0));
 		buffer.clear();
 		
 		largest = 0x0102030405060777L - 0x0fffffff;
 		p.getBytes(largest, buffer);
 		assertArrayEquals(bytes("43 0102 05060778 01"), bytes());
 		buffer.flip();
-		assertEquals(buffer.remaining(), p.getLength(largest));
+		assertEquals(buffer.remaining(), p.getLength(largest,0));
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(largest,2), FrameDecoder.INSTANCE);
 		assertEquals(0x0102030405060778L, p.getPacketNumber());
-		assertEquals(buffer.limit(), p.getLength(largest));
+		assertEquals(buffer.limit(), p.getLength(largest,0));
 		buffer.clear();
 	}
 	

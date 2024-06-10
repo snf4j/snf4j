@@ -89,8 +89,9 @@ public class EncryptionContextTest extends CommonTest {
 	
 	@Test
 	public void testSetEncryptor() {
-		EncryptionContext ctx = new EncryptionContext();
-		
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
+
+		assertSame(EncryptionLevel.INITIAL, ctx.getLevel());
 		ctx.setEncryptor(e1);
 		assertSame(e1, ctx.getEncryptor());
 		assertSame(e1, ctx.getEncryptor(KeyPhase.CURRENT));
@@ -118,7 +119,7 @@ public class EncryptionContextTest extends CommonTest {
 
 	@Test
 	public void testSetDecryptor() {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		
 		ctx.setDecryptor(d1);
 		assertSame(d1, ctx.getDecryptor());
@@ -147,7 +148,7 @@ public class EncryptionContextTest extends CommonTest {
 	
 	@Test
 	public void testGetDecryptorWithKeyPhaseBit() {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 
 		ctx.setDecryptor(d1, KeyPhase.PREVIOUS);
 		ctx.setDecryptor(d2, KeyPhase.CURRENT);
@@ -171,7 +172,7 @@ public class EncryptionContextTest extends CommonTest {
 		assertSame(d3, ctx.getDecryptor(true, 0));
 		assertSame(d3, ctx.getDecryptor(true, 9));
 		
-		ctx = new EncryptionContext();
+		ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		try {
 			ctx.getDecryptor(false, 100);
 			fail();
@@ -189,7 +190,7 @@ public class EncryptionContextTest extends CommonTest {
 
 	@Test
 	public void testGetDecryptorWithKeyPhaseBitAndNoPacketNumers() {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 
 		ctx.setDecryptor(d1, KeyPhase.PREVIOUS);
 		ctx.setDecryptor(d2, KeyPhase.CURRENT);
@@ -215,7 +216,7 @@ public class EncryptionContextTest extends CommonTest {
 	
 	@Test
 	public void testRotateKeys() {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		
 		ctx.setEncryptor(e1, KeyPhase.PREVIOUS);
 		ctx.setDecryptor(d1, KeyPhase.PREVIOUS);
@@ -231,7 +232,7 @@ public class EncryptionContextTest extends CommonTest {
 		assertEncryptors(ctx, null,e3,null);
 		assertDecryptors(ctx, d2,d3,null);
 		
-		ctx = new EncryptionContext();
+		ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		ctx.setEncryptor(e2, KeyPhase.CURRENT);
 		ctx.setDecryptor(d2, KeyPhase.CURRENT);
 		ctx.setEncryptor(e3, KeyPhase.NEXT);
@@ -256,7 +257,7 @@ public class EncryptionContextTest extends CommonTest {
 		assertNull(ctx.getEncryptor(KeyPhase.NEXT));
 		assertNull(ctx.getDecryptor(KeyPhase.NEXT));
 
-		ctx = new EncryptionContext();
+		ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		ctx.setEncryptor(e3, KeyPhase.NEXT);
 		ctx.setDecryptor(d3, KeyPhase.NEXT);
 		assertEquals("", trace());
@@ -270,7 +271,7 @@ public class EncryptionContextTest extends CommonTest {
 		assertNull(ctx.getEncryptor(KeyPhase.NEXT));
 		assertNull(ctx.getDecryptor(KeyPhase.NEXT));
 
-		ctx = new EncryptionContext();
+		ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		assertEquals("", trace());
 		ctx.rotateKeys();
 		assertTrue(ctx.getKeyPhaseBit());
@@ -285,7 +286,7 @@ public class EncryptionContextTest extends CommonTest {
 	
 	@Test
 	public void testRotateKeysRealProcess() {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		
 		//phase 0
 		assertFalse(ctx.getKeyPhaseBit());
@@ -325,7 +326,7 @@ public class EncryptionContextTest extends CommonTest {
 	
 	@Test
 	public void testErase1() throws Exception {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		
 		ctx.setEncryptor(e1, KeyPhase.PREVIOUS);
 		ctx.setEncryptor(e2, KeyPhase.CURRENT);
@@ -343,7 +344,7 @@ public class EncryptionContextTest extends CommonTest {
 
 	@Test
 	public void testErase2() throws Exception {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		
 		ctx.setEncryptor(e2, KeyPhase.CURRENT);
 		ctx.setEncryptor(e3, KeyPhase.NEXT);
@@ -357,7 +358,7 @@ public class EncryptionContextTest extends CommonTest {
 
 	@Test
 	public void testErase3() throws Exception {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		
 		ctx.setEncryptor(e3, KeyPhase.NEXT);
 		ctx.setDecryptor(d3, KeyPhase.NEXT);
@@ -371,7 +372,7 @@ public class EncryptionContextTest extends CommonTest {
 	
 	@Test
 	public void testBuffer() throws Exception {
-		EncryptionContext ctx = new EncryptionContext();
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL);
 		
 		for (int i=0; i<11; ++i) {
 			ctx.getBuffer().put(bytes(i));
@@ -381,7 +382,8 @@ public class EncryptionContextTest extends CommonTest {
 		}
 		assertNull(ctx.getBuffer().get());
 		
-		ctx = new EncryptionContext(2);
+		ctx = new EncryptionContext(EncryptionLevel.EARLY_DATA, 2);
+		assertSame(EncryptionLevel.EARLY_DATA, ctx.getLevel());
 		ctx.getBuffer().put(bytes(0));
 		ctx.getBuffer().put(bytes(1));
 		ctx.getBuffer().put(bytes(2));
@@ -392,6 +394,44 @@ public class EncryptionContextTest extends CommonTest {
 		PacketBuffer buf = ctx.getBuffer();
 		ctx.erase();
 		assertNotSame(buf, ctx.getBuffer());
+	}
+	
+	@Test
+	public void testListener() {
+		final StringBuilder trace = new StringBuilder();
+		IEncryptionContextListener listener = new IEncryptionContextListener() {
+
+			@Override
+			public void onNewEncryptor(EncryptionLevel level, KeyPhase phase) {
+				trace.append("E:")
+					.append(level)
+					.append(',')
+					.append(phase)
+					.append('|');
+			}
+
+			@Override
+			public void onNewDecryptor(EncryptionLevel level, KeyPhase phase) {
+				trace.append("D:")
+					.append(level)
+					.append(',')
+					.append(phase)
+					.append('|');
+			}
+		};
+		EncryptionContext ctx = new EncryptionContext(EncryptionLevel.INITIAL, 10, listener);
+
+		ctx.setEncryptor(e3, KeyPhase.NEXT);
+		assertEquals("E:INITIAL,NEXT|", trace.toString());
+		trace.setLength(0);
+		ctx.setDecryptor(d3, KeyPhase.PREVIOUS);
+		assertEquals("D:INITIAL,PREVIOUS|", trace.toString());
+		trace.setLength(0);
+		ctx.setEncryptor(e3);
+		assertEquals("E:INITIAL,CURRENT|", trace.toString());
+		trace.setLength(0);
+		ctx.setDecryptor(d3);
+		assertEquals("D:INITIAL,CURRENT|", trace.toString());
 	}
 	
 	class TestEncrypt implements IAeadEncrypt {

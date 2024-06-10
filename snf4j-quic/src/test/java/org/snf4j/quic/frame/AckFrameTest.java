@@ -249,6 +249,13 @@ public class AckFrameTest extends CommonTest {
 	}	
 	
 	@Test
+	public void testSmallestLargest() {
+		AckFrame f = new AckFrame(ranges(64,63, 61,60), 1000);
+		assertEquals(64, f.getLargestPacketNumber());
+		assertEquals(60, f.getSmallestPacketNumber());
+	}
+	
+	@Test
 	public void testGetBytes() {
 
 		//largest acked, dalay

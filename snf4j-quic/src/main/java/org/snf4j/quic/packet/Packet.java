@@ -65,18 +65,18 @@ abstract class Packet implements IPacket {
 		return frames;
 	}
 
-	int length(int pnLength) {
+	int length(int pnLength, int expansion) {
 		return 1 + 1 + destinationId.length;
 	}
 	
 	@Override
-	public int getMaxLength() {
-		return length(4);
+	public int getMaxLength(int expansion) {
+		return length(4, expansion);
 	}
 
 	@Override
-	public int getLength(long largestPn) {
-		return length(PacketUtil.encodedPacketNumberLength(packetNumber, largestPn));
+	public int getLength(long largestPn, int expansion) {
+		return length(PacketUtil.encodedPacketNumberLength(packetNumber, largestPn), expansion);
 	}
 		
 	int getFramesLength() {

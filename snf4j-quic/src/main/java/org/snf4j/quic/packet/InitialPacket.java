@@ -162,10 +162,10 @@ public class InitialPacket extends LongHeaderPacket {
 	}
 	
 	@Override
-	int length(int pnLength) {
-		int length = getFramesLength() + pnLength;
+	int length(int pnLength, int expansion) {
+		int length = getFramesLength() + pnLength + expansion;
 		
-		return super.length(pnLength)
+		return super.length(pnLength, expansion)
 			+ PacketUtil.encodedIntegerLength(token.length)
 			+ token.length
 			+ PacketUtil.encodedIntegerLength(length)

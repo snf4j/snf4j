@@ -74,8 +74,8 @@ public class VersionNegotiationPacketTest extends CommonTest {
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertEquals(-1, p.getPacketNumber());
 		assertNull(p.getFrames());
-		assertEquals(16, p.getLength(-1));
-		assertEquals(16, p.getMaxLength());
+		assertEquals(16, p.getLength(-1,5));
+		assertEquals(16, p.getMaxLength(10));
 		assertEquals(0, buffer.remaining());
 		assertArrayEquals(new Version[] {Version.V1}, p.getSupportedVersions());
 
@@ -87,8 +87,8 @@ public class VersionNegotiationPacketTest extends CommonTest {
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertEquals(-1, p.getPacketNumber());
 		assertNull(p.getFrames());
-		assertEquals(20, p.getLength(-1));
-		assertEquals(20, p.getMaxLength());
+		assertEquals(20, p.getLength(-1,0));
+		assertEquals(20, p.getMaxLength(0));
 		assertEquals(0, buffer.remaining());
 		assertArrayEquals(new Version[] {Version.V1, Version.V0}, p.getSupportedVersions());
 
@@ -100,8 +100,8 @@ public class VersionNegotiationPacketTest extends CommonTest {
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertEquals(-1, p.getPacketNumber());
 		assertNull(p.getFrames());
-		assertEquals(24, p.getLength(-1));
-		assertEquals(24, p.getMaxLength());
+		assertEquals(24, p.getLength(-1,0));
+		assertEquals(24, p.getMaxLength(0));
 		assertEquals(0, buffer.remaining());
 		assertArrayEquals(new Version[] {Version.V1, null, Version.V0}, p.getSupportedVersions());
 		
@@ -113,8 +113,8 @@ public class VersionNegotiationPacketTest extends CommonTest {
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertEquals(-1, p.getPacketNumber());
 		assertNull(p.getFrames());
-		assertEquals(12, p.getLength(-1));
-		assertEquals(12, p.getMaxLength());
+		assertEquals(12, p.getLength(-1,0));
+		assertEquals(12, p.getMaxLength(0));
 		assertEquals(0, buffer.remaining());
 		assertArrayEquals(new Version[0], p.getSupportedVersions());
 
@@ -126,8 +126,8 @@ public class VersionNegotiationPacketTest extends CommonTest {
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertEquals(-1, p.getPacketNumber());
 		assertNull(p.getFrames());
-		assertEquals(24, p.getLength(-1));
-		assertEquals(24, p.getMaxLength());
+		assertEquals(24, p.getLength(-1,0));
+		assertEquals(24, p.getMaxLength(0));
 		assertEquals(1, buffer.remaining());
 		assertArrayEquals(new Version[] {Version.V1, null, Version.V0}, p.getSupportedVersions());
 		

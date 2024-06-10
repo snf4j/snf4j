@@ -93,8 +93,8 @@ public class InitialPacketTest extends CommonTest {
 		assertSame(PacketUtil.EMPTY_ARRAY, p.getToken());
 		assertEquals(0x30L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(17, p.getLength(-1));
-		assertEquals(20, p.getMaxLength());
+		assertEquals(17+5, p.getLength(-1,5));
+		assertEquals(20+16, p.getMaxLength(16));
 		
 		//2-byte packet number
 		p = parse("c1 00000001 03 010203 02 0102 00 04 30 31 00 01", -1, -1);
@@ -105,8 +105,8 @@ public class InitialPacketTest extends CommonTest {
 		assertArrayEquals(bytes(""), p.getToken());
 		assertEquals(0x3031L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(18, p.getLength(-1));
-		assertEquals(20, p.getMaxLength());
+		assertEquals(18, p.getLength(-1,0));
+		assertEquals(20, p.getMaxLength(0));
 		
 		//3-byte packet number
 		p = parse("c2 00000001 03 010203 02 0102 00 05 29 30 31 00 01", -1, -1);
@@ -117,8 +117,8 @@ public class InitialPacketTest extends CommonTest {
 		assertArrayEquals(bytes(""), p.getToken());
 		assertEquals(0x293031L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(19, p.getLength(-1));
-		assertEquals(20, p.getMaxLength());
+		assertEquals(19, p.getLength(-1,0));
+		assertEquals(20, p.getMaxLength(0));
 
 		//4-byte packet number
 		p = parse("c3 00000001 03 010203 02 0102 00 06 28 29 30 31 00 01", -1, -1);
@@ -129,8 +129,8 @@ public class InitialPacketTest extends CommonTest {
 		assertArrayEquals(bytes(""), p.getToken());
 		assertEquals(0x28293031L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(20, p.getLength(-1));
-		assertEquals(20, p.getMaxLength());
+		assertEquals(20, p.getLength(-1,0));
+		assertEquals(20, p.getMaxLength(0));
 		assertEquals(0, buffer.remaining());
 
 		//more data in buffer
@@ -142,8 +142,8 @@ public class InitialPacketTest extends CommonTest {
 		assertArrayEquals(bytes(""), p.getToken());
 		assertEquals(0x28293031L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(20, p.getLength(-1));
-		assertEquals(20, p.getMaxLength());
+		assertEquals(20, p.getLength(-1,0));
+		assertEquals(20, p.getMaxLength(0));
 		assertEquals(1, buffer.remaining());
 		
 		//token
@@ -155,8 +155,8 @@ public class InitialPacketTest extends CommonTest {
 		assertArrayEquals(bytes("01020304"), p.getToken());
 		assertEquals(0x31L, p.getPacketNumber());
 		assertEquals(2, p.getFrames().size());
-		assertEquals(21, p.getLength(-1));
-		assertEquals(24, p.getMaxLength());		
+		assertEquals(21, p.getLength(-1,0));
+		assertEquals(24, p.getMaxLength(0));		
 	}
 	
 	@Test
@@ -204,40 +204,40 @@ public class InitialPacketTest extends CommonTest {
 		p.getBytes(largest, buffer);
 		assertArrayEquals(bytes("c0 00000001 01 01 01 02 00 02 78 01"), bytes());
 		buffer.flip();
-		assertEquals(buffer.remaining(), p.getLength(largest));
+		assertEquals(buffer.remaining(), p.getLength(largest,0));
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(largest), FrameDecoder.INSTANCE);
 		assertEquals(0x0102030405060778L, p.getPacketNumber());
-		assertEquals(buffer.limit(), p.getLength(largest));
+		assertEquals(buffer.limit(), p.getLength(largest,0));
 		buffer.clear();
 		
 		largest = 0x0102030405060777L - 0x0fff;
 		p.getBytes(largest, buffer);
 		assertArrayEquals(bytes("c1 00000001 01 01 01 02 00 03 0778 01"), bytes());
 		buffer.flip();
-		assertEquals(buffer.remaining(), p.getLength(largest));
+		assertEquals(buffer.remaining(), p.getLength(largest,0));
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(largest), FrameDecoder.INSTANCE);
 		assertEquals(0x0102030405060778L, p.getPacketNumber());
-		assertEquals(buffer.limit(), p.getLength(largest));
+		assertEquals(buffer.limit(), p.getLength(largest,0));
 		buffer.clear();
 
 		largest = 0x0102030405060777L - 0x0fffff;
 		p.getBytes(largest, buffer);
 		assertArrayEquals(bytes("c2 00000001 01 01 01 02 00 04 060778 01"), bytes());
 		buffer.flip();
-		assertEquals(buffer.remaining(), p.getLength(largest));
+		assertEquals(buffer.remaining(), p.getLength(largest,0));
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(largest), FrameDecoder.INSTANCE);
 		assertEquals(0x0102030405060778L, p.getPacketNumber());
-		assertEquals(buffer.limit(), p.getLength(largest));
+		assertEquals(buffer.limit(), p.getLength(largest,0));
 		buffer.clear();
 
 		largest = 0x0102030405060777L - 0x0fffffff;
 		p.getBytes(largest, buffer);
 		assertArrayEquals(bytes("c3 00000001 01 01 01 02 00 05 05060778 01"), bytes());
 		buffer.flip();
-		assertEquals(buffer.remaining(), p.getLength(largest));
+		assertEquals(buffer.remaining(), p.getLength(largest,0));
 		p = parser.parse(buffer, buffer.remaining(), new ParseContext(largest), FrameDecoder.INSTANCE);
 		assertEquals(0x0102030405060778L, p.getPacketNumber());
-		assertEquals(buffer.limit(), p.getLength(largest));
+		assertEquals(buffer.limit(), p.getLength(largest,0));
 		buffer.clear();
 	}
 	

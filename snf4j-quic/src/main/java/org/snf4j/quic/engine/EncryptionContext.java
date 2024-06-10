@@ -38,10 +38,25 @@ public class EncryptionContext {
 
 	private final static int NEXT_PHASE = KeyPhase.NEXT.ordinal();
 	
+	private final static IEncryptionContextListener DEFAULT_LISTENER = new IEncryptionContextListener() {
+
+		@Override
+		public void onNewEncryptor(EncryptionLevel level, KeyPhase phase) {
+		}
+
+		@Override
+		public void onNewDecryptor(EncryptionLevel level, KeyPhase phase) {
+		}
+	};
+	
 	private Encryptor[] encryptors = new Encryptor[PHASES_NUMBER];
 
 	private Decryptor[] decryptors = new Decryptor[PHASES_NUMBER];
 		
+	private final EncryptionLevel level;
+	
+	private final IEncryptionContextListener listener;
+	
 	private boolean keyPhaseBit;
 	
 	private final int maxBufferSize;
@@ -49,23 +64,41 @@ public class EncryptionContext {
 	private PacketBuffer buffer;
 	
 	private boolean erased;
+
+	/**
+	 * Constructs a encryption context with the given maximum buffer size for
+	 * buffered packets and encryption context listener.
+	 * 
+	 * @param level         the encryption level for this context
+	 * @param maxBufferSize the maximum buffer size
+	 * @param listener      the encryption context listener that should associated
+	 *                      with this context
+	 */
+	public EncryptionContext(EncryptionLevel level, int maxBufferSize, IEncryptionContextListener listener) {
+		this.maxBufferSize = maxBufferSize;
+		this.level = level;
+		this.listener = listener;
+	}
 	
 	/**
 	 * Constructs a encryption context with the given maximum buffer size for
 	 * buffered packets.
 	 * 
+	 * @param level         the encryption level for this context
 	 * @param maxBufferSize the maximum buffer size
 	 */
-	public EncryptionContext(int maxBufferSize) {
-		this.maxBufferSize = maxBufferSize;
+	public EncryptionContext(EncryptionLevel level, int maxBufferSize) {
+		this(level, maxBufferSize, DEFAULT_LISTENER);
 	}
 
 	/**
 	 * Constructs a encryption context with the default buffer size (10) for
 	 * buffered packets.
+	 * 
+	 * @param level the encryption level for this context
 	 */
-	public EncryptionContext() {
-		this(10);
+	public EncryptionContext(EncryptionLevel level) {
+		this(level, 10, DEFAULT_LISTENER);
 	}
 	
 	/**
@@ -90,6 +123,7 @@ public class EncryptionContext {
 	 */
 	public void setEncryptor(Encryptor encryptor) {
 		encryptors[CURRENT_PHASE] = encryptor;
+		listener.onNewEncryptor(level, KeyPhase.CURRENT);
 	}
 
 	/**
@@ -104,6 +138,7 @@ public class EncryptionContext {
 	 */
 	public void setEncryptor(Encryptor encryptor, KeyPhase phase) {
 		encryptors[phase.ordinal()] = encryptor;
+		listener.onNewEncryptor(level, phase);
 	}
 
 	/**
@@ -138,6 +173,7 @@ public class EncryptionContext {
 	 */
 	public void setDecryptor(Decryptor decryptor) {
 		decryptors[CURRENT_PHASE] = decryptor;
+		listener.onNewDecryptor(level, KeyPhase.CURRENT);
 	}
 	
 	/**
@@ -152,6 +188,7 @@ public class EncryptionContext {
 	 */
 	public void setDecryptor(Decryptor decryptor, KeyPhase phase) {
 		decryptors[phase.ordinal()] = decryptor;
+		listener.onNewDecryptor(level, phase);
 	}
 
 	/**
@@ -299,4 +336,15 @@ public class EncryptionContext {
 	public boolean isErased() {
 		return erased;
 	}
+
+	/**
+	 * The encryption level of this encryption context.
+	 * 
+	 * @return the encryption level
+	 */
+	public EncryptionLevel getLevel() {
+		return level;
+	}
+	
+	
 }

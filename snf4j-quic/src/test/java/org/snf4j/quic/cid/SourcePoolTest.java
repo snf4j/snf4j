@@ -120,6 +120,9 @@ public class SourcePoolTest extends CommonTest {
 		assertSame(c1, p.get());
 		assertNull(p.get(0));
 		assertSame(c1, p.get(1));
+		assertSame(c1, p.get(c1.getId()));
+		assertNull(p.get(bytes(2)));
+		
 	}	
 	
 	@Test

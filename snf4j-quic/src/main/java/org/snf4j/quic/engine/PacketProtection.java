@@ -39,7 +39,9 @@ import org.snf4j.quic.packet.IPacket;
 import org.snf4j.quic.packet.IPacketParser;
 import org.snf4j.quic.packet.InitialPacket;
 import org.snf4j.quic.packet.OneRttPacket;
+import org.snf4j.quic.packet.PacketInfo;
 import org.snf4j.quic.packet.PacketType;
+import org.snf4j.quic.packet.PacketUtil;
 import org.snf4j.quic.packet.ParseContext;
 import org.snf4j.quic.packet.RetryPacket;
 import org.snf4j.quic.packet.VersionNegotiationPacket;
@@ -68,14 +70,14 @@ public class PacketProtection {
 		PARSERS[parser.getType().ordinal()] = parser;
 	}
 
-	private final PacketProtectionListener listener;
+	private final IPacketProtectionListener listener;
 	
 	/**
 	 * Constructs a packet protection with the given packet protection listener.
 	 * 
 	 * @param listener the packet protection listener
 	 */
-	public PacketProtection(PacketProtectionListener listener) {
+	public PacketProtection(IPacketProtectionListener listener) {
 		Args.checkNull(listener, "listener");
 		this.listener = listener;
 	}
@@ -161,16 +163,7 @@ public class PacketProtection {
 			throw new QuicException(TransportError.INTERNAL_ERROR, "Packet protection failed", e);
 		}
 	}
-	
-	PacketType decectLongHeaderType(int type) {
-		switch (type) {
-		case 0: return PacketType.INITIAL;
-		case 1: return PacketType.ZERO_RTT;
-		case 2: return PacketType.HANDSHAKE;
-		default: return PacketType.RETRY;
-		}
-	}
-	
+		
 	PacketType detectType(ByteBuffer src) throws QuicException {
 		int pos = src.position();
 		int firstByte = src.get(pos);
@@ -179,10 +172,12 @@ public class PacketProtection {
 			return PacketType.ONE_RTT;
 		}
 		if (src.remaining() > 4) {
-			if (src.getInt(pos+1) == Version.V0.value()) {
+			Version version = PacketUtil.identifyVersion(src.getInt(pos+1));
+			
+			if (version == Version.V0) {
 				return PacketType.VERSION_NEGOTIATION;
 			}
-			return decectLongHeaderType((firstByte & 0x30) >> 4);
+			return PacketInfo.of(version).longHeaderType(firstByte);
 		}
 		throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Unknown packet type");
 	}
@@ -206,7 +201,7 @@ public class PacketProtection {
 	 * 
 	 * @param state the state of the associated QUIC engine
 	 * @param src   the destination buffer
-	 * @return a packet being unprotected, or {@code null} if the was consumed and
+	 * @return a packet being unprotected, or {@code null} if it was consumed and
 	 *         dropped
 	 * @throws QuicException if an error occurred that does not allow to process the
 	 *                       rest of the data that left in the source buffer
