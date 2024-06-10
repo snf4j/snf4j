@@ -38,12 +38,14 @@ import org.snf4j.quic.frame.IFrame;
 public interface IPacket {
 	
 	/**
-	 * Returns the maximum length of this packet. The maximum length assumes the maximum length
-	 * of the packet number (i.e. 4 bytes)
+	 * Returns the maximum length of this packet. The maximum length assumes the
+	 * maximum length of the packet number (i.e. 4 bytes)
 	 * 
+	 * @param expansion the length increase of a message when it is encrypted. It is
+	 *                  ignored by packets not supporting protection.
 	 * @return the maximum length of this packet
 	 */
-	int getMaxLength();
+	int getMaxLength(int expansion);
 	
 	/**
 	 * Returns the type identifying this QUIC packet.
@@ -59,9 +61,11 @@ public interface IPacket {
 	 * 
 	 * @param largestPn the largest processed/acknowledged packet number in the
 	 *                  current packet number space
+	 * @param expansion the length increase of a message when it is encrypted. It is
+	 *                  ignored by packets not supporting protection.
 	 * @return the length of this packet
 	 */
-	int getLength(long largestPn);
+	int getLength(long largestPn, int expansion);
 	
 	/**
 	 * Gets the bytes representing this QUIC packet and put them into the given

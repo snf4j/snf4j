@@ -25,6 +25,7 @@
  */
 package org.snf4j.quic.cid;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,6 +43,16 @@ abstract class Pool implements IPool {
 	@Override
 	public ConnectionId get(int sequenceNumber) {
 		return cids.get(sequenceNumber);
+	}
+	
+	@Override
+	public ConnectionId get(byte[] id) {
+		for (ConnectionId cid: cids.values()) {
+			if (Arrays.equals(cid.getId(), id)) {
+				return cid;
+			}
+		}
+		return null;
 	}
 	
 	@Override

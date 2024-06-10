@@ -336,6 +336,7 @@ public class PacketProtectionTest extends CommonTest {
 		assertEquals(0xfffffffeL, p2.getPacketNumber());
 
 		srvState.getSpace(EncryptionLevel.INITIAL).updateProcessed(0xffffffffL - 0x8001);
+		cliState.getSpace(EncryptionLevel.INITIAL).frames().fly(new PingFrame(), 0x3fffffffffffffffL);
 		cliState.getSpace(EncryptionLevel.INITIAL).updateAcked(0xffffffffL - 0x8001);
 		p = new InitialPacket(DEST_CID, 0xffffffffL, bytes(), Version.V1, bytes());
 		p.getFrames().add(new MultiPaddingFrame(10));
@@ -804,7 +805,7 @@ public class PacketProtectionTest extends CommonTest {
 		}
 	}
 
-	class TestListener implements PacketProtectionListener {
+	class TestListener implements IPacketProtectionListener {
 		
 		StringBuilder status = new StringBuilder();
 

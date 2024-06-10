@@ -232,6 +232,24 @@ public class AckFrame implements IFrame {
 	}
 
 	/**
+	 * Returns the smallest packet number being acknowledged by this frame.
+	 * 
+	 * @return the smallest packet number
+	 */
+	public long getSmallestPacketNumber() {
+		return ranges[ranges.length-1].getTo();
+	}
+
+	/**
+	 * Returns the largest packet number being acknowledged by this frame.
+	 * 
+	 * @return the largest packet number
+	 */
+	public long getLargestPacketNumber() {
+		return ranges[0].getFrom();
+	}
+	
+	/**
 	 * Tells if this ACK frame carries the ECN counts
 	 * 
 	 * @return {@code true} if the ECN counts are carried by the ACK frame

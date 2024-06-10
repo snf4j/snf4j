@@ -128,8 +128,8 @@ public class VersionNegotiationPacket extends LongHeaderPacket {
 	}
 
 	@Override
-	int length(int pnLength) {
-		return super.length(pnLength) + 4*versions.length;
+	int length(int pnLength, int expansion) {
+		return super.length(pnLength, expansion) + 4*versions.length;
 	}
 	
 	@Override

@@ -49,8 +49,8 @@ abstract class LongHeaderPacket extends Packet implements ILongHeaderPacket {
 	}
 	
 	@Override
-	int length(int pnLength) {
-		return super.length(pnLength) + 4 + 1 + sourceId.length;
+	int length(int pnLength, int expansion) {
+		return super.length(pnLength, expansion) + 4 + 1 + sourceId.length;
 	}
 	
 	@Override

@@ -44,7 +44,7 @@ public interface IPool {
 	 * preferred_address transport parameter.
 	 */
 	public final static Integer ALTERNATIVE_SEQUENCE_NUMBER = new Integer(1);
-	
+		
 	/**
 	 * Returns one of the active connection ids stored in this pool.
 	 * 
@@ -60,6 +60,15 @@ public interface IPool {
 	 *         be found for the given sequence number
 	 */
 	ConnectionId get(int sequenceNumber);
+	
+	/**
+	 * Returns the active connection id matching the given id.
+	 * 
+	 * @param id the id to match
+	 * @return the connection id, or {@code null} if no active connection id could
+	 *         be found for the given id
+	 */
+	ConnectionId get(byte[] id);
 	
 	/**
 	 * Returns the maximum number of active connection ids that can be stored in

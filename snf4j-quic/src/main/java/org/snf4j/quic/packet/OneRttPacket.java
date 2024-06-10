@@ -133,8 +133,8 @@ public class OneRttPacket extends Packet {
 	}
 	
 	@Override
-	int length(int pnLength) {
-		return 1 + destinationId.length + pnLength + getFramesLength();
+	int length(int pnLength, int expansion) {
+		return 1 + destinationId.length + pnLength + getFramesLength() + expansion;
 	}
 
 	@Override

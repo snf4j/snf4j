@@ -51,6 +51,7 @@ public class FrameDecoder implements IFrameDecoder {
 		add(PingFrame.getParser());
 		add(AckFrame.getParser());
 		add(CryptoFrame.getParser());
+		add(HandshakeDoneFrame.getParser());
 	}
 	
 	private static void add(IFrameParser parser) {

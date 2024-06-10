@@ -75,8 +75,8 @@ public class RetryPacketTest extends CommonTest {
 		assertSame(PacketUtil.EMPTY_ARRAY, p.getToken());
 		assertArrayEquals(bytes(16), p.getIntegrityTag());
 		assertNull(p.getFrames());
-		assertEquals(12+16, p.getLength(-1));
-		assertEquals(12+16, p.getMaxLength());
+		assertEquals(12+16, p.getLength(-1,10));
+		assertEquals(12+16, p.getMaxLength(10));
 
 		assertEquals(0, buffer.remaining());
 
@@ -88,8 +88,8 @@ public class RetryPacketTest extends CommonTest {
 		assertArrayEquals(bytes("0102"), p.getSourceId());
 		assertArrayEquals(bytes("01"), p.getToken());
 		assertArrayEquals(bytes(16), p.getIntegrityTag());
-		assertEquals(13+16, p.getLength(-1));
-		assertEquals(13+16, p.getMaxLength());
+		assertEquals(13+16, p.getLength(-1,10));
+		assertEquals(13+16, p.getMaxLength(10));
 		assertEquals(0, buffer.remaining());
 
 		//more data in buffer

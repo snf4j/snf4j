@@ -38,8 +38,11 @@ import org.junit.Test;
 import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.QuicAlert;
 import org.snf4j.quic.TransportError;
+import org.snf4j.quic.Version;
 import org.snf4j.quic.tp.TransportParameters;
 import org.snf4j.quic.tp.TransportParametersBuilder;
+import org.snf4j.tls.crypto.AESAead;
+import org.snf4j.tls.crypto.AeadEncrypt;
 
 public class QuicStateTest extends CommonTest {
 	
@@ -178,5 +181,36 @@ public class QuicStateTest extends CommonTest {
 		assertArrayEquals(bytes("00010203"), p.originalDestinationId());
 		assertArrayEquals(s.getConnectionIdManager().getRetryId(), p.retrySourceId());
 		assertArrayEquals(s.getConnectionIdManager().getSourcePool().get(0).getResetToken(), p.statelessResetToken());
+	}
+	
+	@Test
+	public void testGetEncryptorLevel() throws Exception {
+		QuicState s = new QuicState(true);
+		assertNull(s.getEncryptorLevel());
+		
+		byte[] key = bytes("11223344556677889900112233445566");
+		byte[] iv = bytes("112233445566778899001122");
+		HeaderProtector hpe = new HeaderProtector(AESAead.AEAD_AES_128_GCM, AESAead.AEAD_AES_128_GCM.createKey(key));
+		Encryptor e = new Encryptor(new AeadEncrypt(AESAead.AEAD_AES_128_GCM.createKey(key),AESAead.AEAD_AES_128_GCM),hpe,iv,1000);
+		s.getContext(EncryptionLevel.INITIAL).setEncryptor(e);
+		assertSame(EncryptionLevel.INITIAL, s.getEncryptorLevel());
+	}
+	
+	@Test
+	public void testSetVersion() {
+		QuicState s = new QuicState(true);
+		
+		assertSame(Version.V1, s.getVersion());
+		s.setVersion(Version.V0);
+		assertSame(Version.V0, s.getVersion());
+	}
+	
+	@Test
+	public void testSetHandshakeState() {
+		QuicState s = new QuicState(true);
+
+		assertSame(HandshakeState.INIT, s.getHandshakeState());
+		s.setHandshakeState(HandshakeState.STARTING);
+		assertSame(HandshakeState.STARTING, s.getHandshakeState());
 	}
 }

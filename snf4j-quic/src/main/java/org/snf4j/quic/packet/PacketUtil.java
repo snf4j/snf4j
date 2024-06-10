@@ -45,6 +45,9 @@ public class PacketUtil {
 	
 	static final byte[] EMPTY_ARRAY = new byte[0];
 	
+	/** The smallest allowed maximum datagram size. */
+	public final static int MIN_MAX_UDP_PAYLOAD_SIZE = 1200;
+	
 	/**
 	 * Decodes QUIC frames from the given source buffer and associates them with the
 	 * QUIC packet.
@@ -99,7 +102,7 @@ public class PacketUtil {
 	 * @return version identifier, or {@code null} if the given version value is not
 	 *         supported
 	 */
-	static Version identifyVersion(int version) {
+	public static Version identifyVersion(int version) {
 		switch (version) {
 		case 0:	return Version.V0;
 		case 1: return Version.V1;
@@ -233,7 +236,7 @@ public class PacketUtil {
 	 *                  has been acknowledged yet.
 	 * @return the length of encoded packet number
 	 */
-	static int encodedPacketNumberLength(long pn, long largestPn) {
+	public static int encodedPacketNumberLength(long pn, long largestPn) {
 		int minBits = 64 - Long.numberOfLeadingZeros(largestPn == -1 
 				? pn + 1
 				: pn - largestPn);
