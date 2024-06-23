@@ -36,6 +36,7 @@ import static org.junit.Assert.assertTrue;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 
+import org.junit.After;
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.QuicException;
@@ -70,11 +71,29 @@ public class CryptoFragmenterTest extends CommonTest {
 	
 	ByteBuffer buf;
 	
+	long receiveTime;
+	
+	long nanoTime;
+;
+	ITimeProvider time = new ITimeProvider() {
+
+		@Override
+		public long nanoTime() {
+			return nanoTime;
+		}
+	};
+	
+	TestConfig config = new TestConfig();
+	
 	@Override
 	public void before() throws Exception {
 		super.before();
-		state = new QuicState(true);
-		peerState = new QuicState(false);
+		receiveTime = 1000000000;
+		nanoTime = 1000000000 + (1000000 << 3); // for ack delay = 1000
+		state = new QuicState(true, config, time);
+		TestConfig peerConfig = new TestConfig();
+		peerConfig.connectionIdLength = 4;
+		peerState = new QuicState(false, peerConfig, time);
 		state.getConnectionIdManager().getSourceId();
 		state.getConnectionIdManager().getDestinationPool().add(bytes("00010203"));
 		listener = new CryptoEngineStateListener(state);
@@ -84,6 +103,12 @@ public class CryptoFragmenterTest extends CommonTest {
 		peer = new PacketProtection(new TestListener(peerListener));
 		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor);
 		buf = ByteBuffer.allocate(2000);
+	}
+	
+	@After
+	public void after() {
+		config = new TestConfig();
+		nanoTime = 0;
 	}
 	
 	void assertCrypto(byte[] expected, int offset, IFrame frame) {
@@ -139,11 +164,11 @@ public class CryptoFragmenterTest extends CommonTest {
 		
 		buf.clear();
 		PacketNumberSpace space = state.getSpace(EncryptionLevel.INITIAL);
-		space.acks().add(0);
-		space.acks().add(1);
-		assertNotNull(space.acks().build(3));
+		space.acks().add(0, 1000);
+		space.acks().add(1, 1000);
+		assertNotNull(space.acks().build(3, 1000, 3));
 		fragmenter.protect(produced(pc1), buf);
-		assertNull(space.acks().build(3));
+		assertNull(space.acks().build(3, 1000, 3));
 		buf.flip();
 		assertEquals(1200, buf.remaining());
 		packet = peer.unprotect(peerState, buf);
@@ -173,10 +198,10 @@ public class CryptoFragmenterTest extends CommonTest {
 		
 		buf.clear();
 		space.frames().add(new PingFrame());
-		space.acks().add(0);
+		space.acks().add(0, 1000);
 		fragmenter.protect(produced(pc1), buf);
 		assertNull(space.frames().peek());
-		assertNull(space.acks().build(3));
+		assertNull(space.acks().build(3, 1000, 3));
 		buf.flip();
 		assertEquals(1200, buf.remaining());
 		packet = peer.unprotect(peerState, buf);
@@ -188,10 +213,10 @@ public class CryptoFragmenterTest extends CommonTest {
 		
 		buf.clear();
 		space.frames().add(new PingFrame());
-		space.acks().add(0);
+		space.acks().add(0, 1000);
 		fragmenter.protect(produced(pc1,pc2), buf);
 		assertNull(space.frames().peek());
-		assertNull(space.acks().build(3));
+		assertNull(space.acks().build(3, 1000, 3));
 		buf.flip();
 		assertEquals(1200, buf.remaining());
 		packet = peer.unprotect(peerState, buf);
@@ -249,8 +274,8 @@ public class CryptoFragmenterTest extends CommonTest {
 		
 		buf.clear();
 		PacketNumberSpace space = state.getSpace(EncryptionLevel.INITIAL);
-		space.acks().add(0);
-		space.acks().add(1);
+		space.acks().add(0, 1000);
+		space.acks().add(1, 1000);
 		fragmenter.protect(produced(), buf);
 		buf.flip();
 		assertEquals(1200, buf.remaining());
@@ -271,7 +296,7 @@ public class CryptoFragmenterTest extends CommonTest {
 		
 		buf.clear();
 		space.frames().add(new PingFrame());
-		space.acks().add(2);
+		space.acks().add(2, 1000);
 		fragmenter.protect(produced(), buf);
 		buf.flip();
 		assertEquals(1200, buf.remaining());
@@ -281,11 +306,11 @@ public class CryptoFragmenterTest extends CommonTest {
 		assertTrue(packet.getFrames().get(1) instanceof PingFrame);
 		
 		buf.clear();
-		space.acks().add(3);
-		space.acks().add(5);
-		space.acks().add(7);
-		space.acks().add(8);
-		space.acks().add(10);
+		space.acks().add(3, 1000);
+		space.acks().add(5, 1000);
+		space.acks().add(7, 1000);
+		space.acks().add(8, 1000);
+		space.acks().add(10, 1000);
 		fragmenter.protect(produced(), buf);
 		buf.flip();
 		assertEquals(1200, buf.remaining());
@@ -299,7 +324,7 @@ public class CryptoFragmenterTest extends CommonTest {
 		packet = peer.unprotect(peerState, buf);
 		assertEquals(2, packet.getFrames().size());
 		assertAck(packet.getFrames().get(0), 3,3);
-		assertNull(space.acks().build(3));
+		assertNull(space.acks().build(3, 1000, 3));
 	}
 	
 	void init(EncryptionLevel level) throws Exception {
@@ -363,21 +388,21 @@ public class CryptoFragmenterTest extends CommonTest {
 		//no remaining for ack
 		buf.clear();
 		pc1 = new ProducedCrypto(buffer(bytes(1200-43-44)), EncryptionLevel.INITIAL, 6);
-		space.acks().add(0);
+		space.acks().add(0, 1000000000);
 		fragmenter.protect(produced(pc1), buf);
 		assertEquals(1200, buf.position());
-		assertNotNull(space.acks().build(3));
-		int len = space.acks().build(3).getLength();
+		assertNotNull(space.acks().build(3, nanoTime, 3));
+		int len = space.acks().build(3, nanoTime, 3).getLength();
 		pc1 = new ProducedCrypto(buffer(bytes(1200-43-43-len+1)), EncryptionLevel.INITIAL, 6);
 		buf.clear();
 		fragmenter.protect(produced(pc1), buf);
 		assertEquals(1200, buf.position());
-		assertNotNull(space.acks().build(3));
+		assertNotNull(space.acks().build(3, nanoTime, 3));
 		pc1 = new ProducedCrypto(buffer(bytes(1200-43-43-len)), EncryptionLevel.INITIAL, 6);
 		buf.clear();
 		fragmenter.protect(produced(pc1), buf);
 		assertEquals(1200, buf.position());
-		assertNull(space.acks().build(3));
+		assertNull(space.acks().build(3, nanoTime, 3));
 		
 		//no remaining for frame
 		buf.clear();
@@ -453,6 +478,71 @@ public class CryptoFragmenterTest extends CommonTest {
 		byte[] data = cat(bytes(((CryptoFrame)packet1.getFrames().get(0)).getData()),
 		bytes(((CryptoFrame)packet2.getFrames().get(0)).getData()));
 		assertArrayEquals(bytes(100), data);
+	}
+	
+	@Test
+	public void testBuildingAcks() throws Exception {
+		config.maxNumberOfStoredAckRanges = 10;
+		config.maxNumberOfAckRanges = 2;
+		config.ackDelayExponent = 1;
+		before();
+		
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		init(EncryptionLevel.HANDSHAKE);
+		init(EncryptionLevel.APPLICATION_DATA);
+
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.INITIAL);
+		space.acks().add(0, receiveTime);
+		space.acks().add(2, receiveTime);
+		space.acks().add(4, receiveTime);
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		buf.flip();
+		IPacket packet = peer.unprotect(peerState, buf);
+		AckFrame ack = (AckFrame) packet.getFrames().get(0);
+		assertAck(ack, 4,4,2,2);
+		assertEquals(((nanoTime-receiveTime)/1000) >> 3, ack.getDelay());
+
+		space = state.getSpace(EncryptionLevel.HANDSHAKE);
+		space.acks().add(0, receiveTime);
+		space.acks().add(3, receiveTime);
+		space.acks().add(6, receiveTime);
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		buf.flip();
+		packet = peer.unprotect(peerState, buf);
+		packet = peer.unprotect(peerState, buf);
+		ack = (AckFrame) packet.getFrames().get(0);
+		assertAck(ack, 6,6,3,3);
+		assertEquals(((nanoTime-receiveTime)/1000) >> 3, ack.getDelay());
+
+		space = state.getSpace(EncryptionLevel.APPLICATION_DATA);
+		space.acks().add(0, receiveTime);
+		space.acks().add(4, receiveTime);
+		space.acks().add(8, receiveTime);
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		buf.flip();
+		packet = peer.unprotect(peerState, buf);
+		packet = peer.unprotect(peerState, buf);
+		ack = (AckFrame) packet.getFrames().get(0);
+		assertAck(ack, 8,8,4,4);
+		assertEquals(((nanoTime-receiveTime)/1000) >> 1, ack.getDelay());
+	}
+	
+	@Test
+	public void testCallingPreSending() throws Exception {
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.INITIAL);
+		space.frames().add(new PingFrame());
+		buf.clear();
+		nanoTime = 12345678;
+		fragmenter.protect(produced(), buf);
+		FlyingFrames flying = space.frames().getFlying(0);
+		assertNotNull(flying);
+		assertEquals(12345678, flying.getSentTime());
 	}
 	
 	class TestListener implements IPacketProtectionListener {

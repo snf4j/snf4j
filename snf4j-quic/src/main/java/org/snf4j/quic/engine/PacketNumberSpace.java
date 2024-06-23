@@ -52,7 +52,7 @@ public class PacketNumberSpace {
 	
 	private final FrameManager frames = new FrameManager();
 	
-	private final AckFrameBuilder acks = new AckFrameBuilder(10);
+	private final AckFrameBuilder acks;
 	
 	private long next;
 	
@@ -63,10 +63,12 @@ public class PacketNumberSpace {
 	/**
 	 * Constructs a packet number space of the given type.
 	 * 
-	 * @param type the type of the packet number space
+	 * @param type          the type of the packet number space
+	 * @param ackRangeLimit the limit of stored ACK ranges
 	 */
-	public PacketNumberSpace(Type type) {
+	public PacketNumberSpace(Type type, int ackRangeLimit) {
 		this.type = type;
+		this.acks = new AckFrameBuilder(ackRangeLimit);
 	}
 	
 	/**

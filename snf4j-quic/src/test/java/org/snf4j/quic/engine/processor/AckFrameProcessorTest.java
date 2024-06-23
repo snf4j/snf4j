@@ -25,6 +25,7 @@
  */
 package org.snf4j.quic.engine.processor;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -37,11 +38,15 @@ import org.snf4j.quic.Version;
 import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.engine.QuicState;
+import org.snf4j.quic.engine.TestConfig;
+import org.snf4j.quic.engine.TestTime;
 import org.snf4j.quic.frame.AckFrame;
 import org.snf4j.quic.frame.AckRange;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.PingFrame;
 import org.snf4j.quic.packet.HandshakePacket;
+import org.snf4j.quic.packet.IPacket;
+import org.snf4j.quic.packet.OneRttPacket;
 
 public class AckFrameProcessorTest extends CommonTest {
 
@@ -95,5 +100,73 @@ public class AckFrameProcessorTest extends CommonTest {
 		assertFalse(space.frames().allAcked());
 		ap.process(p, new AckFrame(ranges,1000), packet);
 		assertTrue(space.frames().allAcked());
+	}
+	
+	@Test
+	public void testAddSample() throws Exception {
+		TestConfig config = new TestConfig();
+		TestTime time = new TestTime(1000_000_000L);
+		QuicState s = new QuicState(true, config, time);
+		QuicProcessor p = new QuicProcessor(s, null);
+		AckFrameProcessor ap = new AckFrameProcessor();
+		PacketNumberSpace space = s.getSpace(EncryptionLevel.APPLICATION_DATA);
+		
+		//largest not newly acked
+		assertEquals(333_000_000L, s.getEstimator().getSmoothedRtt());
+		AckFrame ack = new AckFrame(0, 1000);
+		PingFrame ping = new PingFrame();
+		IPacket packet = new OneRttPacket(bytes("0001"), 0, false, false);
+		packet.getFrames().add(ping);
+		packet.getFrames().add(ack);
+		p.preProcess();
+		space.frames().fly(ping, 0);
+		space.frames().ack(0);
+		ap.process(p, ack, packet);
+		assertEquals(333_000_000L, s.getEstimator().getSmoothedRtt());
+		
+		//largest newly acked but not ack-eliciting
+		packet = new OneRttPacket(bytes("0001"), 1, false, false);
+		ack = new AckFrame(1, 1000);
+		packet.getFrames().add(ack);
+		space.frames().fly(ack, 1);
+		ap.process(p, ack, packet);
+		assertEquals(333_000_000L, s.getEstimator().getSmoothedRtt());
+		
+		//first sample
+		packet = new OneRttPacket(bytes("0001"), 2, false, false);
+		ack = new AckFrame(2, 1000);
+		packet.getFrames().add(ping);
+		packet.getFrames().add(ack);
+		space.frames().fly(ack, 2);
+		space.frames().fly(ping, 2);
+		space.frames().getFlying(2).setSentTime(980_000_000L);
+		ap.process(p, ack, packet);
+		assertEquals(20_000_000L, s.getEstimator().getSmoothedRtt());
+		
+		//second sample
+		s.setPeerAckDelayExponent(1);
+		s.setPeerMaxAckDelay(10000);
+		packet = new OneRttPacket(bytes("0001"), 3, false, false);
+		ack = new AckFrame(3, 1000);
+		packet.getFrames().add(ping);
+		packet.getFrames().add(ack);
+		space.frames().fly(ack, 3);
+		space.frames().fly(ping, 3);
+		space.frames().getFlying(3).setSentTime(960_000_000L);
+		ap.process(p, ack, packet);
+		assertEquals(22250000L, s.getEstimator().getSmoothedRtt());
+		
+		//third sample
+		space = s.getSpace(EncryptionLevel.HANDSHAKE);
+		packet = new HandshakePacket(bytes("0001"), 4, bytes("00"), Version.V1);
+		ack = new AckFrame(new AckRange[] {new AckRange(4,2)}, 1000);
+		packet.getFrames().add(ack);
+		space.frames().fly(ping, 3);
+		space.frames().ack(3);
+		space.frames().fly(ping, 2);
+		space.frames().fly(ack, 4);
+		space.frames().getFlying(4).setSentTime(960_000_000L);
+		ap.process(p, ack, packet);
+		assertEquals(23468750L, s.getEstimator().getSmoothedRtt());
 	}
 }

@@ -32,6 +32,27 @@ package org.snf4j.quic.tp;
  */
 public class TransportParameters {
 
+	/** 
+	 * The default value of the maximum UDP payload size 
+	 * */
+	public final static int DEFAULT_MAX_UDP_PAYLOAD_SIZE = 65527;
+	
+	/** 
+	 * The default value of the acknowledgment delay exponent 
+	 */
+	public final static int DEFAULT_ACK_DELAY_EXPONENT = 3;
+	
+	/** 
+	 * The default value of the maximum acknowledgment delay 
+	 */
+	public final static int DEFAULT_MAX_ACK_DELAY = 25;
+	
+	/**
+	 * The default value of the the maximum number of connection IDs from the peer
+	 * that an endpoint is willing to store
+	 */
+	public final static int DEFAULT_ACTIVE_CONNECTION_ID_LIMIT = 2;
+
 	private final byte[] originalDestinationId;
 
 	private final long maxIdleTimeout;

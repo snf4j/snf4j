@@ -25,10 +25,15 @@
  */
 package org.snf4j.quic.engine;
 
+import static org.snf4j.quic.tp.TransportParameters.DEFAULT_ACK_DELAY_EXPONENT;
+import static org.snf4j.quic.tp.TransportParameters.DEFAULT_MAX_ACK_DELAY;
+
 import java.security.SecureRandom;
 import java.util.Arrays;
 
+import org.snf4j.quic.IQuicConfig;
 import org.snf4j.quic.QuicAlert;
+import org.snf4j.quic.QuicConfig;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
 import org.snf4j.quic.cid.ConnectionIdManager;
@@ -69,31 +74,52 @@ public class QuicState {
 
 	private HandshakeState handshakeState = HandshakeState.INIT;
 	
-	private final int maxActiveConnectionIdLimit = 10;
-	
 	private int maxUdpPayloadSize = PacketUtil.MIN_MAX_UDP_PAYLOAD_SIZE;
 	
 	private EncryptionLevel encryptorLevel;
 	
 	private Version version = Version.V1;
 	
+	private final RttEstimator estimator;
+	
+	private int peerAckDelayExponent = DEFAULT_ACK_DELAY_EXPONENT;
+	
+	private int peerMaxAckDelay = DEFAULT_MAX_ACK_DELAY;
+	
+	private final ITimeProvider time;
+	
+	private final IQuicConfig config;
+
+	public QuicState(boolean clientMode) {
+		this(clientMode, new QuicConfig(), TimeProvider.INSTANCE);
+	}
+	
 	/**
-	 * Constructs a QUIC state for the given role.
+	 * Constructs a QUIC state for the given role, configuration and time provider.
 	 * 
 	 * @param clientMode determines the role (client/server) for the state
+	 * @param config     the configuration
+	 * @param time       the time provider
 	 */
-	public QuicState(boolean clientMode) {
+	public QuicState(boolean clientMode, IQuicConfig config, ITimeProvider time) {
 		this.clientMode = clientMode;
-		manager = new ConnectionIdManager(clientMode, 8, 2, new SecureRandom());
-		
+		this.config = config;
+		manager = new ConnectionIdManager(
+				clientMode, 
+				config.getConnectionIdLength(),
+				config.getActiveConnectionIdLimit(), 
+				new SecureRandom());
+		this.time = time;
+		estimator = new RttEstimator(this);
 		contexts[EncryptionLevel.EARLY_DATA.ordinal()] = new EncryptionContext(EncryptionLevel.EARLY_DATA, 10,contextsListener);
 		contexts[EncryptionLevel.INITIAL.ordinal()] = new EncryptionContext(EncryptionLevel.INITIAL, 10, contextsListener);
 		contexts[EncryptionLevel.HANDSHAKE.ordinal()] = new EncryptionContext(EncryptionLevel.HANDSHAKE, 10, contextsListener);
 		contexts[EncryptionLevel.APPLICATION_DATA.ordinal()] = new EncryptionContext(EncryptionLevel.APPLICATION_DATA, 10, contextsListener);
 		
-		spaces[EncryptionLevel.EARLY_DATA.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA);
-		spaces[EncryptionLevel.INITIAL.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.INITIAL);
-		spaces[EncryptionLevel.HANDSHAKE.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.HANDSHAKE);
+		int limit = config.getMaxNumberOfStoredAckRanges();
+		spaces[EncryptionLevel.EARLY_DATA.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, limit);
+		spaces[EncryptionLevel.INITIAL.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.INITIAL, limit);
+		spaces[EncryptionLevel.HANDSHAKE.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.HANDSHAKE, limit);
 		spaces[EncryptionLevel.APPLICATION_DATA.ordinal()] = spaces[EncryptionLevel.EARLY_DATA.ordinal()];
 	}
 	
@@ -165,6 +191,8 @@ public class QuicState {
 		builder.iniSourceId(manager.getSourcePool().get(IPool.INITIAL_SEQUENCE_NUMBER).getId());	
 		builder.activeConnectionIdLimit(manager.getDestinationPool().getLimit());
 		builder.maxUdpPayloadSize(maxUdpPayloadSize);
+		builder.ackDelayExponent(config.getAckDelayExponent());
+		builder.maxAckDelay(config.getMaxAckDelay());
 		if (!clientMode) {
 			builder.originalDestinationId(manager.getOriginalId());
 			if (manager.hasRetryId()) {
@@ -248,13 +276,27 @@ public class QuicState {
 			throw notMatching(TransportParameterType.INITIAL_SOURCE_CONNECTION_ID);			
 		}
 		
-		manager.getSourcePool().setLimit((int) Math.min(maxActiveConnectionIdLimit, params.activeConnectionIdLimit()));
+		manager.getSourcePool().setLimit((int) Math.min(
+				config.getMaxActiveConnectionIdLimit(), 
+				params.activeConnectionIdLimit()));
 		
 		value = params.maxUdpPayloadSize();
 		if (value < PacketUtil.MIN_MAX_UDP_PAYLOAD_SIZE) {
 			throw invalid(TransportParameterType.MAX_UDP_PAYLOAD_SIZE);
 		}
 		maxUdpPayloadSize = (int) Math.min(maxUdpPayloadSize, value);
+		
+		value = params.ackDelayExponent();
+		if (value > 20) {
+			throw invalid(TransportParameterType.ACK_DELAY_EXPONENT);
+		}
+		peerAckDelayExponent = (int) value;
+		
+		value = params.maxAckDelay();
+		if (value >= 16384) {
+			throw invalid(TransportParameterType.MAX_ACK_DELAY);			
+		}
+		peerMaxAckDelay = (int) value;
 	}
 
 	/**
@@ -301,6 +343,71 @@ public class QuicState {
 	 */
 	public void setHandshakeState(HandshakeState handshakeState) {
 		this.handshakeState = handshakeState;
+	}
+
+	/**
+	 * Returns the associated RTT estimator.
+	 * 
+	 * @return the RTT estimator
+	 */
+	public RttEstimator getEstimator() {
+		return estimator;
+	}
+
+	/**
+	 * Returns the associated time provider.
+	 * 
+	 * @return the time provider
+	 */
+	public ITimeProvider getTime() {
+		return time;
+	}
+
+	/**
+	 * Returns the QUIC configuration.
+	 * 
+	 * @return the QUIC configuration
+	 */
+	public IQuicConfig getConfig() {
+		return config;
+	}
+	
+	/**
+	 * Returns the peer's acknowledgment delay exponent.
+	 * <p>
+	 * Default value: 3
+	 * @return the peer's acknowledgment delay exponent
+	 */
+	public int getPeerAckDelayExponent() {
+		return peerAckDelayExponent;
+	}
+
+	/**
+	 * Sets the peer's acknowledgment delay exponent.
+	 * 
+	 * @param exponent the peer's acknowledgment delay exponent
+	 */
+	public void setPeerAckDelayExponent(int exponent) {
+		peerAckDelayExponent = exponent;
+	}
+	
+	/**
+	 * Returns the peer's maximum acknowledgment delay in milliseconds.
+	 * <p>
+	 * Default value: 25
+	 * @return the peer's maximum acknowledgment delay
+	 */
+	public int getPeerMaxAckDelay() {
+		return peerMaxAckDelay;
+	}
+
+	/**
+	 * Sets the peer's maximum acknowledgment delay in milliseconds.
+	 * 
+	 * @param maxDelay the peer's maximum acknowledgment delay
+	 */
+	public void setPeerMaxAckDelay(int maxDelay) {
+		peerMaxAckDelay = maxDelay;
 	}
 	
 }

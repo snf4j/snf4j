@@ -48,7 +48,7 @@ class Parameters {
 				(p) -> {return p.statelessResetToken();}));
 		add(new PLong(TransportParameterType.MAX_UDP_PAYLOAD_SIZE,
 				ParameterMode.BOTH,
-				65527,
+				TransportParameters.DEFAULT_MAX_UDP_PAYLOAD_SIZE,
 				(b,v) -> b.maxUdpPayloadSize(v), 
 				(p) -> {return p.maxUdpPayloadSize();}));
 		add(new PLong(TransportParameterType.INITIAL_MAX_DATA,
@@ -77,12 +77,12 @@ class Parameters {
 				(p) -> {return p.iniMaxStreamsUni();}));
 		add(new PLong(TransportParameterType.ACK_DELAY_EXPONENT,
 				ParameterMode.BOTH,
-				3,
+				TransportParameters.DEFAULT_ACK_DELAY_EXPONENT,
 				(b,v) -> b.ackDelayExponent(v), 
 				(p) -> {return p.ackDelayExponent();}));
 		add(new PLong(TransportParameterType.MAX_ACK_DELAY,
 				ParameterMode.BOTH,
-				25,
+				TransportParameters.DEFAULT_MAX_ACK_DELAY,
 				(b,v) -> b.maxAckDelay(v), 
 				(p) -> {return p.maxAckDelay();}));
 		add(new PBoolean(TransportParameterType.DISABLE_ACTIVE_MIGRATION,
@@ -93,7 +93,7 @@ class Parameters {
 				ParameterMode.SERVER));
 		add(new PLong(TransportParameterType.ACTIVE_CONNECTION_ID_LIMIT,
 				ParameterMode.BOTH,
-				2,
+				TransportParameters.DEFAULT_ACTIVE_CONNECTION_ID_LIMIT,
 				(b,v) -> b.activeConnectionIdLimit(v), 
 				(p) -> {return p.activeConnectionIdLimit();}));
 		add(new PByteArray(TransportParameterType.INITIAL_SOURCE_CONNECTION_ID,

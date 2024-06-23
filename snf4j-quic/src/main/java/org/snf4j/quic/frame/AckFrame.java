@@ -214,7 +214,7 @@ public class AckFrame implements IFrame {
 	}
 
 	/**
-	 * Returns the encoded ACK delay.
+	 * Returns the encoded ACK delay in microseconds.
 	 * 
 	 * @return the encoded ACK delay
 	 */

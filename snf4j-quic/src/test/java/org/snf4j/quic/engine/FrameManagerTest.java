@@ -25,6 +25,7 @@
  */
 package org.snf4j.quic.engine;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -53,10 +54,17 @@ public class FrameManagerTest {
 		m.add(f2);
 		assertTrue(m.allAcked());
 		assertSame(f1, m.peek());
+		assertFalse(m.isFlying(0));
+		assertNull(m.getFlying(0));
 		m.fly(f1, 0);
+		assertTrue(m.isFlying(0));
+		assertEquals(1, m.getFlying(0).getFrames().size());
+		assertSame(f1, m.getFlying(0).getFrames().get(0));
 		assertFalse(m.allAcked());
 		assertSame(f2, m.peek());
 		m.ack(0);
+		assertFalse(m.isFlying(0));
+		assertNull(m.getFlying(0));
 		assertTrue(m.allAcked());
 		assertSame(f2, m.peek());
 		

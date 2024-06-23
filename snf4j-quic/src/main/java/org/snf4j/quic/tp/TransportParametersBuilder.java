@@ -25,6 +25,11 @@
  */
 package org.snf4j.quic.tp;
 
+import static org.snf4j.quic.tp.TransportParameters.DEFAULT_ACK_DELAY_EXPONENT;
+import static org.snf4j.quic.tp.TransportParameters.DEFAULT_ACTIVE_CONNECTION_ID_LIMIT;
+import static org.snf4j.quic.tp.TransportParameters.DEFAULT_MAX_ACK_DELAY;
+import static org.snf4j.quic.tp.TransportParameters.DEFAULT_MAX_UDP_PAYLOAD_SIZE;
+
 /**
  * The QUIC transport parameters builder.
  * 
@@ -38,7 +43,7 @@ public class TransportParametersBuilder {
 	
 	private byte[] statelessResetToken;
 	
-	private long maxUdpPayloadSize = 65527;
+	private long maxUdpPayloadSize = DEFAULT_MAX_UDP_PAYLOAD_SIZE;
 
 	private long iniMaxData;
 	
@@ -52,15 +57,15 @@ public class TransportParametersBuilder {
 	
 	private long iniMaxStreamsUni;
 	
-	private long ackDelayExponent = 3;
+	private long ackDelayExponent = DEFAULT_ACK_DELAY_EXPONENT;
 	
-	private long maxAckDelay = 25;
+	private long maxAckDelay = DEFAULT_MAX_ACK_DELAY;
 	
 	private boolean disableActiveMigration;
 	
 	private PreferredAddress preferredAddress;
 	
-	private long activeConnectionIdLimit = 2;
+	private long activeConnectionIdLimit = DEFAULT_ACTIVE_CONNECTION_ID_LIMIT;
 	
 	private byte[] iniSourceId;
 	

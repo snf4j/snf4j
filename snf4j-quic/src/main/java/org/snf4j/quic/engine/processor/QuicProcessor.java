@@ -31,6 +31,8 @@ import org.snf4j.quic.QuicException;
 import org.snf4j.quic.cid.IDestinationPool;
 import org.snf4j.quic.cid.IPool;
 import org.snf4j.quic.engine.CryptoEngineAdapter;
+import org.snf4j.quic.engine.EncryptionLevel;
+import org.snf4j.quic.engine.FlyingFrames;
 import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.engine.QuicState;
 import org.snf4j.quic.frame.FrameType;
@@ -66,6 +68,9 @@ public class QuicProcessor {
 	
 	final CryptoEngineAdapter adapter;
 	
+	/** Current time in nanoseconds */ 
+	long currentTime;
+	
 	/**
 	 * Constructs a processor associated with given QUIC state and cryptographic
 	 * engine adapter.
@@ -78,6 +83,16 @@ public class QuicProcessor {
 		this.adapter = adapter;
 	}
 
+	/**
+	 * Called as soon as a PDU payload has been received. 
+	 * <p>
+	 * It is called once and always before calling {@link #process(IPacket, boolean)} for all
+	 * packets in the PDU payload.
+	 */
+	public void preProcess() {	
+		currentTime = state.getTime().nanoTime();
+	}
+	
 	/**
 	 * Processes a received QUIC packet that has been initially validated.
 	 * 
@@ -107,13 +122,23 @@ public class QuicProcessor {
 			
 			space.updateProcessed(packet.getPacketNumber());
 			if (ackEliciting) {
-				space.acks().add(packet.getPacketNumber());
+				space.acks().add(packet.getPacketNumber(), currentTime);
 			}
 		}
 	}
 	
 	/**
-	 * Processes a QUIC packet that has been just put to a destination buffer.
+	 * Called as soon as the full PDU payload is ready to be sent.
+	 * <p>
+	 * It is called once and always before calling {@link #sending(IPacket)} for all
+	 * packets in the PDU payload.
+	 */
+	public void preSending() {	
+		currentTime = state.getTime().nanoTime();
+	}
+	
+	/**
+	 * Processes a QUIC packet that is part of the PDU payload that is ready to be sent.
 	 * 
 	 * @param packet the QUIC packet
 	 */
@@ -122,6 +147,13 @@ public class QuicProcessor {
 		List<IFrame> frames = packet.getFrames();
 		
 		if (frames != null) {
+			EncryptionLevel level = packet.getType().encryptionLevel();
+			PacketNumberSpace space = state.getSpace(level);
+			FlyingFrames fframes = space.frames().getFlying(packet.getPacketNumber());
+			
+			if (fframes != null) {
+				fframes.setSentTime(currentTime);
+			}
 			for (IFrame frame: frames) {
 				FRAME_PROCESSORS[frame.getType().ordinal()].sending(this, frame, packet);
 			}
