@@ -36,13 +36,17 @@ import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.Version;
 import org.snf4j.quic.engine.CryptoEngineAdapter;
 import org.snf4j.quic.engine.EncryptionLevel;
+import org.snf4j.quic.engine.FlyingFrames;
 import org.snf4j.quic.engine.HandshakeState;
 import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.engine.QuicState;
+import org.snf4j.quic.engine.TestConfig;
+import org.snf4j.quic.engine.TestTime;
 import org.snf4j.quic.engine.crypto.CryptoEngine;
 import org.snf4j.quic.engine.crypto.TestEngineStateListener;
 import org.snf4j.quic.frame.AckFrame;
 import org.snf4j.quic.frame.HandshakeDoneFrame;
+import org.snf4j.quic.frame.PingFrame;
 import org.snf4j.quic.packet.HandshakePacket;
 import org.snf4j.quic.packet.IPacket;
 import org.snf4j.quic.packet.InitialPacket;
@@ -98,9 +102,9 @@ public class QuicProcessorTest extends CommonTest {
 		assertSame(HandshakeState.DONE_RECEIVED, state.getHandshakeState());
 		
 		space = state.getSpace(EncryptionLevel.INITIAL);
-		assertNull(space.acks().build(3));
+		assertNull(space.acks().build(3, 1000, 3));
 		processor.process(p, true);
-		AckFrame ack = space.acks().build(3);
+		AckFrame ack = space.acks().build(3, 1000, 3);
 		assertNotNull(ack);
 		assertEquals(1, ack.getRanges().length);
 		assertEquals(1, ack.getRanges()[0].getFrom());
@@ -121,5 +125,63 @@ public class QuicProcessorTest extends CommonTest {
 		p.getFrames().add(new HandshakeDoneFrame());
 		processor.sending(p);
 		assertSame(HandshakeState.DONE_SENT, state.getHandshakeState());
+	}
+	
+	@Test
+	public void testPreProcess() {
+		TestTime time = new TestTime(100,200,300);
+		state = new QuicState(true, new TestConfig(), time);
+		processor = new QuicProcessor(state, adapter);
+		
+		processor.preProcess();
+		assertEquals(100, processor.currentTime);
+		processor.preProcess();
+		assertEquals(200, processor.currentTime);
+	}
+	
+	@Test
+	public void testPreSending() {
+		TestTime time = new TestTime(100,200,300);
+		state = new QuicState(true, new TestConfig(), time);
+		processor = new QuicProcessor(state, adapter);
+		
+		processor.preSending();
+		assertEquals(100, processor.currentTime);
+		processor.preSending();
+		assertEquals(200, processor.currentTime);
+	}
+
+	@Test
+	public void testSetSendTime() {
+		TestTime time = new TestTime(100,200,300);
+		state = new QuicState(true, new TestConfig(), time);
+		processor = new QuicProcessor(state, adapter);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.APPLICATION_DATA);
+		
+		processor.preSending();
+		IPacket packet = new OneRttPacket(bytes("00"), 0, false, false);
+		PingFrame frame = new PingFrame();
+		packet.getFrames().add(frame);
+		space.frames().fly(frame, 0);
+		FlyingFrames flying = space.frames().getFlying(0);
+		assertEquals(0, flying.getSentTime());
+		processor.sending(packet);
+		assertEquals(100, flying.getSentTime());
+	}
+	
+	@Test
+	public void testSetReceiveTime() throws Exception {
+		TestTime time = new TestTime(100000000,200,300);
+		state = new QuicState(true, new TestConfig(), time);
+		processor = new QuicProcessor(state, adapter);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.APPLICATION_DATA);
+		
+		processor.preProcess();
+		IPacket packet = new OneRttPacket(bytes("00"), 0, false, false);
+		PingFrame frame = new PingFrame();
+		packet.getFrames().add(frame);
+		processor.process(packet, true);
+		AckFrame ack = space.acks().build(3, 400000000, 1);
+		assertEquals(150000, ack.getDelay());
 	}
 }

@@ -41,6 +41,7 @@ import org.snf4j.quic.frame.IFrame;
 import org.snf4j.quic.frame.MultiPaddingFrame;
 import org.snf4j.quic.packet.IPacket;
 import org.snf4j.quic.packet.PacketType;
+import org.snf4j.quic.tp.TransportParameters;
 
 /**
  * A fragmenter of cryptographic data during the QUIC handshake phase. It tries
@@ -99,7 +100,12 @@ public class CryptoFragmenter {
 		
 		if (packet == null) {
 			AckFrameBuilder acks = ctx.space.acks();
-			AckFrame ack = acks.build(3);
+			AckFrame ack = acks.build(
+					state.getConfig().getMaxNumberOfAckRanges(), 
+					ctx.ackTime(), 
+					ctx.level == EncryptionLevel.APPLICATION_DATA
+						? state.getConfig().getAckDelayExponent()
+						: TransportParameters.DEFAULT_ACK_DELAY_EXPONENT);
 
 			if (ack != null) {
 				packet = ctx.packet(ack);
@@ -246,7 +252,11 @@ public class CryptoFragmenter {
 				ctx.padding(packet);
 			}
 			protection.protect(state, packet, dst);
-			processor.sending(packet);
+		}
+		
+		processor.preSending();
+		for (int i=0; i<=size; ++i) {
+			processor.sending(packets.get(i));
 		}
 		
 		return dst.position() - dst0;	

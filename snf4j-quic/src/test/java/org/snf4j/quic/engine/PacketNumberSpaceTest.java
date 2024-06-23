@@ -31,13 +31,14 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 import org.snf4j.quic.QuicException;
+import org.snf4j.quic.frame.AckFrame;
 import org.snf4j.quic.frame.PingFrame;
 
 public class PacketNumberSpaceTest {
 
 	@Test
 	public void testNext() {
-		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA);
+		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, 10);
 		
 		assertEquals(0, s.next());
 		assertEquals(1, s.next());
@@ -46,7 +47,7 @@ public class PacketNumberSpaceTest {
 	
 	@Test
 	public void testUpdate() throws Exception {
-		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA);
+		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, 10);
 		
 		assertEquals(-1, s.getLargestAcked());
 		assertEquals(-1, s.getLargestProcessed());
@@ -80,5 +81,18 @@ public class PacketNumberSpaceTest {
 		}
 		s.frames().fly(new PingFrame(), 102);
 		s.updateAcked(102);
+	}
+	
+	@Test
+	public void testAckRangeLimit() {
+		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, 2);
+		
+		s.acks().add(0, 1000);
+		s.acks().add(2, 1000);
+		s.acks().add(4, 1000);
+		AckFrame ack = s.acks().build(4, 1000, 0);
+		assertEquals(2, ack.getRanges().length);
+		assertEquals(4, ack.getLargestPacketNumber());
+		assertEquals(2, ack.getSmallestPacketNumber());
 	}
 }

@@ -64,11 +64,13 @@ public class AckFrameBuilder {
 	/**
 	 * Adds a packet number to acknowledge.
 	 * 
-	 * @param pn packet number to acknowledge
+	 * @param pn          packet number to acknowledge
+	 * @param receiveTime the time in nanoseconds the packet with the given packet
+	 *                    number was received
 	 */
-	public void add(long pn) {
+	public void add(long pn, long receiveTime) {
 		if (ranges.isEmpty()) {
-			ranges.add(new Range(pn));
+			ranges.add(new Range(pn, receiveTime));
 		}
 		else {
 			int size = ranges.size();
@@ -80,12 +82,13 @@ public class AckFrameBuilder {
 				if (pn > curr.max) {
 					if (pn == curr.max+1) {
 						curr.max = pn;
+						curr.reciveTime = receiveTime;
 					}
 					else if (j == size){
-						add(-1, new Range(pn));
+						add(-1, new Range(pn, receiveTime));
 					}
 					else {
-						add(j, new Range(pn));
+						add(j, new Range(pn, receiveTime));
 					}
 					return;
 				}
@@ -107,7 +110,7 @@ public class AckFrameBuilder {
 					return;
 				}
 			}
-			add(0, new Range(pn));
+			add(0, new Range(pn, receiveTime));
 		}
 	}
 		
@@ -117,21 +120,29 @@ public class AckFrameBuilder {
 	 * NOTE: The packet numbers in the returned ACK frame will not be removed from
 	 * this builder.
 	 * 
-	 * @param limit the maximum number of ACK ranges that should be present in the
-	 *              returned ACK frame
+	 * @param limit    the maximum number of ACK ranges that should be present in
+	 *                 the returned ACK frame
+	 * @param ackTime  the time in nanoseconds the acknowledgment is going to be
+	 *                 sent
+	 * @param exponent the acknowledgment delay exponent
 	 * @return the ACK frame
 	 */
-	public AckFrame build(int limit) {
+	public AckFrame build(int limit, long ackTime, int exponent) {
 		if (!ranges.isEmpty()) {
 			AckRange[] acks = new AckRange[Math.min(limit, ranges.size())];
+			Iterator<Range> i = ranges.descendingIterator();
 			int j = 0;
+			Range range;
+			long receiveTime;
 			
-			for (Iterator<Range> i = ranges.descendingIterator(); i.hasNext() && j<acks.length;) {
-				Range range = i.next();
-				
+			range = i.next();
+			acks[j++] = new AckRange(range.max, range.min);
+			receiveTime = range.reciveTime;
+			for (; i.hasNext() && j<acks.length;) {
+				range = i.next();
 				acks[j++] = new AckRange(range.max, range.min);
 			}
-			return new AckFrame(acks, 1000);
+			return new AckFrame(acks, (Math.max(ackTime - receiveTime, 0) / 1000) >> exponent);
 		}
 		return null;
 	}
@@ -139,6 +150,12 @@ public class AckFrameBuilder {
 	/**
 	 * Removes from this builder all packets numbers with values equal or greater
 	 * than the given packet number.
+	 * <p>
+	 * NOTE: As the receive time is only tracked for the maximum packet number in a
+	 * range keeping prior to a packet number that is in a range and is greater than
+	 * than the minimum value in that range will cause not precise calculation of
+	 * the acknowledge delay. To avoid it always use the lowest packet number
+	 * acknowledged by previously built ACK frame.
 	 * 
 	 * @param pn the packet number that determines packet numbers to remove
 	 */
@@ -157,13 +174,14 @@ public class AckFrameBuilder {
 		}
 	}
 	
-	static class Range {
+	private static class Range {
 		
-		long min, max;
+		long min, max, reciveTime;
 		
-		Range(long val) {
+		Range(long val, long reciveTime) {
 			min = val;
 			max = val;
+			this.reciveTime = reciveTime;
 		}
 	}
 }

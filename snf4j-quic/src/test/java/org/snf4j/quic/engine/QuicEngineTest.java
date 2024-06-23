@@ -53,6 +53,7 @@ import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
+import org.snf4j.quic.engine.processor.QuicProcessor;
 import org.snf4j.quic.frame.CryptoFrame;
 import org.snf4j.quic.frame.HandshakeDoneFrame;
 import org.snf4j.quic.frame.MultiPaddingFrame;
@@ -560,7 +561,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(1199, r.bytesConsumed());
-		assertNull(space.acks().build(1));
+		assertNull(space.acks().build(1, 1000, 3));
 		
 		//packet with not allowed frame
 		p = new InitialPacket(dcid, space.next(), scid, Version.V1, bytes());
@@ -619,7 +620,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(1199, r.bytesConsumed());
-		assertNull(space.acks().build(1));
+		assertNull(space.acks().build(1, 1000, 3));
 		
 		//initial no ack-eliciting packet less than 1200
 		p = new InitialPacket(dcid, space.next(), scid, Version.V1, bytes());
@@ -634,7 +635,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(1199, r.bytesConsumed());
-		assertNull(space.acks().build(1));
+		assertNull(space.acks().build(1, 1000, 3));
 		
 	}
 	
@@ -899,5 +900,25 @@ public class QuicEngineTest extends CommonTest {
 
 		QuicEngine ce = new QuicEngine(true, epb.build(), ehb.build());
 		assertNull(ce.wrap(new ByteBuffer[2], out));
+	}
+	
+	@Test
+	public void testCallingPreprocess() throws Exception {
+		EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
+		EngineParametersBuilder epb = new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE);
+		TestTime time = new TestTime(1234567, 1234568);
+		QuicState state = new QuicState(false, new TestConfig(), time);
+		
+		QuicEngine se = new QuicEngine(state, epb.build(), ehb.build());
+		se.unwrap(buffer("00030405"), out);
+		Field f = QuicEngine.class.getDeclaredField("processor");
+		f.setAccessible(true);
+		QuicProcessor processor = (QuicProcessor) f.get(se);
+		f = QuicProcessor.class.getDeclaredField("currentTime");
+		f.setAccessible(true);
+		assertEquals(1234567, f.getLong(processor));
+		se.unwrap(buffer("00030405"), out);
+		assertEquals(1234568, f.getLong(processor));
 	}
 }

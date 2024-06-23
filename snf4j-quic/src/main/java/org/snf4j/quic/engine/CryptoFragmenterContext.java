@@ -57,6 +57,8 @@ class CryptoFragmenterContext {
 	EncryptionContext enc;
 	
 	PacketNumberSpace space;
+	
+	long ackTime;
 
 	CryptoFragmenterContext(QuicState state) {
 		this.state = state;
@@ -241,5 +243,18 @@ class CryptoFragmenterContext {
 	 */
 	void rollbackRemaining() {
 		remaining = committed;;
+	}
+	
+	/**
+	 * Returns the time in nanoseconds that can be used to calculate the
+	 * acknowledgment delay in ack frames.
+	 * 
+	 * @return the time in nanoseconds
+	 */
+	long ackTime() {
+		if (ackTime == 0) {
+			ackTime = state.getTime().nanoTime();
+		}
+		return ackTime;
 	}
 }

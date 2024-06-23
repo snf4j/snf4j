@@ -26,11 +26,15 @@
 package org.snf4j.quic.engine.processor;
 
 import org.snf4j.quic.QuicException;
+import org.snf4j.quic.engine.EncryptionLevel;
+import org.snf4j.quic.engine.FlyingFrames;
 import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.frame.AckFrame;
 import org.snf4j.quic.frame.AckRange;
+import org.snf4j.quic.frame.FrameInfo;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.packet.IPacket;
+import org.snf4j.quic.tp.TransportParameters;
 
 class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 
@@ -41,14 +45,35 @@ class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 
 	@Override
 	public void process(QuicProcessor p, AckFrame frame, IPacket packet) throws QuicException {
-		PacketNumberSpace space = p.state.getSpace(packet.getType().encryptionLevel());
+		EncryptionLevel level = packet.getType().encryptionLevel();
+		PacketNumberSpace space = p.state.getSpace(level);
+		FlyingFrames largest = space.frames().getFlying(frame.getLargestPacketNumber());
+		FrameInfo info = FrameInfo.of(p.state.getVersion());
+		boolean addSample = false;
 		
 		for (AckRange range: frame.getRanges()) {
 			long to = range.getTo();
 			
-			for (long i = range.getFrom(); i >= to; i--) {
-				space.updateAcked(i);
+			for (long pn = range.getFrom(); pn >= to; pn--) {
+				if (largest != null && !addSample) {
+					FlyingFrames fframes = space.frames().getFlying(pn);
+					
+					addSample = fframes != null && info.hasAckEliciting(fframes.getFrames());
+				}
+				space.updateAcked(pn);
 			}
+		}
+		
+		if (addSample) {
+			int exponent = level == EncryptionLevel.APPLICATION_DATA
+					? p.state.getPeerAckDelayExponent()
+					: TransportParameters.DEFAULT_ACK_DELAY_EXPONENT;
+					
+			p.state.getEstimator().addSample(
+					p.currentTime,
+					largest.getSentTime(),
+					frame.getDelay() << exponent,
+					level);
 		}
 	}
 

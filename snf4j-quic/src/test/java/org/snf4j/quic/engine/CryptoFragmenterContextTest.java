@@ -182,6 +182,15 @@ public class CryptoFragmenterContextTest extends CommonTest {
 		ctx.remaining -= ctx.length(p);
 		ctx.padding(p);
 		assertEquals(1201-1117, ctx.length(p));
-
+	}
+	
+	@Test
+	public void testAckTime() {
+		state = new QuicState(true, new TestConfig(), new TestTime(1000,2000));
+		ctx = new CryptoFragmenterContext(state);
+		
+		assertEquals(1000, ctx.ackTime());
+		assertEquals(1000, ctx.ackTime());
+		assertEquals(2000, state.getTime().nanoTime());
 	}
 }

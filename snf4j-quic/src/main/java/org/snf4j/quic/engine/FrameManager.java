@@ -28,7 +28,6 @@ package org.snf4j.quic.engine;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
@@ -45,7 +44,7 @@ public class FrameManager {
 	
 	private Queue<IFrame> frames;
 	
-	private Map<Long,List<IFrame>> flights;
+	private final Map<Long,FlyingFrames> flying = new HashMap<>();
 	
 	private long largest = -1;
 	
@@ -84,19 +83,11 @@ public class FrameManager {
 	 * @param pn    the number of the packet carrying the frame
 	 */
 	public void fly(IFrame frame, long pn) {
-		List<IFrame> list;
-		
-		if (flights == null) {
-			flights = new HashMap<>();
-			list = new LinkedList<>();
-			flights.put(pn, list);
-		}
-		else {
-			list = flights.get(pn);
-			if (list == null) {
-				list = new LinkedList<>();
-				flights.put(pn, list);
-			}
+		FlyingFrames fframes = flying.get(pn);
+
+		if (fframes == null) {
+			fframes = new FlyingFrames();
+			flying.put(pn, fframes);
 		}
 		
 		if (largest < pn) {
@@ -112,7 +103,7 @@ public class FrameManager {
 			}
 		}
 		
-		list.add(frame);
+		fframes.getFrames().add(frame);
 	}
 	
 	/**
@@ -122,7 +113,7 @@ public class FrameManager {
 	 *         acknowledged
 	 */
 	public boolean allAcked() {
-		return flights == null || flights.isEmpty();
+		return flying.isEmpty();
 	}
 	
 	/**
@@ -135,6 +126,29 @@ public class FrameManager {
 		if (pn > largest) {
 			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Unexpected acked packet number");
 		}
-		flights.remove(pn);
+		flying.remove(pn);
 	}
+
+	/**
+	 * Tells if a packet with the given packet number is marked as put in a flight.
+	 * 
+	 * @param pn the packet number
+	 * @return {@code true} if the packet is marked as put in a flight
+	 */
+	public boolean isFlying(long pn) {
+		return flying.containsKey(pn);
+	}
+	
+	/**
+	 * Returns frames carried in a packet with the given packet number that is
+	 * marked as put in a flight.
+	 * 
+	 * @param pn the packet number
+	 * @return the frames, or {@code null} if the packet is not marked as put in a
+	 *         flight
+	 */
+	public FlyingFrames getFlying(long pn) {
+		return flying.get(pn);
+	}
+		
 }

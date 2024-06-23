@@ -201,10 +201,21 @@ public class FrameInfo {
 		List<IFrame> frames = packet.getFrames();
 		
 		if (frames != null) {
-			for (IFrame frame: frames) {
-				if (isAckEliciting(frame.getTypeValue())) {
-					return true;
-				}
+			return hasAckEliciting(frames);
+		}
+		return false;
+	}
+
+	/**
+	 * Checks if the given list of frames contains at least one ack-eliciting frame.
+	 * 
+	 * @param frames the list of frames to check
+	 * @return {@code true} if the list contains at least one ack-eliciting frame
+	 */
+	public boolean hasAckEliciting(List<IFrame> frames) {
+		for (IFrame frame: frames) {
+			if (isAckEliciting(frame.getTypeValue())) {
+				return true;
 			}
 		}
 		return false;

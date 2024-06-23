@@ -115,9 +115,21 @@ public class QuicEngine implements IEngine {
 	 * @param handler    the TLS engine handler
 	 */
 	public QuicEngine(boolean clientMode, IEngineParameters parameters, IEngineHandler handler) {
-		state = new QuicState(clientMode);
+		this(new QuicState(clientMode), parameters, handler);
+	}
+	
+	/**
+	 * Constructs a QUIC engine with given QUIC state, TLS engine parameters and
+	 * handler.
+	 * 
+	 * @param state      the QUIC state
+	 * @param parameters the TLS engine parameters
+	 * @param handler    the TLS engine handler
+	 */
+	public QuicEngine(QuicState state, IEngineParameters parameters, IEngineHandler handler) {
+		this.state = state;
 		cryptoListener = new CryptoEngineStateListener(state);
-		cryptoEngine = new CryptoEngine(new HandshakeEngine(clientMode, parameters, handler, cryptoListener));
+		cryptoEngine = new CryptoEngine(new HandshakeEngine(state.isClientMode(), parameters, handler, cryptoListener));
 		cryptoAdapter = new CryptoEngineAdapter(cryptoEngine);
 		processor = new QuicProcessor(state, cryptoAdapter);
 		protection = new PacketProtection(protectionListener);
@@ -400,6 +412,7 @@ public class QuicEngine implements IEngine {
 			consumed = src.remaining();
 			boolean udpChecked = false;
 			
+			processor.preProcess();
 			while (acceptor.accept(src)) {
 				IPacket packet = protection.unprotect(state, src);
 				
