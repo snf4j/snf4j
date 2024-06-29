@@ -156,8 +156,17 @@ public class RttEstimatorTest {
 		e.addSample(m2n(200), 0, m2u(50), EncryptionLevel.APPLICATION_DATA);
 		assertEquals(m2n(200), e.getLatestRtt());
 		assertEquals(m2n(100), e.getMinRtt());
-		long vvar = (3*m2n(50)+m2n(Math.abs(100-200+30)))/4;
-		long vsmo = (7*m2n(100)+m2n(200-30))/8;
+		long vvar = (3*m2n(50)+m2n(Math.abs(100-200+50)))/4;
+		long vsmo = (7*m2n(100)+m2n(200-50))/8;
+		assertEquals(vsmo, e.getSmoothedRtt());
+		assertEquals(vvar, e.getRttVar());
+
+		state.setHandshakeState(HandshakeState.DONE);
+		e.addSample(m2n(200), 0, m2u(50), EncryptionLevel.APPLICATION_DATA);
+		assertEquals(m2n(200), e.getLatestRtt());
+		assertEquals(m2n(100), e.getMinRtt());
+		vvar = (3*vvar + Math.abs(vsmo-m2n(200-30)))/4;
+		vsmo = (7*vsmo + m2n(200-30))/8;
 		assertEquals(vsmo, e.getSmoothedRtt());
 		assertEquals(vvar, e.getRttVar());
 		

@@ -39,7 +39,6 @@ import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.IFrame;
 import org.snf4j.quic.packet.ILongHeaderPacket;
 import org.snf4j.quic.packet.IPacket;
-import org.snf4j.quic.packet.PacketType;
 
 /**
  * The QUIC packet/frame processor.
@@ -106,12 +105,25 @@ public class QuicProcessor {
 		
 		if (frames != null) {
 
-			if (packet.getType() == PacketType.INITIAL) {
+			switch (packet.getType()) {
+			case INITIAL:
 				IDestinationPool pool = state.getConnectionIdManager().getDestinationPool();
 				
 				if (pool.get(IPool.INITIAL_SEQUENCE_NUMBER) == null) {
 					pool.add(((ILongHeaderPacket)packet).getSourceId());
 				}
+				if (state.isClientMode()) {
+					state.setAddressValidated();
+				}
+				break;
+			
+			case HANDSHAKE:
+				if (!state.isAddressValidated()) {
+					state.setAddressValidated();
+				}
+				break;
+				
+			default:
 			}
 			
 			for (IFrame frame: frames) {
@@ -130,20 +142,24 @@ public class QuicProcessor {
 	/**
 	 * Called as soon as the full PDU payload is ready to be sent.
 	 * <p>
-	 * It is called once and always before calling {@link #sending(IPacket)} for all
-	 * packets in the PDU payload.
+	 * It is called once and always before calling the {@link #sending} method for
+	 * all packets in the PDU payload.
 	 */
 	public void preSending() {	
 		currentTime = state.getTime().nanoTime();
 	}
 	
 	/**
-	 * Processes a QUIC packet that is part of the PDU payload that is ready to be sent.
+	 * Processes a QUIC packet that is part of the PDU payload that is ready to be
+	 * sent.
 	 * 
-	 * @param packet the QUIC packet
+	 * @param packet       the QUIC packet
+	 * @param ackEliciting tells if the packet is ack eliciting
+	 * @param inFlight     tells if the packet counts toward bytes in flight
+	 * @param sendingBytes the number of bytes being sent in the packet
 	 */
 	@SuppressWarnings("unchecked")
-	public void sending(IPacket packet) {
+	public void sending(IPacket packet, boolean ackEliciting, boolean inFlight, int sendingBytes) {
 		List<IFrame> frames = packet.getFrames();
 		
 		if (frames != null) {
@@ -152,7 +168,16 @@ public class QuicProcessor {
 			FlyingFrames fframes = space.frames().getFlying(packet.getPacketNumber());
 			
 			if (fframes != null) {
-				fframes.setSentTime(currentTime);
+				fframes.onSending(
+						currentTime, 
+						sendingBytes, 
+						ackEliciting, 
+						inFlight);
+			}
+			if (inFlight) {
+				if (ackEliciting) {
+					space.setLastAckElicitingTime(currentTime);
+				}
 			}
 			for (IFrame frame: frames) {
 				FRAME_PROCESSORS[frame.getType().ordinal()].sending(this, frame, packet);

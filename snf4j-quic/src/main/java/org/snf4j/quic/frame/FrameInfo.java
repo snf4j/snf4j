@@ -221,6 +221,26 @@ public class FrameInfo {
 		return false;
 	}
 	
+	/**
+	 * Tells if the given packet counts toward bytes in flight for congestion
+	 * control purposes.
+	 * 
+	 * @param packet the given packet
+	 * @return {@code true} if the packet counts toward bytes in flight
+	 */
+	public boolean isCongestionControlled(IPacket packet) {
+		List<IFrame> frames = packet.getFrames();
+		
+		if (frames != null) {
+			for (IFrame frame: frames) {
+				if (isCongestionControlled(frame.getTypeValue())) {
+					return true;
+				}
+			}
+		}
+		return false;		
+	}
+	
 	private static class Info {
 		
 		boolean[] allowedPackets = new boolean[PacketType.values().length];

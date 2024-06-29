@@ -101,6 +101,8 @@ public class QuicEngine implements IEngine {
 		}
 	};
 		
+	private final IAntiAmplificator antiAmplificator;
+	
 	private boolean outboundDone;
 	
 	private boolean inboundDone;
@@ -133,7 +135,10 @@ public class QuicEngine implements IEngine {
 		cryptoAdapter = new CryptoEngineAdapter(cryptoEngine);
 		processor = new QuicProcessor(state, cryptoAdapter);
 		protection = new PacketProtection(protectionListener);
-		cryptoFragmenter = new CryptoFragmenter(state, protection, protectionListener, processor);
+		antiAmplificator = state.isClientMode() 
+				? DisarmedAnitAmplificator.INSTANCE
+				: new AntiAmplificator(state);
+		cryptoFragmenter = new CryptoFragmenter(state, protection, protectionListener, processor, antiAmplificator);
 		acceptor = new PacketAcceptor(state);
 	}
 
@@ -230,8 +235,10 @@ public class QuicEngine implements IEngine {
 		if (cryptoEngine.hasTask() || cryptoEngine.hasRunningTask(true)) {
 			return NEED_TASK;
 		}
-		if (cryptoEngine.needProduce()) {
-			return NEED_WRAP;
+		if (!antiAmplificator.isBlocked()) {
+			if (cryptoEngine.needProduce() || cryptoFragmenter.hasPending()) {
+				return NEED_WRAP;
+			}
 		}
 		if (cryptoEngine.hasRunningTask(false)) {
 			return NEED_UNWRAP_AGAIN;
@@ -411,11 +418,18 @@ public class QuicEngine implements IEngine {
 			
 			consumed = src.remaining();
 			boolean udpChecked = false;
+			boolean accepted = false;
 			
 			processor.preProcess();
 			while (acceptor.accept(src)) {
-				IPacket packet = protection.unprotect(state, src);
+				IPacket packet;
 				
+				if (!accepted) {
+					accepted = true;
+					antiAmplificator.incReceived(consumed);
+				}
+				
+				packet = protection.unprotect(state, src);				
 				if (packet != null) {
 					if (!FrameInfo.of(state.getVersion()).isValid(packet)) {
 						throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Frame not permitted in packet");

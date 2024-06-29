@@ -72,9 +72,13 @@ public class QuicStateTest extends CommonTest {
 		assertEquals(1200, s.getMaxUdpPayloadSize());
 		s.setMaxUdpPayloadSize(1230);
 		assertEquals(1230, s.getMaxUdpPayloadSize());
+		assertFalse(s.isAddressValidatedByPeer());
+		assertFalse(s.isAddressValidated());
 		
 		s = new QuicState(false);
 		assertNotNull(s.getConnectionIdManager());
+		assertTrue(s.isAddressValidatedByPeer());
+		assertFalse(s.isAddressValidated());
 	}
 
 	void assertContext(EncryptionContext ctx) {
@@ -285,6 +289,24 @@ public class QuicStateTest extends CommonTest {
 	}
 	
 	@Test
+	public void testIsHandshakeConfirmed() {
+		QuicState s = new QuicState(true);
+
+		assertFalse(s.isHandshakeConfirmed());
+		for (HandshakeState hs: HandshakeState.values()) {
+			if (hs == HandshakeState.DONE) {
+				continue;
+			}
+			s.setHandshakeState(hs);
+		}
+		assertFalse(s.isHandshakeConfirmed());
+		s.setHandshakeState(HandshakeState.DONE);
+		assertTrue(s.isHandshakeConfirmed());
+		s.setHandshakeState(HandshakeState.CLOSING);
+		assertTrue(s.isHandshakeConfirmed());		
+	}
+	
+	@Test
 	public void testConnectionIdManager() throws Exception {
 		config.connectionIdLength = 0;
 		config.activeConnectionIdLimit = 3;
@@ -305,5 +327,37 @@ public class QuicStateTest extends CommonTest {
 		catch (QuicException e) {
 			assertEquals("Connection id limit exceeded", e.getMessage());
 		}
+	}
+
+	@Test
+	public void testIsAddressValidated() {
+		QuicState s = new QuicState(true);
+		assertFalse(s.isAddressValidated());
+		s.setAddressValidated();
+		assertTrue(s.isAddressValidated());
+		s.setAddressValidated();
+		assertTrue(s.isAddressValidated());
+	}
+	
+	@Test
+	public void testIsAddressValidatedByPeer() {
+		QuicState s = new QuicState(true);
+		assertFalse(s.isAddressValidatedByPeer());
+		for (HandshakeState hs: HandshakeState.values()) {
+			if (hs == HandshakeState.DONE) {
+				continue;
+			}
+			s.setHandshakeState(hs);
+		}
+		assertFalse(s.isAddressValidatedByPeer());
+		s.setHandshakeState(HandshakeState.DONE);
+		assertTrue(s.isAddressValidatedByPeer());
+
+		s = new QuicState(true);
+		assertFalse(s.isAddressValidatedByPeer());
+		s.setAddressValidatedByPeer();
+		assertTrue(s.isAddressValidatedByPeer());
+		s.setAddressValidatedByPeer();
+		assertTrue(s.isAddressValidatedByPeer());
 	}
 }

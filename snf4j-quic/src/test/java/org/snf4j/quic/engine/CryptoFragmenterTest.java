@@ -33,6 +33,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 
@@ -49,6 +50,7 @@ import org.snf4j.quic.frame.AckRange;
 import org.snf4j.quic.frame.CryptoFrame;
 import org.snf4j.quic.frame.IFrame;
 import org.snf4j.quic.frame.MultiPaddingFrame;
+import org.snf4j.quic.frame.PaddingFrame;
 import org.snf4j.quic.frame.PingFrame;
 import org.snf4j.quic.packet.IPacket;
 import org.snf4j.quic.packet.PacketType;
@@ -101,7 +103,7 @@ public class CryptoFragmenterTest extends CommonTest {
 		processor = new QuicProcessor(state, null);
 		protection = new PacketProtection(new TestListener(listener));
 		peer = new PacketProtection(new TestListener(peerListener));
-		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor);
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor, DisarmedAnitAmplificator.INSTANCE);
 		buf = ByteBuffer.allocate(2000);
 	}
 	
@@ -528,6 +530,15 @@ public class CryptoFragmenterTest extends CommonTest {
 		packet = peer.unprotect(peerState, buf);
 		ack = (AckFrame) packet.getFrames().get(0);
 		assertAck(ack, 8,8,4,4);
+		assertEquals(((nanoTime-receiveTime)/1000) >> 3, ack.getDelay());
+		
+		state.setHandshakeState(HandshakeState.DONE);
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		buf.flip();
+		packet = peer.unprotect(peerState, buf);
+		ack = (AckFrame) packet.getFrames().get(0);
+		assertAck(ack, 0,0);
 		assertEquals(((nanoTime-receiveTime)/1000) >> 1, ack.getDelay());
 	}
 	
@@ -543,6 +554,161 @@ public class CryptoFragmenterTest extends CommonTest {
 		FlyingFrames flying = space.frames().getFlying(0);
 		assertNotNull(flying);
 		assertEquals(12345678, flying.getSentTime());
+		buf.flip();
+		assertTrue(buf.hasRemaining());
+		assertEquals(buf.remaining(), flying.getSentBytes());
+	}
+	
+	@Test
+	public void testSettingAckEliciting() throws Exception {
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.INITIAL);
+		space.frames().add(new PingFrame());
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		FlyingFrames flying = space.frames().getFlying(0);
+		assertTrue(flying.isAckEliciting());
+
+		space.frames().add(new PaddingFrame());
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		flying = space.frames().getFlying(1);
+		assertFalse(flying.isAckEliciting());
+	}
+
+	@Test
+	public void testSettingInFlight() throws Exception {
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		init(EncryptionLevel.APPLICATION_DATA);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.APPLICATION_DATA);
+		space.frames().add(new PingFrame());
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		FlyingFrames flying = space.frames().getFlying(0);
+		assertTrue(flying.isInFlight());
+
+		space.frames().add(new AckFrame(0,1000));
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		flying = space.frames().getFlying(1);
+		assertFalse(flying.isInFlight());
+	}
+	
+	IAntiAmplificator antiAmplificator(CryptoFragmenter cf) throws Exception {
+		Field f = CryptoFragmenter.class.getDeclaredField("antiAmplificator");
+		f.setAccessible(true);
+		return (IAntiAmplificator) f.get(cf);
+	}
+	
+	@Test
+	public void testAntiAmplification() throws Exception {
+		IAntiAmplificator aa = new AntiAmplificator(state);
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor, aa);
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		init(EncryptionLevel.HANDSHAKE);
+		
+		ProducedCrypto pc1 = new ProducedCrypto(buffer(bytes(200)), EncryptionLevel.INITIAL, 6);
+		ProducedCrypto pc2 = new ProducedCrypto(buffer(bytes(108)), EncryptionLevel.HANDSHAKE, 0);
+		buf.clear();
+		assertEquals(0, fragmenter.protect(produced(pc1), buf));
+		assertTrue(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		assertEquals(0, buf.position());
+		assertEquals(0, fragmenter.protect(produced(pc2), buf));
+		assertTrue(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		assertEquals(0, buf.position());
+		assertEquals(1200, aa.getBlockedData().length);
+		aa.incReceived(400-1);
+		assertEquals(0, fragmenter.protect(produced(), buf));
+		assertTrue(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		aa.incReceived(1);
+		assertFalse(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		assertEquals(0, buf.position());
+		assertEquals(1200, fragmenter.protect(produced(), buf));
+		
+		buf.flip();
+		assertSame(PacketType.INITIAL, peer.unprotect(peerState, buf).getType());
+		assertFalse(aa.isBlocked());
+		assertFalse(aa.needUnblock());
+		
+		buf.clear();
+		assertEquals(0, fragmenter.protect(produced(), buf));
+		assertTrue(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		assertEquals(150, aa.getBlockedData().length);
+		aa.incReceived(50-1);
+		assertEquals(0, fragmenter.protect(produced(), buf));
+		assertTrue(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		aa.incReceived(1);
+		assertFalse(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		assertEquals(0, buf.position());
+		assertTrue(fragmenter.hasPending());
+		assertEquals(150, fragmenter.protect(produced(), buf));
+		assertFalse(fragmenter.hasPending());
+		assertTrue(aa.accept(0));
+		assertFalse(aa.accept(1));
+
+		buf.flip();
+		assertSame(PacketType.HANDSHAKE, peer.unprotect(peerState, buf).getType());
+		assertFalse(aa.isBlocked());
+		assertFalse(aa.needUnblock());
+
+		buf.clear();
+		aa.incReceived(50);
+		assertEquals(150, fragmenter.protect(produced(pc2), buf));
+		assertFalse(aa.isBlocked());
+		assertFalse(aa.needUnblock());
+		assertTrue(aa.accept(0));
+		assertFalse(aa.accept(1));
+	}
+
+	@Test
+	public void testAntiAmplificationWithDisarmAndUnblockedData() throws Exception {
+		IAntiAmplificator aa = new AntiAmplificator(state);
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor, aa);
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		
+		ProducedCrypto pc1 = new ProducedCrypto(buffer(bytes(200)), EncryptionLevel.INITIAL, 6);
+		buf.clear();
+		assertEquals(0, fragmenter.protect(produced(pc1), buf));
+		assertTrue(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		state.setAddressValidated();
+		assertFalse(aa.isBlocked());
+		assertTrue(aa.needUnblock());
+		assertTrue(fragmenter.hasPending());
+		assertEquals(1200, fragmenter.protect(produced(), buf));
+		assertFalse(aa.isArmed());
+		
+		buf.clear();
+		assertSame(PacketType.INITIAL, peer.unprotect(peerState, buf).getType());
+	}
+
+	@Test
+	public void testAntiAmplificationWithDisarm() throws Exception {
+		IAntiAmplificator aa = new AntiAmplificator(state);
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor, aa);
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		
+		ProducedCrypto pc1 = new ProducedCrypto(buffer(bytes(200)), EncryptionLevel.INITIAL, 6);
+		state.setAddressValidated();
+		buf.clear();
+		assertFalse(aa.accept(1));
+		assertEquals(1200, fragmenter.protect(produced(pc1), buf));
+		assertFalse(aa.isArmed());
+		
+		buf.clear();
+		assertSame(PacketType.INITIAL, peer.unprotect(peerState, buf).getType());
 	}
 	
 	class TestListener implements IPacketProtectionListener {

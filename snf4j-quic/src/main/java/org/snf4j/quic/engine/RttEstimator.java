@@ -81,8 +81,10 @@ public class RttEstimator {
 				break;
 				
 			case APPLICATION_DATA:
-				ackDelay = Math.min(ackDelay, state.getPeerMaxAckDelay()*1000)*1000;
-				break;
+				if (state.isHandshakeConfirmed()) {
+					ackDelay = Math.min(ackDelay, state.getPeerMaxAckDelay()*1000)*1000;
+					break;
+				}
 				
 			default:
 				ackDelay *= 1000;

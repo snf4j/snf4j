@@ -37,6 +37,7 @@ import org.snf4j.quic.engine.processor.QuicProcessor;
 import org.snf4j.quic.frame.AckFrame;
 import org.snf4j.quic.frame.AckFrameBuilder;
 import org.snf4j.quic.frame.CryptoFrame;
+import org.snf4j.quic.frame.FrameInfo;
 import org.snf4j.quic.frame.IFrame;
 import org.snf4j.quic.frame.MultiPaddingFrame;
 import org.snf4j.quic.packet.IPacket;
@@ -66,6 +67,8 @@ public class CryptoFragmenter {
 	
 	private final QuicState state;
 	
+	private final IAntiAmplificator antiAmplificator;
+	
 	private ProducedCrypto current;
 	
 	/**
@@ -75,23 +78,25 @@ public class CryptoFragmenter {
 	 * @param protection         the packet protection
 	 * @param protectionListener the packet protection listener
 	 * @param processor          the QUIC packet processor
+	 * @param antiAmplificator   the anti-amplificator
 	 */
-	public CryptoFragmenter(QuicState state, PacketProtection protection, IPacketProtectionListener protectionListener, QuicProcessor processor) {
+	public CryptoFragmenter(QuicState state, PacketProtection protection, IPacketProtectionListener protectionListener, QuicProcessor processor, IAntiAmplificator antiAmplificator) {
 		this.state = state;
 		this.protection = protection;
 		this.protectionListener = protectionListener;
 		this.processor = processor;
+		this.antiAmplificator = antiAmplificator;
 	}
 	
 	/**
 	 * Tells if this framgmenter has still cryptographic data to be protected and
-	 * sent.
+	 * sent or some protected data is ready to be sent but has been blocked due to
+	 * reaching the anit-amplification limit.
 	 * 
-	 * @return {@code true} if there is still cryptographic data to be protected and
-	 *         sent
+	 * @return {@code true} if there is still cryptographic data to be sent
 	 */
 	public boolean hasPending() {
-		return current != null;
+		return current != null || antiAmplificator.needUnblock();
 	}
 		
 	private IPacket packet(CryptoFragmenterContext ctx, IPacket packet) throws QuicException {
@@ -103,7 +108,7 @@ public class CryptoFragmenter {
 			AckFrame ack = acks.build(
 					state.getConfig().getMaxNumberOfAckRanges(), 
 					ctx.ackTime(), 
-					ctx.level == EncryptionLevel.APPLICATION_DATA
+					ctx.level == EncryptionLevel.APPLICATION_DATA && state.isHandshakeConfirmed()
 						? state.getConfig().getAckDelayExponent()
 						: TransportParameters.DEFAULT_ACK_DELAY_EXPONENT);
 
@@ -195,6 +200,33 @@ public class CryptoFragmenter {
 	 * @throws QuicException if an error occurred
 	 */
 	public int protectPending(ByteBuffer dst) throws QuicException {
+		
+		if (antiAmplificator.isArmed()) {
+			if (antiAmplificator.needUnblock()) {
+				if (antiAmplificator.isBlocked()) {
+					return 0;
+				}
+				else {
+					byte[] data = antiAmplificator.getBlockedData();
+					List<IPacket> packets = antiAmplificator.getBlockedPackets();
+					int[] lengths = antiAmplificator.getBlockedLengths();
+
+					if (state.isAddressValidated()) {
+						antiAmplificator.disarm();
+					}
+					else {
+						antiAmplificator.unblock();						
+					}
+					dst.put(data);
+					processSending(packets, lengths);
+					return data.length;
+				}
+			}
+			else if (state.isAddressValidated()) {
+				antiAmplificator.disarm();
+			}
+		}
+		
 		CryptoFragmenterContext ctx = new CryptoFragmenterContext(state);
 		int dst0 = dst.position();
 		IPacket packet = null;
@@ -244,23 +276,54 @@ public class CryptoFragmenter {
 			}
 		}
 		
-		int size = packets.size()-1;
+		int size = packets.size();
+		int[] lengths = new int[size--];
+		int produced;
 		
 		for (int i=0; i<=size; ++i) {
+			int pos0;
+			
 			packet = packets.get(i);
 			if (i == size && initial) {
 				ctx.padding(packet);
 			}
+			pos0 = dst.position();
 			protection.protect(state, packet, dst);
+			lengths[i] = dst.position() - pos0;
 		}
+		produced = dst.position() - dst0;
+		
+		if (antiAmplificator.accept(produced)) {
+			processSending(packets, lengths);
+		}
+		else {
+			byte[] data = new byte[produced];
+			ByteBuffer dup = dst.duplicate();
+			
+			dup.flip();
+			dup.position(dst0);
+			dup.get(data);
+			antiAmplificator.block(data, packets, lengths);
+			dst.position(dst0);
+			return 0;
+		}
+		return produced;	
+	}	
+	
+	private void processSending(List<IPacket> packets, int[] lengths) {
+		FrameInfo info = FrameInfo.of(state.getVersion());
+		int size = packets.size();
 		
 		processor.preSending();
-		for (int i=0; i<=size; ++i) {
-			processor.sending(packets.get(i));
+		for (int i=0; i<size; ++i) {
+			IPacket packet = packets.get(i);
+			processor.sending(
+					packet, 
+					info.isAckEliciting(packet), 
+					info.isCongestionControlled(packet),
+					lengths[i]);
 		}
-		
-		return dst.position() - dst0;	
-	}	
+	}
 	
 	/**
 	 * Protects the given produced cryptographic data. It tries to consume as much

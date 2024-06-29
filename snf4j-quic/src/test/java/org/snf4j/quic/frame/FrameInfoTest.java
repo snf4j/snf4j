@@ -139,4 +139,18 @@ public class FrameInfoTest extends CommonTest {
 		frames.add(new AckFrame(20, 1000));
 		assertFalse(info.isValid(p));
 	}
+	
+	@Test
+	public void testIsCongestionControlled() {
+		FrameInfo info = FrameInfo.of(Version.V1);
+		ZeroRttPacket p = new ZeroRttPacket(bytes(10), 10, bytes(8), Version.V1);
+		List<IFrame> frames = p.getFrames();
+		
+		assertFalse(info.isCongestionControlled(p));
+		assertFalse(info.isCongestionControlled(new RetryPacket(bytes(), bytes(), Version.V1, bytes(16), bytes(16))));
+		frames.add(new AckFrame(20, 1000));
+		assertFalse(info.isCongestionControlled(p));
+		frames.add(new PaddingFrame());
+		assertTrue(info.isCongestionControlled(p));
+	}
 }
