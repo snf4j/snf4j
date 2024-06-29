@@ -41,6 +41,12 @@ public class FlyingFrames {
 	
 	private long sentTime;
 	
+	private int sentBytes;
+	
+	private boolean ackEliciting;
+	
+	private boolean inFlight;
+	
 	/**
 	 * Constructs an empty holder for flying frames.
 	 */
@@ -57,22 +63,68 @@ public class FlyingFrames {
 	}
 	
 	/**
-	 * Returns the time in nanoseconds the frames in this holder were sent.
+	 * Called on sending of the packet carrying the frames in this holder.
 	 * 
-	 * @return the time the frames in this holder were sent, or 0 if the frames were
-	 *         not sent yet
+	 * @param sentTime     the time the packet was sent
+	 * @param sentBytes    the number of bytes sent in the packet
+	 * @param ackEliciting determines whether the packet is ack-eliciting
+	 * @param inFlight     determines whether the packet counts toward bytes in
+	 *                     flight
+	 */
+	public void onSending(long sentTime, int sentBytes, boolean ackEliciting, boolean inFlight) {
+		this.sentTime = sentTime;
+		this.sentBytes = sentBytes;
+		this.ackEliciting = ackEliciting;
+		this.inFlight = inFlight;
+	}
+	
+	/**
+	 * Returns the time in nanoseconds the frames in this holder were sent.
+	 * <p>
+	 * NOTE: Before using this value first check if it is initialized. To do that
+	 * check if {@link #getSentBytes()} returns value different than 0.
+	 * 
+	 * @return the time the frames in this holder were sent
 	 */
 	public long getSentTime() {
 		return sentTime;
 	}
 
 	/**
-	 * Sets the time in nanoseconds the frames in this holder were sent.
+	 * Returns the number of bytes sent in the packet carrying the frames in this
+	 * holder.
 	 * 
-	 * @param sentTime the time the frames in this holder were sent
+	 * @return the number of bytes sent in the packet, or 0 if the value is not
+	 *         initialized yet (the frames were not sent yet)
 	 */
-	public void setSentTime(long sentTime) {
-		this.sentTime = sentTime;
+	public int getSentBytes() {
+		return sentBytes;
+	}
+
+	/**
+	 * Tells whether the packet carrying the frames in this holder is ack-eliciting.
+	 * <p>
+	 * NOTE: Before using this value first check if it is initialized. To do that
+	 * check if {@link #getSentBytes()} returns value different than 0.
+	 * 
+	 * @return {@code true} if the packet carrying the frames in this holder is
+	 *         ack-eliciting.
+	 */
+	public boolean isAckEliciting() {
+		return ackEliciting;
+	}
+
+	/**
+	 * Tells whether the packet carrying the frames in this holder counts toward
+	 * bytes in flight.
+	 * <p>
+	 * NOTE: Before using this value first check if it is initialized. To do that
+	 * check if {@link #getSentBytes()} returns value different than 0.
+	 * 
+	 * @return {@code true} if the packet counts toward bytes in flight
+	 */
+	public boolean isInFlight() {
+		return inFlight;
 	}
 
 }

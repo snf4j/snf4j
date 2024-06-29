@@ -1,5 +1,5 @@
 /*
-* -------------------------------- MIT License --------------------------------
+ * -------------------------------- MIT License --------------------------------
  * 
  * Copyright (c) 2024 SNF4J contributors
  * 
@@ -25,30 +25,37 @@
  */
 package org.snf4j.quic.engine;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
+import java.util.Arrays;
 
-public class FlyingFramesTest {
+import org.junit.Test;
+import org.snf4j.quic.CommonTest;
+import org.snf4j.quic.packet.IPacket;
+import org.snf4j.quic.packet.OneRttPacket;
+
+public class DisarmedAnitAmplificatorTest extends CommonTest {
 
 	@Test
 	public void testAll() {
-		FlyingFrames ff = new FlyingFrames();
-		
-		assertEquals(0, ff.getFrames().size());
-		assertEquals(0, ff.getSentTime());
-		assertEquals(0, ff.getSentBytes());
-		assertFalse(ff.isAckEliciting());
-		assertFalse(ff.isInFlight());
-		ff.onSending(12345,111,true,false);
-		assertEquals(12345, ff.getSentTime());
-		assertEquals(111, ff.getSentBytes());
-		assertTrue(ff.isAckEliciting());
-		assertFalse(ff.isInFlight());
-		ff.onSending(12345,111,false,true);
-		assertFalse(ff.isAckEliciting());
-		assertTrue(ff.isInFlight());
+		IAntiAmplificator aa = DisarmedAnitAmplificator.INSTANCE;
+		assertFalse(aa.isArmed());
+		assertFalse(aa.isBlocked());
+		aa.disarm();
+		assertFalse(aa.isArmed());
+		aa.incReceived(100);
+		assertTrue(aa.accept(1000));
+		aa.block(new byte[100], Arrays.asList((IPacket)new OneRttPacket(bytes("00"), 0, false, false)), new int[] {22});
+		assertFalse(aa.needUnblock());
+		assertNull(aa.getBlockedData());
+		assertNull(aa.getBlockedPackets());
+		assertNull(aa.getBlockedLengths());
+		aa.unblock();
+		assertFalse(aa.needUnblock());
+		assertNull(aa.getBlockedData());
+		assertNull(aa.getBlockedPackets());
+		assertNull(aa.getBlockedLengths());
 	}
 }

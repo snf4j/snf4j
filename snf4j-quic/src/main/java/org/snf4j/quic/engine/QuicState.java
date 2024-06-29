@@ -73,7 +73,9 @@ public class QuicState {
 	private final boolean clientMode;
 
 	private HandshakeState handshakeState = HandshakeState.INIT;
-	
+
+	private boolean handshakeConfirmed;
+
 	private int maxUdpPayloadSize = PacketUtil.MIN_MAX_UDP_PAYLOAD_SIZE;
 	
 	private EncryptionLevel encryptorLevel;
@@ -89,6 +91,10 @@ public class QuicState {
 	private final ITimeProvider time;
 	
 	private final IQuicConfig config;
+	
+	private boolean addressValidated;
+	
+	private boolean addressValidatedByPeer;
 
 	public QuicState(boolean clientMode) {
 		this(clientMode, new QuicConfig(), TimeProvider.INSTANCE);
@@ -110,6 +116,7 @@ public class QuicState {
 				config.getActiveConnectionIdLimit(), 
 				new SecureRandom());
 		this.time = time;
+		addressValidatedByPeer = !clientMode;
 		estimator = new RttEstimator(this);
 		contexts[EncryptionLevel.EARLY_DATA.ordinal()] = new EncryptionContext(EncryptionLevel.EARLY_DATA, 10,contextsListener);
 		contexts[EncryptionLevel.INITIAL.ordinal()] = new EncryptionContext(EncryptionLevel.INITIAL, 10, contextsListener);
@@ -343,6 +350,19 @@ public class QuicState {
 	 */
 	public void setHandshakeState(HandshakeState handshakeState) {
 		this.handshakeState = handshakeState;
+		if (handshakeState == HandshakeState.DONE) {
+			handshakeConfirmed = true;
+			addressValidatedByPeer = true;
+		}
+	}
+
+	/**
+	 * Tells if the handshake has been confirmed.
+	 * 
+	 * @return {@code true} if the handshake has been confirmed
+	 */
+	public boolean isHandshakeConfirmed() {
+		return handshakeConfirmed;
 	}
 
 	/**
@@ -409,5 +429,39 @@ public class QuicState {
 	public void setPeerMaxAckDelay(int maxDelay) {
 		peerMaxAckDelay = maxDelay;
 	}
+
+	/**
+	 * Tells whether the address validation is completed by peer.
+	 * 
+	 * @return {@code true} if the address validation is completed by peer
+	 */
+	public boolean isAddressValidatedByPeer() {
+		return addressValidatedByPeer;
+	}
+
+	/**
+	 * Sets that the address validation is completed by peer.
+	 */
+	public void setAddressValidatedByPeer() {
+		this.addressValidatedByPeer = true;
+	}
+
+	/**
+	 * Tells whether the validation of peer's address is completed.
+	 * 
+	 * @return {@code true} if the validation of peer's address is completed
+	 */
+	public boolean isAddressValidated() {
+		return addressValidated;
+	}
+
+	/**
+	 * Sets that the validation of peer's address is completed.
+	 */
+	public void setAddressValidated() {
+		this.addressValidated = true;
+	}
+	
+	
 	
 }

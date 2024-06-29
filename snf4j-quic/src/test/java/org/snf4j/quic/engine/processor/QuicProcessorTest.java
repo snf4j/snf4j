@@ -27,9 +27,11 @@ package org.snf4j.quic.engine.processor;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
@@ -114,17 +116,32 @@ public class QuicProcessorTest extends CommonTest {
 	@Test
 	public void testSending() throws Exception {
 		IPacket p = new RetryPacket(bytes("00"), bytes("01"), Version.V1, bytes(), bytes(16));
-		processor.sending(p);
+		processor.sending(p, false, false, 100);
 		assertNull(state.getConnectionIdManager().getDestinationPool().get());
 		p = new VersionNegotiationPacket(bytes("00"), bytes("01"));
-		processor.sending(p);
+		processor.sending(p, false, false, 100);
 		p = new OneRttPacket(bytes("00"), 10, false, false);
 		state.setHandshakeState(HandshakeState.DONE_SENDING);
-		processor.sending(p);
+		processor.sending(p, true, false, 100);
 		assertSame(HandshakeState.DONE_SENDING, state.getHandshakeState());
 		p.getFrames().add(new HandshakeDoneFrame());
-		processor.sending(p);
+		processor.sending(p, true, false, 100);
 		assertSame(HandshakeState.DONE_SENT, state.getHandshakeState());
+		
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.APPLICATION_DATA);
+		space.frames().fly(new HandshakeDoneFrame(), 10);
+		processor.sending(p, true, false, 12345);
+		assertEquals(12345, space.frames().getFlying(10).getSentBytes());
+		assertTrue(space.frames().getFlying(10).isAckEliciting());
+		assertFalse(space.frames().getFlying(10).isInFlight());
+
+		p = new OneRttPacket(bytes("00"), 11, false, false);
+		p.getFrames().add(new HandshakeDoneFrame());
+		space.frames().fly(new HandshakeDoneFrame(), 11);
+		processor.sending(p, false, true, 12346);
+		assertEquals(12346, space.frames().getFlying(11).getSentBytes());
+		assertFalse(space.frames().getFlying(11).isAckEliciting());
+		assertTrue(space.frames().getFlying(11).isInFlight());
 	}
 	
 	@Test
@@ -165,8 +182,31 @@ public class QuicProcessorTest extends CommonTest {
 		space.frames().fly(frame, 0);
 		FlyingFrames flying = space.frames().getFlying(0);
 		assertEquals(0, flying.getSentTime());
-		processor.sending(packet);
+		processor.sending(packet, false, false, 101);
 		assertEquals(100, flying.getSentTime());
+		assertEquals(101, flying.getSentBytes());
+	}
+	
+	@Test
+	public void testSetLastAckElicitingTime() {
+		TestTime time = new TestTime(111,200,300);
+		state = new QuicState(true, new TestConfig(), time);
+		processor = new QuicProcessor(state, adapter);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.APPLICATION_DATA);
+
+		processor.preSending();
+		IPacket packet = new OneRttPacket(bytes("00"), 0, false, false);
+		PingFrame frame = new PingFrame();
+		packet.getFrames().add(frame);
+		space.frames().fly(frame, 0);
+		processor.sending(packet, false, false, 101);
+		assertEquals(0, space.getLastAckElicitingTime());
+		processor.sending(packet, true, false, 101);
+		assertEquals(0, space.getLastAckElicitingTime());
+		processor.sending(packet, false, true, 101);
+		assertEquals(0, space.getLastAckElicitingTime());
+		processor.sending(packet, true, true, 101);
+		assertEquals(111, space.getLastAckElicitingTime());
 	}
 	
 	@Test
@@ -183,5 +223,35 @@ public class QuicProcessorTest extends CommonTest {
 		processor.process(packet, true);
 		AckFrame ack = space.acks().build(3, 400000000, 1);
 		assertEquals(150000, ack.getDelay());
+	}
+	
+	@Test
+	public void testSetAddressValidated() throws Exception {
+		state = new QuicState(true);
+		processor = new QuicProcessor(state, adapter);
+
+		IPacket p = new InitialPacket(bytes("00"), 0, bytes("01"), Version.V1, bytes(""));
+		PingFrame ping = new PingFrame();
+		p.getFrames().add(ping);
+		assertFalse(state.isAddressValidated());
+		processor.process(p, true);
+		assertTrue(state.isAddressValidated());
+		
+		state = new QuicState(false);
+		processor = new QuicProcessor(state, adapter);
+		assertFalse(state.isAddressValidated());
+		processor.process(p, true);
+		assertFalse(state.isAddressValidated());
+		
+		p = new HandshakePacket(bytes("00"), 0, bytes("01"), Version.V1);
+		p.getFrames().add(ping);
+		assertFalse(state.isAddressValidated());
+		processor.process(p, true);
+		assertTrue(state.isAddressValidated());
+		p = new HandshakePacket(bytes("00"), 1, bytes("01"), Version.V1);
+		p.getFrames().add(ping);
+		assertTrue(state.isAddressValidated());
+		processor.process(p, true);
+		assertTrue(state.isAddressValidated());
 	}
 }

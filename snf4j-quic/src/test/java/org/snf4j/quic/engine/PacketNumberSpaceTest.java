@@ -95,4 +95,13 @@ public class PacketNumberSpaceTest {
 		assertEquals(4, ack.getLargestPacketNumber());
 		assertEquals(2, ack.getSmallestPacketNumber());
 	}
+	
+	@Test
+	public void testGetLastAckElictingTime() {
+		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, 2);
+		
+		assertEquals(0, s.getLastAckElicitingTime());
+		s.setLastAckElicitingTime(11100022);
+		assertEquals(11100022, s.getLastAckElicitingTime());
+	}
 }

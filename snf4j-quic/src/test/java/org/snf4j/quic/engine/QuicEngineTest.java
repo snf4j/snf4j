@@ -921,4 +921,67 @@ public class QuicEngineTest extends CommonTest {
 		se.unwrap(buffer("00030405"), out);
 		assertEquals(1234568, f.getLong(processor));
 	}
+	
+	IAntiAmplificator antiAmplificator(QuicEngine engine) throws Exception {
+		Field f = QuicEngine.class.getDeclaredField("antiAmplificator");
+		f.setAccessible(true);
+		return (IAntiAmplificator) f.get(engine);
+	}
+	
+	@Test
+	public void testAntiAmplification() throws Exception {
+		EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
+		EngineParametersBuilder epb = new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE);
+
+		QuicEngine ce = new QuicEngine(true, epb.build(), ehb.build());
+		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
+		
+		IAntiAmplificator aa = antiAmplificator(ce);
+		assertFalse(aa.isArmed());
+		aa = antiAmplificator(se);
+		assertTrue(aa.isArmed());
+		
+		clear();
+		IEngineResult r = ce.wrap(in, out);
+		flip();
+		r = se.unwrap(in, out);
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		assertSame(NEED_WRAP, se.getHandshakeStatus());
+		
+		assertFalse(aa.accept(3*1200+1));
+		assertTrue(aa.accept(2*1200+1));
+		assertSame(NEED_WRAP, se.getHandshakeStatus());
+		clear();
+		r = se.wrap(in, out);
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		assertSame(NEED_UNWRAP, se.getHandshakeStatus());
+		assertEquals(0, r.bytesProduced());
+		assertEquals(0, out.position());
+		
+		aa.incReceived(1);
+		assertSame(NEED_WRAP, se.getHandshakeStatus());
+		r = se.wrap(in, out);
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		assertSame(NEED_UNWRAP, se.getHandshakeStatus());
+		assertEquals(1200, r.bytesProduced());
+		assertEquals(1200, out.position());
+		
+		flip();
+		r = ce.unwrap(in, out);
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		assertSame(NEED_WRAP, ce.getHandshakeStatus());
+		
+		assertTrue(aa.isArmed());
+		clear();
+		ce.wrap(in, out);
+		flip();
+		r = se.unwrap(in, out);
+		assertTrue(aa.isArmed());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		assertSame(NEED_WRAP, se.getHandshakeStatus());
+		clear();
+		r = se.wrap(in, out);
+		assertFalse(aa.isArmed());
+	}
 }

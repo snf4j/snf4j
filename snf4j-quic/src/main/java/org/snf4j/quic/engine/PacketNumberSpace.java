@@ -60,6 +60,8 @@ public class PacketNumberSpace {
 	
 	private long largestProcessed = -1;
 	
+	private long lastAckElicitingTime;
+	
 	/**
 	 * Constructs a packet number space of the given type.
 	 * 
@@ -154,6 +156,25 @@ public class PacketNumberSpace {
 	 */
 	public long getLargestProcessed() {
 		return largestProcessed;
+	}
+
+	/**
+	 * Returns the time in nanoseconds the most recent ack-eliciting packet was
+	 * sent.
+	 * 
+	 * @return the time, or 0 if no ack-eliciting packet was sent yet
+	 */
+	public long getLastAckElicitingTime() {
+		return lastAckElicitingTime;
+	}
+
+	/**
+	 * Sets the time in nanoseconds the most recent ack-eliciting packet was sent.
+	 * 
+	 * @param lastAckElicitingTime the time
+	 */
+	public void setLastAckElicitingTime(long lastAckElicitingTime) {
+		this.lastAckElicitingTime = lastAckElicitingTime;
 	}
 	
 	

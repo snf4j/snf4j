@@ -26,14 +26,15 @@
 package org.snf4j.quic.engine.processor;
 
 import org.snf4j.quic.QuicException;
+import org.snf4j.quic.TransportError;
 import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.quic.engine.FlyingFrames;
 import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.frame.AckFrame;
 import org.snf4j.quic.frame.AckRange;
-import org.snf4j.quic.frame.FrameInfo;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.packet.IPacket;
+import org.snf4j.quic.packet.PacketType;
 import org.snf4j.quic.tp.TransportParameters;
 
 class AckFrameProcessor implements IFrameProcessor<AckFrame> {
@@ -48,19 +49,29 @@ class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 		EncryptionLevel level = packet.getType().encryptionLevel();
 		PacketNumberSpace space = p.state.getSpace(level);
 		FlyingFrames largest = space.frames().getFlying(frame.getLargestPacketNumber());
-		FrameInfo info = FrameInfo.of(p.state.getVersion());
 		boolean addSample = false;
 		
 		for (AckRange range: frame.getRanges()) {
 			long to = range.getTo();
 			
 			for (long pn = range.getFrom(); pn >= to; pn--) {
-				if (largest != null && !addSample) {
-					FlyingFrames fframes = space.frames().getFlying(pn);
-					
-					addSample = fframes != null && info.hasAckEliciting(fframes.getFrames());
+				FlyingFrames fframes = space.frames().getFlying(pn);
+				
+				if (fframes != null) {
+					if (fframes.getSentBytes() == 0) {
+						throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Unexpected acked packet number");
+					}
+					if (largest != null && !addSample) {
+						addSample = fframes.isAckEliciting();
+					}
 				}
 				space.updateAcked(pn);
+			}
+		}
+		
+		if (!p.state.isAddressValidatedByPeer()) {
+			if (packet.getType() == PacketType.HANDSHAKE) {
+				p.state.setAddressValidatedByPeer();
 			}
 		}
 		
