@@ -62,6 +62,12 @@ public class PacketNumberSpace {
 	
 	private long lastAckElicitingTime;
 	
+	private long lossTime;
+	
+	private int ackElicitingInFlight;
+	
+	private long ecnCeCount;
+	
 	/**
 	 * Constructs a packet number space of the given type.
 	 * 
@@ -100,12 +106,15 @@ public class PacketNumberSpace {
 	 * 
 	 * @param pn the packet number being acknowledged
 	 * @throws QuicException if the packet number has an unexpected value
+	 * @return the frames that was acknowledged, or {@code null} if there were no
+	 *         frames to acknowledged (were already acknowledged)
 	 */
-	public void updateAcked(long pn) throws QuicException {
-		frames.ack(pn);
+	public FlyingFrames updateAcked(long pn) throws QuicException {
+		FlyingFrames fframes = frames.ack(pn);
 		if (pn > largestAcked) {
 			largestAcked = pn;
 		}
+		return fframes;
 	}
 	
 	/**
@@ -130,7 +139,8 @@ public class PacketNumberSpace {
 	 * Returns the maximum packet number that was acknowledged by peer in this
 	 * packet number space.
 	 * 
-	 * @return the maximum packet number that was acknowledged
+	 * @return the maximum packet number that was acknowledged, or -1 if no packet
+	 *         has been acknowledged yet
 	 */
 	public long getLargestAcked() {
 		return largestAcked;
@@ -152,7 +162,8 @@ public class PacketNumberSpace {
 	 * Returns the maximum packet number of a packet that was successfully processed
 	 * in this packet number space.
 	 * 
-	 * @return the maximum packet number that was successfully processed
+	 * @return the maximum packet number that was successfully processed, or -1 if
+	 *         no packet has been processed yet
 	 */
 	public long getLargestProcessed() {
 		return largestProcessed;
@@ -176,6 +187,75 @@ public class PacketNumberSpace {
 	public void setLastAckElicitingTime(long lastAckElicitingTime) {
 		this.lastAckElicitingTime = lastAckElicitingTime;
 	}
+
+	/**
+	 * Returns the time in nanoseconds at which the next packet in that packet
+	 * number space can be considered lost based on exceeding the reordering window
+	 * in time.
+	 * 
+	 * @return the time, or 0 if it has not been set yet
+	 */
+	public long getLossTime() {
+		return lossTime;
+	}
+
+	/**
+	 * Sets the time in nanoseconds at which the next packet in that packet number
+	 * space can be considered lost based on exceeding the reordering window in
+	 * time.
+	 * 
+	 * @param lossTime the time
+	 */
+	public void setLossTime(long lossTime) {
+		this.lossTime = lossTime;
+	}
+
+	/**
+	 * Returns the number of ack-eliciting packets currently in flight in this
+	 * space.
+	 * 
+	 * @return the number of ack-eliciting packets currently in flight
+	 */
+	public int getAckElicitingInFlight() {
+		return ackElicitingInFlight;
+	}
+
+	/**
+	 * Updates the number of ack-eliciting packets currently in flight in this space
+	 * by the given increment (positive or negative).
+	 * 
+	 * @param increment the increment or decrement if negative
+	 */
+	public void updateAckElicitingInFlight(int increment) {
+		ackElicitingInFlight += increment;
+	}
+
+	/**
+	 * Clears the number of ack-eliciting packets currently in flight in this space.
+	 */
+	public void clearAckElicitingInFlight() {
+		ackElicitingInFlight = 0;
+	}
 	
+	/**
+	 * Returns the total number of packets received with the ECN-CE codepoint in
+	 * this space
+	 * 
+	 * @return the total number of packets received with the ECN-CE codepoint
+	 */
+	public long getEcnCeCount() {
+		return ecnCeCount;
+	}
+
+	/**
+	 * Sets the total number of packets received with the ECN-CE codepoint in this
+	 * space
+	 * 
+	 * @param ecnCeCount the total number of packets received with the ECN-CE
+	 *                   codepoint
+	 */
+	public void setEcnCeCount(long ecnCeCount) {
+		this.ecnCeCount = ecnCeCount;
+	}
 	
 }

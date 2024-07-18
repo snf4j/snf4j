@@ -39,6 +39,8 @@ public class FlyingFrames {
 
 	private final List<IFrame> frames = new LinkedList<>();
 	
+	private final long packetNumber;
+	
 	private long sentTime;
 	
 	private int sentBytes;
@@ -49,10 +51,23 @@ public class FlyingFrames {
 	
 	/**
 	 * Constructs an empty holder for flying frames.
+	 * 
+	 * @param packetNumber the number of the packet carrying the frames in this
+	 *                     holder
 	 */
-	public FlyingFrames() {
+	public FlyingFrames(long packetNumber) {
+		this.packetNumber = packetNumber;
 	}
 	
+	/**
+	 * Returns the number of the packet carrying the frames in this holder
+	 * 
+	 * @return the packet number
+	 */
+	public long getPacketNumber() {
+		return packetNumber;
+	}
+
 	/**
 	 * Return a list of flying frames.
 	 * 

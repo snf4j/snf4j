@@ -67,8 +67,6 @@ public class CryptoFragmenter {
 	
 	private final QuicState state;
 	
-	private final IAntiAmplificator antiAmplificator;
-	
 	private ProducedCrypto current;
 	
 	/**
@@ -78,14 +76,12 @@ public class CryptoFragmenter {
 	 * @param protection         the packet protection
 	 * @param protectionListener the packet protection listener
 	 * @param processor          the QUIC packet processor
-	 * @param antiAmplificator   the anti-amplificator
 	 */
-	public CryptoFragmenter(QuicState state, PacketProtection protection, IPacketProtectionListener protectionListener, QuicProcessor processor, IAntiAmplificator antiAmplificator) {
+	public CryptoFragmenter(QuicState state, PacketProtection protection, IPacketProtectionListener protectionListener, QuicProcessor processor) {
 		this.state = state;
 		this.protection = protection;
 		this.protectionListener = protectionListener;
 		this.processor = processor;
-		this.antiAmplificator = antiAmplificator;
 	}
 	
 	/**
@@ -96,7 +92,7 @@ public class CryptoFragmenter {
 	 * @return {@code true} if there is still cryptographic data to be sent
 	 */
 	public boolean hasPending() {
-		return current != null || antiAmplificator.needUnblock();
+		return current != null || state.getAntiAmplificator().needUnblock();
 	}
 		
 	private IPacket packet(CryptoFragmenterContext ctx, IPacket packet) throws QuicException {
@@ -200,6 +196,7 @@ public class CryptoFragmenter {
 	 * @throws QuicException if an error occurred
 	 */
 	public int protectPending(ByteBuffer dst) throws QuicException {
+		IAntiAmplificator antiAmplificator = state.getAntiAmplificator();
 		
 		if (antiAmplificator.isArmed()) {
 			if (antiAmplificator.needUnblock()) {

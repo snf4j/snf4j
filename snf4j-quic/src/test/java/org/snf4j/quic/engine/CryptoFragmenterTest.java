@@ -76,7 +76,9 @@ public class CryptoFragmenterTest extends CommonTest {
 	long receiveTime;
 	
 	long nanoTime;
-;
+
+    IAntiAmplificator antiAmplificator;
+    
 	ITimeProvider time = new ITimeProvider() {
 
 		@Override
@@ -92,7 +94,15 @@ public class CryptoFragmenterTest extends CommonTest {
 		super.before();
 		receiveTime = 1000000000;
 		nanoTime = 1000000000 + (1000000 << 3); // for ack delay = 1000
-		state = new QuicState(true, config, time);
+		antiAmplificator = null;
+		state = new QuicState(true, config, time) {
+			public IAntiAmplificator getAntiAmplificator() {
+				if (antiAmplificator != null) {
+					return antiAmplificator;					
+				}
+				return super.getAntiAmplificator();
+			}
+		};
 		TestConfig peerConfig = new TestConfig();
 		peerConfig.connectionIdLength = 4;
 		peerState = new QuicState(false, peerConfig, time);
@@ -103,7 +113,7 @@ public class CryptoFragmenterTest extends CommonTest {
 		processor = new QuicProcessor(state, null);
 		protection = new PacketProtection(new TestListener(listener));
 		peer = new PacketProtection(new TestListener(peerListener));
-		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor, DisarmedAnitAmplificator.INSTANCE);
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor);
 		buf = ByteBuffer.allocate(2000);
 	}
 	
@@ -604,8 +614,9 @@ public class CryptoFragmenterTest extends CommonTest {
 	
 	@Test
 	public void testAntiAmplification() throws Exception {
-		IAntiAmplificator aa = new AntiAmplificator(state);
-		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor, aa);
+		antiAmplificator = new AntiAmplificator(state);
+		IAntiAmplificator aa = antiAmplificator;
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor);
 		listener.onInit(INITIAL_SALT_V1, DEST_CID);
 		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
 		init(EncryptionLevel.HANDSHAKE);
@@ -672,8 +683,9 @@ public class CryptoFragmenterTest extends CommonTest {
 
 	@Test
 	public void testAntiAmplificationWithDisarmAndUnblockedData() throws Exception {
-		IAntiAmplificator aa = new AntiAmplificator(state);
-		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor, aa);
+		antiAmplificator = new AntiAmplificator(state);
+		IAntiAmplificator aa = antiAmplificator;
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor);
 		listener.onInit(INITIAL_SALT_V1, DEST_CID);
 		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
 		
@@ -695,8 +707,9 @@ public class CryptoFragmenterTest extends CommonTest {
 
 	@Test
 	public void testAntiAmplificationWithDisarm() throws Exception {
-		IAntiAmplificator aa = new AntiAmplificator(state);
-		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor, aa);
+		antiAmplificator = new AntiAmplificator(state);
+		IAntiAmplificator aa = antiAmplificator;
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor);
 		listener.onInit(INITIAL_SALT_V1, DEST_CID);
 		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
 		

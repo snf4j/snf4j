@@ -26,6 +26,8 @@
 package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -40,7 +42,7 @@ public class RttEstimatorTest {
 	
 	@Before
 	public void before() {
-		time = new TestTime();
+		time = new TestTime(1111);
 		config = new TestConfig();
 		state = new QuicState(true, config, time);
 	}
@@ -65,16 +67,21 @@ public class RttEstimatorTest {
 		assertEquals(0, e.getMinRtt());
 		assertEquals(m2n(333), e.getSmoothedRtt());
 		assertEquals(m2n(333) / 2, e.getRttVar());
+		assertFalse(e.isSampled());
+		assertEquals(0, e.getFirstSampleTime());
 	}
 	
 	@Test
 	public void testSampleWithInvalidTimes() {
 		RttEstimator e = new RttEstimator(state);
 		
+		assertFalse(e.isSampled());
 		e.addSample(s2n(1), s2n(1)+1, 0, EncryptionLevel.INITIAL);
+		assertFalse(e.isSampled());
 		assertEquals(m2n(333), e.getSmoothedRtt());
 		e.addSample(s2n(1), s2n(1), 0, EncryptionLevel.INITIAL);
 		assertEquals(0, e.getSmoothedRtt());
+		assertTrue(e.isSampled());
 	}
 	
 	@Test
@@ -83,6 +90,7 @@ public class RttEstimatorTest {
 
 		e.addSample(s2n(1)+2, s2n(1), 0, EncryptionLevel.INITIAL);
 		assertEquals(2, e.getLatestRtt());
+		assertEquals(1111, e.getFirstSampleTime());
 		assertEquals(2, e.getMinRtt());
 		assertEquals(2, e.getSmoothedRtt());
 		assertEquals(1, e.getRttVar());
@@ -93,12 +101,14 @@ public class RttEstimatorTest {
 		RttEstimator e = new RttEstimator(state);
 
 		e.addSample(m2n(100), 0, m2u(50), EncryptionLevel.INITIAL);
+		assertEquals(1111, e.getFirstSampleTime());
 		assertEquals(m2n(100), e.getLatestRtt());
 		assertEquals(m2n(100), e.getMinRtt());
 		assertEquals(m2n(100), e.getSmoothedRtt());
 		assertEquals(m2n(50), e.getRttVar());
 		
 		e.addSample(m2n(200), 0, m2u(50), EncryptionLevel.INITIAL);
+		assertEquals(1111, e.getFirstSampleTime());
 		assertEquals(m2n(200), e.getLatestRtt());
 		assertEquals(m2n(100), e.getMinRtt());
 		long vvar = (3*m2n(50)+m2n(Math.abs(100-200)))/4;

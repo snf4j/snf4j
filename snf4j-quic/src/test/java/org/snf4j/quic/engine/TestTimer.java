@@ -1,5 +1,5 @@
 /*
-* -------------------------------- MIT License --------------------------------
+ * -------------------------------- MIT License --------------------------------
  * 
  * Copyright (c) 2024 SNF4J contributors
  * 
@@ -25,31 +25,40 @@
  */
 package org.snf4j.quic.engine;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.snf4j.core.session.ISessionTimer;
+import org.snf4j.core.timer.ITimerTask;
 
-import org.junit.Test;
+public class TestTimer implements ISessionTimer {
 
-public class FlyingFramesTest {
+	public final static ITimerTask CANCELED = new ITimerTask() {
 
-	@Test
-	public void testAll() {
-		FlyingFrames ff = new FlyingFrames(112);
-		
-		assertEquals(112, ff.getPacketNumber());
-		assertEquals(0, ff.getFrames().size());
-		assertEquals(0, ff.getSentTime());
-		assertEquals(0, ff.getSentBytes());
-		assertFalse(ff.isAckEliciting());
-		assertFalse(ff.isInFlight());
-		ff.onSending(12345,111,true,false);
-		assertEquals(12345, ff.getSentTime());
-		assertEquals(111, ff.getSentBytes());
-		assertTrue(ff.isAckEliciting());
-		assertFalse(ff.isInFlight());
-		ff.onSending(12345,111,false,true);
-		assertFalse(ff.isAckEliciting());
-		assertTrue(ff.isInFlight());
+		@Override
+		public void cancelTask() {
+		}		
+	};
+	
+	@Override
+	public boolean isSupported() {
+		return true;
+	}
+
+	@Override
+	public ITimerTask scheduleTask(Runnable task, long delay, boolean inHandler) {
+		return CANCELED;
+	}
+
+	@Override
+	public ITimerTask scheduleTask(Runnable task, long delay, long period, boolean inHandler) {
+		return CANCELED;
+	}
+
+	@Override
+	public ITimerTask scheduleEvent(Object event, long delay) {
+		return CANCELED;
+	}
+
+	@Override
+	public ITimerTask scheduleEvent(Object event, long delay, long period) {
+		return CANCELED;
 	}
 }

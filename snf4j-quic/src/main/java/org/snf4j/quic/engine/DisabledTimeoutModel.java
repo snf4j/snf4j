@@ -25,31 +25,33 @@
  */
 package org.snf4j.quic.engine;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.snf4j.core.timer.ITimeoutModel;
 
-import org.junit.Test;
+/**
+ * A timeout model disabling the default retransmission performed by the engine
+ * datagram handler. This model should be used by QUIC engines as they provide
+ * their own retransmission mechanisms.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public class DisabledTimeoutModel implements ITimeoutModel {
 
-public class FlyingFramesTest {
+	/** A stateless instance of this timeout model. */
+	public static final ITimeoutModel INSTANCE = new DisabledTimeoutModel();
+	
+	private DisabledTimeoutModel() {}
+	
+	@Override
+	public long next() {
+		return Long.MAX_VALUE;
+	}
 
-	@Test
-	public void testAll() {
-		FlyingFrames ff = new FlyingFrames(112);
-		
-		assertEquals(112, ff.getPacketNumber());
-		assertEquals(0, ff.getFrames().size());
-		assertEquals(0, ff.getSentTime());
-		assertEquals(0, ff.getSentBytes());
-		assertFalse(ff.isAckEliciting());
-		assertFalse(ff.isInFlight());
-		ff.onSending(12345,111,true,false);
-		assertEquals(12345, ff.getSentTime());
-		assertEquals(111, ff.getSentBytes());
-		assertTrue(ff.isAckEliciting());
-		assertFalse(ff.isInFlight());
-		ff.onSending(12345,111,false,true);
-		assertFalse(ff.isAckEliciting());
-		assertTrue(ff.isInFlight());
+	@Override
+	public void reset() {
+	}
+
+	@Override
+	public boolean isEnabled() { 
+		return false; 
 	}
 }
