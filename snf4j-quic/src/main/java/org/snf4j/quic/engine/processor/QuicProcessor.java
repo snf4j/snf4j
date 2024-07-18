@@ -173,11 +173,16 @@ public class QuicProcessor {
 						sendingBytes, 
 						ackEliciting, 
 						inFlight);
+				if (ackEliciting) {
+					space.updateAckElicitingInFlight(1);
+				}
 			}
 			if (inFlight) {
 				if (ackEliciting) {
 					space.setLastAckElicitingTime(currentTime);
 				}
+				state.getCongestion().onPacketSent(sendingBytes);
+				state.getLossDetector().setLossDetectionTimer(currentTime, false);
 			}
 			for (IFrame frame: frames) {
 				FRAME_PROCESSORS[frame.getType().ordinal()].sending(this, frame, packet);

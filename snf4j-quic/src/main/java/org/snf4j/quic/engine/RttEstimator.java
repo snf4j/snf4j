@@ -36,6 +36,8 @@ public class RttEstimator {
 	
 	private final QuicState state;
 	
+	private long firstSampleTime;
+
 	private long latestRtt;
 	
 	private long minRtt;
@@ -45,7 +47,7 @@ public class RttEstimator {
 	private long rttVar;
 	
 	private boolean sampled;
-	
+		
 	public RttEstimator(QuicState state) {
 		this.state = state;
 		smoothedRtt = INITIAL_RTT;
@@ -103,7 +105,17 @@ public class RttEstimator {
 			smoothedRtt = latestRtt;
 			rttVar = latestRtt / 2;
 			sampled = true;
+			firstSampleTime = state.getTime().nanoTime();
 		}
+	}
+
+	/**
+	 * Returns the time in nanoseconds that the first RTT sample was obtained.
+	 * 
+	 * @return the time in nanoseconds that the first RTT sample was obtained
+	 */
+	public long getFirstSampleTime() {
+		return firstSampleTime;
 	}
 
 	/**
@@ -142,6 +154,15 @@ public class RttEstimator {
 	 */
 	public long getRttVar() {
 		return rttVar;
+	}
+
+	/**
+	 * Tells if this estimator is updated with at least one RTT sample.
+	 * 
+	 * @return {@code true} if the estimator is updated with at least one RTT sample
+	 */
+	public boolean isSampled() {
+		return sampled;
 	}	
 	
 }

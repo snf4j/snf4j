@@ -31,18 +31,23 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
+
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
 import org.snf4j.quic.engine.EncryptionLevel;
+import org.snf4j.quic.engine.LossDetector;
 import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.engine.QuicState;
 import org.snf4j.quic.engine.TestConfig;
+import org.snf4j.quic.engine.TestSessionTimer;
 import org.snf4j.quic.engine.TestTime;
 import org.snf4j.quic.frame.AckFrame;
 import org.snf4j.quic.frame.AckRange;
+import org.snf4j.quic.frame.EcnAckFrame;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.PingFrame;
 import org.snf4j.quic.packet.HandshakePacket;
@@ -75,10 +80,12 @@ public class AckFrameProcessorTest extends CommonTest {
 		}
 		PacketNumberSpace space = s.getSpace(EncryptionLevel.HANDSHAKE);
 		space.frames().fly(new PingFrame(), 0);
-		assertFalse(space.frames().allAcked());
+		assertFalse(!space.frames().hasFlying());
 		space.frames().getFlying(0).onSending(1000, 1, true, true);
+		assertEquals(0, space.getAckElicitingInFlight());
 		ap.process(p, new AckFrame(0,1000), packet);
-		assertTrue(space.frames().allAcked());
+		assertEquals(-1, space.getAckElicitingInFlight());
+		assertTrue(!space.frames().hasFlying());
 		ap.process(p, new AckFrame(0,1000), packet);
 		
 		AckRange[] ranges = new AckRange[] {new AckRange(9,8), new AckRange(6,4)};
@@ -100,18 +107,20 @@ public class AckFrameProcessorTest extends CommonTest {
 		space.frames().fly(new PingFrame(), 6);
 		space.frames().fly(new PingFrame(), 5);
 		space.frames().fly(new PingFrame(), 4);
-		assertFalse(space.frames().allAcked());
+		assertFalse(!space.frames().hasFlying());
 		space.frames().getFlying(9).onSending(1000, 1, true, true);
 		space.frames().getFlying(8).onSending(1000, 1, true, true);
 		space.frames().getFlying(6).onSending(1000, 1, true, true);
-		space.frames().getFlying(5).onSending(1000, 1, true, true);
-		space.frames().getFlying(4).onSending(1000, 1, true, true);
+		space.frames().getFlying(5).onSending(1000, 1, false, true);
+		space.frames().getFlying(4).onSending(1000, 1, false, true);
+		assertEquals(-1, space.getAckElicitingInFlight());
 		ap.process(p, new AckFrame(ranges,1000), packet);
-		assertTrue(space.frames().allAcked());
+		assertEquals(-4, space.getAckElicitingInFlight());
+		assertTrue(!space.frames().hasFlying());
 		
 		ranges = new AckRange[] {new AckRange(10,10), new AckRange(6,4)};
 		space.frames().fly(new PingFrame(), 10);
-		assertFalse(space.frames().allAcked());
+		assertFalse(!space.frames().hasFlying());
 		try {
 			ap.process(p, new AckFrame(ranges,1000), packet);
 			fail();
@@ -217,5 +226,110 @@ public class AckFrameProcessorTest extends CommonTest {
 		space.frames().getFlying(0).onSending(1000, 100, true, true);
 		ap.process(p, ack, packet);
 		assertTrue(s.isAddressValidatedByPeer());
+	}
+	
+	@Test
+	public void testProcessEcn() throws Exception {
+		QuicState s = new QuicState(true);
+		QuicProcessor p = new QuicProcessor(s, null);
+		AckFrameProcessor ap = new AckFrameProcessor();
+		PacketNumberSpace space = s.getSpace(EncryptionLevel.INITIAL);
+		
+		IPacket packet = new InitialPacket(bytes("00"), 0, bytes("01"), Version.V1, bytes(""));
+		AckFrame ack = new EcnAckFrame(0, 1000, 0, 0, 111);
+		packet.getFrames().add(ack);
+		space.frames().fly(ack, 0);
+		space.frames().getFlying(0).onSending(1000, 100, true, true);
+		assertEquals(0, space.getEcnCeCount());
+		ap.process(p, ack, packet);
+		assertEquals(111, space.getEcnCeCount());
+
+		space.frames().fly(ack, 1);
+		space.frames().fly(ack, 2);
+		space.frames().getFlying(1).onSending(1000, 100, true, true);
+		space.frames().getFlying(2).onSending(1000, 100, true, true);
+		space.updateAcked(2);
+		ack = new EcnAckFrame(new AckRange[] {new AckRange(2,1)}, 1000, 0, 0, 222);
+		ap.process(p, ack, packet);
+		assertEquals(111, space.getEcnCeCount());		
+	}
+	
+	@Test
+	public void testOnPacketsLost() throws Exception {
+		QuicState s = new QuicState(true, new TestConfig(), new TestTime(100000000L));
+		QuicProcessor p = new QuicProcessor(s, null);
+		AckFrameProcessor ap = new AckFrameProcessor();
+		PacketNumberSpace space = s.getSpace(EncryptionLevel.INITIAL);
+		
+		IPacket packet = new InitialPacket(bytes("00"), 0, bytes("01"), Version.V1, bytes(""));
+		AckFrame ack = new AckFrame(0, 1000);
+		packet.getFrames().add(ack);
+		space.frames().fly(ack, 0);
+		space.frames().fly(ack, 1);
+		space.frames().fly(ack, 2);
+		space.updateAcked(2);
+		space.frames().getFlying(0).onSending(1000, 100, true, true);
+		space.frames().getFlying(1).onSending(-100000000000L, 600, true, true);
+		assertEquals(0, space.getEcnCeCount());
+		s.getCongestion().onPacketSent(2000);
+		p.preProcess();
+		assertEquals(0, space.frames().getLost().size());
+		ap.process(p, ack, packet);
+		assertEquals(1, space.frames().getLost().size());
+		assertTrue(s.getCongestion().accept(1200*5 - 1400));
+		assertTrue(s.getCongestion().accept(1200*5 - 1400 + 1));
+	}
+	
+	@Test
+	public void testResetPtoCount() throws Exception {
+		QuicState s = new QuicState(true, new TestConfig(), new TestTime(100000000L));
+		QuicProcessor p = new QuicProcessor(s, null);
+		AckFrameProcessor ap = new AckFrameProcessor();
+		PacketNumberSpace space = s.getSpace(EncryptionLevel.INITIAL);
+		
+		IPacket packet = new InitialPacket(bytes("00"), 0, bytes("01"), Version.V1, bytes(""));
+		AckFrame ack = new AckFrame(0, 1000);
+		packet.getFrames().add(ack);
+		space.frames().fly(ack, 0);
+		space.frames().getFlying(0).onSending(1000, 100, true, true);
+		TestSessionTimer timer = new TestSessionTimer(null);
+		s.getTimer().init(timer, () -> {});
+		Field f = LossDetector.class.getDeclaredField("ptoCount");
+		f.setAccessible(true);
+		f.setInt(s.getLossDetector(), 4);
+		ap.process(p, ack, packet);
+		assertEquals(4, f.get(s.getLossDetector()));
+		assertEquals("TimerTask;15984;true|", timer.trace());
+
+		packet = new InitialPacket(bytes("00"), 1, bytes("01"), Version.V1, bytes(""));
+		ack = new AckFrame(1, 1000);
+		packet.getFrames().add(ack);
+		space.frames().fly(ack, 1);
+		space.frames().getFlying(1).onSending(1000, 100, true, true);
+		assertEquals(4, f.get(s.getLossDetector()));
+		s.setAddressValidatedByPeer();
+		assertEquals(4, f.get(s.getLossDetector()));		
+		ap.process(p, ack, packet);
+		assertEquals(0, f.get(s.getLossDetector()));		
+	}
+	
+	@Test
+	public void testOnPacketAcked() throws Exception {
+		QuicState s = new QuicState(true, new TestConfig(), new TestTime(100000000L));
+		QuicProcessor p = new QuicProcessor(s, null);
+		AckFrameProcessor ap = new AckFrameProcessor();
+		PacketNumberSpace space = s.getSpace(EncryptionLevel.INITIAL);
+		
+		IPacket packet = new InitialPacket(bytes("00"), 0, bytes("01"), Version.V1, bytes(""));
+		AckFrame ack = new AckFrame(0, 1000);
+		packet.getFrames().add(ack);
+		space.frames().fly(ack, 0);
+		space.frames().getFlying(0).onSending(1000, 100, true, true);
+		s.getCongestion().onPacketSent(200);
+		assertTrue(s.getCongestion().accept(12000-200));
+		assertFalse(s.getCongestion().accept(12000-200+1));
+		ap.process(p, ack, packet);
+		assertTrue(s.getCongestion().accept(12000-100));
+		assertFalse(s.getCongestion().accept(12000-100+1));
 	}
 }

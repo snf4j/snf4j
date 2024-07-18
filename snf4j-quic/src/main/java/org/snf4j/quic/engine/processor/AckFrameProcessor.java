@@ -25,6 +25,9 @@
  */
 package org.snf4j.quic.engine.processor;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.engine.EncryptionLevel;
@@ -32,6 +35,7 @@ import org.snf4j.quic.engine.FlyingFrames;
 import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.frame.AckFrame;
 import org.snf4j.quic.frame.AckRange;
+import org.snf4j.quic.frame.EcnAckFrame;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.packet.IPacket;
 import org.snf4j.quic.packet.PacketType;
@@ -50,6 +54,7 @@ class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 		PacketNumberSpace space = p.state.getSpace(level);
 		FlyingFrames largest = space.frames().getFlying(frame.getLargestPacketNumber());
 		boolean addSample = false;
+		List<FlyingFrames> newlyAcked = new LinkedList<>();
 		
 		for (AckRange range: frame.getRanges()) {
 			long to = range.getTo();
@@ -61,20 +66,18 @@ class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 					if (fframes.getSentBytes() == 0) {
 						throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Unexpected acked packet number");
 					}
+					newlyAcked.add(fframes);
 					if (largest != null && !addSample) {
 						addSample = fframes.isAckEliciting();
+					}
+					if (fframes.isAckEliciting()) {
+						space.updateAckElicitingInFlight(-1);
 					}
 				}
 				space.updateAcked(pn);
 			}
 		}
-		
-		if (!p.state.isAddressValidatedByPeer()) {
-			if (packet.getType() == PacketType.HANDSHAKE) {
-				p.state.setAddressValidatedByPeer();
-			}
-		}
-		
+				
 		if (addSample) {
 			int exponent = level == EncryptionLevel.APPLICATION_DATA
 					? p.state.getPeerAckDelayExponent()
@@ -86,6 +89,30 @@ class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 					frame.getDelay() << exponent,
 					level);
 		}
+		else if (newlyAcked.isEmpty()) {
+			return;
+		}
+		
+		if (!p.state.isAddressValidatedByPeer()) {
+			if (packet.getType() == PacketType.HANDSHAKE) {
+				p.state.setAddressValidatedByPeer();
+			}
+		}
+		
+		if (frame.hasEcnCounts() && largest != null) {
+			p.state.getCongestion().processEcn((EcnAckFrame) frame, space, largest);
+		}
+		
+		List<FlyingFrames> lost = p.state.getLossDetector().detectAndRemoveLostPackets(space, p.currentTime);
+		if (!lost.isEmpty()) {
+			p.state.getCongestion().onPacketsLost(lost);
+		}
+		p.state.getCongestion().onPacketAcked(newlyAcked);
+		
+		if (p.state.isAddressValidatedByPeer()) {
+			p.state.getLossDetector().resetPtoCount();
+		}
+		p.state.getLossDetector().setLossDetectionTimer(p.currentTime, false);
 	}
 
 	@Override

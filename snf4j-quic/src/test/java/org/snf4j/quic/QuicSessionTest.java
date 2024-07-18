@@ -43,7 +43,9 @@ import org.snf4j.core.handler.IDatagramHandler;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.timer.DefaultTimer;
+import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
+import org.snf4j.quic.engine.DisabledTimeoutModel;
 import org.snf4j.quic.engine.QuicEngine;
 import org.snf4j.tls.engine.DelegatedTaskMode;
 import org.snf4j.tls.engine.EngineHandlerBuilder;
@@ -168,7 +170,12 @@ public class QuicSessionTest extends CommonTest {
 				@Override
 				public ITimer getTimer() {
 					return timer;
-				}			
+				}
+				
+				@Override
+				public ITimeoutModel getTimeoutModel() {
+					return DisabledTimeoutModel.INSTANCE;
+				}
 			};
 		}
 	}

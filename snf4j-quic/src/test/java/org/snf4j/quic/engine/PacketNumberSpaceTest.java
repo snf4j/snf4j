@@ -26,7 +26,9 @@
 package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -36,6 +38,13 @@ import org.snf4j.quic.frame.PingFrame;
 
 public class PacketNumberSpaceTest {
 
+	@Test
+	public void testTypeOrdinal() {
+		assertEquals(0, PacketNumberSpace.Type.INITIAL.ordinal());
+		assertEquals(1, PacketNumberSpace.Type.HANDSHAKE.ordinal());
+		assertEquals(2, PacketNumberSpace.Type.APPLICATION_DATA.ordinal());
+	}
+	
 	@Test
 	public void testNext() {
 		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, 10);
@@ -103,5 +112,44 @@ public class PacketNumberSpaceTest {
 		assertEquals(0, s.getLastAckElicitingTime());
 		s.setLastAckElicitingTime(11100022);
 		assertEquals(11100022, s.getLastAckElicitingTime());
+	}
+	
+	@Test
+	public void testGetLossTime() {
+		PacketNumberSpace s = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, 2);
+		
+		assertEquals(0, s.getLossTime());
+		s.setLossTime(1112);
+		assertEquals(1112, s.getLossTime());
+	}
+	
+	@Test
+	public void testUpdateAckElicitingInFlight() {
+		QuicState state = new QuicState(true);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.HANDSHAKE);
+		assertFalse(state.isAckElicitingInFlight());
+		space.updateAckElicitingInFlight(1);
+		assertTrue(state.isAckElicitingInFlight());
+		space.updateAckElicitingInFlight(-1);
+		assertFalse(state.isAckElicitingInFlight());
+		space.updateAckElicitingInFlight(2);
+		assertTrue(state.isAckElicitingInFlight());
+		space.updateAckElicitingInFlight(-1);
+		assertTrue(state.isAckElicitingInFlight());
+		space.updateAckElicitingInFlight(-1);
+		assertFalse(state.isAckElicitingInFlight());
+		space.updateAckElicitingInFlight(1000);
+		assertTrue(state.isAckElicitingInFlight());
+		space.clearAckElicitingInFlight();
+		assertFalse(state.isAckElicitingInFlight());
+	}
+	
+	@Test
+	public void testGetEcnCeCount() {
+		QuicState state = new QuicState(true);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.HANDSHAKE);
+		assertEquals(0, space.getEcnCeCount());
+		space.setEcnCeCount(111);
+		assertEquals(111, space.getEcnCeCount());
 	}
 }

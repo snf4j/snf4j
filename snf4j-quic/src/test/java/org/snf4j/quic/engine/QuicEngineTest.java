@@ -34,6 +34,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.snf4j.core.engine.HandshakeStatus.FINISHED;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_TASK;
+import static org.snf4j.core.engine.HandshakeStatus.NEED_TIMER;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP_AGAIN;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
@@ -47,6 +48,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
 import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
+import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.engine.Status;
 import org.snf4j.quic.CommonTest;
@@ -110,6 +112,15 @@ public class QuicEngineTest extends CommonTest {
 		return data;
 	}
 
+	void assertTimer(IEngine engine, IEngineResult result) throws Exception {
+		assertSame(OK, result.getStatus());
+		assertEquals(0, result.bytesConsumed());
+		assertEquals(0, result.bytesProduced());
+		assertSame(NEED_TIMER, result.getHandshakeStatus());
+		assertSame(NEED_TIMER, engine.getHandshakeStatus());
+		engine.timer(new TestTimer(), null);
+	}
+	
 	@Test
 	public void testInitialHandshakeStatus() throws Exception {
 		QuicEngine e = new QuicEngine(true, paramBld.build(), handlerBld.build());
@@ -117,9 +128,11 @@ public class QuicEngineTest extends CommonTest {
 		e.beginHandshake();
 		assertSame(NEED_WRAP, e.getHandshakeStatus());
 		e = new QuicEngine(true, paramBld.build(), handlerBld.build());
+		assertTimer(e, e.wrap(in, out));
 		e.wrap(in, out);
 		assertSame(NEED_UNWRAP, e.getHandshakeStatus());
 		e = new QuicEngine(true, paramBld.build(), handlerBld.build());
+		assertTimer(e, e.unwrap(in, out));
 		e.unwrap(in, out);
 		assertSame(NEED_WRAP, e.getHandshakeStatus());
 	}
@@ -134,6 +147,7 @@ public class QuicEngineTest extends CommonTest {
 		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
 		
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		IEngineResult r = ce.wrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
@@ -141,6 +155,7 @@ public class QuicEngineTest extends CommonTest {
 		assertEquals(0, r.bytesConsumed());
 		
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		r = se.unwrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(NEED_WRAP, r.getHandshakeStatus());
@@ -259,6 +274,7 @@ public class QuicEngineTest extends CommonTest {
 		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
 		
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		IEngineResult r = ce.wrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
@@ -266,6 +282,7 @@ public class QuicEngineTest extends CommonTest {
 		assertEquals(0, r.bytesConsumed());
 		
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		r = se.unwrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(NEED_TASK, r.getHandshakeStatus());
@@ -356,6 +373,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_UNWRAP, se.getHandshakeStatus());
 		
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		IEngineResult r = ce.wrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(NEED_TASK, r.getHandshakeStatus());
@@ -376,6 +394,7 @@ public class QuicEngineTest extends CommonTest {
 		assertEquals(0, r.bytesConsumed());		
 		
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		r = se.unwrap(in, out);
 		assertSame(Status.OK, r.getStatus());
 		assertSame(NEED_TASK, r.getHandshakeStatus());
@@ -518,9 +537,11 @@ public class QuicEngineTest extends CommonTest {
 		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
 		
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		ce.wrap(in, out);
 		flip();
 		in.put(100, (byte) (in.get(100)+1));
+		assertTimer(se, se.unwrap(in, out));
 		IEngineResult r = se.unwrap(in, out);
 		assertSame(Status.OK, r.getStatus());
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
@@ -587,8 +608,10 @@ public class QuicEngineTest extends CommonTest {
 		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
 		
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		ce.wrap(in, out);
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		se.unwrap(in, out);
 		clear();
 		se.wrap(in, out);
@@ -649,8 +672,10 @@ public class QuicEngineTest extends CommonTest {
 		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
 
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		ce.wrap(in, out);
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		se.unwrap(in, out);
 
 		QuicState state = state(se);
@@ -681,8 +706,10 @@ public class QuicEngineTest extends CommonTest {
 		};
 	
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		ce.wrap(in, out);
 		flip();
+		assertTimer(se, se.wrap(in, out));
 		se.unwrap(in, out);
 
 		state = state(se);
@@ -706,8 +733,10 @@ public class QuicEngineTest extends CommonTest {
 		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
 		
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		ce.wrap(in, out);
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		se.unwrap(in, out);
 		clear();
 		se.wrap(in, out);
@@ -740,8 +769,10 @@ public class QuicEngineTest extends CommonTest {
 		se = new QuicEngine(false, epb.build(), ehb.build());
 
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		ce.wrap(in, out);
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		se.unwrap(in, out);
 		clear();
 		se.wrap(in, out);
@@ -787,6 +818,7 @@ public class QuicEngineTest extends CommonTest {
 		};
 
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		IEngineResult r = ce.wrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(NEED_WRAP, r.getHandshakeStatus());
@@ -802,6 +834,7 @@ public class QuicEngineTest extends CommonTest {
 		
 		flip();
 		ref.set(true);
+		assertTimer(se, se.unwrap(in, out));
 		r = se.unwrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
@@ -819,8 +852,10 @@ public class QuicEngineTest extends CommonTest {
 		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
 
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		IEngineResult r = ce.wrap(in, out);
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		r = se.unwrap(in, out);
 		clear();
 		r = se.wrap(in, out);
@@ -883,6 +918,7 @@ public class QuicEngineTest extends CommonTest {
 			}
 		};
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		try {
 			ce.wrap(in, out);
 			fail();
@@ -911,6 +947,7 @@ public class QuicEngineTest extends CommonTest {
 		QuicState state = new QuicState(false, new TestConfig(), time);
 		
 		QuicEngine se = new QuicEngine(state, epb.build(), ehb.build());
+		assertTimer(se, se.unwrap(buffer("00030405"), out));
 		se.unwrap(buffer("00030405"), out);
 		Field f = QuicEngine.class.getDeclaredField("processor");
 		f.setAccessible(true);
@@ -922,12 +959,6 @@ public class QuicEngineTest extends CommonTest {
 		assertEquals(1234568, f.getLong(processor));
 	}
 	
-	IAntiAmplificator antiAmplificator(QuicEngine engine) throws Exception {
-		Field f = QuicEngine.class.getDeclaredField("antiAmplificator");
-		f.setAccessible(true);
-		return (IAntiAmplificator) f.get(engine);
-	}
-	
 	@Test
 	public void testAntiAmplification() throws Exception {
 		EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
@@ -937,14 +968,16 @@ public class QuicEngineTest extends CommonTest {
 		QuicEngine ce = new QuicEngine(true, epb.build(), ehb.build());
 		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
 		
-		IAntiAmplificator aa = antiAmplificator(ce);
+		IAntiAmplificator aa = state(ce).getAntiAmplificator();
 		assertFalse(aa.isArmed());
-		aa = antiAmplificator(se);
+		aa = state(se).getAntiAmplificator();
 		assertTrue(aa.isArmed());
 		
 		clear();
+		assertTimer(ce, ce.wrap(in, out));
 		IEngineResult r = ce.wrap(in, out);
 		flip();
+		assertTimer(se, se.unwrap(in, out));
 		r = se.unwrap(in, out);
 		assertSame(NEED_WRAP, r.getHandshakeStatus());
 		assertSame(NEED_WRAP, se.getHandshakeStatus());
@@ -983,5 +1016,83 @@ public class QuicEngineTest extends CommonTest {
 		clear();
 		r = se.wrap(in, out);
 		assertFalse(aa.isArmed());
+	}
+	
+	@Test
+	public void testSetLossDetectionTimerAfterUnblockingAntiAmplificator() throws Exception {
+			EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
+			EngineParametersBuilder epb = new EngineParametersBuilder()
+					.delegatedTaskMode(DelegatedTaskMode.NONE);
+
+			//Unblocked after blocked
+			QuicEngine ce = new QuicEngine(true, epb.build(), ehb.build());
+			QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
+			
+			TestSessionTimer ctimer = new TestSessionTimer(null);
+			state(ce).getTimer().init(ctimer, () -> {});
+			TestSessionTimer stimer = new TestSessionTimer(null);
+			state(se).getTimer().init(stimer, () -> {});
+			IAntiAmplificator aa = state(ce).getAntiAmplificator();
+			assertFalse(aa.isArmed());
+			aa = state(se).getAntiAmplificator();
+			assertTrue(aa.isArmed());
+			
+			clear();
+			ce.wrap(in, out);
+			flip();
+			assertEquals("", stimer.trace());
+			state(se).getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(1);
+			state(se).getSpace(EncryptionLevel.INITIAL).setLastAckElicitingTime(System.nanoTime());
+			se.unwrap(in, out);
+			state(se).getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(-1);
+			assertTrue(stimer.trace().startsWith("TimerTask;"));
+			
+			//Blocked after blocked
+			ce = new QuicEngine(true, epb.build(), ehb.build());
+			se = new QuicEngine(false, epb.build(), ehb.build());
+			
+			ctimer = new TestSessionTimer(null);
+			state(ce).getTimer().init(ctimer, () -> {});
+			stimer = new TestSessionTimer(null);
+			state(se).getTimer().init(stimer, () -> {});
+			aa = state(ce).getAntiAmplificator();
+			assertFalse(aa.isArmed());
+			aa = state(se).getAntiAmplificator();
+			assertTrue(aa.isArmed());
+			
+			clear();
+			ce.wrap(in, out);
+			flip();
+			assertEquals("", stimer.trace());
+			state(se).getAntiAmplificator().incReceived(-1200);
+			state(se).getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(1);
+			state(se).getSpace(EncryptionLevel.INITIAL).setLastAckElicitingTime(System.nanoTime());
+			se.unwrap(in, out);
+			state(se).getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(-1);
+			assertEquals("", stimer.trace());	
+			
+			//Unblocked after unblocked
+			ce = new QuicEngine(true, epb.build(), ehb.build());
+			se = new QuicEngine(false, epb.build(), ehb.build());
+			
+			ctimer = new TestSessionTimer(null);
+			state(ce).getTimer().init(ctimer, () -> {});
+			stimer = new TestSessionTimer(null);
+			state(se).getTimer().init(stimer, () -> {});
+			aa = state(ce).getAntiAmplificator();
+			assertFalse(aa.isArmed());
+			aa = state(se).getAntiAmplificator();
+			assertTrue(aa.isArmed());
+			
+			clear();
+			ce.wrap(in, out);
+			flip();
+			assertEquals("", stimer.trace());
+			state(se).getAntiAmplificator().disarm();
+			state(se).getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(1);
+			state(se).getSpace(EncryptionLevel.INITIAL).setLastAckElicitingTime(System.nanoTime());
+			se.unwrap(in, out);
+			state(se).getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(-1);
+			assertEquals("", stimer.trace());	
 	}
 }

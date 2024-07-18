@@ -25,9 +25,11 @@
  */
 package org.snf4j.quic.engine;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
@@ -45,6 +47,8 @@ public class FrameManager {
 	private Queue<IFrame> frames;
 	
 	private final Map<Long,FlyingFrames> flying = new HashMap<>();
+	
+	private final List<IFrame> lost = new LinkedList<>();
 	
 	private long largest = -1;
 	
@@ -86,7 +90,7 @@ public class FrameManager {
 		FlyingFrames fframes = flying.get(pn);
 
 		if (fframes == null) {
-			fframes = new FlyingFrames();
+			fframes = new FlyingFrames(pn);
 			flying.put(pn, fframes);
 		}
 		
@@ -105,30 +109,59 @@ public class FrameManager {
 		
 		fframes.getFrames().add(frame);
 	}
-	
-	/**
-	 * Tells if all frames marked as put in a flight have been already acknowledged.
-	 * 
-	 * @return {@code true} if all frames marked as put in a flight have been
-	 *         acknowledged
-	 */
-	public boolean allAcked() {
-		return flying.isEmpty();
-	}
-	
+		
 	/**
 	 * Acknowledges the given packet number.
 	 * 
 	 * @param pn the packet number to acknowledge
 	 * @throws QuicException if an unexpected packet number was passed
+	 * @return the frames that were acknowledged, or {@code null} if there were no
+	 *         frames to acknowledged (were already acknowledged)
 	 */
-	public void ack(long pn) throws QuicException {
+	public FlyingFrames ack(long pn) throws QuicException {
 		if (pn > largest) {
 			throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Unexpected acked packet number");
 		}
-		flying.remove(pn);
+		return flying.remove(pn);
 	}
 
+	/**
+	 * Marks frames carried in a packet with the given packet number as lost.
+	 * 
+	 * @param pn the packet number
+	 * @return the frames that where marked as lost , or {@code null} if there were
+	 *         no frames to mark as lost
+	 */
+	public FlyingFrames lost(long pn) {
+		FlyingFrames fframes = flying.remove(pn);
+		
+		if (fframes != null) {
+			lost.addAll(fframes.getFrames());
+		}
+		return fframes;
+	}
+
+	/**
+	 * Returns frames from all packets currently marked as lost.
+	 * <p>
+	 * NOTE: The return collection is not a copy so to mark a lost frame as
+	 * recovered/retransmitted just remove it form it.
+	 * 
+	 * @return a collection of the frames
+	 */
+	public Collection<IFrame> getLost() {
+		return lost;
+	}
+	
+	/**
+	 * Tells if there are still frames marked as put in a flight.
+	 * 
+	 * @return {@code true} if there are frames marked as put in a flight
+	 */
+	public boolean hasFlying() {
+		return !flying.isEmpty();
+	}
+	
 	/**
 	 * Tells if a packet with the given packet number is marked as put in a flight.
 	 * 
@@ -137,6 +170,13 @@ public class FrameManager {
 	 */
 	public boolean isFlying(long pn) {
 		return flying.containsKey(pn);
+	}
+	
+	/**
+	 * Clears frames from all packets currently marked as put in a flight.
+	 */
+	public void clearFlying() {
+		flying.clear();
 	}
 	
 	/**
@@ -151,4 +191,13 @@ public class FrameManager {
 		return flying.get(pn);
 	}
 		
+	/**
+	 * Returns frames from all packets currently marked as put in a flight.
+	 * 
+	 * @return a collection of the frames
+	 */
+	public Collection<FlyingFrames> getFlying() {
+		return flying.values();
+	}
+	
 }

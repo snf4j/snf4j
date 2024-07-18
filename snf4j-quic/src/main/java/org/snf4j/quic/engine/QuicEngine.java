@@ -47,6 +47,7 @@ import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.handler.SessionIncidentException;
+import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
@@ -101,13 +102,11 @@ public class QuicEngine implements IEngine {
 		}
 	};
 		
-	private final IAntiAmplificator antiAmplificator;
-	
 	private boolean outboundDone;
 	
 	private boolean inboundDone;
 	
-	QuicException error;
+	private QuicException error;
 
 	/**
 	 * Constructs a QUIC engine.
@@ -135,10 +134,7 @@ public class QuicEngine implements IEngine {
 		cryptoAdapter = new CryptoEngineAdapter(cryptoEngine);
 		processor = new QuicProcessor(state, cryptoAdapter);
 		protection = new PacketProtection(protectionListener);
-		antiAmplificator = state.isClientMode() 
-				? DisarmedAnitAmplificator.INSTANCE
-				: new AntiAmplificator(state);
-		cryptoFragmenter = new CryptoFragmenter(state, protection, protectionListener, processor, antiAmplificator);
+		cryptoFragmenter = new CryptoFragmenter(state, protection, protectionListener, processor);
 		acceptor = new PacketAcceptor(state);
 	}
 
@@ -150,6 +146,11 @@ public class QuicEngine implements IEngine {
 	public void init() {
 	}
 
+	@Override
+	public void timer(ISessionTimer timer, Runnable awakeningTask) throws Exception {
+		state.getTimer().init(timer, awakeningTask);
+	}
+	
 	@Override
 	public void cleanup() {
 		cryptoEngine.cleanup();
@@ -232,10 +233,13 @@ public class QuicEngine implements IEngine {
 			}
 			return NOT_HANDSHAKING;
 		}
+		if (!state.getTimer().isInitialized()) {
+			return HandshakeStatus.NEED_TIMER;
+		}
 		if (cryptoEngine.hasTask() || cryptoEngine.hasRunningTask(true)) {
 			return NEED_TASK;
 		}
-		if (!antiAmplificator.isBlocked()) {
+		if (!state.getAntiAmplificator().isBlocked()) {
 			if (cryptoEngine.needProduce() || cryptoFragmenter.hasPending()) {
 				return NEED_WRAP;
 			}
@@ -425,8 +429,15 @@ public class QuicEngine implements IEngine {
 				IPacket packet;
 				
 				if (!accepted) {
+					boolean wasBlocked = state.getAntiAmplificator().isBlocked();
+					
 					accepted = true;
-					antiAmplificator.incReceived(consumed);
+					state.getAntiAmplificator().incReceived(consumed);
+					if (wasBlocked && !state.getAntiAmplificator().isBlocked()) {
+						long currentTime = state.getTime().nanoTime();
+						
+						state.getLossDetector().setLossDetectionTimer(currentTime, true);
+					}
 				}
 				
 				packet = protection.unprotect(state, src);				

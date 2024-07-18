@@ -1,5 +1,5 @@
 /*
-* -------------------------------- MIT License --------------------------------
+ * -------------------------------- MIT License --------------------------------
  * 
  * Copyright (c) 2024 SNF4J contributors
  * 
@@ -27,29 +27,20 @@ package org.snf4j.quic.engine;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.snf4j.core.timer.ITimeoutModel;
 
-public class FlyingFramesTest {
+public class DisabledTimeoutModelTest {
 
 	@Test
 	public void testAll() {
-		FlyingFrames ff = new FlyingFrames(112);
-		
-		assertEquals(112, ff.getPacketNumber());
-		assertEquals(0, ff.getFrames().size());
-		assertEquals(0, ff.getSentTime());
-		assertEquals(0, ff.getSentBytes());
-		assertFalse(ff.isAckEliciting());
-		assertFalse(ff.isInFlight());
-		ff.onSending(12345,111,true,false);
-		assertEquals(12345, ff.getSentTime());
-		assertEquals(111, ff.getSentBytes());
-		assertTrue(ff.isAckEliciting());
-		assertFalse(ff.isInFlight());
-		ff.onSending(12345,111,false,true);
-		assertFalse(ff.isAckEliciting());
-		assertTrue(ff.isInFlight());
+		ITimeoutModel m = DisabledTimeoutModel.INSTANCE;
+		assertFalse(m.isEnabled());
+		assertEquals(Long.MAX_VALUE, m.next());
+		assertEquals(Long.MAX_VALUE, m.next());
+		m.reset();
+		assertEquals(Long.MAX_VALUE, m.next());
+		assertEquals(Long.MAX_VALUE, m.next());
 	}
 }

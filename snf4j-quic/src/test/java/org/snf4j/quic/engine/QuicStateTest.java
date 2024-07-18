@@ -360,4 +360,23 @@ public class QuicStateTest extends CommonTest {
 		s.setAddressValidatedByPeer();
 		assertTrue(s.isAddressValidatedByPeer());
 	}
+	
+	@Test
+	public void testisAckElicitingInFlight() {	
+		QuicState s = new QuicState(true);
+		assertFalse(s.isAckElicitingInFlight());
+		s.getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(1);
+		assertTrue(s.isAckElicitingInFlight());
+		s.getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(-1);
+		assertFalse(s.isAckElicitingInFlight());
+		s.getSpace(EncryptionLevel.HANDSHAKE).updateAckElicitingInFlight(1);
+		assertTrue(s.isAckElicitingInFlight());
+		s.getSpace(EncryptionLevel.HANDSHAKE).updateAckElicitingInFlight(-1);
+		assertFalse(s.isAckElicitingInFlight());
+		s.getSpace(EncryptionLevel.APPLICATION_DATA).updateAckElicitingInFlight(1);
+		assertTrue(s.isAckElicitingInFlight());
+		s.getSpace(EncryptionLevel.HANDSHAKE).updateAckElicitingInFlight(1);
+		s.getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(1);
+		assertTrue(s.isAckElicitingInFlight());
+	}
 }

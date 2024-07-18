@@ -25,6 +25,10 @@
  */
 package org.snf4j.quic.engine;
 
+import static org.snf4j.quic.engine.EncryptionLevel.APPLICATION_DATA;
+import static org.snf4j.quic.engine.EncryptionLevel.EARLY_DATA;
+import static org.snf4j.quic.engine.EncryptionLevel.HANDSHAKE;
+import static org.snf4j.quic.engine.EncryptionLevel.INITIAL;
 import static org.snf4j.quic.tp.TransportParameters.DEFAULT_ACK_DELAY_EXPONENT;
 import static org.snf4j.quic.tp.TransportParameters.DEFAULT_MAX_ACK_DELAY;
 
@@ -88,9 +92,17 @@ public class QuicState {
 	
 	private int peerMaxAckDelay = DEFAULT_MAX_ACK_DELAY;
 	
+	private final QuicTimer timer = new QuicTimer();
+	
 	private final ITimeProvider time;
 	
 	private final IQuicConfig config;
+	
+	private final IAntiAmplificator antiAmplificator;
+	
+	private final LossDetector lossDetector;
+	
+	private final CongestionController congestion;
 	
 	private boolean addressValidated;
 	
@@ -118,16 +130,22 @@ public class QuicState {
 		this.time = time;
 		addressValidatedByPeer = !clientMode;
 		estimator = new RttEstimator(this);
-		contexts[EncryptionLevel.EARLY_DATA.ordinal()] = new EncryptionContext(EncryptionLevel.EARLY_DATA, 10,contextsListener);
-		contexts[EncryptionLevel.INITIAL.ordinal()] = new EncryptionContext(EncryptionLevel.INITIAL, 10, contextsListener);
-		contexts[EncryptionLevel.HANDSHAKE.ordinal()] = new EncryptionContext(EncryptionLevel.HANDSHAKE, 10, contextsListener);
-		contexts[EncryptionLevel.APPLICATION_DATA.ordinal()] = new EncryptionContext(EncryptionLevel.APPLICATION_DATA, 10, contextsListener);
+		antiAmplificator = clientMode 
+				? DisarmedAnitAmplificator.INSTANCE
+				: new AntiAmplificator(this);
+		contexts[EARLY_DATA.ordinal()] = new EncryptionContext(EARLY_DATA, 10,contextsListener);
+		contexts[INITIAL.ordinal()] = new EncryptionContext(INITIAL, 10, contextsListener);
+		contexts[HANDSHAKE.ordinal()] = new EncryptionContext(HANDSHAKE, 10, contextsListener);
+		contexts[APPLICATION_DATA.ordinal()] = new EncryptionContext(APPLICATION_DATA, 10, contextsListener);
 		
 		int limit = config.getMaxNumberOfStoredAckRanges();
-		spaces[EncryptionLevel.EARLY_DATA.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, limit);
-		spaces[EncryptionLevel.INITIAL.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.INITIAL, limit);
-		spaces[EncryptionLevel.HANDSHAKE.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.HANDSHAKE, limit);
-		spaces[EncryptionLevel.APPLICATION_DATA.ordinal()] = spaces[EncryptionLevel.EARLY_DATA.ordinal()];
+		spaces[EARLY_DATA.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.APPLICATION_DATA, limit);
+		spaces[INITIAL.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.INITIAL, limit);
+		spaces[HANDSHAKE.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.HANDSHAKE, limit);
+		spaces[APPLICATION_DATA.ordinal()] = spaces[EncryptionLevel.EARLY_DATA.ordinal()];
+
+		lossDetector = new LossDetector(this);
+		congestion = new CongestionController(this);
 	}
 	
 	/**
@@ -375,6 +393,15 @@ public class QuicState {
 	}
 
 	/**
+	 * Returns the associated timer.
+	 * 
+	 * @return the timer
+	 */
+	public QuicTimer getTimer() {
+		return timer;
+	}
+	
+	/**
 	 * Returns the associated time provider.
 	 * 
 	 * @return the time provider
@@ -462,6 +489,43 @@ public class QuicState {
 		this.addressValidated = true;
 	}
 	
-	
+	/**
+	 * Tells if there is at least one ack-eliciting packet currently in flight.
+	 * 
+	 * @return {@code true} if there is at least one ack-eliciting packet currently
+	 *         in flight
+	 */
+	public boolean isAckElicitingInFlight() {
+		return spaces[APPLICATION_DATA.ordinal()].getAckElicitingInFlight() > 0
+			|| spaces[HANDSHAKE.ordinal()].getAckElicitingInFlight() > 0
+			|| spaces[INITIAL.ordinal()].getAckElicitingInFlight() > 0;
+	}
+
+	/**
+	 * Returns the associated anti-amplificator.
+	 * 
+	 * @return the anti-amplificator
+	 */
+	public IAntiAmplificator getAntiAmplificator() {
+		return antiAmplificator;
+	}
+
+	/**
+	 * Returns the associated loss detector.
+	 * 
+	 * @return the loss detector
+	 */
+	public LossDetector getLossDetector() {
+		return lossDetector;
+	}
+
+	/**
+	 * Returns the associated congestion controller.
+	 * 
+	 * @return the congestion controller
+	 */
+	public CongestionController getCongestion() {
+		return congestion;
+	}
 	
 }
