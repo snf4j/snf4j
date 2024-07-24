@@ -25,6 +25,8 @@
  */
 package org.snf4j.core.engine;
 
+import static org.junit.Assert.assertFalse;
+
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
@@ -35,6 +37,17 @@ public class IEngineTest {
 	@Test
 	public void testTimer() throws Exception {
 		new Engine().timer(null, null);
+	}
+	
+	@Test
+	public void testLink() {
+		new Engine().link(null);
+	}
+	
+	@Test
+	public void testNeedWrapUnwrap() {
+		assertFalse(new Engine().needWrap());
+		assertFalse(new Engine().needUnwrap());
 	}
 	
 	static class Engine implements IEngine {

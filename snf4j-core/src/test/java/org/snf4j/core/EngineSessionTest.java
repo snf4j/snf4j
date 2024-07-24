@@ -41,6 +41,8 @@ import org.snf4j.core.AbstractEngineHandler.Handshake;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.logger.LoggerFactory;
+import org.snf4j.core.session.ISession;
+import org.snf4j.core.timer.TestTimer;
 
 public class EngineSessionTest {
 
@@ -148,6 +150,19 @@ public class EngineSessionTest {
 		assertEquals(expected,value);
 	}
 
+	@Test
+	public void testEngineLink() {
+		TestEngine engine = new TestEngine();
+		ISession session = new EngineStreamSession("", engine, new TestHandler("xxx"), null);
+		assertSame(session, engine.session);
+		session = new EngineStreamSession(engine, new TestHandler("xxx"), null);
+		assertSame(session, engine.session);
+		TestDatagramHandler handler = new TestDatagramHandler("xxx");
+		handler.timer = new TestTimer();
+		session = new EngineDatagramSession("", engine, null, handler, null);
+		assertSame(session, engine.session);
+	}
+	
 	@Test
 	public void testEngineTimer() throws Exception {
 		TestEngine se = new TestEngine(HandshakeStatus.NOT_HANDSHAKING);
