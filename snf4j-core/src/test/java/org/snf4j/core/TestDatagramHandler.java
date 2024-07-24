@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2017-2020 SNF4J contributors
+ * Copyright (c) 2017-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,8 @@ import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractDatagramHandler;
 import org.snf4j.core.handler.SessionEvent;
+import org.snf4j.core.timer.ITimer;
+import org.snf4j.core.timer.TestTimer;
 
 public class TestDatagramHandler extends AbstractDatagramHandler {
 
@@ -42,6 +44,8 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 	StringBuilder sb = new StringBuilder();
 
 	volatile TestAllocator allocator;
+	
+	volatile TestTimer timer;
 	
 	public TestDatagramHandler() {
 	}
@@ -64,6 +68,12 @@ public class TestDatagramHandler extends AbstractDatagramHandler {
 			}
 			return new DefaultAllocator(false);
 		}
+		
+		@Override
+		public ITimer getTimer() {
+			return timer;
+		}
+
 	}
 	
 	@Override

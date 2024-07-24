@@ -28,6 +28,7 @@ package org.snf4j.core.engine;
 import java.nio.ByteBuffer;
 
 import org.snf4j.core.handler.SessionIncidentException;
+import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionTimer;
 
 /**
@@ -301,7 +302,7 @@ public interface IEngine {
 	IEngineResult wrap(ByteBuffer src, ByteBuffer dst) throws Exception;
 
 	/**
-	 * Attempts to encode inbound network data from a data buffer into inbound 
+	 * Attempts to decode inbound network data from a data buffer into inbound 
 	 * application data.
 	 * <p>
 	 * Depending on the state of an {@link IEngine} implementation, this method
@@ -346,4 +347,36 @@ public interface IEngine {
 	 * @since 1.12
 	 */
 	default void timer(ISessionTimer timer, Runnable awakeningTask) throws Exception {};
+	
+	/**
+	 * Links an {@link IEngine} implementation with the given session.
+	 * 
+	 * @param session the session
+	 * @since 1.12
+	 */
+	default void link(ISession session) {}
+	
+	/**
+	 * Called only in the {@link HandshakeStatus#NOT_HANDSHAKING NOT_HANDSHAKING}
+	 * state to check whether there is a need to wrap new data that is not the
+	 * result of outgoing application data. (e.g. after expiration of a timer).
+	 * <p>
+	 * It returns {@code false} by default.
+	 * 
+	 * @return {@code true} if there is a need to wrap
+	 * @since 1.12
+	 */
+	default boolean needWrap() { return false; }
+	
+	/**
+	 * Called only in the {@link HandshakeStatus#NOT_HANDSHAKING NOT_HANDSHAKING}
+	 * state to check whether there is a need to unwrap again data that has been
+	 * previously received but no longer stored as the inbound network data.
+	 * <p>
+	 * It returns {@code false} by default.
+	 * 
+	 * @return {@code true} if there is a need to unwrap again
+	 * @since 1.12
+	 */
+	default boolean needUnwrap() { return false; }
 }

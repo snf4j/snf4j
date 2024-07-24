@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2022 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -70,6 +70,7 @@ public class EngineDatagramSession extends DatagramSession implements IEngineDat
 		wrapper = new EngineDatagramWrapper(remoteAddress, (EngineDatagramHandler) this.handler);
 		wrapper.setExecutor(handler.getFactory().getExecutor());	
 		this.remoteAddress = remoteAddress;
+		engine.link(this);
 	}
 	
 	/**

@@ -40,6 +40,7 @@ import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.engine.IEngineTimerTask;
 import org.snf4j.core.engine.Status;
 import org.snf4j.core.handler.SessionIncidentException;
+import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionTimer;
 
 public class TestEngine implements IEngine {
@@ -77,6 +78,12 @@ public class TestEngine implements IEngine {
 	TraceBuilder trace;
 	
 	boolean traceAllWrapMethods;
+	
+	ISession session;
+	
+	int needWrap;
+	
+	int needUnwrap;
 	
 	public TestEngine(HandshakeStatus status) {
 		this.status = status;
@@ -137,6 +144,29 @@ public class TestEngine implements IEngine {
 			}
 		}
 		return r;
+	}
+	
+	@Override
+	public void link(ISession session) {
+		this.session = session;
+	}
+	
+	@Override
+	public boolean needWrap() { 
+		if (needWrap > 0) {
+			--needWrap;
+			return true;
+		}
+		return false; 
+	}
+	
+	@Override
+	public boolean needUnwrap() { 
+		if (needUnwrap > 0) {
+			--needUnwrap;
+			return true;
+		}
+		return false; 
 	}
 	
 	@Override
