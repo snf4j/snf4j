@@ -250,6 +250,37 @@ public class EngineStreamHandlerTest {
 		h.debugEnabled = true;
 		assertTrue(h.fireDelayedException());
 	}
+
+	@Test
+	public void testEngineNeedWrapUnwrap() throws Exception {
+		TestHandler h0 = new TestHandler("Test");
+		EngineStreamHandler h = new EngineStreamHandler(engine, h0, LOGGER);
+		Field f = AbstractEngineHandler.class.getDeclaredField("isReadyPending");
+		f.setAccessible(true);
+		f.setBoolean(h, false);
+		engine.setTrace(new TraceBuilder());
+		h.setSession(new SSLSession(h, false));
+		h.preCreated();
+		assertEquals("INI|", engine.trace.get(true));
+		h.run();
+		assertEquals("", engine.trace.get(true));
+		engine.needWrap = 1;
+		h.run();
+		assertEquals("W0|", engine.trace.get(true));
+		engine.needWrap = 2;
+		h.run();
+		assertEquals("W0|W0|", engine.trace.get(true));
+		h.run();
+		assertEquals("", engine.trace.get(true));
+		engine.needUnwrap = 1;
+		h.run();
+		assertEquals("U0|", engine.trace.get(true));
+		engine.needUnwrap = 2;
+		h.run();
+		assertEquals("U0|U0|", engine.trace.get(true));
+		h.run();
+		assertEquals("", engine.trace.get(true));
+	}
 	
 	@Test
 	public void testCloseMethods() throws Exception {

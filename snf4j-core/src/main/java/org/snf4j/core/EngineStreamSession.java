@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2019-2022 SNF4J contributors
+ * Copyright (c) 2019-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -67,6 +67,7 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 		super(name, new EngineStreamHandler(engine, handler, logger));
 		internal = (EngineStreamHandler) this.handler;
 		executor = handler.getFactory().getExecutor();
+		engine.link(this);
 	}
 
 	/**
@@ -84,6 +85,7 @@ public class EngineStreamSession extends StreamSession implements IEngineStreamS
 		super(new EngineStreamHandler(engine, handler, logger));
 		internal = (EngineStreamHandler) this.handler;
 		executor = handler.getFactory().getExecutor();
+		engine.link(this);
 	}
 
 	@Override

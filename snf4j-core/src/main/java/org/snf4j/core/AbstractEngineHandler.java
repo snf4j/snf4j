@@ -232,10 +232,10 @@ abstract class AbstractEngineHandler<S extends InternalSession, H extends IHandl
 			switch (status[0]) {
 			case NOT_HANDSHAKING:	
 				running = false;
-				if (needUnwrap()) {
+				if (needUnwrap() || engine.needUnwrap()) {
 					running |= unwrap(status);
 				}				
-				if (appCounter > netCounter || isReadyPending || wrapNeeded) {
+				if (appCounter > netCounter || engine.needWrap() || isReadyPending || wrapNeeded) {
 					running |= wrap(status);
 				}
 				break;
