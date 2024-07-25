@@ -105,22 +105,14 @@ public class AntiAmplificator implements IAntiAmplificator {
 		return delegate.getBlockedLengths();
 	}
 	
-	private static class Armed implements IAntiAmplificator {
+	private static class Armed extends AbstractPacketBlockable implements IAntiAmplificator {
 
 		private final QuicState state;
 		
 		private int received;
 		
 		private int sent;
-		
-		private int blocked;
-		
-		private byte[] blockedPayload;
-		
-		private List<IPacket> blockedPackets;
-		
-		private int[] blockedLengths;
-		
+				
 		Armed(QuicState state) {
 			this.state = state;
 		}
@@ -153,42 +145,11 @@ public class AntiAmplificator implements IAntiAmplificator {
 			return !state.isAddressValidated() 
 					&& (received * 3 < sent + blocked || received == 0);
 		}
-
-		@Override
-		public void block(byte[] payload, List<IPacket> packets, int[] lengths) {
-			blocked = payload.length;
-			blockedPayload = payload;
-			blockedPackets = packets;
-			blockedLengths = lengths;
-		}
-
-		@Override
-		public boolean needUnblock() {
-			return blocked != 0;
-		}
 		
 		@Override
 		public void unblock() {
 			sent += blocked;
-			blocked = 0;
-			blockedPayload = null;
-			blockedPackets = null;
-			blockedLengths = null;
+			super.unblock();
 		}
-
-		@Override
-		public byte[] getBlockedData() {
-			return blockedPayload;
-		}
-
-		@Override
-		public List<IPacket> getBlockedPackets() {
-			return blockedPackets;
-		}
-
-		@Override
-		public int[] getBlockedLengths() {
-			return blockedLengths;
-		}	
 	}
 }

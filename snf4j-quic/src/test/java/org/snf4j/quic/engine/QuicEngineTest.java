@@ -46,6 +46,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
+import org.snf4j.core.TestSession;
 import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
@@ -60,6 +61,8 @@ import org.snf4j.quic.frame.CryptoFrame;
 import org.snf4j.quic.frame.HandshakeDoneFrame;
 import org.snf4j.quic.frame.MultiPaddingFrame;
 import org.snf4j.quic.frame.PingFrame;
+import org.snf4j.quic.metric.QuicMetricsBuilder;
+import org.snf4j.quic.metric.TestCCMetric;
 import org.snf4j.quic.packet.IPacket;
 import org.snf4j.quic.packet.InitialPacket;
 import org.snf4j.quic.packet.OneRttPacket;
@@ -119,6 +122,18 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_TIMER, result.getHandshakeStatus());
 		assertSame(NEED_TIMER, engine.getHandshakeStatus());
 		engine.timer(new TestTimer(), null);
+	}
+	
+	@Test
+	public void testLink() throws Exception {
+		TestCCMetric ccm = new TestCCMetric();
+		QuicState state = new QuicState(true, new QuicMetricsBuilder().congestion(ccm).build());
+		QuicEngine e = new QuicEngine(state, paramBld.build(), handlerBld.build());
+		TestSession session = new TestSession("");
+		e.link(session);
+		assertSame(session, state.getSession());
+		state.getCongestion().onPacketSent(111);
+		assertEquals("W12000|S111|", ccm.trace());
 	}
 	
 	@Test

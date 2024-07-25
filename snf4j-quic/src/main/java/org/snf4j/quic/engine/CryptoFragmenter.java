@@ -224,6 +224,22 @@ public class CryptoFragmenter {
 			}
 		}
 		
+		CongestionController congestion = state.getCongestion();
+		
+		if (congestion.isBlocked()) {
+			return 0;
+		}
+		else if (congestion.needUnblock()) {
+			byte[] data = congestion.getBlockedData();
+			List<IPacket> packets = congestion.getBlockedPackets();
+			int[] lengths = congestion.getBlockedLengths();
+
+			congestion.unblock();
+			dst.put(data);
+			processSending(packets, lengths);
+			return data.length;
+		}
+		
 		CryptoFragmenterContext ctx = new CryptoFragmenterContext(state);
 		int dst0 = dst.position();
 		IPacket packet = null;
@@ -276,6 +292,7 @@ public class CryptoFragmenter {
 		int size = packets.size();
 		int[] lengths = new int[size--];
 		int produced;
+		IPacketBlockable toBlock;
 		
 		for (int i=0; i<=size; ++i) {
 			int pos0;
@@ -290,17 +307,25 @@ public class CryptoFragmenter {
 		}
 		produced = dst.position() - dst0;
 		
-		if (antiAmplificator.accept(produced)) {
-			processSending(packets, lengths);
+		if (!antiAmplificator.accept(produced)) {
+			toBlock = antiAmplificator;
+		}
+		else if (!congestion.accept(produced)) {
+			toBlock = congestion;
 		}
 		else {
+			processSending(packets, lengths);
+			toBlock = null;
+		}
+		
+		if (toBlock != null) {
 			byte[] data = new byte[produced];
 			ByteBuffer dup = dst.duplicate();
 			
 			dup.flip();
 			dup.position(dst0);
 			dup.get(data);
-			antiAmplificator.block(data, packets, lengths);
+			toBlock.block(data, packets, lengths);
 			dst.position(dst0);
 			return 0;
 		}

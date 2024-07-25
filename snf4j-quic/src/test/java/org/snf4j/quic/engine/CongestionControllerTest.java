@@ -30,6 +30,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,6 +39,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.snf4j.quic.frame.EcnAckFrame;
 import org.snf4j.quic.frame.PingFrame;
+import org.snf4j.quic.metric.TestCCMetric;
 
 public class CongestionControllerTest {
 
@@ -106,7 +108,27 @@ public class CongestionControllerTest {
 		cc.onPacketSent(1);
 		assertFalse(cc.accept(1200*10-1));		
 	}
-	
+
+	@Test
+	public void testIsBlocked() {
+		CongestionController cc = new CongestionController(state);
+		assertFalse(cc.isBlocked());
+		cc.onPacketSent(12000);
+		assertFalse(cc.isBlocked());
+		cc.onPacketSent(1);
+		assertTrue(cc.isBlocked());
+
+		cc = new CongestionController(state);
+		cc.onPacketSent(10000);
+		assertTrue(cc.accept(2000));
+		assertFalse(cc.accept(2001));
+		cc.block(new byte[2000], new ArrayList<>(), new int[2]);
+		assertFalse(cc.isBlocked());
+		assertTrue(cc.needUnblock());
+		cc.block(new byte[2001], new ArrayList<>(), new int[2]);
+		assertTrue(cc.isBlocked());
+	}
+
 	@Test
 	public void testIsAppOrFlowControlLimited() {
 		CongestionController cc = new CongestionController(state);
@@ -485,4 +507,50 @@ public class CongestionControllerTest {
 		assertFalse(cc.accept(1200*2 - 1000 + 1));
 		assertFalse(cc.isInCongestionRecovery(0));
 	}
+	
+	@Test
+	public void testMetric() {
+		TestCCMetric m = new TestCCMetric();
+		CongestionController cc = new CongestionController(state, m);
+		state.getEstimator().addSample(2000, 1000, 0, EncryptionLevel.HANDSHAKE);
+		assertEquals("", m.trace());
+		
+		//onPacketSent
+		cc.onPacketSent(112);
+		assertEquals("W12000|S112|", m.trace());
+		cc.onPacketSent(88);
+		assertEquals("S200|", m.trace());
+		
+		//onPacketInFlightAcked
+		fly(0, 1201, 50, true, true);
+		cc.onPacketInFlightAcked(flying.get(0));
+		assertEquals("A150|", m.trace());
+		cc.onPacketSent(12000);
+		assertEquals("S12150|", m.trace());
+		cc.onPacketInFlightAcked(flying.get(0));
+		assertEquals("A12100|W12050|", m.trace());
+
+		//onCongestionEvent
+		//onPacketsLost
+		cc.onPacketsLost(flying);
+		assertEquals("L12050|T6025|W6025|", m.trace());
+		cc.onPacketsLost(flying);
+		assertEquals("L12000|T3012|W3012|", m.trace());
+		cc.onPacketsLost(flying);
+		assertEquals("L11950|T1506|W2400|", m.trace());
+		
+		//removeFromBytesInFlight
+		cc.removeFromBytesInFlight(flying);
+		assertEquals("D11900|", m.trace());
+		
+		cc = new CongestionController(state, m);
+		cc.onPacketSent(1000);
+		assertEquals("W12000|S1000|", m.trace());
+		flying.clear();
+		fly(0, 10000, 50, true, true);
+		fly(0, 2000000000, 50, true, true);
+		cc.onPacketsLost(flying);
+		assertEquals("L950|L900|T6000|W6000|P|W2400|", m.trace());
+	}
+	
 }
