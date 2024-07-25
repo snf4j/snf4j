@@ -30,13 +30,15 @@ import java.util.Collection;
 import java.util.List;
 
 import org.snf4j.quic.frame.EcnAckFrame;
+import org.snf4j.quic.metric.CongestionControllerMetric;
+import org.snf4j.quic.metric.ICongestionControllerMetric;
 
 /**
  * The default congestion controller as defined in RFC 9002.
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class CongestionController {
+public class CongestionController extends AbstractPacketBlockable {
 	
 	private final static int K_LOSS_REDUCTION_FACTOR_NUM = 1;
 
@@ -50,8 +52,8 @@ public class CongestionController {
 	
 	private final PersistentCongestion persistent = new PersistentCongestion();
 	
-	private int minWindow;
-
+	private final ICongestionControllerMetric metric;
+	
 	private long window;
 	
 	private int bytesInFlight;
@@ -60,17 +62,26 @@ public class CongestionController {
 	
 	private long ssthresh = Long.MAX_VALUE;
 	
+	private boolean sent;
+	
 	/**
-	 * Constructs a congestion controller associated with the give QUIC state.
+	 * Constructs a congestion controller associated with the give QUIC state and
+	 * congestion controller metric.
 	 * 
-	 * @param state the QUIC state
+	 * @param state  the QUIC state
+	 * @param metric the congestion controller metric
 	 */
-	public CongestionController(QuicState state) {
+	public CongestionController(QuicState state, ICongestionControllerMetric metric) {
 		this.state = state;		
-		minWindow = 2 * state.getMaxUdpPayloadSize();
+		int minWindow = 2 * state.getMaxUdpPayloadSize();
 		window = Math.min(minWindow * 5, Math.max(14720, minWindow));	
+		this.metric = metric;
 	}
-
+	
+	public CongestionController(QuicState state) {
+		this(state, CongestionControllerMetric.INSTANCE);
+	}
+	
 	/**
 	 * Tells if the given amount of data can be sent without exceeding the current
 	 * congestion window.
@@ -90,6 +101,11 @@ public class CongestionController {
 	 */
 	public void onPacketSent(int sentBytes) {
 		bytesInFlight += sentBytes;
+		if (!sent) {
+			sent = true;
+			metric.onWnindowChange(state, window);
+		}
+		metric.afterSending(state, bytesInFlight);
 	}
 	
 	boolean isInCongestionRecovery(long sentTime) {
@@ -117,6 +133,7 @@ public class CongestionController {
 
 	void onPacketInFlightAcked(FlyingFrames fframes) {
 		bytesInFlight -= fframes.getSentBytes();
+		metric.afterAcking(state, bytesInFlight);
 		if (isAppOrFlowControlLimited()) {
 			return;
 		}
@@ -131,6 +148,7 @@ public class CongestionController {
 				* fframes.getSentBytes()
 				/ window;
 		}
+		metric.onWnindowChange(state, window);
 	}
 	
 	void sendOnePacket() {
@@ -141,7 +159,9 @@ public class CongestionController {
 		if (!isInCongestionRecovery(sentTime)) {
 			recoveryStartTime = state.getTime().nanoTime();
 			ssthresh = K_LOSS_REDUCTION_FACTOR_NUM * window / K_LOSS_REDUCTION_FACTOR_DEN;
-			window = Math.max(ssthresh, minWindow);
+			window = Math.max(ssthresh, 2 * state.getMaxUdpPayloadSize());
+			metric.onSlowStartThresholdChange(state, ssthresh);
+			metric.onWnindowChange(state, window);
 			sendOnePacket();
 		}
 	}
@@ -158,6 +178,7 @@ public class CongestionController {
 		for (FlyingFrames ff: fframes) {
 			if (ff.isInFlight()) {
 				bytesInFlight -= ff.getSentBytes();
+				metric.afterLosing(state, bytesInFlight);
 				if (lastLossTime == 0 || ff.getSentTime() - lastLossTime > 0) {
 					lastLossTime = ff.getSentTime();
 				}
@@ -177,8 +198,10 @@ public class CongestionController {
 				}
 			}
 			if (isInPersistentCongestion(lost)) {
-				window = minWindow;
+				window = 2 * state.getMaxUdpPayloadSize();
 				recoveryStartTime = 0;
+				metric.onPersistentCongestion(state);
+				metric.onWnindowChange(state, window);
 			}
 		}
 	}
@@ -225,7 +248,13 @@ public class CongestionController {
 		for (FlyingFrames ff: discarded) {
 			if (ff.isInFlight()) {
 				bytesInFlight -= ff.getSentBytes();
+				metric.afterDiscarding(state, bytesInFlight);
 			}
 		}
+	}
+
+	@Override
+	public boolean isBlocked() {
+		return !accept(blocked);
 	}
 }

@@ -35,6 +35,7 @@ import static org.snf4j.quic.tp.TransportParameters.DEFAULT_MAX_ACK_DELAY;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
+import org.snf4j.core.session.ISession;
 import org.snf4j.quic.IQuicConfig;
 import org.snf4j.quic.QuicAlert;
 import org.snf4j.quic.QuicConfig;
@@ -42,6 +43,8 @@ import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
 import org.snf4j.quic.cid.ConnectionIdManager;
 import org.snf4j.quic.cid.IPool;
+import org.snf4j.quic.metric.IQuicMetrics;
+import org.snf4j.quic.metric.QuicMetrics;
 import org.snf4j.quic.packet.PacketUtil;
 import org.snf4j.quic.tp.TransportParameterType;
 import org.snf4j.quic.tp.TransportParameters;
@@ -108,10 +111,27 @@ public class QuicState {
 	
 	private boolean addressValidatedByPeer;
 
+	private ISession session;
+	
+	/**
+	 * Constructs a QUIC state for the given role.
+	 * 
+	 * @param clientMode determines the role (client/server) for the state
+	 */
 	public QuicState(boolean clientMode) {
 		this(clientMode, new QuicConfig(), TimeProvider.INSTANCE);
 	}
-	
+
+	/**
+	 * Constructs a QUIC state for the given role and metrics.
+	 * 
+	 * @param clientMode determines the role (client/server) for the state
+	 * @param metrics    the metrics
+	 */
+	public QuicState(boolean clientMode, IQuicMetrics metrics) {
+		this(clientMode, new QuicConfig(), TimeProvider.INSTANCE, metrics);
+	}
+
 	/**
 	 * Constructs a QUIC state for the given role, configuration and time provider.
 	 * 
@@ -120,6 +140,18 @@ public class QuicState {
 	 * @param time       the time provider
 	 */
 	public QuicState(boolean clientMode, IQuicConfig config, ITimeProvider time) {
+		this(clientMode, config, time, QuicMetrics.DEFAULT);
+	}
+
+	/**
+	 * Constructs a QUIC state for the given role, configuration, time provider and metrics.
+	 * 
+	 * @param clientMode determines the role (client/server) for the state
+	 * @param config     the configuration
+	 * @param time       the time provider
+	 * @param metrics    the metrics
+	 */
+	public QuicState(boolean clientMode, IQuicConfig config, ITimeProvider time, IQuicMetrics metrics) {
 		this.clientMode = clientMode;
 		this.config = config;
 		manager = new ConnectionIdManager(
@@ -145,7 +177,7 @@ public class QuicState {
 		spaces[APPLICATION_DATA.ordinal()] = spaces[EncryptionLevel.EARLY_DATA.ordinal()];
 
 		lossDetector = new LossDetector(this);
-		congestion = new CongestionController(this);
+		congestion = new CongestionController(this, metrics.getCongestionMetric());
 	}
 	
 	/**
@@ -526,6 +558,26 @@ public class QuicState {
 	 */
 	public CongestionController getCongestion() {
 		return congestion;
+	}
+
+	/**
+	 * Returns the session representing the connection between endpoints associated
+	 * with this state.
+	 * 
+	 * @return the session, or {@code null} if no session is associated yet
+	 */
+	public ISession getSession() {
+		return session;
+	}
+
+	/**
+	 * Set the session representing the connection between endpoints associated with
+	 * this state.
+	 * 
+	 * @param session the session
+	 */
+	public void setSession(ISession session) {
+		this.session = session;
 	}
 	
 }

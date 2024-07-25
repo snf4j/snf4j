@@ -417,6 +417,7 @@ public class CryptoFragmenterTest extends CommonTest {
 		assertNull(space.acks().build(3, nanoTime, 3));
 		
 		//no remaining for frame
+		state.getCongestion().onPacketSent(-10000);
 		buf.clear();
 		pc1 = new ProducedCrypto(buffer(bytes(1200-43-44)), EncryptionLevel.INITIAL, 6);
 		space.frames().add(new PingFrame());
@@ -722,6 +723,39 @@ public class CryptoFragmenterTest extends CommonTest {
 		
 		buf.clear();
 		assertSame(PacketType.INITIAL, peer.unprotect(peerState, buf).getType());
+	}
+
+	@Test
+	public void testCongestionController() throws Exception {
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		CongestionController cc = state.getCongestion();
+		
+		ProducedCrypto pc1 = new ProducedCrypto(buffer(bytes(200)), EncryptionLevel.INITIAL, 6);
+		ProducedCrypto pc2 = new ProducedCrypto(buffer(bytes(400)), EncryptionLevel.INITIAL, 206);
+		cc.onPacketSent(12000-1199);
+		assertFalse(cc.accept(1200));
+		assertFalse(cc.isBlocked());
+		assertEquals(0, fragmenter.protect(produced(pc1), buf));
+		assertTrue(cc.isBlocked());
+		assertTrue(cc.needUnblock());
+		assertEquals(0, fragmenter.protect(produced(pc2), buf));
+		cc.onPacketSent(-1);
+		assertEquals(1200, fragmenter.protect(produced(), buf));
+		
+		buf.clear();
+		IPacket packet = peer.unprotect(peerState, buf);
+		assertSame(PacketType.INITIAL, packet.getType());
+		assertEquals(200, ((CryptoFrame)packet.getFrames().get(0)).getDataLength());
+		
+		buf.clear();
+		cc.onPacketSent(-1200);
+		assertEquals(1200, fragmenter.protect(produced(), buf));
+		buf.clear();
+		packet = peer.unprotect(peerState, buf);
+		assertSame(PacketType.INITIAL, packet.getType());
+		assertEquals(400, ((CryptoFrame)packet.getFrames().get(0)).getDataLength());
+		assertTrue(cc.accept(0));
 	}
 	
 	class TestListener implements IPacketProtectionListener {

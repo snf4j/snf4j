@@ -47,6 +47,7 @@ import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.handler.SessionIncidentException;
+import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
@@ -138,6 +139,11 @@ public class QuicEngine implements IEngine {
 		acceptor = new PacketAcceptor(state);
 	}
 
+	@Override
+	public void link(ISession session) {
+		state.setSession(session);
+	}
+	
 	void initialKeys(byte[] salt, byte[] connectionId) throws Exception {
 		cryptoListener.onInit(salt, connectionId);
 	}
