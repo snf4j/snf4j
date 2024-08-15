@@ -230,6 +230,7 @@ public class EngineSessionTest {
 		c.start(ce);
 		c.waitForSessionEnding(TIMEOUT);
 		s.waitForSessionEnding(TIMEOUT);
+		waitFor(100);
 		assertEquals("INI|CR|OP|EX|CI|CO|CL|EN|FIN|", c.getTrace(true));
 	}	
 	

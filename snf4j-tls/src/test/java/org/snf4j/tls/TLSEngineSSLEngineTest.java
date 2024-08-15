@@ -1416,18 +1416,21 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 
 		//HelloRetryRequest ->
 		clear();
+		ssl.wrap(in, out);
 		assertResult(ssl.wrap(in, out), OK, NEED_UNWRAP);;
 
 		//HelloRetryRequest <-
 		flip();
 		assertResult(tls.unwrap(in, out), OK, NEED_TASK, in.position(), 0);
 		assertEngine(tls, NEED_TASK);
-		assertInOut(in.limit(), 0);
 		
 		Runnable task = tls.getDelegatedTask();
 		assertEngine(tls, HandshakeStatus.NEED_TASK);
 		assertNull(tls.getDelegatedTask());
 
+		ByteBuffer buf = ByteBuffer.allocate(1000);
+		buf.put(in);
+		buf.flip();
 		clear();
 		assertResult(tls.wrap(in, out), OK, NEED_TASK, 0, 0);
 		assertEngine(tls, NEED_TASK);
@@ -1443,6 +1446,10 @@ public class TLSEngineSSLEngineTest extends EngineTest {
 		clear();
 		assertResult(tls.wrap(in, out), OK, NEED_UNWRAP, 0, out.position());
 		assertEngine(tls, NEED_UNWRAP);
+		if (buf.hasRemaining()) {
+			assertResult(tls.unwrap(buf, out), OK, NEED_UNWRAP, buf.position(), 0);	
+			assertFalse(buf.hasRemaining());
+		}
 		assertInOut(0, -1);
 		
 		//ClientHello <-
