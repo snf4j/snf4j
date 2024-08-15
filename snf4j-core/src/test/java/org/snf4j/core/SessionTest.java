@@ -2520,6 +2520,7 @@ public class SessionTest {
 			session.suspendWrite();
 			waitFor(100);
 			for (int i=0; i<writeCount; i++) {
+				waitFor(1);
 				sessionWrite(session, data, t, i);
 			}
 			session.write(new Packet(PacketType.CLOSE).toBytes());
