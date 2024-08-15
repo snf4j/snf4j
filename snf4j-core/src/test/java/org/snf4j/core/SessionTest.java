@@ -2480,6 +2480,10 @@ public class SessionTest {
 			System.out.println("[INFO] testWriteSpinCount: " + e + " try;write " + tryNum + ";" +writeNum);
 			System.out.println("[INFO] client: " + c.getRecordedData(false));
 			System.out.println("[INFO] server: " + s.getRecordedData(false));
+			if (e instanceof IllegalSessionStateException) {
+				IllegalSessionStateException isse = (IllegalSessionStateException)e;				
+				System.out.println("[INFO] isse: " + isse.getIllegalState());				
+			}
 			throw e;
 		}
 	}
@@ -2515,6 +2519,7 @@ public class SessionTest {
 			session = c.getSession();
 			session.suspendWrite();
 			for (int i=0; i<writeCount; i++) {
+				waitFor(1);
 				sessionWrite(session, data, t, i);
 			}
 			session.write(new Packet(PacketType.CLOSE).toBytes());
@@ -2541,6 +2546,7 @@ public class SessionTest {
 			session = c.getSession();
 			session.suspendWrite();
 			for (int i=0; i<writeCount; i++) {
+				waitFor(1);
 				sessionWrite(session, data, t, i);
 			}
 			session.write(new Packet(PacketType.CLOSE).toBytes());
@@ -2590,6 +2596,7 @@ public class SessionTest {
 		session = c.getSession();
 		session.suspendWrite();
 		for (int i=0; i<writeCount; i++) {
+			waitFor(1);
 			sessionWrite(session, data, 0, i);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());
@@ -2613,6 +2620,7 @@ public class SessionTest {
 		session = c.getSession();
 		session.suspendWrite();
 		for (int i=0; i<writeCount; i++) {
+			waitFor(1);
 			sessionWrite(session, data, 0, i);
 		}
 		session.write(new Packet(PacketType.CLOSE).toBytes());

@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2022 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,8 @@ class EngineDatagramServerSession extends DatagramServerSession implements IEngi
 	EngineDatagramServerSession(IEngine engine, DatagramSession delegate, SocketAddress remoteAddress, IDatagramHandler handler) {
 		super(delegate, remoteAddress, new EngineDatagramHandler(engine, remoteAddress, handler, LOGGER));
 		wrapper = new EngineDatagramWrapper(remoteAddress, (EngineDatagramHandler) this.handler);
-		wrapper.setExecutor(handler.getFactory().getExecutor());	
+		wrapper.setExecutor(handler.getFactory().getExecutor());
+		engine.link(this);
 	}
 	
 	@Override

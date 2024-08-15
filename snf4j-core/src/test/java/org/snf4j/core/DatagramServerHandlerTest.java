@@ -1,7 +1,7 @@
 /*
  * -------------------------------- MIT License --------------------------------
  * 
- * Copyright (c) 2020-2022 SNF4J contributors
+ * Copyright (c) 2020-2024 SNF4J contributors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ package org.snf4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
@@ -60,6 +61,7 @@ import org.snf4j.core.timer.DefaultTimer;
 import org.snf4j.core.timer.ITimeoutModel;
 import org.snf4j.core.timer.ITimer;
 import org.snf4j.core.timer.ITimerTask;
+import org.snf4j.core.timer.TestTimer;
 
 public class DatagramServerHandlerTest {
 	
@@ -215,6 +217,21 @@ public class DatagramServerHandlerTest {
 		p.getPipeline().add("4", codec2.BPE());
 		return p;
 	}	
+	
+	@Test
+	public void testLinkEngineSession() {
+		TestEngine engine = new TestEngine();
+		TestDatagramHandler handler = new TestDatagramHandler();
+		handler.timer = new TestTimer();
+		TestDatagramSession session = new TestDatagramSession(handler);
+		assertNull(engine.session);
+		EngineDatagramServerSession server = new EngineDatagramServerSession(
+				engine, 
+				session, 
+				null,
+				handler);
+		assertSame(server, engine.session);
+	}
 	
 	@Test
 	public void testSessionWithConnectedChannel() throws Exception {
