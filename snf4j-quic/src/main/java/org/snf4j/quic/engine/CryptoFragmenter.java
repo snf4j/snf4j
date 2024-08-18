@@ -82,19 +82,29 @@ public class CryptoFragmenter {
 		this.protection = protection;
 		this.protectionListener = protectionListener;
 		this.processor = processor;
+		processor.setFragmenter(this);
 	}
 	
 	/**
 	 * Tells if this framgmenter has still cryptographic data to be protected and
 	 * sent or some protected data is ready to be sent but has been blocked due to
-	 * reaching the anit-amplification limit.
+	 * reaching the anit-amplification or congestion limit.
 	 * 
 	 * @return {@code true} if there is still cryptographic data to be sent
 	 */
 	public boolean hasPending() {
-		return current != null || state.getAntiAmplificator().needUnblock();
+		return current != null || state.needUnblock();
 	}
 		
+	public void addPending(ProducedCrypto produced) {
+		if (current == null) {
+			current = produced;
+		}
+		else {
+			pending.add(produced);
+		}
+	}
+	
 	private IPacket packet(CryptoFragmenterContext ctx, IPacket packet) throws QuicException {
 		FrameManager frames = ctx.space.frames();
 		IFrame frame;
@@ -244,7 +254,7 @@ public class CryptoFragmenter {
 		int dst0 = dst.position();
 		IPacket packet = null;
 		List<IPacket> packets = new ArrayList<>();
-		boolean initial = false;
+		boolean padding = false;
 		
 		if (current == null) {
 			current = pending.poll();
@@ -282,7 +292,9 @@ public class CryptoFragmenter {
 			
 			if (packet != null) {
 				if (packet.getType() == PacketType.INITIAL) {
-					initial = true;
+					if (state.isClientMode() || FrameInfo.of(state.getVersion()).isAckEliciting(packet)) {
+						padding = true;
+					}
 				}
 				packets.add(packet);
 				packet = null;
@@ -298,7 +310,7 @@ public class CryptoFragmenter {
 			int pos0;
 			
 			packet = packets.get(i);
-			if (i == size && initial) {
+			if (i == size && padding) {
 				ctx.padding(packet);
 			}
 			pos0 = dst.position();

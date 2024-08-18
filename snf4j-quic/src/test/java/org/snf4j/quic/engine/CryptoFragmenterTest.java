@@ -277,6 +277,61 @@ public class CryptoFragmenterTest extends CommonTest {
 		assertEquals(100, 
 				((CryptoFrame)packet2.getFrames().get(0)).getDataLength());
 	}
+
+	@Test
+	public void testHasPendingNeedUnwrap() throws Exception {
+		state = new QuicState(false);
+		state.getConnectionIdManager().getSourceId();
+		state.getConnectionIdManager().getDestinationPool().add(bytes("00010203"));
+		listener = new CryptoEngineStateListener(state);
+		processor = new QuicProcessor(state, null);
+		protection = new PacketProtection(new TestListener(listener));
+		fragmenter = new CryptoFragmenter(state, protection, new TestListener(listener), processor);
+		
+		assertFalse(state.getAntiAmplificator().needUnblock());
+		assertFalse(state.getCongestion().needUnblock());
+		assertFalse(fragmenter.hasPending());
+
+		state.getAntiAmplificator().block(bytes(10), null, null);
+		assertTrue(state.getAntiAmplificator().needUnblock());
+		assertFalse(state.getCongestion().needUnblock());
+		assertTrue(fragmenter.hasPending());
+		
+		state.getCongestion().block(bytes(10), null, null);
+		assertTrue(state.getAntiAmplificator().needUnblock());
+		assertTrue(state.getCongestion().needUnblock());
+		assertTrue(fragmenter.hasPending());
+		
+		state.getAntiAmplificator().unblock();
+		assertFalse(state.getAntiAmplificator().needUnblock());
+		assertTrue(state.getCongestion().needUnblock());
+		assertTrue(fragmenter.hasPending());
+		
+		state.getCongestion().unblock();
+		assertFalse(state.getAntiAmplificator().needUnblock());
+		assertFalse(state.getCongestion().needUnblock());
+		assertFalse(fragmenter.hasPending());
+	}	
+	
+	@Test
+	public void testAddPending() throws Exception {
+		ProducedCrypto pc1,pc2;
+		
+		assertFalse(fragmenter.hasPending());
+		pc1 = new ProducedCrypto(buffer(bytes(200)), EncryptionLevel.INITIAL, 0);
+		fragmenter.addPending(pc1);
+		assertTrue(fragmenter.hasPending());
+		pc2 = new ProducedCrypto(buffer(bytes(100)), EncryptionLevel.INITIAL, 0);
+		fragmenter.addPending(pc2);
+		assertTrue(fragmenter.hasPending());
+		fragmenter.protect(produced(pc1), buf);
+		buf.flip();
+		assertEquals(1200, buf.remaining());
+		assertFalse(fragmenter.hasPending());
+		IPacket packet1 = peer.unprotect(peerState, buf);
+		assertEquals(200, ((CryptoFrame)packet1.getFrames().get(0)).getDataLength());
+		assertEquals(100, ((CryptoFrame)packet1.getFrames().get(1)).getDataLength());
+	}
 	
 	@Test
 	public void testNoCrypto() throws Exception {
@@ -662,9 +717,7 @@ public class CryptoFragmenterTest extends CommonTest {
 		assertFalse(aa.isBlocked());
 		assertTrue(aa.needUnblock());
 		assertEquals(0, buf.position());
-		assertTrue(fragmenter.hasPending());
 		assertEquals(150, fragmenter.protect(produced(), buf));
-		assertFalse(fragmenter.hasPending());
 		assertTrue(aa.accept(0));
 		assertFalse(aa.accept(1));
 
@@ -698,7 +751,6 @@ public class CryptoFragmenterTest extends CommonTest {
 		state.setAddressValidated();
 		assertFalse(aa.isBlocked());
 		assertTrue(aa.needUnblock());
-		assertTrue(fragmenter.hasPending());
 		assertEquals(1200, fragmenter.protect(produced(), buf));
 		assertFalse(aa.isArmed());
 		
@@ -756,6 +808,44 @@ public class CryptoFragmenterTest extends CommonTest {
 		assertSame(PacketType.INITIAL, packet.getType());
 		assertEquals(400, ((CryptoFrame)packet.getFrames().get(0)).getDataLength());
 		assertTrue(cc.accept(0));
+	}
+	
+	@Test
+	public void testPadding() throws Exception {
+		listener.onInit(INITIAL_SALT_V1, DEST_CID);
+		peerListener.onInit(INITIAL_SALT_V1, DEST_CID);
+		
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.INITIAL);
+		space.frames().add(PingFrame.INSTANCE);
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		assertEquals(1200, buf.position());
+		assertTrue(space.frames().isEmpty());
+		
+		space.acks().add(0, 1000);
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		assertEquals(1200, buf.position());
+		assertTrue(space.acks().isEmpty());
+		
+		peerState.getConnectionIdManager().getSourceId();
+		peerState.getConnectionIdManager().getDestinationPool().add(bytes("00010203"));
+		peerState.getAntiAmplificator().incReceived(1200);
+		processor = new QuicProcessor(peerState, null);
+		fragmenter = new CryptoFragmenter(peerState, protection, new TestListener(peerListener), processor);
+		space = peerState.getSpace(EncryptionLevel.INITIAL);
+		space.frames().add(PingFrame.INSTANCE);
+		buf.clear();
+		
+		fragmenter.protect(produced(), buf);
+		assertEquals(1200, buf.position());
+		assertTrue(space.frames().isEmpty());
+		
+		space.acks().add(0, 1000);
+		buf.clear();
+		fragmenter.protect(produced(), buf);
+		assertEquals(42, buf.position());
+		assertTrue(space.acks().isEmpty());
 	}
 	
 	class TestListener implements IPacketProtectionListener {

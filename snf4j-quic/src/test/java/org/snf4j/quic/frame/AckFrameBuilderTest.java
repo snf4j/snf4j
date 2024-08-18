@@ -26,7 +26,9 @@
 package org.snf4j.quic.frame;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -48,6 +50,15 @@ public class AckFrameBuilderTest {
 			assertEquals(vals[i*2], ack.getRanges()[i].getFrom());
 			assertEquals(vals[i*2+1], ack.getRanges()[i].getTo());
 		}
+	}
+	
+	@Test
+	public void testIsEmpty() {
+		assertTrue(gen.isEmpty());
+		gen.add(1, 1000);
+		assertFalse(gen.isEmpty());
+		gen.keepPriorTo(0);
+		assertTrue(gen.isEmpty());
 	}
 	
 	@Test

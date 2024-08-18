@@ -28,6 +28,8 @@ package org.snf4j.quic.engine.processor;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.snf4j.core.logger.ILogger;
+import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.engine.EncryptionLevel;
@@ -42,7 +44,9 @@ import org.snf4j.quic.packet.PacketType;
 import org.snf4j.quic.tp.TransportParameters;
 
 class AckFrameProcessor implements IFrameProcessor<AckFrame> {
-
+	
+	private final static ILogger LOG = LoggerFactory.getLogger(AckFrameProcessor.class);
+	
 	@Override
 	public FrameType getType() {
 		return FrameType.ACK;
@@ -72,6 +76,12 @@ class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 					}
 					if (fframes.isAckEliciting()) {
 						space.updateAckElicitingInFlight(-1);
+						if (p.trace) {
+							LOG.trace("Ack-eliciting packets decreased to {} in {} space for {}",
+									space.getAckElicitingInFlight(),
+									space.getType(),
+									p.state.getSession());
+						}
 					}
 				}
 				space.updateAcked(pn);
@@ -106,6 +116,7 @@ class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 		List<FlyingFrames> lost = p.state.getLossDetector().detectAndRemoveLostPackets(space, p.currentTime);
 		if (!lost.isEmpty()) {
 			p.state.getCongestion().onPacketsLost(lost);
+			p.recover(space, lost);
 		}
 		p.state.getCongestion().onPacketAcked(newlyAcked);
 		
@@ -117,6 +128,10 @@ class AckFrameProcessor implements IFrameProcessor<AckFrame> {
 
 	@Override
 	public void sending(QuicProcessor p, AckFrame frame, IPacket packet) {
+	}
+
+	@Override
+	public void recover(QuicProcessor p, AckFrame frame, PacketNumberSpace space) {	
 	}
 
 }

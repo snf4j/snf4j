@@ -26,6 +26,7 @@
 package org.snf4j.quic.engine.processor;
 
 import org.snf4j.quic.QuicException;
+import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.IFrame;
 import org.snf4j.quic.packet.IPacket;
@@ -46,7 +47,7 @@ interface IFrameProcessor<F extends IFrame> {
 	FrameType getType();
 
 	/**
-	 * Processes received QUIC frame.
+	 * Processes a received QUIC frame.
 	 * 
 	 * @param processor the QUIC processor associated with this frame processor
 	 * @param frame     the received QUIC frame
@@ -64,4 +65,13 @@ interface IFrameProcessor<F extends IFrame> {
 	 * @param packet    the QUIC packet carrying the frame
 	 */
 	void sending(QuicProcessor processor, F frame, IPacket packet);
+	
+	/**
+	 * Recovers a lost QUIC frame.
+	 * 
+	 * @param processor the QUIC processor associated with this frame processor
+	 * @param frame     the lost QUIC frame
+	 * @param space     the packet number space in which the frame was lost
+	 */
+	void recover(QuicProcessor processor, F frame, PacketNumberSpace space);
 }

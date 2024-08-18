@@ -46,33 +46,39 @@ public class FrameManagerTest {
 	public void testAll() throws Exception {
 		FrameManager m = new FrameManager();
 		
+		assertTrue(m.isEmpty());
 		assertTrue(!m.hasFlying());
 		assertNull(m.peek());
 		PingFrame f1 = new PingFrame();
 		PingFrame f2 = new PingFrame();
 		PingFrame f3 = new PingFrame();
 		m.add(f1);
+		assertFalse(m.isEmpty());
 		assertTrue(!m.hasFlying());
 		assertSame(f1, m.peek());
 		assertSame(f1, m.peek());
 		m.add(f2);
+		assertFalse(m.isEmpty());
 		assertTrue(!m.hasFlying());
 		assertSame(f1, m.peek());
 		assertFalse(m.isFlying(0));
 		assertNull(m.getFlying(0));
 		m.fly(f1, 0);
+		assertFalse(m.isEmpty());
 		assertTrue(m.isFlying(0));
 		assertEquals(1, m.getFlying(0).getFrames().size());
 		assertSame(f1, m.getFlying(0).getFrames().get(0));
 		assertFalse(!m.hasFlying());
 		assertSame(f2, m.peek());
 		m.ack(0);
+		assertFalse(m.isEmpty());
 		assertFalse(m.isFlying(0));
 		assertNull(m.getFlying(0));
 		assertTrue(!m.hasFlying());
 		assertSame(f2, m.peek());
 		
 		m.fly(f3, 1);
+		assertFalse(m.isEmpty());
 		assertFalse(!m.hasFlying());
 		assertSame(f2, m.peek());
 		m.ack(1);
@@ -83,7 +89,9 @@ public class FrameManagerTest {
 		
 		m.fly(f1, 2);
 		m.fly(f2, 2);
+		assertFalse(m.isEmpty());
 		m.fly(f3, 2);
+		assertTrue(m.isEmpty());
 		assertFalse(!m.hasFlying());
 		assertNull(m.peek());
 		m.ack(2);

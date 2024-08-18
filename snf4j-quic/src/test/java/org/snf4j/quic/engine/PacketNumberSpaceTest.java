@@ -152,4 +152,19 @@ public class PacketNumberSpaceTest {
 		space.setEcnCeCount(111);
 		assertEquals(111, space.getEcnCeCount());
 	}
+	
+	@Test
+	public void testNeedSend() {
+		QuicState state = new QuicState(true);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.HANDSHAKE);
+		assertFalse(space.needSend());
+		space.frames().add(PingFrame.INSTANCE);
+		assertTrue(space.needSend());
+		space.frames().fly(PingFrame.INSTANCE, 0);
+		assertFalse(space.needSend());
+		space.acks().add(0, 1000);
+		assertTrue(space.needSend());
+		space.acks().keepPriorTo(0);
+		assertFalse(space.needSend());
+	}
 }

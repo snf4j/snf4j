@@ -33,6 +33,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.Version;
@@ -253,5 +256,31 @@ public class QuicProcessorTest extends CommonTest {
 		assertTrue(state.isAddressValidated());
 		processor.process(p, true);
 		assertTrue(state.isAddressValidated());
+	}
+	
+	@Test
+	public void testRecover() {
+		state = new QuicState(true);
+		processor = new QuicProcessor(state, adapter);
+		PacketNumberSpace space = state.getSpace(EncryptionLevel.INITIAL);
+		assertTrue(space.frames().isEmpty());
+		List<FlyingFrames> lost = new ArrayList<>();
+		processor.recover(space, lost);
+		assertTrue(space.frames().isEmpty());
+		FlyingFrames ff = new FlyingFrames(0);
+		ff.getFrames().add(HandshakeDoneFrame.INSTANCE);
+		ff.getFrames().add(HandshakeDoneFrame.INSTANCE);
+		lost.add(ff);
+		ff = new FlyingFrames(1);
+		ff.getFrames().add(HandshakeDoneFrame.INSTANCE);
+		lost.add(ff);
+		processor.recover(space, lost);
+		assertFalse(space.frames().isEmpty());
+		space.frames().fly(HandshakeDoneFrame.INSTANCE, 2);
+		assertFalse(space.frames().isEmpty());
+		space.frames().fly(HandshakeDoneFrame.INSTANCE, 2);
+		assertFalse(space.frames().isEmpty());
+		space.frames().fly(HandshakeDoneFrame.INSTANCE, 2);
+		assertTrue(space.frames().isEmpty());
 	}
 }

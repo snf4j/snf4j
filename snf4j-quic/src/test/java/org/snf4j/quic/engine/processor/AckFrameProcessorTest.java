@@ -332,4 +332,10 @@ public class AckFrameProcessorTest extends CommonTest {
 		assertTrue(s.getCongestion().accept(12000-100));
 		assertFalse(s.getCongestion().accept(12000-100+1));
 	}
+	
+	@Test
+	public void testRecover() {
+		AckFrameProcessor p = new AckFrameProcessor();
+		p.recover(null, null, null);
+	}
 }

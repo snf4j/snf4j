@@ -39,6 +39,7 @@ public class PingFrameProcessorTest {
 		assertSame(FrameType.PING, p.getType());
 		p.process(null, null, null);
 		p.sending(null, null, null);
+		p.recover(null, null, null);
 	}
 
 }

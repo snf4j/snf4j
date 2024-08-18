@@ -27,10 +27,13 @@ package org.snf4j.quic.engine.processor;
 
 import java.util.List;
 
+import org.snf4j.core.logger.ILogger;
+import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.cid.IDestinationPool;
 import org.snf4j.quic.cid.IPool;
 import org.snf4j.quic.engine.CryptoEngineAdapter;
+import org.snf4j.quic.engine.CryptoFragmenter;
 import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.quic.engine.FlyingFrames;
 import org.snf4j.quic.engine.PacketNumberSpace;
@@ -46,6 +49,8 @@ import org.snf4j.quic.packet.IPacket;
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
 public class QuicProcessor {
+	
+	private final static ILogger LOG = LoggerFactory.getLogger(QuicProcessor.class);
 
 	@SuppressWarnings("rawtypes")
 	private final static IFrameProcessor[] FRAME_PROCESSORS = new IFrameProcessor[FrameType.values().length];
@@ -67,8 +72,14 @@ public class QuicProcessor {
 	
 	final CryptoEngineAdapter adapter;
 	
+	CryptoFragmenter fragmenter;
+	
 	/** Current time in nanoseconds */ 
 	long currentTime;
+	
+	boolean debug;
+	
+	boolean trace;
 	
 	/**
 	 * Constructs a processor associated with given QUIC state and cryptographic
@@ -82,6 +93,10 @@ public class QuicProcessor {
 		this.adapter = adapter;
 	}
 
+	public void setFragmenter(CryptoFragmenter fragmenter) {
+		this.fragmenter = fragmenter;
+	}
+
 	/**
 	 * Called as soon as a PDU payload has been received. 
 	 * <p>
@@ -90,6 +105,8 @@ public class QuicProcessor {
 	 */
 	public void preProcess() {	
 		currentTime = state.getTime().nanoTime();
+		trace = LOG.isTraceEnabled();
+		debug = LOG.isDebugEnabled();
 	}
 	
 	/**
@@ -113,12 +130,20 @@ public class QuicProcessor {
 					pool.add(((ILongHeaderPacket)packet).getSourceId());
 				}
 				if (state.isClientMode()) {
-					state.setAddressValidated();
+					if (!state.isAddressValidated()) {
+						if (debug) {
+							LOG.debug("Peer address validated for {}", state.getSession());
+						}
+						state.setAddressValidated();
+					}
 				}
 				break;
 			
 			case HANDSHAKE:
 				if (!state.isAddressValidated()) {
+					if (debug) {
+						LOG.debug("Peer address validated for {}", state.getSession());
+					}
 					state.setAddressValidated();
 				}
 				break;
@@ -127,6 +152,13 @@ public class QuicProcessor {
 			}
 			
 			for (IFrame frame: frames) {
+				if (trace) {
+					LOG.trace("Processing {} frame in {} packet with number {} for {}",
+							frame.getType(),
+							packet.getType(),
+							packet.getPacketNumber(),
+							state.getSession());
+				}
 				FRAME_PROCESSORS[frame.getType().ordinal()].process(this, frame, packet);
 			}
 			
@@ -134,6 +166,12 @@ public class QuicProcessor {
 			
 			space.updateProcessed(packet.getPacketNumber());
 			if (ackEliciting) {
+				if (trace) {
+					LOG.trace("Acknowledging {} packet with number {} for {}",
+							packet.getType(),
+							packet.getPacketNumber(),
+							state.getSession());
+				}
 				space.acks().add(packet.getPacketNumber(), currentTime);
 			}
 		}
@@ -147,6 +185,8 @@ public class QuicProcessor {
 	 */
 	public void preSending() {	
 		currentTime = state.getTime().nanoTime();
+		trace = LOG.isTraceEnabled();
+		debug = LOG.isDebugEnabled();
 	}
 	
 	/**
@@ -175,6 +215,12 @@ public class QuicProcessor {
 						inFlight);
 				if (ackEliciting) {
 					space.updateAckElicitingInFlight(1);
+					if (trace) {
+						LOG.trace("Ack-eliciting packets increased to {} in {} space for {}",
+								space.getAckElicitingInFlight(),
+								space.getType(),
+								state.getSession());
+					}
 				}
 			}
 			if (inFlight) {
@@ -185,7 +231,31 @@ public class QuicProcessor {
 				state.getLossDetector().setLossDetectionTimer(currentTime, false);
 			}
 			for (IFrame frame: frames) {
+				if (trace) {
+					LOG.trace("Sending {} frame in {} packet with number {} for {}",
+							frame.getType(),
+							packet.getType(),
+							packet.getPacketNumber(),
+							state.getSession());
+				}
 				FRAME_PROCESSORS[frame.getType().ordinal()].sending(this, frame, packet);
+			}
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void recover(PacketNumberSpace space, List<FlyingFrames> lost) {
+		boolean debug = LOG.isDebugEnabled();
+		
+		for (FlyingFrames frames: lost) {
+			for (IFrame frame: frames.getFrames()) {
+				if (debug) {
+					LOG.debug("Recovering {} frame in space {} for {}", 
+							frame.getType(), 
+							space.getType(), 
+							state.getSession() );
+				}
+				FRAME_PROCESSORS[frame.getType().ordinal()].recover(this, frame, space);
 			}
 		}
 	}

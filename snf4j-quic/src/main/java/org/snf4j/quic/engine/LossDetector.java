@@ -28,7 +28,10 @@ package org.snf4j.quic.engine;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.snf4j.core.logger.ILogger;
+import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.timer.ITimerTask;
+import org.snf4j.quic.engine.processor.QuicProcessor;
 import org.snf4j.quic.frame.PingFrame;
 
 /**
@@ -38,6 +41,8 @@ import org.snf4j.quic.frame.PingFrame;
  */
 public class LossDetector {
 
+	private final static ILogger LOG = LoggerFactory.getLogger(LossDetector.class);
+	
 	private final static int SPACES_LEN = 3;
 
 	private final static int INITIAL = 0;
@@ -69,30 +74,64 @@ public class LossDetector {
 
 	private ITimerTask lossDetectionTimer = CANCELED;
 
+	private QuicProcessor processor;
+	
 	private Runnable onLossDetectionTimeout = new Runnable() {
 
 		@Override
 		public void run() {
 			TimeAndSpace timeSpace = getLossTimeAndSpace();
 			long currentTime = state.getTime().nanoTime();
+			boolean debug = LOG.isDebugEnabled();
 
+			if (debug) {
+				LOG.debug("Loss detection timeout in {} space for {}", 
+						timeSpace.space.getType(), 
+						state.getSession());
+			}
+			
 			if (timeSpace.time != 0) {
 				List<FlyingFrames> lost = detectAndRemoveLostPackets(timeSpace.space, currentTime);
 				
+				if (debug) {
+					LOG.debug("Detected {} lost packet(s) in {} space for {}", 
+							lost.size(),
+							timeSpace.space.getType(),
+							state.getSession());
+				}
 				state.getCongestion().onPacketsLost(lost);
+				if (processor != null) {
+					processor.recover(timeSpace.space, lost);
+				}
 			} else {
 				if (!state.isAckElicitingInFlight()) {
 					if (hasHandshakeKeys()) {
-						spaces[1].frames().add(PingFrame.INSTANCE);
+						if (debug) {
+							LOG.debug("Sending probe frame in HANDSHAKE space for {}", 
+									state.getSession());
+						}
+						spaces[HANDSHAKE].frames().add(PingFrame.INSTANCE);
 					} else {
-						spaces[0].frames().add(PingFrame.INSTANCE);
+						if (debug) {
+							LOG.debug("Sending probe frame in INITIAL space for {}", 
+									state.getSession());
+						}
+						spaces[INITIAL].frames().add(PingFrame.INSTANCE);
 					}
 				} else {
 					PacketNumberSpace space = getPtoTimeAndSpace(currentTime).space;
 
+					if (debug) {
+						LOG.debug("PTO. Sending probe frame in {} space for {}", 
+								space.getType(),
+								state.getSession());
+					}
 					space.frames().add(PingFrame.INSTANCE);
 				}
 				++ptoCount;
+				if (debug) {
+					LOG.debug("PTO count {} for {}", ptoCount, state.getSession());
+				}
 			}
 			lossDetectionTimer = CANCELED;
 			setLossDetectionTimer(currentTime, false);
@@ -111,6 +150,15 @@ public class LossDetector {
 		spaces[APPLICATION_DATA] = state.getSpace(EncryptionLevel.APPLICATION_DATA);
 	}
 
+	/**
+	 * Sets the QUIC processor associated with this loss detector.
+	 * 
+	 * @param processor the QUIC processor
+	 */
+	public void setProcessor(QuicProcessor processor) {
+		this.processor = processor;
+	}
+	
 	boolean hasHandshakeKeys() {
 		return state.getContext(EncryptionLevel.HANDSHAKE).getEncryptor() != null;
 	}
@@ -214,7 +262,8 @@ public class LossDetector {
 	public void setLossDetectionTimer(long currentTime, boolean callIfExpired) {
 		TimeAndSpace timeSpace = getLossTimeAndSpace();
 		boolean schedule;
-
+		boolean debug = LOG.isDebugEnabled();
+		
 		if (timeSpace.time != 0) {
 			schedule = true;
 		} else if (state.getAntiAmplificator().isBlocked()) {
@@ -224,6 +273,11 @@ public class LossDetector {
 		} else {
 			timeSpace = getPtoTimeAndSpace(currentTime);
 			schedule = timeSpace.time != null;
+			if (debug) {
+				LOG.debug("PTO calculated in {} space for {}",
+						timeSpace.space.getType(),
+						state.getSession());
+			}
 		}
 		
 		lossDetectionTimer.cancelTask();
@@ -232,12 +286,24 @@ public class LossDetector {
 
 			if (delay < 0) {
 				if (callIfExpired) {
+					if (debug) {
+						LOG.debug("Running loss detection now for {}", state.getSession());
+					}
 					onLossDetectionTimeout.run();
 					return;
 				}
 				delay = 0;
 			}
+			if (debug) {
+				LOG.debug("Scheduled loss detection timer in {} space with delay {} ns for {}", 
+						timeSpace.space.getType(), 
+						delay, 
+						state.getSession());
+			}
 			lossDetectionTimer = state.getTimer().scheduleTask(onLossDetectionTimeout, delay);
+		}
+		else if (debug) {
+			LOG.debug("Canceled loss detection timer for {}", state.getSession());
 		}
 	}
 
@@ -281,10 +347,20 @@ public class LossDetector {
 			}
 		}
 
-		for (FlyingFrames fframes : lost) {
-			space.frames().lost(fframes.getPacketNumber());
-			if (fframes.isAckEliciting()) {
-				space.updateAckElicitingInFlight(-1);
+		if (!lost.isEmpty()) {
+			boolean trace = LOG.isTraceEnabled();
+			
+			for (FlyingFrames fframes : lost) {
+				space.frames().lost(fframes.getPacketNumber());
+				if (fframes.isAckEliciting()) {
+					space.updateAckElicitingInFlight(-1);
+					if (trace) {
+						LOG.trace("Ack-eliciting packets decreased to {} in {} space for {}",
+								space.getAckElicitingInFlight(),
+								space.getType(),
+								state.getSession());
+					}
+				}
 			}
 		}
 		

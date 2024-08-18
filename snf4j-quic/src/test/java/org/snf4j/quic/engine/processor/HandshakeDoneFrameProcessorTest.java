@@ -25,11 +25,15 @@
  */
 package org.snf4j.quic.engine.processor;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.snf4j.quic.QuicException;
+import org.snf4j.quic.engine.EncryptionLevel;
 import org.snf4j.quic.engine.HandshakeState;
+import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.engine.QuicState;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.HandshakeDoneFrame;
@@ -71,4 +75,17 @@ public class HandshakeDoneFrameProcessorTest {
 		assertSame(HandshakeState.DONE_SENT, s.getHandshakeState());
 	}
 	
+	@Test
+	public void testRecovery() {
+		QuicState s = new QuicState(false);
+		QuicProcessor p = new QuicProcessor(s, null);
+		HandshakeDoneFrameProcessor fp = new HandshakeDoneFrameProcessor();
+		
+		PacketNumberSpace space = s.getSpace(EncryptionLevel.APPLICATION_DATA);
+		assertTrue(space.frames().isEmpty());
+		fp.recover(p, HandshakeDoneFrame.INSTANCE, space);
+		assertFalse(space.frames().isEmpty());
+		space.frames().fly(HandshakeDoneFrame.INSTANCE, 0);
+		assertTrue(space.frames().isEmpty());
+	}
 }

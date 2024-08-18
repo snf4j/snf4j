@@ -174,6 +174,15 @@ public class AckFrameBuilder {
 		}
 	}
 	
+	/**
+	 * Tells if this builder has nothing to build.
+	 * 
+	 * @return {@code true} if there is nothing to build
+	 */
+	public boolean isEmpty() {
+		return ranges.isEmpty();
+	}
+	
 	private static class Range {
 		
 		long min, max, reciveTime;
