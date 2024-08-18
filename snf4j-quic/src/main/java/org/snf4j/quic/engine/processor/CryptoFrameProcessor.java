@@ -26,6 +26,9 @@
 package org.snf4j.quic.engine.processor;
 
 import org.snf4j.quic.QuicException;
+import org.snf4j.quic.engine.EncryptionLevel;
+import org.snf4j.quic.engine.PacketNumberSpace;
+import org.snf4j.quic.engine.crypto.ProducedCrypto;
 import org.snf4j.quic.frame.CryptoFrame;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.packet.IPacket;
@@ -48,6 +51,25 @@ class CryptoFrameProcessor implements IFrameProcessor<CryptoFrame> {
 
 	@Override
 	public void sending(QuicProcessor p, CryptoFrame frame, IPacket packet) {
+	}
+	
+	@Override
+	public void recover(QuicProcessor p, CryptoFrame frame, PacketNumberSpace space) {
+		EncryptionLevel level;
+		
+		switch (space.getType()) {
+		case INITIAL:
+			level = EncryptionLevel.INITIAL;
+			break;
+			
+		case HANDSHAKE:
+			level = EncryptionLevel.HANDSHAKE;
+			break;
+			
+		default:
+			level = EncryptionLevel.APPLICATION_DATA;
+		}
+		p.fragmenter.addPending(new ProducedCrypto(frame.getData(), level, frame.getDataOffset()));
 	}
 	
 }

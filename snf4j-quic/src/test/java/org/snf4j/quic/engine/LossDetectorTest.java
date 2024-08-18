@@ -42,7 +42,9 @@ import org.junit.Test;
 import org.snf4j.core.timer.DefaultTimer;
 import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.engine.LossDetector.TimeAndSpace;
+import org.snf4j.quic.engine.processor.QuicProcessor;
 import org.snf4j.quic.frame.FrameType;
+import org.snf4j.quic.frame.HandshakeDoneFrame;
 import org.snf4j.quic.frame.IFrame;
 import org.snf4j.quic.frame.PingFrame;
 
@@ -527,13 +529,19 @@ public class LossDetectorTest extends CommonTest {
 		assertSame(FrameType.PING, frame.getType());
 
 		space.setLossTime(500);
+		space.frames().getFlying(0).getFrames().add(HandshakeDoneFrame.INSTANCE);
 		space.frames().getFlying(0).onSending(-1000000000L, 100, true, true);
 		space.frames().fly(new PingFrame(), 1);
 		space.updateAcked(1);
 		cli.getCongestion().onPacketSent(2000);
 		assertEquals(0, space.frames().getLost().size());
+		QuicProcessor processor = new QuicProcessor(cli, null);
+		cli.getLossDetector().setProcessor(processor);
 		cli.getLossDetector().onLossDetectionTimeout();
-		assertEquals(1, space.frames().getLost().size());
+		assertEquals(2, space.frames().getLost().size());
+		frame = space.frames().peek();
+		space.frames().fly(frame, 3);
+		assertSame(FrameType.HANDSHAKE_DONE, space.frames().peek().getType());
 		assertTrue(cli.getCongestion().accept(1200*5 - 1900));
 		assertFalse(cli.getCongestion().accept(1200*5 - 1900 + 1));
 	}

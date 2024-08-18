@@ -75,6 +75,8 @@ public class QuicState {
 		}
 	};
 	
+	private PacketNumberSpace[] wrappable = new PacketNumberSpace[3];
+	
 	private final ConnectionIdManager manager;
 	
 	private final boolean clientMode;
@@ -176,6 +178,10 @@ public class QuicState {
 		spaces[HANDSHAKE.ordinal()] = new PacketNumberSpace(PacketNumberSpace.Type.HANDSHAKE, limit);
 		spaces[APPLICATION_DATA.ordinal()] = spaces[EncryptionLevel.EARLY_DATA.ordinal()];
 
+		wrappable[0] = spaces[APPLICATION_DATA.ordinal()];
+		wrappable[1] = spaces[HANDSHAKE.ordinal()];
+		wrappable[2] = spaces[INITIAL.ordinal()];
+		
 		lossDetector = new LossDetector(this);
 		congestion = new CongestionController(this, metrics.getCongestionMetric());
 	}
@@ -187,6 +193,74 @@ public class QuicState {
 	 */
 	public boolean isClientMode() {
 		return clientMode;
+	}
+	
+	/**
+	 * Tells if data sending is blocked due to exceeding of the anti-amplification
+	 * or congestion limit.
+	 * 
+	 * @return {@code true} if sending is blocked
+	 */
+	public boolean isBlocked() {
+		return antiAmplificator.isBlocked() || congestion.isBlocked();
+	}
+	
+	/**
+	 * Tells if some data has been saved due to exceeding of the anti-amplification
+	 * or congestion limit and has not been unblocked yet.
+	 * 
+	 * @return {@code true} if some data have been saved and has not been unblocked
+	 *         yet
+	 */
+	public boolean needUnblock() {
+		return antiAmplificator.needUnblock() || congestion.needUnblock();
+	}
+	
+	/**
+	 * Tells if there are frames ready to be sent.
+	 * 
+	 * @return {@code true} if there are frames ready to be sent
+	 */
+	public boolean needSend() {
+		PacketNumberSpace[] wrappable = this.wrappable;
+		
+		for (int i=0; i<wrappable.length; ++i) {
+			PacketNumberSpace space = wrappable[i];
+			
+			if (space.needSend()) {
+				EncryptionContext ctx;
+								
+				switch (space.getType()) {
+				case INITIAL:
+					ctx = contexts[EncryptionLevel.INITIAL.ordinal()];
+					if (ctx.isErased()) {
+						this.wrappable = Arrays.copyOf(this.wrappable, 2);
+					}
+					break;
+					
+				case HANDSHAKE:
+					ctx = contexts[EncryptionLevel.HANDSHAKE.ordinal()];
+					if (ctx.isErased()) {
+						this.wrappable = Arrays.copyOf(this.wrappable, 1);
+					}
+					break;
+					
+				default:
+					ctx = contexts[EncryptionLevel.APPLICATION_DATA.ordinal()];
+					if (ctx.getEncryptor() == null) {
+						ctx = contexts[EncryptionLevel.EARLY_DATA.ordinal()];
+					}
+					else {
+						return true;
+					}
+				}
+				
+				if (ctx.getEncryptor() != null) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 	
 	/**
@@ -400,9 +474,15 @@ public class QuicState {
 	 */
 	public void setHandshakeState(HandshakeState handshakeState) {
 		this.handshakeState = handshakeState;
-		if (handshakeState == HandshakeState.DONE) {
+		switch (handshakeState) {
+		case DONE_SENDING:
+		case DONE_RECEIVED:
+		case DONE:
 			handshakeConfirmed = true;
 			addressValidatedByPeer = true;
+			break;	
+			
+		default:
 		}
 	}
 

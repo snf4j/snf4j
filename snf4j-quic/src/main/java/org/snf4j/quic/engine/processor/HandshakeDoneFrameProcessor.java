@@ -32,6 +32,7 @@ import static org.snf4j.quic.engine.HandshakeState.DONE_WAITING;
 
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
+import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.HandshakeDoneFrame;
 import org.snf4j.quic.packet.IPacket;
@@ -58,5 +59,10 @@ class HandshakeDoneFrameProcessor implements IFrameProcessor<HandshakeDoneFrame>
 		if (p.state.getHandshakeState() == DONE_SENDING) {
 			p.state.setHandshakeState(DONE_SENT);
 		}
+	}
+
+	@Override
+	public void recover(QuicProcessor p, HandshakeDoneFrame frame, PacketNumberSpace space) {
+		space.frames().add(frame);
 	}
 }

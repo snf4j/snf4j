@@ -23,22 +23,58 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.engine.processor;
+package org.snf4j.quic;
 
-import static org.junit.Assert.assertSame;
+import java.net.SocketAddress;
 
-import org.junit.Test;
-import org.snf4j.quic.frame.FrameType;
+import org.snf4j.core.factory.DefaultSessionStructureFactory;
+import org.snf4j.core.factory.ISessionStructureFactory;
+import org.snf4j.core.handler.AbstractDatagramHandler;
+import org.snf4j.core.session.DefaultSessionConfig;
+import org.snf4j.core.session.ISessionConfig;
+import org.snf4j.core.timer.ITimeoutModel;
+import org.snf4j.core.timer.ITimer;
+import org.snf4j.quic.engine.DisabledTimeoutModel;
 
-public class PaddingFrameProcessorTest {
+public class TestHandler  extends AbstractDatagramHandler {
+	
+	final DefaultSessionConfig config = new DefaultSessionConfig();
 
-	@Test
-	public void testAll() {
-		PaddingFrameProcessor p = new PaddingFrameProcessor();
-		
-		assertSame(FrameType.PADDING, p.getType());
-		p.process(null, null, null);
-		p.sending(null, null, null);
-		p.recover(null, null, null);
+	final ITimer timer;
+	
+	volatile boolean proxyAction;
+	
+	public TestHandler(ITimer timer) {
+		this.timer = timer;
 	}
+
+	@Override
+	public void read(SocketAddress remoteAddress, Object msg) {
+	}
+
+	@Override
+	public void read(Object msg) {
+	}
+	
+	@Override
+	public ISessionConfig getConfig() {
+		return config;
+	}
+
+	@Override
+	public ISessionStructureFactory getFactory() {
+		return new DefaultSessionStructureFactory() {
+			
+			@Override
+			public ITimer getTimer() {
+				return timer;
+			}
+			
+			@Override
+			public ITimeoutModel getTimeoutModel() {
+				return DisabledTimeoutModel.INSTANCE;
+			}
+		};
+	}
+
 }

@@ -136,6 +136,19 @@ public class PacketNumberSpace {
 	}
 	
 	/**
+	 * Tells if there are frames in this packet number space that are ready to be
+	 * sent.
+	 * 
+	 * @return {@code true} if there are frames ready to be sent
+	 */
+	public boolean needSend() {
+		if (!acks.isEmpty()) {
+			return true;
+		}
+		return !frames.isEmpty();	
+	}
+	
+	/**
 	 * Returns the maximum packet number that was acknowledged by peer in this
 	 * packet number space.
 	 * 

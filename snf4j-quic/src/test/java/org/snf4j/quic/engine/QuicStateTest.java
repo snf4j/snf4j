@@ -43,6 +43,7 @@ import org.snf4j.quic.Version;
 import org.snf4j.quic.cid.ConnectionIdManager;
 import org.snf4j.quic.cid.IDestinationPool;
 import org.snf4j.quic.cid.ISourcePool;
+import org.snf4j.quic.frame.PingFrame;
 import org.snf4j.quic.tp.TransportParameters;
 import org.snf4j.quic.tp.TransportParametersBuilder;
 import org.snf4j.tls.crypto.AESAead;
@@ -294,16 +295,28 @@ public class QuicStateTest extends CommonTest {
 
 		assertFalse(s.isHandshakeConfirmed());
 		for (HandshakeState hs: HandshakeState.values()) {
-			if (hs == HandshakeState.DONE) {
-				continue;
+			switch (hs) {
+			case DONE:
+			case DONE_SENDING:
+			case DONE_RECEIVED:
+				break;
+			default:
+				s.setHandshakeState(hs);		
 			}
-			s.setHandshakeState(hs);
 		}
 		assertFalse(s.isHandshakeConfirmed());
 		s.setHandshakeState(HandshakeState.DONE);
 		assertTrue(s.isHandshakeConfirmed());
 		s.setHandshakeState(HandshakeState.CLOSING);
-		assertTrue(s.isHandshakeConfirmed());		
+		assertTrue(s.isHandshakeConfirmed());			
+		s = new QuicState(true);
+		assertFalse(s.isHandshakeConfirmed());
+		s.setHandshakeState(HandshakeState.DONE_SENDING);
+		assertTrue(s.isHandshakeConfirmed());
+		s = new QuicState(true);
+		assertFalse(s.isHandshakeConfirmed());
+		s.setHandshakeState(HandshakeState.DONE_RECEIVED);
+		assertTrue(s.isHandshakeConfirmed());
 	}
 	
 	@Test
@@ -344,13 +357,26 @@ public class QuicStateTest extends CommonTest {
 		QuicState s = new QuicState(true);
 		assertFalse(s.isAddressValidatedByPeer());
 		for (HandshakeState hs: HandshakeState.values()) {
-			if (hs == HandshakeState.DONE) {
-				continue;
+			switch (hs) {
+			case DONE:
+			case DONE_SENDING:
+			case DONE_RECEIVED:
+				break;
+				
+			default:
+				s.setHandshakeState(hs);
 			}
-			s.setHandshakeState(hs);
 		}
 		assertFalse(s.isAddressValidatedByPeer());
 		s.setHandshakeState(HandshakeState.DONE);
+		assertTrue(s.isAddressValidatedByPeer());
+		s = new QuicState(true);
+		assertFalse(s.isAddressValidatedByPeer());
+		s.setHandshakeState(HandshakeState.DONE_SENDING);
+		assertTrue(s.isAddressValidatedByPeer());
+		s = new QuicState(true);
+		assertFalse(s.isAddressValidatedByPeer());
+		s.setHandshakeState(HandshakeState.DONE_RECEIVED);
 		assertTrue(s.isAddressValidatedByPeer());
 
 		s = new QuicState(true);
@@ -378,5 +404,101 @@ public class QuicStateTest extends CommonTest {
 		s.getSpace(EncryptionLevel.HANDSHAKE).updateAckElicitingInFlight(1);
 		s.getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(1);
 		assertTrue(s.isAckElicitingInFlight());
+	}
+	
+	@Test
+	public void testIsBlocked() {
+		QuicState s = new QuicState(true);
+		assertFalse(s.getAntiAmplificator().isBlocked());
+		assertFalse(s.getCongestion().isBlocked());
+		assertFalse(s.isBlocked());
+		
+		s.getCongestion().onPacketSent(12001);
+		assertFalse(s.getAntiAmplificator().isBlocked());
+		assertTrue(s.getCongestion().isBlocked());
+		assertTrue(s.isBlocked());
+		
+		s = new QuicState(false);
+		assertTrue(s.getAntiAmplificator().isBlocked());
+		assertFalse(s.getCongestion().isBlocked());
+		assertTrue(s.isBlocked());
+		
+		s.getCongestion().onPacketSent(12001);
+		assertTrue(s.getAntiAmplificator().isBlocked());
+		assertTrue(s.getCongestion().isBlocked());
+		assertTrue(s.isBlocked());
+		
+		s.getCongestion().onPacketSent(-12001);
+		s.getAntiAmplificator().incReceived(1200);;
+		assertFalse(s.getAntiAmplificator().isBlocked());
+		assertFalse(s.getCongestion().isBlocked());
+		assertFalse(s.isBlocked());
+	}
+	
+	@Test
+	public void testNeedUnblock() {
+		QuicState s = new QuicState(false);
+		assertFalse(s.needUnblock());
+		s.getAntiAmplificator().block(bytes(16), null, null);
+		assertTrue(s.needUnblock());
+		s.getCongestion().block(bytes(16), null, null);
+		assertTrue(s.needUnblock());
+		s.getAntiAmplificator().unblock();
+		assertTrue(s.needUnblock());
+		s.getCongestion().unblock();
+		assertFalse(s.needUnblock());
+	}
+	
+	@Test
+	public void testNeedSend() throws Exception {
+		QuicState s = new QuicState(true);
+		assertFalse(s.needSend());
+		PacketNumberSpace space = s.getSpace(EncryptionLevel.INITIAL);
+		space.frames().add(PingFrame.INSTANCE);
+		assertFalse(s.needSend());
+		new CryptoEngineStateListener(s).onInit(bytes(16), bytes(8));
+		assertTrue(s.needSend());
+		EncryptionContext ctx = s.getContext(EncryptionLevel.INITIAL);
+		Encryptor enc = ctx.getEncryptor();
+		space.frames().fly(PingFrame.INSTANCE, 0);
+		assertFalse(s.needSend());
+		space.frames().add(PingFrame.INSTANCE);
+		assertTrue(s.needSend());
+		ctx.erase();
+		assertFalse(s.needSend());
+		
+		space = s.getSpace(EncryptionLevel.HANDSHAKE);
+		space.frames().add(PingFrame.INSTANCE);
+		assertFalse(s.needSend());
+		ctx = s.getContext(EncryptionLevel.HANDSHAKE);
+		ctx.setEncryptor(enc);
+		assertTrue(s.needSend());
+		space.frames().fly(PingFrame.INSTANCE, 0);
+		assertFalse(s.needSend());
+		space.frames().add(PingFrame.INSTANCE);
+		assertTrue(s.needSend());
+		ctx.erase();
+		assertFalse(s.needSend());
+		
+		space = s.getSpace(EncryptionLevel.APPLICATION_DATA);
+		space.frames().add(PingFrame.INSTANCE);
+		assertFalse(s.needSend());
+		ctx = s.getContext(EncryptionLevel.EARLY_DATA);
+		ctx.setEncryptor(enc);
+		assertTrue(s.needSend());
+		space.frames().fly(PingFrame.INSTANCE, 0);
+		assertFalse(s.needSend());
+		space.frames().add(PingFrame.INSTANCE);
+		assertTrue(s.needSend());
+		ctx.erase();
+		assertFalse(s.needSend());
+		
+		ctx = s.getContext(EncryptionLevel.APPLICATION_DATA);
+		ctx.setEncryptor(enc);
+		assertTrue(s.needSend());
+		space.frames().fly(PingFrame.INSTANCE, 1);
+		assertFalse(s.needSend());
+		space.frames().add(PingFrame.INSTANCE);
+		assertTrue(s.needSend());		
 	}
 }

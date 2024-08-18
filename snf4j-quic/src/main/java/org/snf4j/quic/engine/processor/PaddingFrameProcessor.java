@@ -25,6 +25,7 @@
  */
 package org.snf4j.quic.engine.processor;
 
+import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.PaddingFrame;
 import org.snf4j.quic.packet.IPacket;
@@ -42,6 +43,10 @@ class PaddingFrameProcessor implements IFrameProcessor<PaddingFrame> {
 
 	@Override
 	public void sending(QuicProcessor p, PaddingFrame frame, IPacket packet) {
+	}
+
+	@Override
+	public void recover(QuicProcessor p, PaddingFrame frame, PacketNumberSpace space) {
 	}
 
 }

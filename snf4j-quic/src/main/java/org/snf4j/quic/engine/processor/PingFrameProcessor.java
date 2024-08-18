@@ -25,6 +25,7 @@
  */
 package org.snf4j.quic.engine.processor;
 
+import org.snf4j.quic.engine.PacketNumberSpace;
 import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.PingFrame;
 import org.snf4j.quic.packet.IPacket;
@@ -42,6 +43,10 @@ class PingFrameProcessor implements IFrameProcessor<PingFrame> {
 
 	@Override
 	public void sending(QuicProcessor p, PingFrame frame, IPacket packet) {
+	}
+
+	@Override
+	public void recover(QuicProcessor processor, PingFrame frame, PacketNumberSpace space) {
 	}
 
 }

@@ -79,6 +79,15 @@ public class FrameManager {
 	}
 	
 	/**
+	 * Tells if there are no frames ready to be put in a flight.
+	 * 
+	 * @return {@code true} if there are no frames ready to be put in a flight
+	 */
+	public boolean isEmpty() {
+		return frames == null || frames.isEmpty();
+	}
+	
+	/**
 	 * Marks the given QUIC frame as put in a flight. If the frame is already
 	 * waiting to be put in a flight it will never be retrieved by the
 	 * {@link #peek()} method.

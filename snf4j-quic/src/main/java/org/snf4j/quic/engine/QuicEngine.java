@@ -47,6 +47,8 @@ import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.handler.SessionIncidentException;
+import org.snf4j.core.logger.ILogger;
+import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionTimer;
 import org.snf4j.quic.QuicException;
@@ -71,6 +73,8 @@ import org.snf4j.tls.engine.IEngineParameters;
  */
 public class QuicEngine implements IEngine {
 
+	private final static ILogger LOG = LoggerFactory.getLogger(QuicEngine.class);
+	
 	private final QuicState state;
 	
 	private final CryptoEngineStateListener cryptoListener;
@@ -133,10 +137,11 @@ public class QuicEngine implements IEngine {
 		cryptoListener = new CryptoEngineStateListener(state);
 		cryptoEngine = new CryptoEngine(new HandshakeEngine(state.isClientMode(), parameters, handler, cryptoListener));
 		cryptoAdapter = new CryptoEngineAdapter(cryptoEngine);
-		processor = new QuicProcessor(state, cryptoAdapter);
 		protection = new PacketProtection(protectionListener);
+		processor = new QuicProcessor(state, cryptoAdapter);
 		cryptoFragmenter = new CryptoFragmenter(state, protection, protectionListener, processor);
 		acceptor = new PacketAcceptor(state);
+		state.getLossDetector().setProcessor(processor);
 	}
 
 	@Override
@@ -218,13 +223,21 @@ public class QuicEngine implements IEngine {
 		return getMinNetworkBufferSize();
 	}
 
+	private HandshakeStatus needWrapIfAllowed() {
+		return state.isBlocked() ? NEED_UNWRAP : NEED_WRAP;
+	}
+
+	private HandshakeStatus needUnwrapIfIdle() {
+		return needWrap() ? NEED_WRAP : NEED_UNWRAP;
+	}
+
 	@Override
 	public HandshakeStatus getHandshakeStatus() {
 		switch (state.getHandshakeState()) {
 		case INIT:         return NOT_HANDSHAKING;
 		case STARTING:     return state.isClientMode() ? NEED_WRAP : NEED_UNWRAP;
-		case DONE_SENDING: return NEED_WRAP;
-		case DONE_WAITING: return NEED_UNWRAP;
+		case DONE_SENDING: return needWrapIfAllowed();
+		case DONE_WAITING: return needUnwrapIfIdle();
 		case CLOSING:      return NEED_WRAP;
 		case CLOSED:       return NOT_HANDSHAKING;
 		default:
@@ -232,10 +245,10 @@ public class QuicEngine implements IEngine {
 		
 		if (cryptoEngine.isHandshakeDone()) {
 			if (cryptoEngine.needProduce()) {
-				return NEED_WRAP;
+				return needWrapIfAllowed();
 			}
 			if (cryptoEngine.needConsume()) {
-				return NEED_UNWRAP;
+				return needUnwrapIfIdle();
 			}
 			return NOT_HANDSHAKING;
 		}
@@ -245,7 +258,8 @@ public class QuicEngine implements IEngine {
 		if (cryptoEngine.hasTask() || cryptoEngine.hasRunningTask(true)) {
 			return NEED_TASK;
 		}
-		if (!state.getAntiAmplificator().isBlocked()) {
+		boolean unblocked = !state.isBlocked();
+		if (unblocked) {
 			if (cryptoEngine.needProduce() || cryptoFragmenter.hasPending()) {
 				return NEED_WRAP;
 			}
@@ -253,9 +267,22 @@ public class QuicEngine implements IEngine {
 		if (cryptoEngine.hasRunningTask(false)) {
 			return NEED_UNWRAP_AGAIN;
 		}
+		if (unblocked && state.needSend()) {
+			return NEED_WRAP;
+		}
 		return NEED_UNWRAP;
 	}
 
+	@Override
+	public boolean needWrap() { 
+		if (!state.isBlocked()) {
+			return state.needSend() 
+				|| cryptoEngine.needProduce() 
+				|| cryptoFragmenter.hasPending();
+		}
+		return false; 
+	}
+	
 	@Override
 	public Object getSession() {
 		return cryptoEngine.getSession();
@@ -290,6 +317,7 @@ public class QuicEngine implements IEngine {
 	
 	@Override
 	public IEngineResult wrap(ByteBuffer src, ByteBuffer dst) throws QuicException {
+		boolean debug = LOG.isDebugEnabled();
 		int produced;
 		
 		dst.mark();
@@ -329,6 +357,9 @@ public class QuicEngine implements IEngine {
 				}
 				break;
 				
+			case NOT_HANDSHAKING:
+				break;
+				
 			default:
 				return new EngineResult(
 						OK, 
@@ -349,6 +380,9 @@ public class QuicEngine implements IEngine {
 				break;
 				
 			case DONE_SENT:
+				if (debug) {
+					LOG.debug("Handshake finished for {}", state.getSession());
+				}
 				state.setHandshakeState(DONE);
 				return new EngineResult(
 						OK, 
@@ -370,22 +404,9 @@ public class QuicEngine implements IEngine {
 				produced);
 	}
 	
-	private IEngineResult unwrapAppData(ByteBuffer src, ByteBuffer dst) throws QuicException {
-		int consumed = src.remaining();
-		
-		while (acceptor.accept(src)) {
-			protection.unprotect(state, src);
-		}
-		
-		return new EngineResult(
-				OK, 
-				HandshakeStatus.NOT_HANDSHAKING, 
-				consumed, 
-				0);		
-	}
-	
 	@Override
 	public IEngineResult unwrap(ByteBuffer src, ByteBuffer dst) throws QuicException {
+		boolean debug = LOG.isDebugEnabled();
 		int consumed;
 
 		dst.mark();
@@ -416,7 +437,7 @@ public class QuicEngine implements IEngine {
 				break;
 				
 			case NOT_HANDSHAKING:
-				return unwrapAppData(src, dst);
+				break;
 				
 			default:
 				return new EngineResult(
@@ -492,6 +513,9 @@ public class QuicEngine implements IEngine {
 				break;
 				
 			case DONE_RECEIVED:
+				if (debug) {
+					LOG.debug("Handshake finished for {}", state.getSession());
+				}
 				state.setHandshakeState(DONE);
 				return new EngineResult(
 						OK, 

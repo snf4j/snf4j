@@ -56,6 +56,8 @@ import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
+import org.snf4j.quic.engine.crypto.CryptoEngine;
+import org.snf4j.quic.engine.crypto.ProducedCrypto;
 import org.snf4j.quic.engine.processor.QuicProcessor;
 import org.snf4j.quic.frame.CryptoFrame;
 import org.snf4j.quic.frame.HandshakeDoneFrame;
@@ -150,6 +152,29 @@ public class QuicEngineTest extends CommonTest {
 		assertTimer(e, e.unwrap(in, out));
 		e.unwrap(in, out);
 		assertSame(NEED_WRAP, e.getHandshakeStatus());
+	}
+	
+	@Test
+	public void testNeedWrap() throws Exception {
+		EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
+		EngineParametersBuilder epb = new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE);
+
+		QuicState state = new QuicState(true);
+		QuicEngine ce = new QuicEngine(state, epb.build(), ehb.build());
+		assertFalse(ce.needWrap());
+		Field f = QuicEngine.class.getDeclaredField("cryptoEngine");
+		f.setAccessible(true);
+		((CryptoEngine) f.get(ce)).start();
+		assertTrue(ce.needWrap());
+		
+		state = new QuicState(true);
+		ce = new QuicEngine(state, epb.build(), ehb.build());
+		assertFalse(ce.needWrap());
+		f = QuicEngine.class.getDeclaredField("cryptoFragmenter");
+		f.setAccessible(true);
+		((CryptoFragmenter) f.get(ce)).addPending(new ProducedCrypto(ByteBuffer.allocate(10), EncryptionLevel.INITIAL, 0));
+		assertTrue(ce.needWrap());		
 	}
 	
 	@Test
@@ -256,10 +281,18 @@ public class QuicEngineTest extends CommonTest {
 		r = ce.unwrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(FINISHED, r.getHandshakeStatus());
-		assertSame(NEED_UNWRAP, ce.getHandshakeStatus());
+		assertSame(NEED_WRAP, ce.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(in.position(), r.bytesConsumed());
 		
+		clear();
+		r = ce.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		assertSame(NEED_UNWRAP, ce.getHandshakeStatus());
+		assertEquals(out.position(), r.bytesProduced());
+		assertEquals(0, r.bytesConsumed());
+				
 		//crypto data with final part
 		packet = new OneRttPacket(packet.getDestinationId(), packet.getPacketNumber()+1, false, false);
 		packet.getFrames().add(new MultiPaddingFrame(100));
@@ -451,6 +484,11 @@ public class QuicEngineTest extends CommonTest {
 		r = ce.unwrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		QuicState state = state(ce);
+		state.getCongestion().onPacketSent(50000);
+		assertSame(NEED_UNWRAP, ce.getHandshakeStatus());
+		state.getCongestion().onPacketSent(-50000);
+		assertSame(NEED_WRAP, ce.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(0, r.bytesConsumed());
 		

@@ -29,23 +29,18 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.DatagramChannel;
+import java.util.Arrays;
+
 import org.junit.After;
 import org.junit.Test;
 import org.snf4j.core.DatagramServerHandler;
 import org.snf4j.core.EngineDatagramSession;
 import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.engine.IEngine;
-import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.IDatagramHandlerFactory;
-import org.snf4j.core.factory.ISessionStructureFactory;
-import org.snf4j.core.handler.AbstractDatagramHandler;
 import org.snf4j.core.handler.IDatagramHandler;
-import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.timer.DefaultTimer;
-import org.snf4j.core.timer.ITimeoutModel;
-import org.snf4j.core.timer.ITimer;
-import org.snf4j.quic.engine.DisabledTimeoutModel;
 import org.snf4j.quic.engine.QuicEngine;
 import org.snf4j.tls.engine.DelegatedTaskMode;
 import org.snf4j.tls.engine.EngineHandlerBuilder;
@@ -61,7 +56,7 @@ public class QuicSessionTest extends CommonTest {
 	
 	SelectorLoop loop;
 	
-	DefaultTimer timer = new DefaultTimer(true);
+	DefaultTimer timer;
 
 	EngineHandlerBuilder handlerBld;
 	
@@ -89,35 +84,43 @@ public class QuicSessionTest extends CommonTest {
 		Thread.sleep(millis);
 	}
 	
-	EngineDatagramSession client() throws Exception {
+	EngineDatagramSession client(TestHandler handler, long timeout) throws Exception {
 		DatagramChannel channel = DatagramChannel.open();
 		channel.configureBlocking(false);
 		channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
 
 		QuicEngine e = new QuicEngine(true, paramBld.build(), handlerBld.build());
-		QuicSession session = new QuicSession(e, new ClientHandler());
+		QuicSession session = new QuicSession(e, handler);
 		
 		loop.register(channel, session)
 			.sync(TIMEOUT)
 			.getSession()
 			.getReadyFuture()
-			.sync(TIMEOUT);
+			.sync(timeout);
 	
 		return session;
 	}
+
+	EngineDatagramSession client() throws Exception {
+		return client(new TestHandler(timer), TIMEOUT);
+	}
 	
-	void server() throws Exception {
+	void server(TestHandler handler, int port) throws Exception {
 		DatagramChannel channel = DatagramChannel.open();
 		channel.configureBlocking(false);
-		channel.socket().bind(new InetSocketAddress(PORT));
+		channel.socket().bind(new InetSocketAddress(port));
 
 		loop.register(channel, new Server(new IDatagramHandlerFactory() {
 
 			@Override
 			public IDatagramHandler create(SocketAddress remoteAddress) {
-				return new ServerHandler();
+				return handler;
 			}			
 		})).sync(TIMEOUT);
+	}
+	
+	void server() throws Exception {
+		server(new TestHandler(timer), PORT);
 	}
 	
 	@Test
@@ -145,46 +148,48 @@ public class QuicSessionTest extends CommonTest {
 		server();
 		client();
 	}
-	
-	class Handler extends AbstractDatagramHandler {
 		
-		final DefaultSessionConfig config = new DefaultSessionConfig();
-
-		@Override
-		public void read(SocketAddress remoteAddress, Object msg) {
+	@Test
+	public void testClientPacketsLost() throws Exception {
+		for (int i=0; i<16; ++i) {
+			paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+			TestHandler s = new TestHandler(timer);
+			TestHandler c = new TestHandler(timer);
+			TestProxy p = new TestProxy(loop, PORT, PORT+1);
+			p.srv = s;
+			p.cli = c;
+			p.start(TIMEOUT);
+			boolean[] lost = new boolean[] {0 != (i&1), 0 != (i&2), 0 != (i&4), 0 != (i&8)};
+			System.out.println("[INFO] Lost client datagrams #" + i + ": " + Arrays.toString(lost));
+			p.action = p.lostAction(lost);
+			s.proxyAction = true;
+			server(s, PORT+1);
+			client(c, 20000);
+			after();
+			before();
 		}
-
-		@Override
-		public void read(Object msg) {
-		}
-		
-		@Override
-		public ISessionConfig getConfig() {
-			return config;
-		}
-
-		@Override
-		public ISessionStructureFactory getFactory() {
-			return new DefaultSessionStructureFactory() {
-				
-				@Override
-				public ITimer getTimer() {
-					return timer;
-				}
-				
-				@Override
-				public ITimeoutModel getTimeoutModel() {
-					return DisabledTimeoutModel.INSTANCE;
-				}
-			};
-		}
-	}
+	}	
 	
-	class ServerHandler extends Handler {
-	}
-	
-	class ClientHandler extends Handler {
-	}
+	@Test
+	public void testServerPacketLost() throws Exception {
+		for (int i=0; i<16; ++i) {
+			paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+			TestHandler s = new TestHandler(timer);
+			TestHandler c = new TestHandler(timer);
+			TestProxy p = new TestProxy(loop, PORT, PORT+1);
+			p.srv = s;
+			p.cli = c;
+			p.start(TIMEOUT);
+			boolean[] lost = new boolean[] {0 != (i&1), 0 != (i&2), 0 != (i&4), 0 != (i&8)};
+			System.out.println("[INFO] Lost server datagrams #" + i + ": " + Arrays.toString(lost));
+			p.action = p.lostAction(lost);
+			c.proxyAction = true;
+			server(s, PORT+1);
+			client(c, 20000);
+			after();
+			before();
+		}
+	}	
 	
 	class Server extends DatagramServerHandler {
 
