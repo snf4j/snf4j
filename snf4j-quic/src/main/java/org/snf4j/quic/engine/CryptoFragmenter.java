@@ -96,6 +96,11 @@ public class CryptoFragmenter {
 		return current != null || state.needUnblock();
 	}
 		
+	/**
+	 * Adds cryptographic data to be protected and sent.
+	 * 
+	 * @param produced the cryptographic data
+	 */
 	public void addPending(ProducedCrypto produced) {
 		if (current == null) {
 			current = produced;
@@ -111,18 +116,21 @@ public class CryptoFragmenter {
 		
 		if (packet == null) {
 			AckFrameBuilder acks = ctx.space.acks();
-			AckFrame ack = acks.build(
-					state.getConfig().getMaxNumberOfAckRanges(), 
-					ctx.ackTime(), 
-					ctx.level == EncryptionLevel.APPLICATION_DATA && state.isHandshakeConfirmed()
+			
+			if (!acks.isEmpty()) {
+				AckFrame ack = acks.build(
+						state.getConfig().getMaxNumberOfAckRanges(), 
+						ctx.ackTime(), 
+						ctx.level == EncryptionLevel.APPLICATION_DATA && state.isHandshakeConfirmed()
 						? state.getConfig().getAckDelayExponent()
-						: TransportParameters.DEFAULT_ACK_DELAY_EXPONENT);
+								: TransportParameters.DEFAULT_ACK_DELAY_EXPONENT);
 
-			if (ack != null) {
-				packet = ctx.packet(ack);
-				if (packet != null) {
-					acks.keepPriorTo(ack.getSmallestPacketNumber());
-					frames.fly(ack, packet.getPacketNumber());
+				if (ack != null) {
+					packet = ctx.packet(ack);
+					if (packet != null) {
+						acks.keepPriorTo(ack.getSmallestPacketNumber());
+						frames.fly(ack, packet.getPacketNumber());
+					}
 				}
 			}
 			
