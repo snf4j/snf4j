@@ -177,6 +177,12 @@ public class QuicEngineTest extends CommonTest {
 		assertTrue(ce.needWrap());		
 	}
 	
+	void assertErasedKeys(QuicEngine e, boolean initial, boolean handshake) throws Exception {
+		QuicState s = state(e);
+		assertEquals(initial, s.getContext(EncryptionLevel.INITIAL).isErased());
+		assertEquals(handshake, s.getContext(EncryptionLevel.HANDSHAKE).isErased());
+	}
+	
 	@Test
 	public void testHandshake() throws Exception {
 		EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
@@ -193,6 +199,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
 		assertEquals(1200, r.bytesProduced());
 		assertEquals(0, r.bytesConsumed());
+		assertErasedKeys(ce, false, false);
 		
 		flip();
 		assertTimer(se, se.unwrap(in, out));
@@ -201,6 +208,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_WRAP, r.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(1200, r.bytesConsumed());
+		assertErasedKeys(se, false, false);
 		
 		clear();
 		r = se.wrap(in, out);
@@ -208,6 +216,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
 		assertEquals(1200, r.bytesProduced());
 		assertEquals(0, r.bytesConsumed());
+		assertErasedKeys(se, false, false);
 		
 		flip();
 		r = ce.unwrap(in, out);
@@ -215,6 +224,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_WRAP, r.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(1200, r.bytesConsumed());
+		assertErasedKeys(ce, false, false);
 		
 		clear();
 		r = ce.wrap(in, out);
@@ -222,6 +232,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
 		assertEquals(1200, r.bytesProduced());
 		assertEquals(0, r.bytesConsumed());
+		assertErasedKeys(ce, true, false);
 		
 		flip();
 		r = se.unwrap(in, out);
@@ -229,6 +240,7 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_WRAP, r.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(1200, r.bytesConsumed());
+		assertErasedKeys(se, true, false);
 		
 		//delaying wrapping of handshake done
 		QuicState state = state(se);
@@ -245,12 +257,14 @@ public class QuicEngineTest extends CommonTest {
 		assertSame(NEED_UNWRAP, ce.getHandshakeStatus());
 		
 		clear();
+		assertErasedKeys(se, true, false);
 		r = se.wrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(FINISHED, r.getHandshakeStatus());
 		assertSame(NOT_HANDSHAKING, se.getHandshakeStatus());
 		assertEquals(out.position(), r.bytesProduced());
 		assertEquals(0, r.bytesConsumed());
+		assertErasedKeys(se, true, true);
 		
 		//broken handshake done
 		flip();
@@ -278,12 +292,14 @@ public class QuicEngineTest extends CommonTest {
 		protection(se).protect(state(se), packet, out);
 		flip();
 
+		assertErasedKeys(ce, true, false);
 		r = ce.unwrap(in, out);
 		assertSame(OK, r.getStatus());
 		assertSame(FINISHED, r.getHandshakeStatus());
 		assertSame(NEED_WRAP, ce.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(in.position(), r.bytesConsumed());
+		assertErasedKeys(ce, true, true);
 		
 		clear();
 		r = ce.wrap(in, out);

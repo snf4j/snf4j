@@ -43,6 +43,7 @@ import org.snf4j.quic.Version;
 import org.snf4j.quic.cid.ConnectionIdManager;
 import org.snf4j.quic.cid.IDestinationPool;
 import org.snf4j.quic.cid.ISourcePool;
+import org.snf4j.quic.frame.PaddingFrame;
 import org.snf4j.quic.frame.PingFrame;
 import org.snf4j.quic.tp.TransportParameters;
 import org.snf4j.quic.tp.TransportParametersBuilder;
@@ -500,5 +501,26 @@ public class QuicStateTest extends CommonTest {
 		assertFalse(s.needSend());
 		space.frames().add(PingFrame.INSTANCE);
 		assertTrue(s.needSend());		
+	}
+	
+	@Test
+	public void testEraseKeys() {
+		QuicState s = new QuicState(true);
+		EncryptionContext ctx = s.getContext(EncryptionLevel.INITIAL);
+		PacketNumberSpace space = s.getSpace(EncryptionLevel.INITIAL);
+		space.frames().add(PingFrame.INSTANCE);
+		space.frames().add(PaddingFrame.INSTANCE);
+		space.frames().fly(PingFrame.INSTANCE, 0);
+		assertTrue(space.frames().hasFlying());
+		space.acks().add(0, 1000);
+		assertFalse(ctx.isErased());
+		assertFalse(space.frames().isEmpty());
+		assertFalse(space.acks().isEmpty());
+		assertTrue(space.frames().hasFlying());
+		s.eraseKeys(EncryptionLevel.INITIAL, 1000);
+		assertTrue(ctx.isErased());
+		assertTrue(space.frames().isEmpty());
+		assertFalse(space.frames().hasFlying());
+		assertTrue(space.acks().isEmpty());
 	}
 }

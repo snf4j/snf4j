@@ -44,7 +44,7 @@ import org.snf4j.quic.frame.IFrame;
  */
 public class FrameManager {
 	
-	private Queue<IFrame> frames;
+	private final Queue<IFrame> frames = new LinkedList<>();
 	
 	private final Map<Long,FlyingFrames> flying = new HashMap<>();
 	
@@ -58,9 +58,6 @@ public class FrameManager {
 	 * @param frame the QUIC frame
 	 */
 	public void add(IFrame frame) {
-		if (frames == null) {
-			frames = new LinkedList<>();
-		}
 		frames.add(frame);
 	}
 	
@@ -72,10 +69,7 @@ public class FrameManager {
 	 *         flight
 	 */
 	public IFrame peek() {
-		if (frames != null) {
-			return frames.peek();
-		}
-		return null;
+		return frames.peek();
 	}
 	
 	/**
@@ -84,7 +78,14 @@ public class FrameManager {
 	 * @return {@code true} if there are no frames ready to be put in a flight
 	 */
 	public boolean isEmpty() {
-		return frames == null || frames.isEmpty();
+		return frames.isEmpty();
+	}
+	
+	/**
+	 * Removes all of the frames ready to be put in a flight.
+	 */
+	public void clear() {
+		frames.clear();
 	}
 	
 	/**
@@ -107,12 +108,10 @@ public class FrameManager {
 			largest = pn;
 		}
 		
-		if (frames != null) {
-			for (Iterator<IFrame> i = frames.iterator(); i.hasNext();) {
-				if (i.next() == frame) {
-					i.remove();
-					break;
-				}
+		for (Iterator<IFrame> i = frames.iterator(); i.hasNext();) {
+			if (i.next() == frame) {
+				i.remove();
+				break;
 			}
 		}
 		

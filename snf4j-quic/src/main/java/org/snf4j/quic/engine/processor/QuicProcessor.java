@@ -25,6 +25,8 @@
  */
 package org.snf4j.quic.engine.processor;
 
+import static org.snf4j.quic.packet.PacketType.HANDSHAKE;
+
 import java.util.List;
 
 import org.snf4j.core.logger.ILogger;
@@ -80,6 +82,8 @@ public class QuicProcessor {
 	boolean debug;
 	
 	boolean trace;
+	
+	boolean initialKeys = true;
 	
 	/**
 	 * Constructs a processor associated with given QUIC state and cryptographic
@@ -145,6 +149,14 @@ public class QuicProcessor {
 						LOG.debug("Peer address validated for {}", state.getSession());
 					}
 					state.setAddressValidated();
+				}
+				
+				if (initialKeys && !state.isClientMode()) {
+					if (debug) {
+						LOG.debug("Erasing INITIAL keys for {}", state.getSession());
+					}
+					state.eraseKeys(EncryptionLevel.INITIAL, currentTime);
+					initialKeys = false;
 				}
 				break;
 				
@@ -230,6 +242,15 @@ public class QuicProcessor {
 				state.getCongestion().onPacketSent(sendingBytes);
 				state.getLossDetector().setLossDetectionTimer(currentTime, false);
 			}
+			
+			if (initialKeys && state.isClientMode() && packet.getType() == HANDSHAKE) {
+				if (debug) {
+					LOG.debug("Erasing INITIAL keys for {}", state.getSession());
+				}
+				state.eraseKeys(EncryptionLevel.INITIAL, currentTime);
+				initialKeys = false;				
+			}
+			
 			for (IFrame frame: frames) {
 				if (trace) {
 					LOG.trace("Sending {} frame in {} packet with number {} for {}",

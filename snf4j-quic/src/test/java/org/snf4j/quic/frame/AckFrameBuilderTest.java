@@ -62,6 +62,21 @@ public class AckFrameBuilderTest {
 	}
 	
 	@Test
+	public void testClear() {
+		assertTrue(gen.isEmpty());
+		gen.add(1, 1000);
+		assertFalse(gen.isEmpty());
+		gen.clear();
+		assertTrue(gen.isEmpty());
+		gen.add(10, 1000);
+		gen.add(20, 1000);
+		gen.add(30, 1000);
+		assertFalse(gen.isEmpty());
+		gen.clear();
+		assertTrue(gen.isEmpty());
+	}
+	
+	@Test
 	public void testAddAtEnd() {
 		assertNull(gen.build(4, 1000, 3));
 		gen.add(0, 1000);

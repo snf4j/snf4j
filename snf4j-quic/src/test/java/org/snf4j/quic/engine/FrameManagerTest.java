@@ -157,4 +157,24 @@ public class FrameManagerTest {
 		i.remove();
 		assertEquals(2, m.getLost().size());
 	}
+	
+	@Test
+	public void testClear() {
+		FrameManager m = new FrameManager();
+		PingFrame f1 = new PingFrame();
+		PingFrame f2 = new PingFrame();
+		PingFrame f3 = new PingFrame();
+
+		assertTrue(m.isEmpty());
+		m.add(f1);
+		assertFalse(m.isEmpty());
+		m.clear();
+		assertTrue(m.isEmpty());
+		m.add(f1);
+		m.add(f2);
+		m.add(f3);
+		assertFalse(m.isEmpty());
+		m.clear();
+		assertTrue(m.isEmpty());
+	}
 }

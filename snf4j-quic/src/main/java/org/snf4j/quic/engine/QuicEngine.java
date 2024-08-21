@@ -382,8 +382,10 @@ public class QuicEngine implements IEngine {
 			case DONE_SENT:
 				if (debug) {
 					LOG.debug("Handshake finished for {}", state.getSession());
+					LOG.debug("Erasing HANDSHAKE keys for {}", state.getSession());
 				}
 				state.setHandshakeState(DONE);
+				state.eraseKeys(EncryptionLevel.HANDSHAKE, state.getTime().nanoTime());
 				return new EngineResult(
 						OK, 
 						FINISHED, 
@@ -515,8 +517,10 @@ public class QuicEngine implements IEngine {
 			case DONE_RECEIVED:
 				if (debug) {
 					LOG.debug("Handshake finished for {}", state.getSession());
+					LOG.debug("Erasing HANDSHAKE keys for {}", state.getSession());
 				}
 				state.setHandshakeState(DONE);
+				state.eraseKeys(EncryptionLevel.HANDSHAKE, state.getTime().nanoTime());
 				return new EngineResult(
 						OK, 
 						FINISHED, 
