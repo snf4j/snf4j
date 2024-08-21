@@ -183,6 +183,13 @@ public class AckFrameBuilder {
 		return ranges.isEmpty();
 	}
 	
+	/**
+	 * Removes all packets numbers from this builder.
+	 */
+	public void clear() {
+		ranges.clear();
+	}
+	
 	private static class Range {
 		
 		long min, max, reciveTime;

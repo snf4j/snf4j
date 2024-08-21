@@ -660,4 +660,21 @@ public class QuicState {
 		this.session = session;
 	}
 	
+	/**
+	 * Erases keys identified by the given encryption level. Along with erasing the
+	 * keys it also cleans up the associated packet number space, updates the loss
+	 * detector and congestion controller.
+	 * 
+	 * 
+	 * @param level       the encryption level identifying the keys
+	 * @param currentTime the current time in nanoseconds
+	 */
+	public void eraseKeys(EncryptionLevel level, long currentTime) {
+		PacketNumberSpace space = getSpace(level);
+		
+		getContext(level).erase();
+		lossDetector.onPacketNumberSpaceDiscarded(space, currentTime);
+		space.frames().clear();
+		space.acks().clear();
+	}
 }

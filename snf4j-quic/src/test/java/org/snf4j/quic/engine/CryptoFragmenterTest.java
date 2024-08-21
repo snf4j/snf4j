@@ -102,6 +102,9 @@ public class CryptoFragmenterTest extends CommonTest {
 				}
 				return super.getAntiAmplificator();
 			}
+			
+			public void eraseKeys(EncryptionLevel level, long currentTime) {
+			}
 		};
 		TestConfig peerConfig = new TestConfig();
 		peerConfig.connectionIdLength = 4;
