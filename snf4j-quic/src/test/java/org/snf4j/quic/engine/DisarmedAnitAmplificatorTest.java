@@ -25,16 +25,10 @@
  */
 package org.snf4j.quic.engine;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.util.Arrays;
-
 import org.junit.Test;
 import org.snf4j.quic.CommonTest;
-import org.snf4j.quic.packet.IPacket;
-import org.snf4j.quic.packet.OneRttPacket;
 
 public class DisarmedAnitAmplificatorTest extends CommonTest {
 
@@ -46,16 +40,12 @@ public class DisarmedAnitAmplificatorTest extends CommonTest {
 		aa.disarm();
 		assertFalse(aa.isArmed());
 		aa.incReceived(100);
-		assertTrue(aa.accept(1000));
-		aa.block(new byte[100], Arrays.asList((IPacket)new OneRttPacket(bytes("00"), 0, false, false)), new int[] {22});
-		assertFalse(aa.needUnblock());
-		assertNull(aa.getBlockedData());
-		assertNull(aa.getBlockedPackets());
-		assertNull(aa.getBlockedLengths());
-		aa.unblock();
-		assertFalse(aa.needUnblock());
-		assertNull(aa.getBlockedData());
-		assertNull(aa.getBlockedPackets());
-		assertNull(aa.getBlockedLengths());
+		aa.incSent(10);
+		assertEquals(Integer.MAX_VALUE, aa.available());
+		aa.lock(100);
+		assertFalse(aa.needUnlock());
+		aa.unlock();
+		assertFalse(aa.needUnlock());
+		assertEquals("unknown", aa.name());
 	}
 }

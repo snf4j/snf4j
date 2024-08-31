@@ -69,4 +69,9 @@ public class QuicConfig implements IQuicConfig {
 		return 10;
 	}
 
+	@Override
+	public int getMinNonBlockingUdpPayloadSize() {
+		return 100;
+	}
+
 }

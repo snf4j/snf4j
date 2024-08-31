@@ -91,4 +91,12 @@ public interface IQuicConfig {
 	 */
 	int getMaxActiveConnectionIdLimit();
 
+	/**
+	 * Determines the minimal non-blocking UDP payload size which defines the
+	 * minimal number of bytes that must be available in the congestion or
+	 * anti-amplification buffer to not block the sending.
+	 * 
+	 * @return the minimal non-blocking UDP payload size
+	 */
+	int getMinNonBlockingUdpPayloadSize();
 }

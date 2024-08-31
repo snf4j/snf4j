@@ -37,7 +37,10 @@ import java.util.Iterator;
 
 import org.junit.Test;
 import org.snf4j.quic.QuicException;
+import org.snf4j.quic.Version;
+import org.snf4j.quic.frame.FrameInfo;
 import org.snf4j.quic.frame.IFrame;
+import org.snf4j.quic.frame.PaddingFrame;
 import org.snf4j.quic.frame.PingFrame;
 
 public class FrameManagerTest {
@@ -176,5 +179,16 @@ public class FrameManagerTest {
 		assertFalse(m.isEmpty());
 		m.clear();
 		assertTrue(m.isEmpty());
+	}
+	
+	@Test
+	public void testHasAckEliciting() {
+		FrameManager m = new FrameManager();
+		FrameInfo info = FrameInfo.of(Version.V1);
+		assertFalse(m.hasAckEliciting(info));
+		m.add(PaddingFrame.INSTANCE);
+		assertFalse(m.hasAckEliciting(info));
+		m.add(PingFrame.INSTANCE);
+		assertTrue(m.hasAckEliciting(info));
 	}
 }

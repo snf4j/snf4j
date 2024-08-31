@@ -60,11 +60,11 @@ class CryptoFragmenterContext {
 	
 	long ackTime;
 
-	CryptoFragmenterContext(QuicState state) {
+	CryptoFragmenterContext(QuicState state, int available) {
 		this.state = state;
 		dcid = state.getConnectionIdManager().getDestinationId();
 		scid = state.getConnectionIdManager().getSourceId();
-		committed = remaining = state.getMaxUdpPayloadSize();
+		committed = remaining = Math.min(state.getMaxUdpPayloadSize(), available);
 		token = new byte[0];
 	}
 	

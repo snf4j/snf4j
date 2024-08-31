@@ -276,8 +276,7 @@ public class AckFrameProcessorTest extends CommonTest {
 		assertEquals(0, space.frames().getLost().size());
 		ap.process(p, ack, packet);
 		assertEquals(1, space.frames().getLost().size());
-		assertTrue(s.getCongestion().accept(1200*5 - 1400));
-		assertTrue(s.getCongestion().accept(1200*5 - 1400 + 1));
+		assertEquals(1200*5 - 1300, s.getCongestion().available());
 	}
 	
 	@Test
@@ -326,11 +325,9 @@ public class AckFrameProcessorTest extends CommonTest {
 		space.frames().fly(ack, 0);
 		space.frames().getFlying(0).onSending(1000, 100, true, true);
 		s.getCongestion().onPacketSent(200);
-		assertTrue(s.getCongestion().accept(12000-200));
-		assertFalse(s.getCongestion().accept(12000-200+1));
+		assertEquals(12000-200, s.getCongestion().available());
 		ap.process(p, ack, packet);
-		assertTrue(s.getCongestion().accept(12000-100));
-		assertFalse(s.getCongestion().accept(12000-100+1));
+		assertEquals(12000-100, s.getCongestion().available());
 	}
 	
 	@Test

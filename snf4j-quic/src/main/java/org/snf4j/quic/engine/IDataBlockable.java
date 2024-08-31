@@ -25,53 +25,50 @@
  */
 package org.snf4j.quic.engine;
 
-import java.util.List;
-
-import org.snf4j.quic.packet.IPacket;
-
-abstract class AbstractPacketBlockable implements IPacketBlockable {
-
-	int blocked;
+/**
+ * An object that provides data blocking functionality.
+ * 
+ * @author <a href="http://snf4j.org">SNF4J.ORG</a>
+ */
+public interface IDataBlockable {
+		
+	/**
+	 * Tells if blocked. In the blocked state no data should be sent to peer.
+	 * 
+	 * @return {@code true} if blocked
+	 */
+	boolean isBlocked();
 	
-	byte[] blockedPayload;
+	/**
+	 * Locks the given amount of data. If called when there is still some locked
+	 * data this data should be unlocked automatically.
+	 * <p>
+	 * The lock data indicate the minimum amount of data that should be available
+	 * for this object to be unblocked (i.e. to make {@link #isBlocked()} return
+	 * false).
+	 * 
+	 * @param amount the amount of data to lock
+	 */
+	void lock(int amount);
 	
-	List<IPacket> blockedPackets;
+	/**
+	 * Tells if some amount of data has not been unlocked yet.
+	 * 
+	 * @return {@code true} if some amount of data has not been unlocked yet
+	 */
+	boolean needUnlock();
 	
-	int[] blockedLengths;
+	/**
+	 * Unlocks the data, or does nothing if no data needs to be unlocked.
+	 */
+	void unlock();
 	
-	@Override
-	public void block(byte[] data, List<IPacket> packets, int[] lengths) {
-		blocked = data.length;
-		blockedPayload = data;
-		blockedPackets = packets;
-		blockedLengths = lengths;
-	}
-
-	@Override
-	public boolean needUnblock() {
-		return blocked != 0;
-	}
-
-	@Override
-	public void unblock() {
-		blocked = 0;
-		blockedPayload = null;
-		blockedPackets = null;
-		blockedLengths = null;
-	}
-
-	@Override
-	public byte[] getBlockedData() {
-		return blockedPayload;
-	}
-
-	@Override
-	public List<IPacket> getBlockedPackets() {
-		return blockedPackets;
-	}
-
-	@Override
-	public int[] getBlockedLengths() {
-		return blockedLengths;
+	/**
+	 * Returns the identifying name.
+	 * 
+	 * @return the identifying name
+	 */
+	default String name() {
+		return "unknown";
 	}
 }

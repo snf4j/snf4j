@@ -437,20 +437,6 @@ public class QuicStateTest extends CommonTest {
 	}
 	
 	@Test
-	public void testNeedUnblock() {
-		QuicState s = new QuicState(false);
-		assertFalse(s.needUnblock());
-		s.getAntiAmplificator().block(bytes(16), null, null);
-		assertTrue(s.needUnblock());
-		s.getCongestion().block(bytes(16), null, null);
-		assertTrue(s.needUnblock());
-		s.getAntiAmplificator().unblock();
-		assertTrue(s.needUnblock());
-		s.getCongestion().unblock();
-		assertFalse(s.needUnblock());
-	}
-	
-	@Test
 	public void testNeedSend() throws Exception {
 		QuicState s = new QuicState(true);
 		assertFalse(s.needSend());

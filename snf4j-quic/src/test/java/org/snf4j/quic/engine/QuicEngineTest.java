@@ -1046,13 +1046,14 @@ public class QuicEngineTest extends CommonTest {
 		assertTimer(ce, ce.wrap(in, out));
 		IEngineResult r = ce.wrap(in, out);
 		flip();
+		assertEquals(0, aa.available());
 		assertTimer(se, se.unwrap(in, out));
 		r = se.unwrap(in, out);
 		assertSame(NEED_WRAP, r.getHandshakeStatus());
 		assertSame(NEED_WRAP, se.getHandshakeStatus());
 		
-		assertFalse(aa.accept(3*1200+1));
-		assertTrue(aa.accept(2*1200+1));
+		aa.incSent(2*1200+1);
+		assertEquals(1199, aa.available());
 		assertSame(NEED_WRAP, se.getHandshakeStatus());
 		clear();
 		r = se.wrap(in, out);
