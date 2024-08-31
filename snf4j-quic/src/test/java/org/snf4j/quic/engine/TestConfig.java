@@ -43,6 +43,8 @@ public class TestConfig implements IQuicConfig {
 	
 	public int maxActiveConnectionIdLimit = 10;
 	
+	public int minNonBlockingUdpPayloadSize = 100;
+	
 	@Override
 	public int getMaxNumberOfAckRanges() {
 		return maxNumberOfAckRanges;
@@ -75,6 +77,11 @@ public class TestConfig implements IQuicConfig {
 	@Override
 	public int getMaxActiveConnectionIdLimit() {
 		return maxActiveConnectionIdLimit;
+	}
+
+	@Override
+	public int getMinNonBlockingUdpPayloadSize() {
+		return minNonBlockingUdpPayloadSize;
 	}
 
 }

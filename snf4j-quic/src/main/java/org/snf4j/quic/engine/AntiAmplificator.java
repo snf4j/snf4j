@@ -25,10 +25,6 @@
  */
 package org.snf4j.quic.engine;
 
-import java.util.List;
-
-import org.snf4j.quic.packet.IPacket;
-
 /**
  * The default anti-amplificator allowing to limit the amount of data an
  * endpoint sends to an unvalidated address to three times the amount of data
@@ -66,8 +62,13 @@ public class AntiAmplificator implements IAntiAmplificator {
 	}
 	
 	@Override
-	public boolean accept(int amount) {
-		return delegate.accept(amount);
+	public void incSent(int amount) {
+		delegate.incSent(amount);
+	}
+	
+	@Override
+	public int available() {
+		return delegate.available();
 	}
 	
 	@Override
@@ -76,36 +77,26 @@ public class AntiAmplificator implements IAntiAmplificator {
 	}
 
 	@Override
-	public void block(byte[] payload, List<IPacket> packets, int[] lengths) {
-		delegate.block(payload, packets, lengths);
+	public void lock(int amount) {
+		delegate.lock(amount);
 	}
 
 	@Override
-	public boolean needUnblock() {
-		return delegate.needUnblock();
+	public boolean needUnlock() {
+		return delegate.needUnlock();
 	}
 	
 	@Override
-	public void unblock() {
-		delegate.unblock();
-	}
-
-	@Override
-	public byte[] getBlockedData() {
-		return delegate.getBlockedData();
-	}
-
-	@Override
-	public List<IPacket> getBlockedPackets() {
-		return delegate.getBlockedPackets();
-	}
-
-	@Override
-	public int[] getBlockedLengths() {
-		return delegate.getBlockedLengths();
+	public void unlock() {
+		delegate.unlock();
 	}
 	
-	private static class Armed extends AbstractPacketBlockable implements IAntiAmplificator {
+	@Override
+	public String name() {
+		return "anti-amplificator";
+	}
+
+	private static class Armed extends AbstractDataBlockable implements IAntiAmplificator {
 
 		private final QuicState state;
 		
@@ -132,24 +123,25 @@ public class AntiAmplificator implements IAntiAmplificator {
 		}
 		
 		@Override
-		public boolean accept(int amount) {
-			if (received * 3 >= sent + amount) {
-				sent += amount;
-				return true;
-			}
-			return false;
+		public void incSent(int amount) {
+			sent += amount;
+		}
+
+		@Override
+		public int available() {
+			return received * 3 - sent;
 		}
 		
 		@Override
 		public boolean isBlocked() {
-			return !state.isAddressValidated() 
-					&& (received * 3 < sent + blocked || received == 0);
+			if (!state.isAddressValidated()) {
+				int available = available();
+				
+				return available == 0 || available < locked;
+			}
+			return false;
 		}
-		
-		@Override
-		public void unblock() {
-			sent += blocked;
-			super.unblock();
-		}
+
 	}
+
 }

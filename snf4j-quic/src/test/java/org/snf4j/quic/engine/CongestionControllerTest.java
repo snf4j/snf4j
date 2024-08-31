@@ -30,7 +30,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -72,41 +71,40 @@ public class CongestionControllerTest {
 	}
 	
 	@Test
-	public void testInitials() {
-		CongestionController cc = new CongestionController(state);
-		assertTrue(cc.accept(1200*10));
-		assertFalse(cc.accept(1200*10+1));
-		
-		maxUdpSize = 1472;
-		cc = new CongestionController(state);
-		assertTrue(cc.accept(1472*10));
-		assertFalse(cc.accept(1472*10+1));
-		
-		maxUdpSize = 1473;
-		cc = new CongestionController(state);
-		assertTrue(cc.accept(1472*10));
-		assertFalse(cc.accept(1472*10+1));
-
-		maxUdpSize = 14720/2;
-		cc = new CongestionController(state);
-		assertTrue(cc.accept(1472*10));
-		assertFalse(cc.accept(1472*10+1));
-		
-		maxUdpSize = 14722/2;
-		cc = new CongestionController(state);
-		assertTrue(cc.accept(14722));
-		assertFalse(cc.accept(14722+1));
+	public void testName() {
+		assertEquals("congestion controller", new CongestionController(state).name());
 	}
 	
 	@Test
-	public void testAccept() {
+	public void testInitials() {
 		CongestionController cc = new CongestionController(state);
-		assertTrue(cc.accept(1200*10));
+		assertEquals(1200*10, cc.available());
+		
+		maxUdpSize = 1472;
+		cc = new CongestionController(state);
+		assertEquals(1472*10, cc.available());
+		
+		maxUdpSize = 1473;
+		cc = new CongestionController(state);
+		assertEquals(1472*10, cc.available());
+
+		maxUdpSize = 14720/2;
+		cc = new CongestionController(state);
+		assertEquals(1472*10, cc.available());
+		
+		maxUdpSize = 14722/2;
+		cc = new CongestionController(state);
+		assertEquals(14722, cc.available());
+	}
+	
+	@Test
+	public void testAvailable() {
+		CongestionController cc = new CongestionController(state);
+		assertEquals(1200*10, cc.available());
 		cc.onPacketSent(1);
-		assertFalse(cc.accept(1200*10));
-		assertTrue(cc.accept(1200*10-1));
+		assertEquals(1200*10-1, cc.available());
 		cc.onPacketSent(1);
-		assertFalse(cc.accept(1200*10-1));		
+		assertEquals(1200*10-2, cc.available());
 	}
 
 	@Test
@@ -114,18 +112,17 @@ public class CongestionControllerTest {
 		CongestionController cc = new CongestionController(state);
 		assertFalse(cc.isBlocked());
 		cc.onPacketSent(12000);
-		assertFalse(cc.isBlocked());
+		assertTrue(cc.isBlocked());
 		cc.onPacketSent(1);
 		assertTrue(cc.isBlocked());
 
 		cc = new CongestionController(state);
 		cc.onPacketSent(10000);
-		assertTrue(cc.accept(2000));
-		assertFalse(cc.accept(2001));
-		cc.block(new byte[2000], new ArrayList<>(), new int[2]);
+		assertEquals(2000, cc.available());
+		cc.lock(2000);
 		assertFalse(cc.isBlocked());
-		assertTrue(cc.needUnblock());
-		cc.block(new byte[2001], new ArrayList<>(), new int[2]);
+		assertTrue(cc.needUnlock());
+		cc.lock(2001);
 		assertTrue(cc.isBlocked());
 	}
 
@@ -133,8 +130,7 @@ public class CongestionControllerTest {
 	public void testIsAppOrFlowControlLimited() {
 		CongestionController cc = new CongestionController(state);
 		assertTrue(cc.isAppOrFlowControlLimited());
-		assertTrue(cc.accept(10*1200));
-		assertFalse(cc.accept(10*1200+1));
+		assertEquals(10*1200, cc.available());
 		cc.onPacketSent(10*1200-1);
 		assertTrue(cc.isAppOrFlowControlLimited());
 		cc.onPacketSent(1);
@@ -154,30 +150,23 @@ public class CongestionControllerTest {
 		assertTrue(cc.isInCongestionRecovery(999));
 		assertTrue(cc.isInCongestionRecovery(1000));
 		assertFalse(cc.isInCongestionRecovery(1001));
-		assertTrue(cc.accept(5*1200));
-		assertFalse(cc.accept(5*1200+1));
+		assertEquals(5*1200, cc.available());
 		cc.onCongestionEvent(1000);
-		assertTrue(cc.accept(5*1200));
-		assertFalse(cc.accept(5*1200+1));
+		assertEquals(5*1200, cc.available());
 
 		cc.onCongestionEvent(1001);
-		assertTrue(cc.accept(2*1200 + 600));
-		assertFalse(cc.accept(2*1200 + 601));
+		assertEquals(2*1200 + 600, cc.available());
 		cc.onCongestionEvent(2000);
-		assertTrue(cc.accept(2*1200 + 600));
-		assertFalse(cc.accept(2*1200 + 601));
+		assertEquals(2*1200 + 600, cc.available());
 		
 		cc.onCongestionEvent(2001);
-		assertTrue(cc.accept(2*1200));
-		assertFalse(cc.accept(2*1200 + 1));
+		assertEquals(2*1200, cc.available());
 		cc.onCongestionEvent(3000);
-		assertTrue(cc.accept(2*1200));
-		assertFalse(cc.accept(2*1200 + 1));
+		assertEquals(2*1200, cc.available());
 
 		assertFalse(cc.isInCongestionRecovery(3001));
 		cc.onCongestionEvent(3001);
-		assertTrue(cc.accept(2*1200));
-		assertFalse(cc.accept(2*1200 + 1));
+		assertEquals(2*1200, cc.available());
 	}
 		
 	@Test
@@ -215,14 +204,12 @@ public class CongestionControllerTest {
 	public void testRemoveFromBytesInFlight() {
 		CongestionController cc = new CongestionController(state);
 		cc.onPacketSent(1000);
-		assertTrue(cc.accept(1200*10 - 1000));
-		assertFalse(cc.accept(1200*10 - 1000 + 1));
+		assertEquals(1200*10 - 1000, cc.available());
 		
 		fly(0, 10, 500, false, false);
 		fly(0, 10, 400, false, true);
 		cc.removeFromBytesInFlight(flying);
-		assertTrue(cc.accept(1200*10 - 600));
-		assertFalse(cc.accept(1200*10 - 600 + 1));
+		assertEquals(1200*10 - 600, cc.available());
 	}
 	
 	@Test
@@ -234,41 +221,36 @@ public class CongestionControllerTest {
 		fly(0, 500, 100, true, true);
 		EcnAckFrame ack = new EcnAckFrame(0, 1000, 0, 0, 600);		
 		cc.processEcn(ack, space, flying.get(0));
-		assertFalse(cc.accept(1200*5+1));
+		assertEquals(1200*5, cc.available());
 		assertTrue(cc.isInCongestionRecovery(1001));
 		assertFalse(cc.isInCongestionRecovery(1002));
 		assertEquals(600, space.getEcnCeCount());
 		cc.processEcn(ack, space, flying.get(0));
-		assertTrue(cc.accept(1200*5));
-		assertFalse(cc.accept(1200*5+1));
+		assertEquals(1200*5, cc.available());
 		ack = new EcnAckFrame(0, 1000, 0, 0, 500);		
 		cc.processEcn(ack, space, flying.get(0));
-		assertTrue(cc.accept(1200*5));
-		assertFalse(cc.accept(1200*5+1));
+		assertEquals(1200*5, cc.available());
 		assertEquals(600, space.getEcnCeCount());
 		
 		ack = new EcnAckFrame(0, 1000, 0, 0, 601);		
 		flying.clear();
 		fly(0, 1000, 100, true, true);
 		cc.processEcn(ack, space, flying.get(0));
-		assertTrue(cc.accept(1200*5));
-		assertFalse(cc.accept(1200*5+1));
+		assertEquals(1200*5, cc.available());
 		assertEquals(601, space.getEcnCeCount());
 		
 		ack = new EcnAckFrame(0, 1000, 0, 0, 602);		
 		flying.clear();
 		fly(0, 1001, 100, true, true);
 		cc.processEcn(ack, space, flying.get(0));
-		assertTrue(cc.accept(1200*5));
-		assertFalse(cc.accept(1200*5+1));
+		assertEquals(1200*5, cc.available());
 		assertEquals(602, space.getEcnCeCount());
 		
 		ack = new EcnAckFrame(0, 1000, 0, 0, 603);		
 		flying.clear();
 		fly(0, 1002, 100, true, true);
 		cc.processEcn(ack, space, flying.get(0));
-		assertTrue(cc.accept(1200*2 + 600));
-		assertFalse(cc.accept(1200*2 + 600 +1));
+		assertEquals(1200*2 + 600, cc.available());
 		assertEquals(603, space.getEcnCeCount());
 	}
 	
@@ -283,27 +265,21 @@ public class CongestionControllerTest {
 		};
 		fly(0, 1000, 500, true, true);		
 		cc.onPacketSent(2000);
-		assertTrue(cc.accept(1200*10 - 2000));
-		assertFalse(cc.accept(1200*10 - 2000 + 1));
+		assertEquals(1200*10 - 2000, cc.available());
 		cc.onPacketInFlightAcked(flying.get(0));
-		assertTrue(cc.accept(1200*10 + 500 - 1500));
-		assertFalse(cc.accept(1200*10 + 500 - 1500 + 1));
+		assertEquals(1200*10 + 500 - 1500, cc.available());
 		
 		cc.onCongestionEvent(500);
-		assertTrue(cc.accept(1200*5 + 250 - 1500));
-		assertFalse(cc.accept(1200*5 + 250 - 1500 + 1));
+		assertEquals(1200*5 + 250 - 1500, cc.available());
 		cc.onCongestionEvent(1500);
-		assertTrue(cc.accept(3125 - 1500));
-		assertFalse(cc.accept(3125 - 1500 + 1));
+		assertEquals(3125 - 1500, cc.available());
 		cc.onCongestionEvent(2500);
-		assertTrue(cc.accept(2400 - 1500));
-		assertFalse(cc.accept(2400 - 1500 + 1));
+		assertEquals(2400 - 1500, cc.available());
 		flying.clear();
 		fly(0, 3500, 500, true, true);		
 		cc.onPacketInFlightAcked(flying.get(0));
 		int cwnd = 2400 + 1200 * 500 / 2400;
-		assertTrue(cc.accept(cwnd - 1000));
-		assertFalse(cc.accept(cwnd - 1000 + 1));
+		assertEquals(cwnd - 1000, cc.available());
 		
 		state = new QuicState(true, config, new TestTime(1000,2000,3000));
 		cc = new CongestionController(state) {
@@ -315,23 +291,19 @@ public class CongestionControllerTest {
 		flying.clear();
 		fly(0, 999, 500, true, true);		
 		cc.onPacketSent(2000);
-		assertTrue(cc.accept(1200*10 - 2000));
-		assertFalse(cc.accept(1200*10 - 2000 + 1));
+		assertEquals(1200*10 - 2000, cc.available());
 		cc.onCongestionEvent(500);
 		cc.onPacketInFlightAcked(flying.get(0));
-		assertTrue(cc.accept(1200*5 - 1500));
-		assertFalse(cc.accept(1200*5 - 1500 + 1));
+		assertEquals(1200*5 - 1500, cc.available());
 		flying.clear();
 		fly(0, 1000, 100, true, true);		
 		cc.onPacketInFlightAcked(flying.get(0));
-		assertTrue(cc.accept(1200*5 - 1400));
-		assertFalse(cc.accept(1200*5 - 1400 + 1));
+		assertEquals(1200*5 - 1400, cc.available());
 		flying.clear();
 		fly(0, 1001, 100, true, true);		
 		cc.onPacketInFlightAcked(flying.get(0));
 		cwnd = 6000 + 1200 * 100 / 6000;
-		assertTrue(cc.accept(cwnd - 1300));
-		assertFalse(cc.accept(cwnd - 1300 + 1));
+		assertEquals(cwnd - 1300, cc.available());
 
 		state = new QuicState(true, config, new TestTime(1000,2000,3000));
 		cc = new CongestionController(state) {
@@ -344,8 +316,7 @@ public class CongestionControllerTest {
 		fly(0, 1000, 500, true, true);		
 		cc.onPacketSent(2000);
 		cc.onPacketInFlightAcked(flying.get(0));
-		assertTrue(cc.accept(1200*10 - 1500));
-		assertFalse(cc.accept(1200*10 - 1500 + 1));	
+		assertEquals(1200*10 - 1500, cc.available());
 	}
 	
 	@Test
@@ -358,8 +329,7 @@ public class CongestionControllerTest {
 			}
 		};
 		cc.onPacketSent(2000);
-		assertTrue(cc.accept(1200*10 - 2000));
-		assertFalse(cc.accept(1200*10 - 2000 + 1));
+		assertEquals(1200*10 - 2000, cc.available());
 		
 		Field f = CongestionController.class.getDeclaredField("persistent");
 		f.setAccessible(true);
@@ -371,8 +341,7 @@ public class CongestionControllerTest {
 		assertTrue(p.isDetectable());
 		cc.onPacketAcked(flying);
 		assertFalse(p.isDetectable());
-		assertTrue(cc.accept(1200*5+100 - 1000));
-		assertFalse(cc.accept(1200*5+100 - 1000 + 1));
+		assertEquals(1200*5+100 - 1000, cc.available());
 		p.lost(5000);
 		assertFalse(p.isDetectable());
 		p.lost(5001);
@@ -391,43 +360,37 @@ public class CongestionControllerTest {
 		cc.onPacketSent(2000);
 		fly(0, 1000, 500, true, false);		
 		fly(1, 2000, 300, true, false);		
-		assertTrue(cc.accept(1200*10 - 2000));
-		assertFalse(cc.accept(1200*10 - 2000 + 1));
+		assertEquals(1200*10 - 2000, cc.available());
 		cc.onPacketsLost(flying);
-		assertTrue(cc.accept(1200*10 - 2000));
-		assertFalse(cc.accept(1200*10 - 2000 + 1));
+		assertEquals(1200*10 - 2000, cc.available());
 		assertEquals("", sb.toString());
 		
 		flying.clear();
 		fly(0, 1000, 500, true, false);		
 		fly(1, 2000, 300, true, true);		
 		cc.onPacketsLost(flying);
-		assertTrue(cc.accept(1200*10 - 1700));
-		assertFalse(cc.accept(1200*10 - 1700 + 1));
+		assertEquals(1200*10 - 1700, cc.available());
 		assertEquals("2000|", sb.toString());
 
 		flying.clear();
 		fly(0, 1000, 500, true, true);		
 		fly(1, 1001, 300, true, true);		
 		cc.onPacketsLost(flying);
-		assertTrue(cc.accept(1200*10 - 900));
-		assertFalse(cc.accept(1200*10 - 900 + 1));
+		assertEquals(1200*10 - 900, cc.available());
 		assertEquals("2000|1001|", sb.toString());
 	
 		flying.clear();
 		fly(0, 801, 500, true, true);		
 		fly(1, 800, 300, true, true);		
 		cc.onPacketsLost(flying);
-		assertTrue(cc.accept(1200*10 - 100));
-		assertFalse(cc.accept(1200*10 - 100 + 1));
+		assertEquals(1200*10 - 100, cc.available());
 		assertEquals("2000|1001|801|", sb.toString());
 
 		flying.clear();
 		fly(0, 700, 10, true, true);		
 		fly(1, 700, 20, true, true);		
 		cc.onPacketsLost(flying);
-		assertTrue(cc.accept(1200*10 - 70));
-		assertFalse(cc.accept(1200*10 - 70 + 1));
+		assertEquals(1200*10 - 70, cc.available());
 		assertEquals("2000|1001|801|700|", sb.toString());
 	}
 	
@@ -489,8 +452,7 @@ public class CongestionControllerTest {
 		assertTrue(p.isDetectable());
 		p.acked(10000);;
 		assertFalse(p.isDetectable());
-		assertTrue(cc.accept(1200*10 - 1200));
-		assertFalse(cc.accept(1200*10 - 1200 + 1));
+		assertEquals(1200*10 - 1200, cc.available());
 		p.acked(10000);;
 		assertFalse(p.isDetectable());
 		
@@ -503,8 +465,7 @@ public class CongestionControllerTest {
 		assertTrue(cc.isInCongestionRecovery(0));
 		cc.onPacketsLost(flying);
 		assertFalse(p.isDetectable());
-		assertTrue(cc.accept(1200*2 - 1000));
-		assertFalse(cc.accept(1200*2 - 1000 + 1));
+		assertEquals(1200*2 - 1000, cc.available());
 		assertFalse(cc.isInCongestionRecovery(0));
 	}
 	

@@ -25,11 +25,8 @@
  */
 package org.snf4j.quic.engine;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -62,103 +59,97 @@ public class AntiAmplificatorTest extends CommonTest {
 	}
 	
 	@Test
-	public void testDisarm() {
-		assertTrue(aa.isArmed());
-		assertFalse(aa.accept(1));
-		assertTrue(aa.accept(0));
-		assertTrue(aa.isBlocked());
-		aa.block(new byte[1], packets, lengths);
-		assertTrue(aa.needUnblock());
-		assertNotNull(aa.getBlockedPackets());
-		assertNotNull(aa.getBlockedData());
-		assertNotNull(aa.getBlockedLengths());
-		
-		aa.disarm();
-		assertFalse(aa.isArmed());
-		assertTrue(aa.accept(100));
-		assertTrue(aa.accept(0));
-		assertFalse(aa.isBlocked());
-		aa.block(new byte[1], packets, lengths);
-		assertFalse(aa.needUnblock());
-		assertNull(aa.getBlockedPackets());
-		assertNull(aa.getBlockedData());
-		assertNull(aa.getBlockedLengths());
+	public void testName() {
+		assertEquals("anti-amplificator", aa.name());
 	}
 	
 	@Test
-	public void testAccept() {
-		assertTrue(aa.accept(0));
-		assertFalse(aa.accept(1));
+	public void testDisarm() {
+		assertTrue(aa.isArmed());
+		assertEquals(0, aa.available());
+		assertTrue(aa.isBlocked());
+		aa.lock(1);
+		assertTrue(aa.needUnlock());
+		
+		aa.disarm();
+		assertFalse(aa.isArmed());
+		assertEquals(Integer.MAX_VALUE, aa.available());
+		assertFalse(aa.isBlocked());
+		aa.lock(1);
+		assertFalse(aa.needUnlock());
+	}
+	
+	@Test
+	public void testAvailable() {
+		assertEquals(0, aa.available());
 		aa.incReceived(10);
-		assertTrue(aa.accept(10));
-		assertTrue(aa.accept(20));
-		assertFalse(aa.accept(1));
+		assertEquals(30, aa.available());
 		aa.incReceived(5);
-		assertFalse(aa.accept(16));
-		assertTrue(aa.accept(15));	
+		assertEquals(45, aa.available());
+		aa.incSent(4);
+		assertEquals(41, aa.available());
 	}
 	
 	@Test
 	public void testIsBlocked() {
 		assertTrue(aa.isBlocked());
 		aa.incReceived(10);
+		assertEquals(30, aa.available());
 		assertFalse(aa.isBlocked());
-		assertTrue(aa.accept(30));
-		assertFalse(aa.isBlocked());
-		assertFalse(aa.accept(1));
+		aa.incSent(30);
+		assertTrue(aa.isBlocked());
+		assertEquals(0, aa.available());
 		aa.incReceived(1);
 		assertFalse(aa.isBlocked());
-		assertTrue(aa.accept(3));
-		assertFalse(aa.accept(1));
+		assertEquals(3, aa.available());
+		aa.incSent(3);
+		assertEquals(0, aa.available());
 		
 		aa.incReceived(10);
-		assertFalse(aa.accept(31));
+		assertEquals(30, aa.available());
 		assertFalse(aa.isBlocked());
-		aa.block(new byte[31], packets, lengths);
+		aa.lock(31);
 		assertTrue(aa.isBlocked());
-		assertTrue(aa.needUnblock());
+		assertTrue(aa.needUnlock());
 		aa.incReceived(1);
 		assertFalse(aa.isBlocked());
-		assertTrue(aa.needUnblock());
-		aa.unblock();
-		assertFalse(aa.accept(3));
-		assertTrue(aa.accept(2));
-		assertFalse(aa.isBlocked());
+		assertTrue(aa.needUnlock());
+		aa.unlock();
+		assertEquals(33, aa.available());
+		aa.incSent(33);
+		assertEquals(0, aa.available());
+		assertTrue(aa.isBlocked());
 		
-		assertFalse(aa.accept(30));
-		aa.block(new byte[30], packets, lengths);
+		aa.lock(30);
 		assertTrue(aa.isBlocked());
 		aa.incReceived(9);
 		assertTrue(aa.isBlocked());
 		aa.incReceived(1);
 		assertFalse(aa.isBlocked());
-		aa.unblock();
-		assertFalse(aa.isBlocked());
-		assertFalse(aa.accept(1));
+		aa.unlock();
+		assertEquals(30, aa.available());
+		aa.incSent(30);
 		
-		aa.block(new byte[1], packets, lengths);
+		assertTrue(aa.isBlocked());
+		assertEquals(0, aa.available());
+		
+		aa.lock(1);
 		assertTrue(aa.isBlocked());
 		state.setAddressValidated();
 		assertFalse(aa.isBlocked());
-		assertTrue(aa.needUnblock());
+		assertTrue(aa.needUnlock());
 	}
 	
 	@Test
 	public void testBlock() {
-		assertFalse(aa.needUnblock());
-		aa.block(bytes("010203"), packets, lengths);
-		assertTrue(aa.needUnblock());
-		assertArrayEquals(bytes("010203"), aa.getBlockedData());
-		assertSame(packets, aa.getBlockedPackets());
-		assertSame(lengths, aa.getBlockedLengths());
+		assertFalse(aa.needUnlock());
+		aa.lock(3);
+		assertTrue(aa.needUnlock());
 		assertTrue(aa.isBlocked());
 		aa.incReceived(10);
 		assertFalse(aa.isBlocked());
-		assertTrue(aa.needUnblock());
-		aa.unblock();
-		assertFalse(aa.needUnblock());
-		assertNull(aa.getBlockedData());
-		assertNull(aa.getBlockedPackets());
-		assertNull(aa.getBlockedLengths());
+		assertTrue(aa.needUnlock());
+		aa.unlock();
+		assertFalse(aa.needUnlock());
 	}
 }

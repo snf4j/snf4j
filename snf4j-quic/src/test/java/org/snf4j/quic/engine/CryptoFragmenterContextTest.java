@@ -57,9 +57,16 @@ public class CryptoFragmenterContextTest extends CommonTest {
 		scid = state.getConnectionIdManager().getSourceId();
 		state.getConnectionIdManager().getDestinationPool().add(bytes("00010203"));
 		dcid = state.getConnectionIdManager().getDestinationId();
-		ctx = new CryptoFragmenterContext(state);
+		ctx = new CryptoFragmenterContext(state, Integer.MAX_VALUE);
 		
 		listener = new CryptoEngineStateListener(state);
+	}
+	
+	@Test
+	public void testInitialRemaining() {
+		assertEquals(1200, ctx.remaining);
+		ctx = new CryptoFragmenterContext(state, 100);
+		assertEquals(100, ctx.remaining);
 	}
 	
 	@Test
@@ -187,7 +194,7 @@ public class CryptoFragmenterContextTest extends CommonTest {
 	@Test
 	public void testAckTime() {
 		state = new QuicState(true, new TestConfig(), new TestTime(1000,2000));
-		ctx = new CryptoFragmenterContext(state);
+		ctx = new CryptoFragmenterContext(state, Integer.MAX_VALUE);
 		
 		assertEquals(1000, ctx.ackTime());
 		assertEquals(1000, ctx.ackTime());

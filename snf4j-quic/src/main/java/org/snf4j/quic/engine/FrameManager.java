@@ -35,6 +35,7 @@ import java.util.Queue;
 
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
+import org.snf4j.quic.frame.FrameInfo;
 import org.snf4j.quic.frame.IFrame;
 
 /**
@@ -86,6 +87,23 @@ public class FrameManager {
 	 */
 	public void clear() {
 		frames.clear();
+	}
+	
+	/**
+	 * Tells if there is at least one ack-eliciting frame ready to be put in a
+	 * flight.
+	 * 
+	 * @param info an additional information about QUIC frames
+	 * @return {@code true} if there is at least one ack-eliciting frame ready to be
+	 *         put in a flight
+	 */
+	public boolean hasAckEliciting(FrameInfo info) {
+		for (IFrame frame: frames) {
+			if (info.isAckEliciting(frame.getTypeValue())) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	/**

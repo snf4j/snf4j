@@ -487,8 +487,7 @@ public class LossDetectorTest extends CommonTest {
 		assertEquals("CANCEL|TimerTask;999;true|", stimer.trace());
 		assertEquals(0, space.getLossTime());
 		assertEquals(0, space.getLastAckElicitingTime());
-		cli.getCongestion().accept(1200*10 - 1900);
-		cli.getCongestion().accept(1200*10 - 1900 + 1);
+		assertEquals(1200*10 - 1900, cli.getCongestion().available());
 		assertFalse(space.frames().hasFlying());
 		TimeAndSpace tas = cli.getLossDetector().getPtoTimeAndSpace(111);
 		long duration = 111L + (333000000L + 4 * 166500000L) * 1;
@@ -542,7 +541,6 @@ public class LossDetectorTest extends CommonTest {
 		frame = space.frames().peek();
 		space.frames().fly(frame, 3);
 		assertSame(FrameType.HANDSHAKE_DONE, space.frames().peek().getType());
-		assertTrue(cli.getCongestion().accept(1200*5 - 1900));
-		assertFalse(cli.getCongestion().accept(1200*5 - 1900 + 1));
+		assertEquals(1200*5 - 1900, cli.getCongestion().available());
 	}
 }

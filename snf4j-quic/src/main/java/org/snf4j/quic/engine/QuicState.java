@@ -206,17 +206,6 @@ public class QuicState {
 	}
 	
 	/**
-	 * Tells if some data has been saved due to exceeding of the anti-amplification
-	 * or congestion limit and has not been unblocked yet.
-	 * 
-	 * @return {@code true} if some data have been saved and has not been unblocked
-	 *         yet
-	 */
-	public boolean needUnblock() {
-		return antiAmplificator.needUnblock() || congestion.needUnblock();
-	}
-	
-	/**
 	 * Tells if there are frames ready to be sent.
 	 * 
 	 * @return {@code true} if there are frames ready to be sent

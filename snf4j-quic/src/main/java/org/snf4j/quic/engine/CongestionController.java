@@ -38,7 +38,7 @@ import org.snf4j.quic.metric.ICongestionControllerMetric;
  * 
  * @author <a href="http://snf4j.org">SNF4J.ORG</a>
  */
-public class CongestionController extends AbstractPacketBlockable {
+public class CongestionController extends AbstractDataBlockable {
 	
 	private final static int K_LOSS_REDUCTION_FACTOR_NUM = 1;
 
@@ -78,19 +78,24 @@ public class CongestionController extends AbstractPacketBlockable {
 		this.metric = metric;
 	}
 	
+	/**
+	 * Constructs a congestion controller associated with the give QUIC state.
+	 * 
+	 * @param state  the QUIC state
+	 */
 	public CongestionController(QuicState state) {
 		this(state, CongestionControllerMetric.INSTANCE);
 	}
 	
 	/**
-	 * Tells if the given amount of data can be sent without exceeding the current
-	 * congestion window.
+	 * Returns the maximum number of bytes that can be sent without exceeding the
+	 * current congestion window.
 	 * 
-	 * @param amount the amount of data
-	 * @return {@code true} if the given amount of data can be sent
+	 * @return the maximum number of bytes that can be sent without exceeding the
+	 *         current congestion window
 	 */
-	public boolean accept(int amount) {
-		return bytesInFlight + amount <= window;
+	public int available() {
+		return (int) (window - bytesInFlight);
 	}
 	
 	/**
@@ -255,6 +260,13 @@ public class CongestionController extends AbstractPacketBlockable {
 
 	@Override
 	public boolean isBlocked() {
-		return !accept(blocked);
+		int available = available();
+		
+		return available == 0 || available < locked;
+	}
+
+	@Override
+	public String name() {
+		return "congestion controller";
 	}
 }

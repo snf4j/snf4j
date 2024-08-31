@@ -25,57 +25,23 @@
  */
 package org.snf4j.quic.engine;
 
-/**
- * A disarmed anti-amplificator that does not limit the amount of data an
- * endpoint sends to an unvalidated address.
- * 
- * @author <a href="http://snf4j.org">SNF4J.ORG</a>
- */
-public class DisarmedAnitAmplificator implements IAntiAmplificator{
+abstract class AbstractDataBlockable implements IDataBlockable {
 
-	/** A sateless instance of the disarmed anti-amplificator */
-	public static IAntiAmplificator INSTANCE = new DisarmedAnitAmplificator();
+	int locked;
 	
-	private DisarmedAnitAmplificator() {}
-	
-	@Override 
-	public boolean isArmed() {
-		return false;
-	}
-
-	@Override
-	public void disarm() {
-	}
-	
-	@Override
-	public void incReceived(int amount) {
-	}
-	
-	@Override
-	public void incSent(int amount) {
-	}
-	
-	@Override
-	public int available() {
-		return Integer.MAX_VALUE;
-	}
-	
-	@Override
-	public boolean isBlocked() {
-		return false;
-	}
-
 	@Override
 	public void lock(int amount) {
+		locked = amount;
 	}
 	
 	@Override
 	public boolean needUnlock() {
-		return false;
+		return locked != 0;
 	}
-	
+
 	@Override
 	public void unlock() {
+		locked = 0;
 	}
 
 }

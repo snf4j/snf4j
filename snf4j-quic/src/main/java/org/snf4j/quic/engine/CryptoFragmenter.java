@@ -25,12 +25,15 @@
  */
 package org.snf4j.quic.engine;
 
+import static org.snf4j.quic.engine.EncryptionLevel.INITIAL;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 
+import org.snf4j.core.logger.ILogger;
+import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.engine.crypto.ProducedCrypto;
 import org.snf4j.quic.engine.processor.QuicProcessor;
@@ -55,6 +58,8 @@ import org.snf4j.quic.tp.TransportParameters;
  */
 public class CryptoFragmenter {
 
+	private final static ILogger LOG = LoggerFactory.getLogger(CryptoFragmenter.class);
+	
 	private final static int ENC_LVL_COUNT = EncryptionLevel.values().length;
 	
 	private final PacketProtection protection;
@@ -63,7 +68,7 @@ public class CryptoFragmenter {
 	
 	private final QuicProcessor processor;
 	
-	private final Queue<ProducedCrypto> pending = new LinkedList<>();
+	private final LinkedList<ProducedCrypto> pending = new LinkedList<>();
 	
 	private final QuicState state;
 	
@@ -87,17 +92,17 @@ public class CryptoFragmenter {
 	
 	/**
 	 * Tells if this framgmenter has still cryptographic data to be protected and
-	 * sent or some protected data is ready to be sent but has been blocked due to
-	 * reaching the anit-amplification or congestion limit.
+	 * sent.
 	 * 
 	 * @return {@code true} if there is still cryptographic data to be sent
 	 */
 	public boolean hasPending() {
-		return current != null || state.needUnblock();
+		return current != null;
 	}
 		
 	/**
-	 * Adds cryptographic data to be protected and sent.
+	 * Adds cryptographic data to be protected and sent at the proper place in the
+	 * list of pending cryptographic data.
 	 * 
 	 * @param produced the cryptographic data
 	 */
@@ -106,7 +111,24 @@ public class CryptoFragmenter {
 			current = produced;
 		}
 		else {
-			pending.add(produced);
+			int ord = produced.getEncryptionLevel().ordinal();
+			
+			if (current.getEncryptionLevel().ordinal() > ord) {
+				pending.add(0, current);
+				current = produced;
+			}
+			else {
+				int size = pending.size();
+				
+				for (int i=0; i<size; ++i) {
+					ProducedCrypto pc = pending.get(i);
+					if (pc.getEncryptionLevel().ordinal() > ord) {
+						pending.add(i, produced);
+						return;
+					}
+				}
+				pending.add(produced);
+			}
 		}
 	}
 	
@@ -125,12 +147,10 @@ public class CryptoFragmenter {
 						? state.getConfig().getAckDelayExponent()
 								: TransportParameters.DEFAULT_ACK_DELAY_EXPONENT);
 
-				if (ack != null) {
-					packet = ctx.packet(ack);
-					if (packet != null) {
-						acks.keepPriorTo(ack.getSmallestPacketNumber());
-						frames.fly(ack, packet.getPacketNumber());
-					}
+				packet = ctx.packet(ack);
+				if (packet != null) {
+					acks.keepPriorTo(ack.getSmallestPacketNumber());
+					frames.fly(ack, packet.getPacketNumber());
 				}
 			}
 			
@@ -215,30 +235,23 @@ public class CryptoFragmenter {
 	 */
 	public int protectPending(ByteBuffer dst) throws QuicException {
 		IAntiAmplificator antiAmplificator = state.getAntiAmplificator();
+		int available = Integer.MAX_VALUE;
+		IDataBlockable toBlock;
+
+		if (current == null) {
+			current = pending.poll();
+		}	
 		
 		if (antiAmplificator.isArmed()) {
-			if (antiAmplificator.needUnblock()) {
-				if (antiAmplificator.isBlocked()) {
-					return 0;
-				}
-				else {
-					byte[] data = antiAmplificator.getBlockedData();
-					List<IPacket> packets = antiAmplificator.getBlockedPackets();
-					int[] lengths = antiAmplificator.getBlockedLengths();
-
-					if (state.isAddressValidated()) {
-						antiAmplificator.disarm();
-					}
-					else {
-						antiAmplificator.unblock();						
-					}
-					dst.put(data);
-					processSending(packets, lengths);
-					return data.length;
-				}
-			}
-			else if (state.isAddressValidated()) {
+			if (state.isAddressValidated()) {
 				antiAmplificator.disarm();
+			}
+			else if (antiAmplificator.isBlocked()) {
+				return 0;
+			}
+			else {
+				antiAmplificator.unlock();
+				available = antiAmplificator.available();
 			}
 		}
 		
@@ -247,30 +260,82 @@ public class CryptoFragmenter {
 		if (congestion.isBlocked()) {
 			return 0;
 		}
-		else if (congestion.needUnblock()) {
-			byte[] data = congestion.getBlockedData();
-			List<IPacket> packets = congestion.getBlockedPackets();
-			int[] lengths = congestion.getBlockedLengths();
-
-			congestion.unblock();
-			dst.put(data);
-			processSending(packets, lengths);
-			return data.length;
+		else {
+			int tmp = congestion.available();
+		
+			congestion.unlock();
+			if (tmp < available) {
+				available = tmp;
+				toBlock = congestion;
+			}
+			else {
+				toBlock = antiAmplificator;
+			}
 		}
 		
-		CryptoFragmenterContext ctx = new CryptoFragmenterContext(state);
+		if (state.getEncryptorLevel() == null) {
+			protectionListener.onInitialKeys(
+					state, 
+					state.getConnectionIdManager().getDestinationId(), 
+					state.getVersion());
+		}
+		
+		if (available < state.getMaxUdpPayloadSize()) {
+			boolean padding = false;
+			boolean debug = LOG.isDebugEnabled();
+			
+			if (state.getContext(INITIAL).getEncryptor() != null) {
+				if (current != null && current.getEncryptionLevel() == INITIAL) {
+					padding = true;
+				}
+				else {
+					PacketNumberSpace space = state.getSpace(INITIAL);
+					
+					if (space.frames().hasAckEliciting(FrameInfo.of(state.getVersion()))) {
+						padding = true;					
+					}
+					else if (!space.frames().isEmpty() || !space.acks().isEmpty()) {
+						padding = state.isClientMode();
+					}
+				}
+			}
+			
+			if (padding) {
+				toBlock.lock(state.getMaxUdpPayloadSize());
+				if (debug) {
+					LOG.debug("Sending blocked by {} (needed {}, available {}) for {}",
+							toBlock.name(),
+							state.getMaxUdpPayloadSize(),
+							available,
+							state.getSession()
+							);
+				}
+				return 0;
+			}
+			else {
+				int min = state.getConfig().getMinNonBlockingUdpPayloadSize();
+				
+				if (available < min) {
+					toBlock.lock(min);
+					if (debug) {
+						LOG.debug("Sending blocked by {} (needed {}, available {}) for {}",
+								toBlock.name(),
+								min,
+								available,
+								state.getSession()
+								);
+					}
+					return 0;
+				}
+			}
+		}
+				
+		CryptoFragmenterContext ctx = new CryptoFragmenterContext(state, available);
 		int dst0 = dst.position();
 		IPacket packet = null;
 		List<IPacket> packets = new ArrayList<>();
 		boolean padding = false;
-		
-		if (current == null) {
-			current = pending.poll();
-		}	
-		if (state.getEncryptorLevel() == null) {
-			protectionListener.onInitialKeys(state, ctx.dcid, state.getVersion());
-		}
-		
+				
 		for (int i=0; i<ENC_LVL_COUNT; ++i) {
 			EncryptionLevel level = EncryptionLevel.values()[i];
 			
@@ -281,21 +346,22 @@ public class CryptoFragmenter {
 			}
 			
 			if (ctx.noRemaining()) {
-				break;
-			}
-			
-			if (current != null) {
-				packet = packet(ctx, packet);
-				if (current == null) {
-					current = pending.poll();
-					if (current != null && current.getEncryptionLevel() == level) {
-						--i;
-						continue;
-					}
-				}
+				i = ENC_LVL_COUNT-1;
 			}
 			else {
-				packet = packet(ctx, packet);
+				if (current != null) {
+					packet = packet(ctx, packet);
+					if (current == null) {
+						current = pending.poll();
+						if (current != null && current.getEncryptionLevel() == level) {
+							--i;
+							continue;
+						}
+					}
+				}
+				else {
+					packet = packet(ctx, packet);
+				}
 			}
 			
 			if (packet != null) {
@@ -312,7 +378,6 @@ public class CryptoFragmenter {
 		int size = packets.size();
 		int[] lengths = new int[size--];
 		int produced;
-		IPacketBlockable toBlock;
 		
 		for (int i=0; i<=size; ++i) {
 			int pos0;
@@ -326,29 +391,8 @@ public class CryptoFragmenter {
 			lengths[i] = dst.position() - pos0;
 		}
 		produced = dst.position() - dst0;
-		
-		if (!antiAmplificator.accept(produced)) {
-			toBlock = antiAmplificator;
-		}
-		else if (!congestion.accept(produced)) {
-			toBlock = congestion;
-		}
-		else {
-			processSending(packets, lengths);
-			toBlock = null;
-		}
-		
-		if (toBlock != null) {
-			byte[] data = new byte[produced];
-			ByteBuffer dup = dst.duplicate();
-			
-			dup.flip();
-			dup.position(dst0);
-			dup.get(data);
-			toBlock.block(data, packets, lengths);
-			dst.position(dst0);
-			return 0;
-		}
+		processSending(packets, lengths);
+		antiAmplificator.incSent(produced);
 		return produced;	
 	}	
 	
