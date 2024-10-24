@@ -39,6 +39,7 @@ import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_UNWRAP_AGAIN;
 import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
 import static org.snf4j.core.engine.HandshakeStatus.NOT_HANDSHAKING;
+import static org.snf4j.core.engine.Status.CLOSED;
 import static org.snf4j.core.engine.Status.OK;
 
 import java.lang.reflect.Field;
@@ -52,6 +53,7 @@ import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
 import org.snf4j.core.engine.Status;
+import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.quic.CommonTest;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
@@ -59,6 +61,7 @@ import org.snf4j.quic.Version;
 import org.snf4j.quic.engine.crypto.CryptoEngine;
 import org.snf4j.quic.engine.crypto.ProducedCrypto;
 import org.snf4j.quic.engine.processor.QuicProcessor;
+import org.snf4j.quic.frame.ConnectionCloseFrame;
 import org.snf4j.quic.frame.CryptoFrame;
 import org.snf4j.quic.frame.HandshakeDoneFrame;
 import org.snf4j.quic.frame.MultiPaddingFrame;
@@ -152,6 +155,32 @@ public class QuicEngineTest extends CommonTest {
 		assertTimer(e, e.unwrap(in, out));
 		e.unwrap(in, out);
 		assertSame(NEED_WRAP, e.getHandshakeStatus());
+	}
+	
+	@Test
+	public void testGetHandshakeStatusForTransitoryStates() throws Exception {
+		QuicEngine e = new QuicEngine(true, paramBld.build(), handlerBld.build());
+		QuicState state = state(e);
+		
+		HandshakeState[] wrap = new HandshakeState[] {
+				HandshakeState.DONE_SENT,
+				HandshakeState.CLOSE_PRE_WAITING,
+				HandshakeState.CLOSE_PRE_DRAINING_2
+		};
+		HandshakeState[] unwrap = new HandshakeState[] {
+				HandshakeState.DONE_RECEIVED,
+				HandshakeState.CLOSE_PRE_SENDING_2,
+				HandshakeState.CLOSE_PRE_DRAINING
+		};
+		
+		for (HandshakeState s: wrap) {
+			state.setHandshakeState(s);
+			assertSame(NEED_WRAP, e.getHandshakeStatus());
+		}
+		for (HandshakeState s: unwrap) {
+			state.setHandshakeState(s);
+			assertSame(NEED_UNWRAP_AGAIN, e.getHandshakeStatus());
+		}
 	}
 	
 	@Test
@@ -266,6 +295,17 @@ public class QuicEngineTest extends CommonTest {
 		assertEquals(0, r.bytesConsumed());
 		assertErasedKeys(se, true, true);
 		
+		//test transitory state
+		state = state(se);
+		state.setHandshakeState(HandshakeState.DONE_SENT);
+		assertSame(NEED_WRAP, se.getHandshakeStatus());
+		r = se.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(FINISHED, r.getHandshakeStatus());
+		assertSame(NOT_HANDSHAKING, se.getHandshakeStatus());
+		assertEquals(0, r.bytesProduced());
+		assertEquals(0, r.bytesConsumed());
+		
 		//broken handshake done
 		flip();
 		byte[] data = bytes(in);
@@ -300,6 +340,16 @@ public class QuicEngineTest extends CommonTest {
 		assertEquals(0, r.bytesProduced());
 		assertEquals(in.position(), r.bytesConsumed());
 		assertErasedKeys(ce, true, true);
+
+		//test transitory state
+		state.setHandshakeState(HandshakeState.DONE_RECEIVED);
+		assertSame(NEED_UNWRAP_AGAIN, ce.getHandshakeStatus());
+		r = ce.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(FINISHED, r.getHandshakeStatus());
+		assertSame(NEED_WRAP, ce.getHandshakeStatus());
+		assertEquals(0, r.bytesProduced());
+		assertEquals(0, r.bytesConsumed());
 		
 		clear();
 		r = ce.wrap(in, out);
@@ -549,15 +599,53 @@ public class QuicEngineTest extends CommonTest {
 		clear();
 		r = ce.wrap(in, out);
 		assertSame(Status.CLOSED, r.getStatus());
-		assertSame(NOT_HANDSHAKING, r.getHandshakeStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		assertEquals(out.position(), r.bytesProduced());
+		assertEquals(0, r.bytesConsumed());
+		assertTrue(ce.isOutboundDone());
+		assertFalse(ce.isInboundDone());
+		
+		flip();
+		r = se.unwrap(in, out);
+		assertSame(Status.CLOSED, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		assertEquals(0, r.bytesProduced());
+		assertEquals(in.position(), r.bytesConsumed());
+		assertFalse(se.isOutboundDone());
+		assertTrue(se.isInboundDone());
+		
+		state = state(se);
+		state.setHandshakeState(HandshakeState.CLOSE_PRE_SENDING_2);
+		Field f = QuicEngine.class.getDeclaredField("inboundDone");
+		f.setAccessible(true);
+		f.setBoolean(se, false);
+		assertSame(NEED_UNWRAP_AGAIN, se.getHandshakeStatus());
+		assertFalse(se.isInboundDone());
+		r = se.unwrap(in, out);
+		assertSame(Status.CLOSED, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
 		assertEquals(0, r.bytesProduced());
 		assertEquals(0, r.bytesConsumed());
-		assertSame(NOT_HANDSHAKING, ce.getHandshakeStatus());
+		assertTrue(se.isInboundDone());
+		
+		clear();
+		r = se.wrap(in, out);
+		assertSame(Status.CLOSED, r.getStatus());
+		assertSame(NOT_HANDSHAKING, r.getHandshakeStatus());
+		assertEquals(out.position(), r.bytesProduced());
+		assertEquals(0, r.bytesConsumed());
+		assertTrue(se.isOutboundDone());
+		assertTrue(se.isInboundDone());
+		
+		flip();
+		r = ce.unwrap(in, out);
+		assertSame(Status.CLOSED, r.getStatus());
+		assertSame(NOT_HANDSHAKING, r.getHandshakeStatus());
+		assertEquals(0, r.bytesProduced());
+		assertEquals(in.position(), r.bytesConsumed());
 		assertTrue(ce.isOutboundDone());
 		assertTrue(ce.isInboundDone());
-		ce.closeOutbound();
-		assertSame(NOT_HANDSHAKING, ce.getHandshakeStatus());
-		
+				
 		r = ce.unwrap(in, out);
 		assertSame(Status.CLOSED, r.getStatus());
 		assertSame(NOT_HANDSHAKING, r.getHandshakeStatus());
@@ -1164,5 +1252,202 @@ public class QuicEngineTest extends CommonTest {
 			se.unwrap(in, out);
 			state(se).getSpace(EncryptionLevel.INITIAL).updateAckElicitingInFlight(-1);
 			assertEquals("", stimer.trace());	
+	}
+	
+	@Test
+	public void testCloseInbound() throws Exception {
+		EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
+		EngineParametersBuilder epb = new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE);
+
+		QuicEngine ce = new QuicEngine(true, epb.build(), ehb.build());
+		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
+		
+		clear();
+		assertTimer(ce, ce.wrap(in, out));
+		IEngineResult r = ce.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		
+		flip();
+		assertTimer(se, se.unwrap(in, out));
+		r = se.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		
+		clear();
+		r = se.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		
+		flip();
+		r = ce.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		
+		clear();
+		r = ce.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		
+		flip();
+		r = se.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+
+		clear();
+		r = se.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(FINISHED, r.getHandshakeStatus());
+		assertSame(NOT_HANDSHAKING, se.getHandshakeStatus());
+		
+		flip();
+		r = ce.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(FINISHED, r.getHandshakeStatus());
+		assertSame(NOT_HANDSHAKING, ce.getHandshakeStatus());
+		
+		try {
+			ce.closeInbound();
+			fail();
+		}
+		catch (SessionIncidentException e) {
+		}
+		assertTrue(ce.isInboundDone());
+		ce.closeInbound();
+		assertSame(NEED_WRAP, ce.getHandshakeStatus());
+		clear();
+		r = ce.wrap(in, out);
+		assertSame(CLOSED, r.getStatus());
+		assertSame(NOT_HANDSHAKING, r.getHandshakeStatus());
+		
+		flip();
+		r = se.unwrap(in, out);
+		assertSame(CLOSED, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+	}
+
+	@Test
+	public void testCrossClosing() throws Exception {
+		EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
+		EngineParametersBuilder epb = new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE);
+
+		QuicEngine ce = new QuicEngine(true, epb.build(), ehb.build());
+		QuicEngine se = new QuicEngine(false, epb.build(), ehb.build());
+		
+		clear();
+		assertTimer(ce, ce.wrap(in, out));
+		IEngineResult r = ce.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		
+		flip();
+		assertTimer(se, se.unwrap(in, out));
+		r = se.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		
+		clear();
+		r = se.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		
+		flip();
+		r = ce.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		
+		clear();
+		r = ce.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		
+		flip();
+		r = se.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+
+		clear();
+		r = se.wrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(FINISHED, r.getHandshakeStatus());
+		assertSame(NOT_HANDSHAKING, se.getHandshakeStatus());
+		
+		flip();
+		r = ce.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(FINISHED, r.getHandshakeStatus());
+		assertSame(NOT_HANDSHAKING, ce.getHandshakeStatus());
+
+		clear();
+		ce.closeOutbound();
+		assertSame(NEED_WRAP, ce.getHandshakeStatus());
+		r = ce.wrap(in, out);
+		assertSame(NEED_UNWRAP, ce.getHandshakeStatus());
+		QuicState state = state(ce);
+		assertSame(HandshakeState.CLOSE_WAITING, state.getHandshakeState());
+		assertTrue(ce.isOutboundDone());
+		state.getSpace(EncryptionLevel.APPLICATION_DATA).frames().add(new ConnectionCloseFrame(0,0,null));
+		state.setHandshakeState(HandshakeState.CLOSE_SENDING);
+		Field f = QuicEngine.class.getDeclaredField("outboundDone");
+		f.setAccessible(true);
+		f.setBoolean(ce, false);
+		assertSame(NEED_WRAP, ce.getHandshakeStatus());
+		assertFalse(ce.isOutboundDone());
+		
+		flip();
+		r = se.unwrap(in, out);
+		assertSame(CLOSED, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		assertSame(NEED_WRAP, se.getHandshakeStatus());
+		
+		clear();
+		r = se.wrap(in, out);
+		assertSame(CLOSED, r.getStatus());
+		assertSame(NOT_HANDSHAKING, r.getHandshakeStatus());
+		assertSame(NOT_HANDSHAKING, se.getHandshakeStatus());
+		
+		flip();
+		r = ce.unwrap(in, out);
+		assertSame(OK, r.getStatus());
+		assertSame(NEED_WRAP, r.getHandshakeStatus());
+		assertSame(NEED_WRAP, ce.getHandshakeStatus());
+		assertSame(HandshakeState.CLOSE_SENDING, state.getHandshakeState());
+		
+		ByteBuffer in2 = ByteBuffer.allocate(2000);
+		ByteBuffer out2 = ByteBuffer.allocate(2000);
+		r = ce.wrap(in2, out2);
+		assertSame(CLOSED, r.getStatus());
+		assertSame(NEED_UNWRAP, r.getHandshakeStatus());
+		assertSame(NEED_UNWRAP, ce.getHandshakeStatus());
+		assertSame(HandshakeState.CLOSE_WAITING, state.getHandshakeState());
+		
+		r = ce.unwrap(in, out);
+		assertSame(CLOSED, r.getStatus());
+		assertSame(NOT_HANDSHAKING, r.getHandshakeStatus());
+		assertSame(NOT_HANDSHAKING, ce.getHandshakeStatus());
+		assertSame(HandshakeState.CLOSE_DRAINING, state.getHandshakeState());
+	}
+	
+	@Test
+	public void testClosingTimeout() throws Exception {
+		EngineHandlerBuilder ehb = new EngineHandlerBuilder(km(), tm());
+		EngineParametersBuilder epb = new EngineParametersBuilder()
+				.delegatedTaskMode(DelegatedTaskMode.NONE);
+		QuicEngine ce = new QuicEngine(true, epb.build(), ehb.build());
+		
+		Field f = QuicEngine.class.getDeclaredField("closingTimeout");
+		f.setAccessible(true);
+		Runnable r = (Runnable) f.get(ce);
+		QuicState s = state(ce);
+		assertSame(HandshakeState.INIT, s.getHandshakeState());
+		r.run();
+		assertTrue(ce.isInboundDone());
+		assertSame(HandshakeState.CLOSE_TIMEOUT, s.getHandshakeState());
+		s.setHandshakeState(HandshakeState.INIT);
+		r.run();
+		assertTrue(ce.isInboundDone());
+		assertSame(HandshakeState.INIT, s.getHandshakeState());
 	}
 }

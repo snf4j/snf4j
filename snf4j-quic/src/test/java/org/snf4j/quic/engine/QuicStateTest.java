@@ -29,6 +29,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -43,6 +44,7 @@ import org.snf4j.quic.Version;
 import org.snf4j.quic.cid.ConnectionIdManager;
 import org.snf4j.quic.cid.IDestinationPool;
 import org.snf4j.quic.cid.ISourcePool;
+import org.snf4j.quic.frame.ConnectionCloseFrame;
 import org.snf4j.quic.frame.PaddingFrame;
 import org.snf4j.quic.frame.PingFrame;
 import org.snf4j.quic.tp.TransportParameters;
@@ -308,7 +310,7 @@ public class QuicStateTest extends CommonTest {
 		assertFalse(s.isHandshakeConfirmed());
 		s.setHandshakeState(HandshakeState.DONE);
 		assertTrue(s.isHandshakeConfirmed());
-		s.setHandshakeState(HandshakeState.CLOSING);
+		s.setHandshakeState(HandshakeState.CLOSE_SENDING);
 		assertTrue(s.isHandshakeConfirmed());			
 		s = new QuicState(true);
 		assertFalse(s.isHandshakeConfirmed());
@@ -508,5 +510,111 @@ public class QuicStateTest extends CommonTest {
 		assertTrue(space.frames().isEmpty());
 		assertFalse(space.frames().hasFlying());
 		assertTrue(space.acks().isEmpty());
+	}
+	
+	@Test
+	public void testInitImmediateClose() throws Exception {
+		QuicState s = new QuicState(true);
+		ConnectionCloseFrame f1 = new ConnectionCloseFrame(TransportError.CRYPTO_ERROR.code(), 1, "Reason");
+		ConnectionCloseFrame f2 = new ConnectionCloseFrame(100000L, "Reason");
+		PacketNumberSpace sp1 = s.getSpace(EncryptionLevel.INITIAL);
+		PacketNumberSpace sp2 = s.getSpace(EncryptionLevel.HANDSHAKE);
+		PacketNumberSpace sp3 = s.getSpace(EncryptionLevel.APPLICATION_DATA);
+		
+		assertEquals(0, s.initImmediateClose(f1));
+		assertEquals(0, s.initImmediateClose(f2));
+		new CryptoEngineStateListener(s).onInit(bytes(16), bytes(8));
+		Encryptor enc = s.getContext(EncryptionLevel.INITIAL).getEncryptor();
+		assertEquals(1, s.initImmediateClose(f1));
+		assertSame(f1, sp1.frames().peek());
+		sp1.frames().fly(f1, 0);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+
+		assertEquals(1, s.initImmediateClose(f2));
+		assertNotSame(f2, sp1.frames().peek());
+		ConnectionCloseFrame f = (ConnectionCloseFrame) sp1.frames().peek();
+		assertEquals(0x1c, f.getTypeValue());
+		assertEquals("", f.getReason());
+		assertEquals(TransportError.APPLICATION_ERROR.code(), f.getError());
+		sp1.frames().fly(f, 1);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+		
+		s.getContext(EncryptionLevel.HANDSHAKE).setEncryptor(enc);
+		assertEquals(2, s.initImmediateClose(f1));
+		assertSame(f1, sp1.frames().peek());
+		sp1.frames().fly(f1, 2);
+		assertSame(f1, sp2.frames().peek());
+		sp2.frames().fly(f1, 0);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+
+		assertEquals(2, s.initImmediateClose(f2));
+		f = (ConnectionCloseFrame) sp1.frames().peek();
+		assertNotSame(f2, f);
+		sp1.frames().fly(f, 2);
+		f = (ConnectionCloseFrame) sp2.frames().peek();
+		assertNotSame(f2, f);
+		sp2.frames().fly(f, 0);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+		
+		s.getContext(EncryptionLevel.EARLY_DATA).setEncryptor(enc);
+		assertEquals(3, s.initImmediateClose(f1));
+		assertSame(f1, sp1.frames().peek());
+		sp1.frames().fly(f1, 3);
+		assertSame(f1, sp2.frames().peek());
+		sp2.frames().fly(f1, 1);
+		assertSame(f1, sp3.frames().peek());
+		sp3.frames().fly(f1, 0);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+
+		assertEquals(3, s.initImmediateClose(f2));
+		f = (ConnectionCloseFrame) sp1.frames().peek();
+		assertNotSame(f2, f);
+		sp1.frames().fly(f, 3);
+		f = (ConnectionCloseFrame) sp2.frames().peek();
+		assertNotSame(f2, f);
+		sp2.frames().fly(f, 1);
+		assertSame(f2, sp3.frames().peek());
+		sp3.frames().fly(f2, 0);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+		
+		s.getContext(EncryptionLevel.APPLICATION_DATA).setEncryptor(enc);
+		assertEquals(3, s.initImmediateClose(f1));
+		assertSame(f1, sp1.frames().peek());
+		sp1.frames().fly(f1, 4);
+		assertSame(f1, sp2.frames().peek());
+		sp2.frames().fly(f1, 2);
+		assertSame(f1, sp3.frames().peek());
+		sp3.frames().fly(f1, 1);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+	
+		s.setHandshakeState(HandshakeState.DONE);
+		assertEquals(1, s.initImmediateClose(f1));
+		assertSame(f1, sp3.frames().peek());
+		sp3.frames().fly(f1, 2);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+
+		assertEquals(1, s.initImmediateClose(f2));
+		assertSame(f2, sp3.frames().peek());
+		sp3.frames().fly(f2, 2);
+		assertTrue(sp1.frames().isEmpty());
+		assertTrue(sp2.frames().isEmpty());
+		assertTrue(sp3.frames().isEmpty());
+		
 	}
 }

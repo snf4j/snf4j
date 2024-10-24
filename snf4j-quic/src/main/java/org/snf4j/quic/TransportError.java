@@ -149,4 +149,21 @@ public enum TransportError {
 	public int code() {
 		return code;
 	}
+	
+	/**
+	 * Returns an instance of the transport error for the given error code.
+	 * 
+	 * @param code the error code
+	 * @return a transport error, or {@code null} if no transport error could by
+	 *         found
+	 */
+	public static TransportError of(long code) {
+		if (code >= 0 && code <= 0x10) {
+			return TransportError.values()[(int) code];
+		}
+		if (code >= 0x0100 && code <= 0x01ff) {
+			return TransportError.CRYPTO_ERROR;
+		}
+		return null;
+	}
 }

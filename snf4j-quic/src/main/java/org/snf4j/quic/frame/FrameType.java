@@ -63,7 +63,7 @@ public enum FrameType {
 	MAX_STREAM_DATA(0x11),
 	
 	/** The MAX_STREAMS frames as defined in section 19.11 */
-	MAX_STREAMS(0x12-0x13),
+	MAX_STREAMS(0x12,0x13),
 	
 	/** The DATA_BLOCKED frame as defined in section 19.12 */
 	DATA_BLOCKED(0x14),

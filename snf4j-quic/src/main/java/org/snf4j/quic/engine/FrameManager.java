@@ -36,6 +36,7 @@ import java.util.Queue;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.frame.FrameInfo;
+import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.IFrame;
 
 /**
@@ -100,6 +101,23 @@ public class FrameManager {
 	public boolean hasAckEliciting(FrameInfo info) {
 		for (IFrame frame: frames) {
 			if (info.isAckEliciting(frame.getTypeValue())) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Tells if there is at least one frame of the given type that is ready to be
+	 * put in a flight.
+	 * 
+	 * @param type the type of frame to find
+	 * @return {@code true} if there is at least one frame of the given type that is
+	 *         ready to be put in a flight
+	 */
+	public boolean has(FrameType type) {
+		for (IFrame frame: frames) {
+			if (frame.getType() == type) {
 				return true;
 			}
 		}

@@ -33,10 +33,14 @@ import static org.snf4j.core.engine.HandshakeStatus.NEED_WRAP;
 import static org.snf4j.core.engine.HandshakeStatus.NOT_HANDSHAKING;
 import static org.snf4j.core.engine.Status.CLOSED;
 import static org.snf4j.core.engine.Status.OK;
-import static org.snf4j.quic.engine.HandshakeState.CLOSING;
+import static org.snf4j.quic.engine.HandshakeState.CLOSE_TIMEOUT;
+import static org.snf4j.quic.engine.HandshakeState.CLOSE_WAITING;
 import static org.snf4j.quic.engine.HandshakeState.DONE;
 import static org.snf4j.quic.engine.HandshakeState.DONE_SENDING;
 import static org.snf4j.quic.engine.HandshakeState.DONE_WAITING;
+import static org.snf4j.quic.engine.HandshakeState.CLOSE_DRAINING;
+import static org.snf4j.quic.engine.HandshakeState.CLOSE_SENDING;
+import static org.snf4j.quic.engine.HandshakeState.CLOSE_SENDING_2;
 import static org.snf4j.quic.engine.HandshakeState.INIT;
 import static org.snf4j.quic.engine.HandshakeState.STARTED;
 import static org.snf4j.quic.engine.HandshakeState.STARTING;
@@ -46,16 +50,19 @@ import org.snf4j.core.engine.EngineResult;
 import org.snf4j.core.engine.HandshakeStatus;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.engine.IEngineResult;
+import org.snf4j.core.handler.SessionIncident;
 import org.snf4j.core.handler.SessionIncidentException;
 import org.snf4j.core.logger.ILogger;
 import org.snf4j.core.logger.LoggerFactory;
 import org.snf4j.core.session.ISession;
 import org.snf4j.core.session.ISessionTimer;
+import org.snf4j.core.timer.ITimerTask;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
 import org.snf4j.quic.engine.crypto.CryptoEngine;
 import org.snf4j.quic.engine.processor.QuicProcessor;
+import org.snf4j.quic.frame.ConnectionCloseFrame;
 import org.snf4j.quic.frame.FrameInfo;
 import org.snf4j.quic.frame.HandshakeDoneFrame;
 import org.snf4j.quic.packet.ILongHeaderPacket;
@@ -91,6 +98,8 @@ public class QuicEngine implements IEngine {
 	
 	private final QuicProcessor processor;
 	
+	private ITimerTask closingTimer;
+	
 	private final IPacketProtectionListener protectionListener = new IPacketProtectionListener() {
 
 		@Override
@@ -107,6 +116,19 @@ public class QuicEngine implements IEngine {
 		}
 	};
 		
+	private Runnable closingTimeout = new Runnable() {
+
+		@Override
+		public void run() {
+			if (!inboundDone) {
+				LOG.debug("Closing timeout for {}", state.getSession());
+				inboundDone = true;
+				state.setHandshakeState(HandshakeState.CLOSE_TIMEOUT);
+				closingTimer = null;
+			}
+		}
+	};
+	
 	private boolean outboundDone;
 	
 	private boolean inboundDone;
@@ -162,9 +184,19 @@ public class QuicEngine implements IEngine {
 		state.getTimer().init(timer, awakeningTask);
 	}
 	
+	private void cancelClosingTimer() {
+		if (closingTimer != null) {
+			LOG.debug("Canceled closing timer for {}", state.getSession());
+			closingTimer.cancelTask();
+			closingTimer = null;
+		}
+	}
+	
 	@Override
 	public void cleanup() {
 		cryptoEngine.cleanup();
+		state.getLossDetector().disable();
+		cancelClosingTimer();
 	}
 	
 	@Override
@@ -190,17 +222,33 @@ public class QuicEngine implements IEngine {
 	public boolean isInboundDone() {
 		return inboundDone;
 	}
-
+	
+	private void closing(TransportError error, String message, HandshakeState nextState) {
+		this.error = new QuicException(error, message);
+		if (state.initImmediateClose(new ConnectionCloseFrame(this.error.getErrorCode(), 0, null)) == 0) {
+			inboundDone = true;
+			outboundDone = true;
+			state.setHandshakeState(CLOSE_DRAINING);
+		}
+		else {
+			state.setHandshakeState(nextState);
+		}
+	}
+	
 	@Override
 	public void closeOutbound() {
 		if (error == null) {
-			error = new QuicException(TransportError.NO_ERROR, "Closed");
-			state.setHandshakeState(HandshakeState.CLOSING);
+			closing(TransportError.NO_ERROR, "Closed", CLOSE_SENDING);
 		}
 	}
 
 	@Override
 	public void closeInbound() throws SessionIncidentException {
+		if (error == null) {
+			closing(TransportError.INTERNAL_ERROR, "Closed without close message", CLOSE_SENDING_2);
+			inboundDone = true;
+			throw new SessionIncidentException(SessionIncident.CLOSED_WITHOUT_CLOSE_MESSAGE);
+		}
 	}
 
 	@Override
@@ -234,12 +282,21 @@ public class QuicEngine implements IEngine {
 	@Override
 	public HandshakeStatus getHandshakeStatus() {
 		switch (state.getHandshakeState()) {
-		case INIT:         return NOT_HANDSHAKING;
-		case STARTING:     return state.isClientMode() ? NEED_WRAP : NEED_UNWRAP;
-		case DONE_SENDING: return needWrapIfAllowed();
-		case DONE_WAITING: return needUnwrapIfIdle();
-		case CLOSING:      return NEED_WRAP;
-		case CLOSED:       return NOT_HANDSHAKING;
+		case INIT:                 return NOT_HANDSHAKING;
+		case STARTING:             return state.isClientMode() ? NEED_WRAP : NEED_UNWRAP;
+		case DONE_SENDING:         return needWrapIfAllowed();
+		case DONE_SENT:            return NEED_WRAP;
+		case DONE_WAITING:         return needUnwrapIfIdle();
+		case DONE_RECEIVED:        return NEED_UNWRAP_AGAIN;
+		case CLOSE_PRE_SENDING_2:  return NEED_UNWRAP_AGAIN;
+		case CLOSE_SENDING_2:      return needWrapIfAllowed();
+		case CLOSE_SENDING:        return needWrapIfAllowed();
+		case CLOSE_PRE_WAITING:    return NEED_WRAP;
+		case CLOSE_WAITING:        return needUnwrapIfIdle();
+		case CLOSE_TIMEOUT:        return NEED_UNWRAP_AGAIN;
+		case CLOSE_PRE_DRAINING:   return NEED_UNWRAP_AGAIN;
+		case CLOSE_PRE_DRAINING_2: return NEED_WRAP;
+		case CLOSE_DRAINING:       return NOT_HANDSHAKING;
 		default:
 		}
 		
@@ -275,7 +332,7 @@ public class QuicEngine implements IEngine {
 
 	@Override
 	public boolean needWrap() { 
-		if (!state.isBlocked()) {
+		if (!outboundDone && !state.isBlocked()) {
 			return state.needSend() 
 				|| cryptoEngine.needProduce() 
 				|| cryptoFragmenter.hasPending();
@@ -334,17 +391,6 @@ public class QuicEngine implements IEngine {
 						0);
 			}
 
-			if (state.getHandshakeState() == CLOSING) {
-				state.setHandshakeState(HandshakeState.CLOSED);
-				outboundDone = true;
-				inboundDone = true;
-				return new EngineResult(
-						CLOSED, 
-						getHandshakeStatus(), 
-						0, 
-						0);
-			}
-			
 			switch (status) {
 			case NEED_WRAP:
 				if (updateTasks()) {
@@ -368,7 +414,12 @@ public class QuicEngine implements IEngine {
 						0);
 			}
 			
-			produced = cryptoFragmenter.protect(cryptoAdapter.produce(), dst);			
+			if (!state.getHandshakeState().isTransitory()) {
+				produced = cryptoFragmenter.protect(cryptoAdapter.produce(), dst);
+			}
+			else {
+				produced = 0;
+			}
 			
 			switch (state.getHandshakeState()) {
 			case STARTED:
@@ -392,6 +443,34 @@ public class QuicEngine implements IEngine {
 						0, 
 						produced);
 				
+			case CLOSE_PRE_WAITING:
+				long delay = state.getLossDetector().getPtoPeriod() * 3;
+
+				state.getLossDetector().disable();
+				state.setHandshakeState(CLOSE_WAITING);
+				if (debug) {
+					LOG.debug("Scheduled closing timer with delay {} ns for {}", 
+							delay, 
+							state.getSession());						
+				}
+				closingTimer = state.getTimer().scheduleTask(closingTimeout, delay);
+				outboundDone = true;
+				return new EngineResult(
+						CLOSED, 
+						getHandshakeStatus(), 
+						0, 
+						produced);
+				
+			case CLOSE_PRE_DRAINING_2:	
+				state.getLossDetector().disable();
+				state.setHandshakeState(CLOSE_DRAINING);
+				outboundDone = true;
+				return new EngineResult(
+						CLOSED, 
+						getHandshakeStatus(), 
+						0, 
+						produced);
+								
 			default:
 			}
 		}
@@ -418,6 +497,10 @@ public class QuicEngine implements IEngine {
 			HandshakeStatus status = getHandshakeStatus();
 			
 			if (inboundDone) {
+				if (state.getHandshakeState() == CLOSE_TIMEOUT) {
+					state.setHandshakeState(CLOSE_DRAINING);
+					status = getHandshakeStatus();
+				}
 				return new EngineResult(
 						CLOSED, 
 						status, 
@@ -449,57 +532,62 @@ public class QuicEngine implements IEngine {
 						0);
 			}
 			
-			consumed = src.remaining();
-			boolean udpChecked = false;
-			boolean accepted = false;
-			
-			processor.preProcess();
-			while (acceptor.accept(src)) {
-				IPacket packet;
-				
-				if (!accepted) {
-					boolean wasBlocked = state.getAntiAmplificator().isBlocked();
-					
-					accepted = true;
-					state.getAntiAmplificator().incReceived(consumed);
-					if (wasBlocked && !state.getAntiAmplificator().isBlocked()) {
-						long currentTime = state.getTime().nanoTime();
-						
-						state.getLossDetector().setLossDetectionTimer(currentTime, true);
-					}
-				}
-				
-				packet = protection.unprotect(state, src);				
-				if (packet != null) {
-					if (!FrameInfo.of(state.getVersion()).isValid(packet)) {
-						throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Frame not permitted in packet");
-					}
-					
-					boolean ackElicting;
-					FrameInfo info;
-					
-					if (packet.getType().hasLongHeader()) {
-						info = FrameInfo.of(((ILongHeaderPacket)packet).getVersion());
-					}
-					else {
-						info = FrameInfo.of(state.getVersion());
-					}
-					ackElicting = info.isAckEliciting(packet);
-					
-					if (!udpChecked && packet.getType() == PacketType.INITIAL) {
-						if (!state.isClientMode() || ackElicting) {
-							if (consumed < PacketUtil.MIN_MAX_UDP_PAYLOAD_SIZE) {
-								return new EngineResult(
-										OK, 
-										getHandshakeStatus(), 
-										consumed, 
-										0);
-							}
-							udpChecked = true;
+			if (!state.getHandshakeState().isTransitory()) {
+				consumed = src.remaining();
+				boolean udpChecked = false;
+				boolean accepted = false;
+
+				processor.preProcess();
+				while (acceptor.accept(src)) {
+					IPacket packet;
+
+					if (!accepted) {
+						boolean wasBlocked = state.getAntiAmplificator().isBlocked();
+
+						accepted = true;
+						state.getAntiAmplificator().incReceived(consumed);
+						if (wasBlocked && !state.getAntiAmplificator().isBlocked()) {
+							long currentTime = state.getTime().nanoTime();
+
+							state.getLossDetector().setLossDetectionTimer(currentTime, true);
 						}
 					}
-					processor.process(packet, ackElicting);
+
+					packet = protection.unprotect(state, src);				
+					if (packet != null) {
+						if (!FrameInfo.of(state.getVersion()).isValid(packet)) {
+							throw new QuicException(TransportError.PROTOCOL_VIOLATION, "Frame not permitted in packet");
+						}
+
+						boolean ackElicting;
+						FrameInfo info;
+
+						if (packet.getType().hasLongHeader()) {
+							info = FrameInfo.of(((ILongHeaderPacket)packet).getVersion());
+						}
+						else {
+							info = FrameInfo.of(state.getVersion());
+						}
+						ackElicting = info.isAckEliciting(packet);
+
+						if (!udpChecked && packet.getType() == PacketType.INITIAL) {
+							if (!state.isClientMode() || ackElicting) {
+								if (consumed < PacketUtil.MIN_MAX_UDP_PAYLOAD_SIZE) {
+									return new EngineResult(
+											OK, 
+											getHandshakeStatus(), 
+											consumed, 
+											0);
+								}
+								udpChecked = true;
+							}
+						}
+						processor.process(packet, ackElicting);
+					}
 				}
+			}
+			else {
+				consumed = 0;
 			}
 			
 			switch (state.getHandshakeState()) {
@@ -526,6 +614,30 @@ public class QuicEngine implements IEngine {
 						FINISHED, 
 						consumed, 
 						0);
+				
+			case CLOSE_PRE_SENDING_2:
+				if (error == null) {
+					closing(TransportError.NO_ERROR, "Closed", CLOSE_SENDING_2);
+				}
+				else {
+					state.setHandshakeState(CLOSE_SENDING_2);
+				}
+				inboundDone = true;
+				return new EngineResult(
+						CLOSED, 
+						getHandshakeStatus(), 
+						consumed, 
+						0);
+				
+			case CLOSE_PRE_DRAINING:
+				state.setHandshakeState(CLOSE_DRAINING);
+				inboundDone = true;
+				return new EngineResult(
+						CLOSED, 
+						getHandshakeStatus(), 
+						consumed, 
+						0);
+				
 			default:
 			}
 			

@@ -63,6 +63,7 @@ public class QuicProcessor {
 		add(new AckFrameProcessor());
 		add(new CryptoFrameProcessor());
 		add(new HandshakeDoneFrameProcessor());
+		add(new ConnectionCloseFrameProcessor());
 	}
 	
 	@SuppressWarnings("rawtypes")
@@ -84,6 +85,9 @@ public class QuicProcessor {
 	boolean trace;
 	
 	boolean initialKeys = true;
+	
+	/** An error build based on the received connection close frame */
+	QuicException error;
 	
 	/**
 	 * Constructs a processor associated with given QUIC state and cryptographic

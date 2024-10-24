@@ -39,6 +39,7 @@ import org.junit.Test;
 import org.snf4j.quic.QuicException;
 import org.snf4j.quic.Version;
 import org.snf4j.quic.frame.FrameInfo;
+import org.snf4j.quic.frame.FrameType;
 import org.snf4j.quic.frame.IFrame;
 import org.snf4j.quic.frame.PaddingFrame;
 import org.snf4j.quic.frame.PingFrame;
@@ -190,5 +191,17 @@ public class FrameManagerTest {
 		assertFalse(m.hasAckEliciting(info));
 		m.add(PingFrame.INSTANCE);
 		assertTrue(m.hasAckEliciting(info));
+	}
+	
+	@Test
+	public void testHas() {
+		FrameManager m = new FrameManager();
+		assertFalse(m.has(FrameType.PING));
+		m.add(PaddingFrame.INSTANCE);
+		assertFalse(m.has(FrameType.PING));
+		m.add(PingFrame.INSTANCE);
+		assertTrue(m.has(FrameType.PING));
+		m.add(PingFrame.INSTANCE);
+		assertTrue(m.has(FrameType.PING));
 	}
 }

@@ -136,6 +136,14 @@ public class LossDetectorTest extends CommonTest {
 	}
 	
 	@Test
+	public void testGetPtoPeriod() {
+		assertEquals(333000000L + 4 * 166500000L, cli.getLossDetector().getPtoPeriod());
+		cli.setHandshakeState(HandshakeState.DONE);
+		cli.setPeerMaxAckDelay(24);
+		assertEquals(333000000L + 4 * 166500000L + 24000000L, cli.getLossDetector().getPtoPeriod());
+	}
+	
+	@Test
 	public void testGetPtoTimeAndSpaceDuration() {
 		assertEquals(333000000L, cli.getEstimator().getSmoothedRtt());
 		assertEquals(166500000L, cli.getEstimator().getRttVar());
@@ -226,11 +234,13 @@ public class LossDetectorTest extends CommonTest {
 		assertSame(srvSpace0, tas.space);
 
 		//handshake confirmed
+		srv.setPeerMaxAckDelay(20);
+		assertEquals(20, srv.getPeerMaxAckDelay());
 		srv.setHandshakeState(HandshakeState.DONE);
 		assertTrue(srv.isHandshakeConfirmed());
 		tas = srv.getLossDetector().getPtoTimeAndSpace(111);
 		duration = 225L + (333000000L + 4 * 166500000L) * 1;
-		duration += srv.getConfig().getMaxAckDelay()*1000000 * 1;
+		duration += srv.getPeerMaxAckDelay()*1000000 * 1;
 		assertEquals(duration, tas.time.longValue());
 		assertSame(srvSpace2, tas.space);
 		
@@ -238,7 +248,7 @@ public class LossDetectorTest extends CommonTest {
 		srv.getLossDetector().onLossDetectionTimeout();
 		tas = srv.getLossDetector().getPtoTimeAndSpace(111);
 		duration = 225L + (333000000L + 4 * 166500000L) * 2;
-		duration += srv.getConfig().getMaxAckDelay()*1000000 * 2;
+		duration += srv.getPeerMaxAckDelay()*1000000 * 2;
 		assertEquals(duration, tas.time.longValue());
 		assertSame(srvSpace2, tas.space);
 		
@@ -308,7 +318,7 @@ public class LossDetectorTest extends CommonTest {
 		srv.getSpace(APPLICATION_DATA).updateAckElicitingInFlight(-1);
 		srv.getSpace(HANDSHAKE).setLossTime(11000000);
 		srv.getLossDetector().setLossDetectionTimer(11000000, false);
-		assertEquals("CANCEL|TimerTask;0;true|", stimer.trace());
+		assertEquals("TimerTask;0;true|", stimer.trace());
 		srv.getLossDetector().setLossDetectionTimer(11000000+1, false);
 		assertEquals("CANCEL|TimerTask;0;true|", stimer.trace());
 		srv.getLossDetector().setLossDetectionTimer(11000000*2, false);
@@ -318,6 +328,14 @@ public class LossDetectorTest extends CommonTest {
 		assertEquals("CANCEL|", stimer.trace());
 		srv.getLossDetector().setLossDetectionTimer(11000000*2, true);
 		assertEquals("", stimer.trace());
+		
+		srv.setHandshakeState(HandshakeState.DONE);
+		srv.getSpace(APPLICATION_DATA).updateAckElicitingInFlight(1);
+		srv.getLossDetector().setLossDetectionTimer(11000000+1, false);
+		assertEquals("TimerTask;1012;true|", stimer.trace());
+		srv.getLossDetector().disable();
+		srv.getLossDetector().setLossDetectionTimer(11000000+1, false);
+		assertEquals("CANCEL|", stimer.trace());
 	}
 	
 	long m2n(long millis) {
