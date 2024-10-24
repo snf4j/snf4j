@@ -251,6 +251,7 @@ public class CryptoEngineStateListenerTest extends CommonTest {
 		EngineState tlsState = new EngineState(MachineState.CLI_INIT, null, null, null);
 		tlsState.initialize(ks, CipherSuite.TLS_AES_128_GCM_SHA256);
 
+		cliListener.onCleanup(tlsState);
 		cliListener.onNewTrafficSecrets(tlsState, RecordType.APPLICATION);
 		QuicKeySchedule qks = getKeySchedule(cliListener);
 		assertNotNull(qks);

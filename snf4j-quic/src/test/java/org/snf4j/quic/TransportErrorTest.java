@@ -23,56 +23,29 @@
  *
  * -----------------------------------------------------------------------------
  */
-package org.snf4j.quic.engine;
+package org.snf4j.quic;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
-public class HandshakeStateTest {
+public class TransportErrorTest {
 
 	@Test
-	public void testNotStarted() {
-		for (HandshakeState state: HandshakeState.values()) {
-			if (state == HandshakeState.INIT || state == HandshakeState.STARTING) {
-				assertTrue(state.notStarted());
-			}
-			else {
-				assertFalse(state.notStarted());
-			}
+	public void testOf() {
+		assertNull(TransportError.of(-1));
+		for (int i=0; i<=0x10; ++i) {
+			TransportError error = TransportError.of(i);
+			
+			assertEquals(i, error.code());
 		}
-	}
-	
-	@Test
-	public void testIsClosing() {
-		for (HandshakeState state: HandshakeState.values()) {
-			if (state.name().startsWith("CLOSE_")) {
-				assertTrue(state.isClosing());
-			}
-			else {
-				assertFalse(state.isClosing());
-			}
+		assertNull(TransportError.of(0x11));
+		assertNull(TransportError.of(0x100-1));
+		for (int i=0x100; i<=0x1ff; ++i) {
+			assertSame(TransportError.CRYPTO_ERROR, TransportError.of(i));
 		}
-	}
-	
-	@Test
-	public void testIsTransitory() {
-		
-		for (HandshakeState state: HandshakeState.values()) {
-			switch(state) {
-			case DONE_SENT:
-			case DONE_RECEIVED:
-			case CLOSE_PRE_SENDING_2:
-			case CLOSE_PRE_WAITING:
-			case CLOSE_PRE_DRAINING:
-			case CLOSE_PRE_DRAINING_2:
-				assertTrue(state.isTransitory());
-				break;
-				
-			default:
-				assertFalse(state.isTransitory());
-			}
-		}		
+		assertNull(TransportError.of(0x1ff+1));
 	}
 }

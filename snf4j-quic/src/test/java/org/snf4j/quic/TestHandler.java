@@ -30,6 +30,7 @@ import java.net.SocketAddress;
 import org.snf4j.core.factory.DefaultSessionStructureFactory;
 import org.snf4j.core.factory.ISessionStructureFactory;
 import org.snf4j.core.handler.AbstractDatagramHandler;
+import org.snf4j.core.handler.SessionEvent;
 import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.timer.ITimeoutModel;
@@ -38,14 +39,32 @@ import org.snf4j.quic.engine.DisabledTimeoutModel;
 
 public class TestHandler  extends AbstractDatagramHandler {
 	
-	final DefaultSessionConfig config = new DefaultSessionConfig();
+	final DefaultSessionConfig config;
 
 	final ITimer timer;
 	
 	volatile boolean proxyAction;
 	
+	StringBuilder trace = new StringBuilder();
+	
+	public synchronized void trace(String s) {
+		trace.append(s).append('|');
+	}
+	
+	public synchronized String trace() {
+		String s = trace.toString();
+		trace.setLength(0);
+		return s;
+	}
+	
+	public TestHandler(ITimer timer, DefaultSessionConfig config) {
+		this.timer = timer;
+		this.config = config;
+	}
+	
 	public TestHandler(ITimer timer) {
 		this.timer = timer;
+		this.config = new DefaultSessionConfig();
 	}
 
 	@Override
@@ -77,4 +96,44 @@ public class TestHandler  extends AbstractDatagramHandler {
 		};
 	}
 
+	@Override
+	public void event(SessionEvent event) {
+		trace(event.toString().substring(0, 2));
+		switch (event) {
+		case CREATED: 
+			created();
+			break;
+
+		case OPENED:
+			opened();
+			break;
+
+		case READY:
+			ready();
+			break;
+
+		case CLOSED:
+			closed();
+			break;
+
+		case ENDING:
+			ending();
+			break;
+		}
+	}
+
+	protected void created() {
+	}
+	
+	protected void opened() {
+	}
+	
+	protected void ready() {
+	}
+	
+	protected void closed() {
+	}
+	
+	protected void ending() {
+	}
 }

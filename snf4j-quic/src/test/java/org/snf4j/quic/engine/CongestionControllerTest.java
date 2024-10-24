@@ -174,9 +174,10 @@ public class CongestionControllerTest {
 		CongestionController cc = new CongestionController(state);
 		assertFalse(cc.isInPersistentCongestion(flying));
 		
+		state.setPeerMaxAckDelay(24);
 		fly(0, 1000, 100, true, true);
 		assertFalse(cc.isInPersistentCongestion(flying));
-		long duration = (333000000L + 666000000L + 25000000L) * 3;
+		long duration = (333000000L + 666000000L + 24000000L) * 3;
 		flying.clear();
 		fly(1, duration + 1000, 100, true, true);
 		assertFalse(cc.isInPersistentCongestion(flying));
@@ -189,7 +190,7 @@ public class CongestionControllerTest {
 		state.getEstimator().addSample(10, 0, 0, EncryptionLevel.INITIAL);
 		assertEquals(10, state.getEstimator().getSmoothedRtt());
 		assertEquals(5, state.getEstimator().getRttVar());
-		duration = (10L + 1000000L + 25000000L) * 3;
+		duration = (10L + 1000000L + 24000000L) * 3;
 		fly(0, 1000, 100, true, true);
 		assertFalse(cc.isInPersistentCongestion(flying));
 		flying.clear();
@@ -411,6 +412,7 @@ public class CongestionControllerTest {
 		f.setAccessible(true);
 		PersistentCongestion p = (PersistentCongestion) f.get(cc);
 
+		state.setPeerMaxAckDelay(24);
 		cc.onPacketSent(2000);
 		fly(0, 1199, 100, true, true);		
 		fly(0, 1200, 100, true, true);		

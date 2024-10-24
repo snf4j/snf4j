@@ -220,7 +220,7 @@ public class CongestionController extends AbstractDataBlockable {
 			RttEstimator rtt = state.getEstimator();
 			long duration = (rtt.getSmoothedRtt() 
 					+ Math.max(4*rtt.getRttVar(), K_GLANURALITY)
-					+ state.getConfig().getMaxAckDelay() * 1000000L) 
+					+ state.getPeerMaxAckDelay() * 1000000L) 
 					* K_PERSISTENT_CONGESTION_THRESHOLD;
 
 			return persistent.detect(duration);

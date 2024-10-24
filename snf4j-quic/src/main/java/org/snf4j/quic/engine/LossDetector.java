@@ -59,20 +59,15 @@ public class LossDetector {
 
 	private final static long K_GLANURALITY = 1000000;
 
-	private final static ITimerTask CANCELED = new ITimerTask() {
-
-		@Override
-		public void cancelTask() {
-		}
-	};
-
 	private final QuicState state;
 
 	private final PacketNumberSpace[] spaces = new PacketNumberSpace[SPACES_LEN];
 
 	private int ptoCount;
 
-	private ITimerTask lossDetectionTimer = CANCELED;
+	private boolean enabled = true;
+	
+	private ITimerTask lossDetectionTimer;
 
 	private QuicProcessor processor;
 	
@@ -133,7 +128,7 @@ public class LossDetector {
 					LOG.debug("PTO count {} for {}", ptoCount, state.getSession());
 				}
 			}
-			lossDetectionTimer = CANCELED;
+			lossDetectionTimer = null;
 			setLossDetectionTimer(currentTime, false);
 		}
 	};
@@ -190,6 +185,27 @@ public class LossDetector {
 		return new TimeAndSpace(time, space);
 	}
 
+	private long ptoBaseInterval() {
+		RttEstimator rtt = state.getEstimator();
+		return rtt.getSmoothedRtt() + Math.max(4 * rtt.getRttVar(), K_GLANURALITY);
+		
+	}
+	
+	/**
+	 * Returns the PTO period that is the amount of time that a sender ought to wait
+	 * for an acknowledgment of a sent packet.
+	 * 
+	 * @return the PTO period
+	 */
+	public long getPtoPeriod() {
+		long interval = ptoBaseInterval();
+		
+		if (state.isHandshakeConfirmed()) {
+			interval += state.getPeerMaxAckDelay() * 1000000L;
+		}
+		return interval;
+	}
+	
 	/**
 	 * Returns the probe timeout (PTO) in nanoseconds.
 	 * <p>
@@ -202,8 +218,7 @@ public class LossDetector {
 	 * @return the probe timeout (PTO)
 	 */
 	TimeAndSpace getPtoTimeAndSpace(long currentTime) {
-		RttEstimator rtt = state.getEstimator();
-		long duration = (rtt.getSmoothedRtt() + Math.max(4 * rtt.getRttVar(), K_GLANURALITY)) * (1 << ptoCount);
+		long duration = ptoBaseInterval() * (1 << ptoCount);
 
 		// If server might be blocked by the anti-amplification limit
 		// client need to arm anti-deadlock PTO that starts from the current 
@@ -229,7 +244,7 @@ public class LossDetector {
 				if (!state.isHandshakeConfirmed()) {
 					break;
 				}
-				duration += state.getConfig().getMaxAckDelay() * 1000000 * (1 << ptoCount);
+				duration += state.getPeerMaxAckDelay() * 1000000 * (1 << ptoCount);
 			}
 
 			long t = innerSpace.getLastAckElicitingTime() + duration;
@@ -249,6 +264,26 @@ public class LossDetector {
 		onLossDetectionTimeout.run();
 	}
 
+	private void cancelLossDetectionTimer(boolean debug) {
+		if (lossDetectionTimer != null) {
+			if (debug) {
+				LOG.debug("Canceled loss detection timer for {}", state.getSession());
+			}
+			lossDetectionTimer.cancelTask();
+			lossDetectionTimer = null;
+		}
+	}
+	
+	/**
+	 * Disables this loss detector.
+	 */
+	public void disable() {
+		if (enabled) {
+			enabled = false;
+			cancelLossDetectionTimer(LOG.isDebugEnabled());
+		}
+	}
+	
 	/**
 	 * Sets the loss detection timer. 
 	 * <p>
@@ -280,7 +315,7 @@ public class LossDetector {
 			}
 		}
 		
-		lossDetectionTimer.cancelTask();
+		cancelLossDetectionTimer(debug);
 		if (schedule) {
 			long delay = timeSpace.time - currentTime;
 
@@ -294,16 +329,15 @@ public class LossDetector {
 				}
 				delay = 0;
 			}
-			if (debug) {
-				LOG.debug("Scheduled loss detection timer in {} space with delay {} ns for {}", 
-						timeSpace.space.getType(), 
-						delay, 
-						state.getSession());
+			if (enabled) {
+				if (debug) {
+					LOG.debug("Scheduled loss detection timer in {} space with delay {} ns for {}", 
+							timeSpace.space.getType(), 
+							delay, 
+							state.getSession());
+				}
+				lossDetectionTimer = state.getTimer().scheduleTask(onLossDetectionTimeout, delay);
 			}
-			lossDetectionTimer = state.getTimer().scheduleTask(onLossDetectionTimeout, delay);
-		}
-		else if (debug) {
-			LOG.debug("Canceled loss detection timer for {}", state.getSession());
 		}
 	}
 

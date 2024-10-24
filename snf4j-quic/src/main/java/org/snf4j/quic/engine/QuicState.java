@@ -43,6 +43,7 @@ import org.snf4j.quic.TransportError;
 import org.snf4j.quic.Version;
 import org.snf4j.quic.cid.ConnectionIdManager;
 import org.snf4j.quic.cid.IPool;
+import org.snf4j.quic.frame.ConnectionCloseFrame;
 import org.snf4j.quic.metric.IQuicMetrics;
 import org.snf4j.quic.metric.QuicMetrics;
 import org.snf4j.quic.packet.PacketUtil;
@@ -665,5 +666,66 @@ public class QuicState {
 		lossDetector.onPacketNumberSpaceDiscarded(space, currentTime);
 		space.frames().clear();
 		space.acks().clear();
+	}
+	
+	/**
+	 * Initiates the immediate close by adding the given CONNECTION_CLOSE frame to
+	 * all packet number spaces that has encryption keys present.
+	 * <p>
+	 * NOTE: A CONNECTION_CLOSE of type 0x1d is replaced by a CONNECTION_CLOSE of
+	 * type 0x1c when added to the Initial or Handshake packet number spaces.
+	 * 
+	 * @param frame the CONNECTION_CLOSE frame
+	 * @return the number of packet number spaces the CONNECTION_CLOSE frame was
+	 *         added to
+	 */
+	public int initImmediateClose(ConnectionCloseFrame frame) {
+		if (isHandshakeConfirmed()) {
+			getSpace(EncryptionLevel.APPLICATION_DATA).frames().add(frame);
+			return 1;
+		}
+
+		PacketNumberSpace space;
+		int addedBits = 0;
+		int count = 0;	
+		ConnectionCloseFrame safeFrame;
+		
+		if (frame.getTypeValue() == ConnectionCloseFrame.APPLICATION_TYPE) {
+			safeFrame = new ConnectionCloseFrame(TransportError.APPLICATION_ERROR.code(), 0, null);
+		}
+		else {
+			safeFrame = frame;
+		}
+		
+		for (EncryptionLevel level: EncryptionLevel.values()) {
+			if (getContext(level).getEncryptor() != null) {
+				ConnectionCloseFrame toAdd;
+				int bit;
+				
+				space = getSpace(level);
+				switch (space.getType()) {
+				case INITIAL:
+					bit = 1;
+					toAdd = safeFrame;
+					break;
+					
+				case HANDSHAKE:
+					bit = 2;
+					toAdd = safeFrame;
+					break;
+					
+				default:
+					bit = 4;
+					toAdd = frame;
+				}
+
+				if ((addedBits & bit) == 0) {
+					++count;
+					addedBits |= bit;
+					space.frames().add(toAdd);		
+				}
+			}
+		}
+		return count;
 	}
 }

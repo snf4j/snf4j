@@ -86,7 +86,7 @@ public class QuicException extends IOException {
 	 * @param errorCode the transport error code
 	 * @param message   the detail message
 	 */
-	protected QuicException(TransportError error, int errorCode, String message) {
+	public QuicException(TransportError error, long errorCode, String message) {
 		super(message);
 		this.error = error;
 		this.errorCode = errorCode;
@@ -104,7 +104,7 @@ public class QuicException extends IOException {
 	 * @param message   the detail message
 	 * @param cause     the cause
 	 */
-	protected QuicException(TransportError error, int errorCode, String message, Throwable cause) {
+	public QuicException(TransportError error, long errorCode, String message, Throwable cause) {
 		super(message, cause);
 		this.error = error;
 		this.errorCode = errorCode;

@@ -329,8 +329,10 @@ public class CryptoEngineStateListener implements IEngineStateListener {
 	
 	@Override
 	public void onCleanup(IEngineState tlsState) {
-		keySchedule.eraseAll();
-		keySchedule = null;
+		if (keySchedule != null) {
+			keySchedule.eraseAll();
+			keySchedule = null;
+		}
 	}
 
 	@Override

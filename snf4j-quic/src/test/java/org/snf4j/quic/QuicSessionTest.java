@@ -25,11 +25,16 @@
  */
 package org.snf4j.quic;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 import org.junit.After;
 import org.junit.Test;
@@ -38,7 +43,9 @@ import org.snf4j.core.EngineDatagramSession;
 import org.snf4j.core.SelectorLoop;
 import org.snf4j.core.engine.IEngine;
 import org.snf4j.core.factory.IDatagramHandlerFactory;
+import org.snf4j.core.future.IFuture;
 import org.snf4j.core.handler.IDatagramHandler;
+import org.snf4j.core.session.DefaultSessionConfig;
 import org.snf4j.core.session.ISessionConfig;
 import org.snf4j.core.timer.DefaultTimer;
 import org.snf4j.quic.engine.QuicEngine;
@@ -58,6 +65,10 @@ public class QuicSessionTest extends CommonTest {
 	
 	DefaultTimer timer;
 
+	DefaultSessionConfig srvConfig;
+	
+	DefaultSessionConfig cliConfig;
+	
 	EngineHandlerBuilder handlerBld;
 	
 	EngineParametersBuilder paramBld;
@@ -69,6 +80,8 @@ public class QuicSessionTest extends CommonTest {
 		handlerBld = new EngineHandlerBuilder(km(), tm());
 		paramBld = new EngineParametersBuilder().delegatedTaskMode(DelegatedTaskMode.NONE);
 		timer = new DefaultTimer(true);
+		srvConfig = new DefaultSessionConfig();
+		cliConfig = new DefaultSessionConfig();
 	}
 	
 	@After
@@ -83,6 +96,16 @@ public class QuicSessionTest extends CommonTest {
 	static void waitFor(long millis) throws Exception {
 		Thread.sleep(millis);
 	}
+
+	IFuture<Void> client(TestHandler handler) throws Exception {
+		DatagramChannel channel = DatagramChannel.open();
+		channel.configureBlocking(false);
+		channel.connect(new InetSocketAddress(InetAddress.getByName(HOST), PORT));
+
+		QuicEngine e = new QuicEngine(true, paramBld.build(), handlerBld.build());
+		QuicSession session = new QuicSession(e, handler);
+		return loop.register(channel, session);
+	}
 	
 	EngineDatagramSession client(TestHandler handler, long timeout) throws Exception {
 		DatagramChannel channel = DatagramChannel.open();
@@ -93,16 +116,17 @@ public class QuicSessionTest extends CommonTest {
 		QuicSession session = new QuicSession(e, handler);
 		
 		loop.register(channel, session)
-			.sync(TIMEOUT)
-			.getSession()
-			.getReadyFuture()
-			.sync(timeout);
-	
+			.sync(TIMEOUT);
+		
+		if (timeout >= 0) {
+			session.getReadyFuture().sync(timeout);
+		}
+		
 		return session;
 	}
 
 	EngineDatagramSession client() throws Exception {
-		return client(new TestHandler(timer), TIMEOUT);
+		return client(new TestHandler(timer, cliConfig), TIMEOUT);
 	}
 	
 	void server(TestHandler handler, int port) throws Exception {
@@ -119,8 +143,10 @@ public class QuicSessionTest extends CommonTest {
 		})).sync(TIMEOUT);
 	}
 	
-	void server() throws Exception {
-		server(new TestHandler(timer), PORT);
+	TestHandler server() throws Exception {
+		TestHandler handler = new TestHandler(timer, srvConfig);
+		server(handler, PORT);
+		return handler;
 	}
 	
 	@Test
@@ -148,7 +174,254 @@ public class QuicSessionTest extends CommonTest {
 		server();
 		client();
 	}
+
+	@Test
+	public void testCloseNoWaitForCloseMessage() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(false);
+		cliConfig.setWaitForInboundCloseMessage(false);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srv = server();
+		EngineDatagramSession cli = client();
+		cli.close();
+		cli.getCloseFuture().sync(TIMEOUT);
+		srv.getSession().getCloseFuture().sync(TIMEOUT);
+	}
+
+	@Test
+	public void testClose() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srv = server();
+		EngineDatagramSession cli = client();
+		cli.close();
+		cli.getCloseFuture().sync(TIMEOUT);
+		srv.getSession().getCloseFuture().sync(TIMEOUT);
+	}
+
+	@Test
+	public void testQuicClose() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srv = server();
+		EngineDatagramSession cli = client();
+		cli.quickClose();
+		cli.getCloseFuture().sync(TIMEOUT);
+		srv.getSession().getCloseFuture().sync(TIMEOUT);
+	}
+
+	@Test
+	public void testDirtyClose() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srv = server();
+		EngineDatagramSession cli = client();
+		waitFor(100);
+		cli.dirtyClose();
+		cli.getCloseFuture().sync(TIMEOUT);
+		waitFor(TIMEOUT);
+		assertFalse(srv.getSession().getCloseFuture().isDone());
+	}
+	
+	@Test
+	public void closeInClientCreatedEvent() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srvh = server();
+		TestHandler clih = new TestHandler(timer, cliConfig) {
+			@Override
+			protected void created() {
+				getSession().close();
+			}
+		};
 		
+		EngineDatagramSession cli = (EngineDatagramSession) client(clih).getSession();
+		cli.getCreateFuture().sync(TIMEOUT);
+		cli.getEndFuture().sync(TIMEOUT);
+		assertTrue(cli.getOpenFuture().isCancelled());
+		assertTrue(cli.getReadyFuture().isCancelled());
+		assertTrue(cli.getCloseFuture().isCancelled());
+		waitFor(100);
+		assertEquals("CR|EN|", clih.trace());
+		assertEquals("", srvh.trace());		
+	}
+
+	@Test
+	public void closeInServerCreatedEvent() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setEngineHandshakeTimeout(3000);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srvh = new TestHandler(timer, srvConfig) {
+			@Override
+			protected void created() {
+				getSession().close();
+			}
+		};
+		TestHandler clih = new TestHandler(timer, cliConfig);
+		server(srvh, PORT);
+		
+		EngineDatagramSession cli = (EngineDatagramSession) client(clih).getSession();
+		cli.getCreateFuture().sync(TIMEOUT);
+		cli.getOpenFuture().sync(TIMEOUT);
+		try {
+			cli.getCloseFuture().sync(4000);
+		}
+		catch (ExecutionException e) {
+		}
+		waitFor(100);
+        assertEquals("CR|OP|CL|EN|", clih.trace());
+        //Two sessions as PING from loss detector creates the second one
+		assertEquals("CR|EN|CR|EN|", srvh.trace());		
+	}
+	
+	@Test
+	public void closeInClientOpenedEvent() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srvh = server();
+		TestHandler clih = new TestHandler(timer, cliConfig) {
+			@Override
+			protected void opened() {
+				getSession().close();
+			}
+		};
+		
+		EngineDatagramSession cli = (EngineDatagramSession) client(clih).getSession();
+		cli.getCreateFuture().sync(TIMEOUT);
+		cli.getOpenFuture().sync(TIMEOUT);
+		cli.getCloseFuture().sync(TIMEOUT);
+		cli.getEndFuture().sync(TIMEOUT);
+		assertTrue(cli.getReadyFuture().isCancelled());
+		waitFor(100);
+		assertEquals("CR|OP|CL|EN|", clih.trace());
+		assertEquals("", srvh.trace());		
+	}
+
+	@Test
+	public void closeInServerOpenEvent() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setEngineHandshakeTimeout(3000);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srvh = new TestHandler(timer, srvConfig) {
+			@Override
+			protected void opened() {
+				getSession().close();
+			}
+		};
+		TestHandler clih = new TestHandler(timer, cliConfig);
+		server(srvh, PORT);
+		
+		EngineDatagramSession cli = (EngineDatagramSession) client(clih).getSession();
+		cli.getCreateFuture().sync(TIMEOUT);
+		cli.getOpenFuture().sync(TIMEOUT);
+		try {
+			cli.getCloseFuture().sync(4000);
+		}
+		catch (ExecutionException e) {
+		}
+		waitFor(100);
+        assertEquals("CR|OP|CL|EN|", clih.trace());
+        //Two sessions as PING from loss detector creates the second one
+		assertEquals("CR|OP|CL|EN|CR|OP|CL|EN|", srvh.trace());		
+	}
+		
+	@Test
+	public void closeInClientReadyEvent() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srvh = server();
+		TestHandler clih = new TestHandler(timer, cliConfig) {
+			@Override
+			protected void ready() {
+				getSession().close();
+			}
+		};
+		
+		EngineDatagramSession cli = (EngineDatagramSession) client(clih).getSession();
+		cli.getCreateFuture().sync(TIMEOUT);
+		cli.getOpenFuture().sync(TIMEOUT);
+		cli.getReadyFuture().sync(TIMEOUT);
+		cli.getCloseFuture().sync(TIMEOUT);
+		cli.getEndFuture().sync(TIMEOUT);
+		waitFor(100);
+		assertEquals("CR|OP|RE|CL|EN|", clih.trace());
+		assertEquals("CR|OP|RE|CL|EN|", srvh.trace());		
+	}
+
+	@Test
+	public void closeInServerReadyEvent() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setEngineHandshakeTimeout(3000);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srvh = new TestHandler(timer, srvConfig) {
+			@Override
+			protected void ready() {
+				getSession().close();
+			}
+		};
+		TestHandler clih = new TestHandler(timer, cliConfig);
+		server(srvh, PORT);
+		
+		EngineDatagramSession cli = (EngineDatagramSession) client(clih).getSession();
+		cli.getCreateFuture().sync(TIMEOUT);
+		cli.getOpenFuture().sync(TIMEOUT);
+		cli.getReadyFuture().sync(TIMEOUT);
+		cli.getCloseFuture().sync(TIMEOUT);
+		cli.getEndFuture().sync(TIMEOUT);
+		waitFor(100);
+        assertEquals("CR|OP|RE|CL|EN|", clih.trace());
+		assertEquals("CR|OP|RE|CL|EN|", srvh.trace());		
+	}
+	
+	@Test
+	public void closeInClientClosedEvent() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srvh = server();
+		TestHandler clih = new TestHandler(timer, cliConfig) {
+			@Override
+			protected void closed() {
+				getSession().close();
+			}
+		};
+		
+		EngineDatagramSession cli = (EngineDatagramSession) client(clih).getSession();
+		cli.getCreateFuture().sync(TIMEOUT);
+		cli.getOpenFuture().sync(TIMEOUT);
+		cli.getReadyFuture().sync(TIMEOUT);
+		cli.close();
+		cli.getCloseFuture().sync(TIMEOUT);
+		cli.getEndFuture().sync(TIMEOUT);
+		waitFor(100);
+		assertEquals("CR|OP|RE|CL|EN|", clih.trace());
+		assertEquals("CR|OP|RE|CL|EN|", srvh.trace());		
+	}
+	
+	@Test
+	public void testLostConnectionClose() throws Exception {
+		srvConfig.setWaitForInboundCloseMessage(true);
+		cliConfig.setWaitForInboundCloseMessage(true);
+		paramBld.delegatedTaskMode(DelegatedTaskMode.ALL);
+		TestHandler srvh = new TestHandler(timer, srvConfig);
+		TestHandler clih = new TestHandler(timer, cliConfig);
+		server(srvh, PORT);
+		EngineDatagramSession cli = (EngineDatagramSession) client(clih).getSession();
+		waitFor(1000);
+		srvh.getSession().dirtyClose();
+		srvh.getSession().getEndFuture().sync(TIMEOUT);
+		cli.close();
+		cli.getCloseFuture().sync(100000);
+	}
+	
 	@Test
 	public void testClientPacketsLost() throws Exception {
 		for (int i=0; i<16; ++i) {
